@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "browser-control": {
+      "command": "node",
+      "args": [
+        "E:/GitHub/browser-control-mcp/mcp-server/dist/server.js"
+      ],
+      "env": {
+        "EXTENSION_SECRET": "<paste_secret_from_firefox_extension>",
+        "EXTENSION_PORT": "8089"
+      }
+    }
+  }
+}
+

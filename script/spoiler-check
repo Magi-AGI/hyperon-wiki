@@ -1,0 +1,58 @@
+#!/bin/bash
+# Butterfly Galaxii Spoiler Detection Script
+cd /home/ubuntu/magi-archive
+set -a
+source .env.production
+set +a
+
+PATH="/home/ubuntu/.rbenv/shims:$PATH" script/card runner - <<'RUBYSCRIPT'
+Card::Auth.as_bot do
+  puts "🔍 Running spoiler detection..."
+
+  terms_card = Card.fetch("Games+Butterfly Galaxii+GM Docs+Spoiler Search+spoiler terms")
+  terms = terms_card.content.scan(/<li>(.*?)<\/li>/m).flatten.map(&:strip).reject(&:empty?)
+
+  results_html = ""
+  found_any = false
+  total_matches = 0
+
+  terms.each do |term|
+    matches = Card.search(match: term).select do |c|
+      name_str = c.name.to_s
+      (name_str.start_with?("Games+Butterfly Galaxii+Player") ||
+       name_str.start_with?("Games+Butterfly Galaxii+AI")) &&
+      !name_str.include?("+GM")
+    end
+
+    if matches.any?
+      found_any = true
+      total_matches += matches.count
+      results_html += "<div class='spoiler-match'>"
+      results_html += "<h4>\"#{CGI.escapeHTML(term)}\" - #{matches.count} match(es)</h4><ul>"
+      matches.each { |c| results_html += "<li>[[#{c.name}]]</li>" }
+      results_html += "</ul></div>"
+      puts "  ⚠️  #{term}: #{matches.count} match(es)"
+    end
+  end
+
+  timestamp = Time.now.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+  if !found_any
+    final_html = "<div class='spoiler-success'>" +
+                 "<h2>✓ No Spoilers Detected</h2>" +
+                 "<p>Searched #{terms.count} terms. Last checked: #{timestamp}</p></div>"
+    puts "✅ No spoilers found!"
+  else
+    final_html = "<div class='spoiler-warning'>" +
+                 "<h2>⚠️ #{total_matches} Spoilers Found</h2>" +
+                 "<p>Last checked: #{timestamp}</p></div>#{results_html}"
+    puts "⚠️  Found #{total_matches} potential spoiler(s)"
+  end
+
+  results_card = Card.fetch("Games+Butterfly Galaxii+GM Docs+Spoiler Search+results")
+  results_card.content = final_html
+  results_card.save
+
+  puts "✅ Results updated on wiki"
+end
+RUBYSCRIPT

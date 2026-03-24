@@ -1,0 +1,75 @@
+# frozen_string_literal: true
+
+# Fix Decko 0.19.1 cached upload bug
+# Skip the broken event and add a replacement that works
+Rails.application.config.to_prepare do
+  next unless defined?(Card::Set::Abstract::Attachment)
+
+  Card::Set::Abstract::Attachment.class_eval do
+    # Skip the original broken event
+    event :assign_attachment_on_create, :initialize, on: :create, skip: :allowed
+
+    # Add our working replacement
+    event :assign_attachment_on_create_fixed, :initialize,
+          after: :assign_action, on: :create, when: :save_preliminary_upload? do
+      action = Card::Action.fetch(@action_id_of_cached_upload)
+      unless action
+        Rails.logger.error "UploadCacheFix could not fetch action for cached upload"
+        return
+      end
+
+      Rails.logger.info "UploadCacheFix handling cached action #{action.id}"
+
+      file_handle = nil
+
+      upload_cache_card.with_selected_action_id(action.id) do
+        upload_cache_card.select_file_revision
+        carrierwave_file = upload_cache_card.attachment.file
+        if carrierwave_file&.present?
+          Rails.logger.info "UploadCacheFix CarrierWave retrieved #{carrierwave_file.path}"
+          file_handle = carrierwave_file
+        else
+          Rails.logger.warn "UploadCacheFix CarrierWave did not return a file"
+        end
+      end
+
+      file_handle ||= retrieve_cached_upload_from_disk(action)
+
+      if file_handle.present?
+        Rails.logger.info "UploadCacheFix assigning cached file #{file_handle.respond_to?(:path) ? file_handle.path : file_handle.inspect}"
+        assign_attachment file_handle, action.comment
+      elsif respond_to?(:name)
+        Rails.logger.error "UploadCacheFix missing cached file for action ##{action.id} (card #{name})"
+      end
+    end
+
+    private
+
+    def retrieve_cached_upload_from_disk(action)
+      base_dir = upload_cache_card.tmp_upload_dir
+      db_content = action.card_changes&.detect { |c| c.field.to_s == "db_content" }&.value
+
+      candidates = []
+      candidates << File.join(base_dir, "#{action.id}#{ext_from(action.comment, db_content)}")
+      candidates << File.join(base_dir, File.basename(db_content)) if db_content
+
+      path = candidates.compact.uniq.detect { |candidate| File.exist?(candidate) }
+      unless path
+        Rails.logger.error "UploadCacheFix no candidate file for action ##{action.id}; checked #{candidates.inspect}"
+        return
+      end
+
+      Rails.logger.info "UploadCacheFix opening fallback cached file #{path}"
+      CarrierWave::SanitizedFile.new(path: path)
+    rescue StandardError => e
+      Rails.logger.error "UploadCacheFix failed to open cached file: #{e.class}: #{e.message}"
+      nil
+    end
+
+    def ext_from(original_filename, db_content)
+      ext = File.extname(original_filename.to_s)
+      ext = File.extname(db_content.to_s) if ext.empty? && db_content
+      ext.presence || ".bin"
+    end
+  end
+end

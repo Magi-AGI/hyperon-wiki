@@ -1,0 +1,33 @@
+# PostgreSQL configuration for RDS
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+
+production:
+  <<: *default
+  database: hyperon_production
+  username: <%= ENV["DB_USERNAME"] %>
+  password: <%= ENV["DATABASE_PASSWORD"] %>
+  host: <%= ENV["DB_HOST"] %>
+  port: 5432
+
+development: &development
+  <<: *default
+  database: hyperon_development
+  username: <%= ENV["DB_USERNAME"] %>
+  password: <%= ENV["DATABASE_PASSWORD"] %>
+  host: <%= ENV["DB_HOST"] %>
+  port: 5432
+
+test: &test
+  <<: *default
+  database: hyperon_test
+  username: <%= ENV["DB_USERNAME"] %>
+  password: <%= ENV["DATABASE_PASSWORD"] %>
+  host: <%= ENV["DB_HOST"] %>
+  port: 5432
+
+cucumber: *test
+cypress: *test
+profile: *development

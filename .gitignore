@@ -1,0 +1,101 @@
+# Environment files (NEVER commit secrets!)
+.env
+.env.production
+.env.development
+.env.local
+
+# Logs
+log/*
+*.log
+
+# Temporary files
+tmp/*
+!tmp/.keep
+
+# Database files (use RDS/PostgreSQL dump instead)
+*.sqlite3
+db/*.sqlite3
+
+# Uploaded files (back these up separately or use S3)
+files/*
+!files/.keep
+public/files/*
+!public/files/.htaccess
+
+# Cache
+public/assets/
+.sass-cache/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Bundler
+.bundle/
+vendor/bundle/
+/lib/bundler/man/
+
+# RSpec/test
+spec/examples.txt
+spec/reports/
+coverage/
+.rspec_status
+test/tmp/
+test/version_tmp/
+
+# Node modules
+node_modules/
+
+# Ruby/gem specific
+*.gem
+*.rbc
+/.config
+/InstalledFiles
+/pkg/
+.byebug_history
+.dat*
+.repl_history
+build/
+*.bridgesupport
+.rvmrc
+
+# Documentation
+/.yardoc/
+/_yardoc/
+/doc/
+/rdoc/
+backup-*.sql
+
+# Temporary migration and setup scripts (root directory only)
+/*.rb
+/*.sh
+
+# Temporary test directories
+/deck/
+
+# Editor/IDE directories
+/.obsidian/
+
+# Documentation and notes (keep in repo)
+# Previously ignored to reduce noise; now tracked intentionally.
+# Do NOT include secrets.
+\# Local MCP env (ignore secrets)
+docs/mcp/.env
+
+# Temporary/experimental initializers
+/config/initializers/fix_email_stylesheet.rb
+/.claude/
+ 
+# Local temporary scratch directory
+temp/
+
+# Mattermost exports (large files, upload to wiki separately)
+mattermost_exports/
+mattermost_config.json
