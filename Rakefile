@@ -7,4 +7,4 @@
 
 require File.expand_path("../config/application", __FILE__)
 
-MagiArchive::Application.load_tasks
+HyperonWiki::Application.load_tasks
