@@ -53,28 +53,17 @@ format :html do
   view :expert_indicator, cache: :never do
     expert = Card.fetch("#{card.name}+expert approved by")&.content
 
-    roles = begin
-      Card::Auth.current_roles
-    rescue StandardError => e
-      ["ERROR: #{e.message}"]
-    end
-    is_expert = roles.include?("Expert")
-    current_user = Card::Auth.current&.name rescue "unknown"
-
-    Rails.logger.info "=== EXPERT_INDICATOR === card=#{card.name} user=#{current_user} roles=#{roles.inspect} is_expert=#{is_expert} expert_approved_by=#{expert.inspect}"
-
     if expert
       expert_at = Card.fetch("#{card.name}+expert approved at")&.content || "unknown date"
       wrap_with(:span, class: "badge bg-warning text-dark") do
         "Expert Approved by #{h expert} on #{h expert_at}"
       end
-    elsif is_expert
+    elsif user_is_expert?
       link_to_card card.name, "Expert Approve",
                    path: { action: :update, trigger: :expert_approve },
                    class: "btn btn-warning btn-sm"
     else
-      # Debug: show why button is hidden
-      "<!-- expert_indicator: user=#{current_user} roles=#{roles.inspect} is_expert=#{is_expert} -->"
+      ""
     end
   end
 end
