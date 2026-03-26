@@ -39,11 +39,9 @@ format :html do
         "Expert Approved by #{h expert} on #{h expert_at}"
       end
     elsif user_is_expert?
-      link_to "Expert Approve",
-              card.path(action: :update, trigger: :expert_approve),
-              class: "btn btn-warning btn-sm ms-2",
-              method: :put,
-              data: { confirm: "Add your expert endorsement to this card?" }
+      link_to_card card.name, "Expert Approve",
+                   path: { action: :update, trigger: :expert_approve },
+                   class: "btn btn-warning btn-sm ms-2"
     else
       ""
     end

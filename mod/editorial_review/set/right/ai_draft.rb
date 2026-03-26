@@ -21,15 +21,12 @@ event :merge_ai_draft, :finalize, on: :update,
   parent = left
   return unless parent
 
-  # Copy draft content into parent's main content
   parent.content = content
   parent.save!
 
-  # Record approval metadata on parent
   add_subcard "#{parent.name}+approved by", content: Auth.current.name, type_id: Card::PhraseID
   add_subcard "#{parent.name}+approved at", content: Time.current.to_date.to_s, type_id: Card::DateID
 
-  # Clear the draft content after merge
   self.content = ""
 end
 
@@ -40,11 +37,10 @@ format :html do
     parent = card.left
     return "" unless parent
 
-    link_to "Merge into #{h parent.name}",
-            path(action: :update, card: { content: card.content }, merge_draft: "true"),
-            class: "btn btn-primary btn-sm",
-            method: :put,
-            data: { confirm: "Merge this AI draft into the published article?" }
+    link_to_card parent.name, "Merge into #{h parent.name}",
+                 path: { action: :update, card: { content: card.content },
+                         merge_draft: "true" },
+                 class: "btn btn-primary btn-sm"
   end
 
   view :core do

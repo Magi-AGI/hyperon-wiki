@@ -20,11 +20,10 @@ format :html do
   end
 
   view :approve_button do
-    link_to "Approve &amp; Publish",
-            path(action: :update, card: { type: "Published", trigger: :approve_draft }),
-            class: "btn btn-success btn-sm",
-            method: :put,
-            data: { confirm: "Publish this card? It will become visible to all users." }
+    link_to_card card.name, "Approve &amp; Publish",
+                 path: { action: :update, card: { type: "Published" },
+                         trigger: :approve_draft },
+                 class: "btn btn-success btn-sm"
   end
 end
 
