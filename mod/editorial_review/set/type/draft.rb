@@ -5,8 +5,7 @@
 format :html do
   # Override core view to prepend the draft banner
   view :core do
-    banner = render_draft_banner
-    output [banner, super()]
+    render_draft_banner.to_s + super.to_s
   end
 
   view :draft_banner do
@@ -31,9 +30,12 @@ end
 
 # Event: auto-tag new Draft cards with "needs review"
 event :tag_draft_needs_review, :integrate, on: :create do
-  tag_card = fetch(:tag, new: { type_id: Card::PointerID })
-  tag_card.add_item "needs review" unless tag_card.item_names.include?("needs review")
-  tag_card.save!
+  tag_card_name = "#{name}+tag"
+  tag_card = Card.fetch(tag_card_name) || Card.create!(name: tag_card_name, type_id: Card::PointerID)
+  unless tag_card.item_names.include?("needs review")
+    tag_card.add_item "needs review"
+    tag_card.save!
+  end
 end
 
 # Event: when a Draft is approved (type changed to Published),
@@ -44,13 +46,10 @@ event :on_approve_draft, :finalize, on: :update, changed: :type_id,
   add_subcard "#{name}+approved by", content: Auth.current.name, type_id: Card::PhraseID
   add_subcard "#{name}+approved at", content: Time.current.to_date.to_s, type_id: Card::DateID
 
-  # Add "human approved" tag
-  tag_card = fetch(:tag, new: { type_id: Card::PointerID })
-  existing = tag_card.item_names
-  tag_card.add_item "human approved" unless existing.include?("human approved")
-
-  # Remove "needs review" tag if present
-  tag_card.drop_item "needs review" if existing.include?("needs review")
-
+  # Update tags
+  tag_card_name = "#{name}+tag"
+  tag_card = Card.fetch(tag_card_name) || Card.create!(name: tag_card_name, type_id: Card::PointerID)
+  tag_card.add_item "human approved" unless tag_card.item_names.include?("human approved")
+  tag_card.drop_item "needs review" if tag_card.item_names.include?("needs review")
   add_subcard tag_card
 end

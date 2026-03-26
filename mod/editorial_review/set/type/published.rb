@@ -6,9 +6,9 @@ format :html do
   view :core do
     seal = render_approval_seal
     if seal.present?
-      output [seal, super()]
+      seal.to_s + super.to_s
     else
-      super()
+      super
     end
   end
 
@@ -62,8 +62,9 @@ event :on_expert_approve, :finalize, on: :update,
   add_subcard "#{name}+expert approved by", content: Auth.current.name, type_id: Card::PhraseID
   add_subcard "#{name}+expert approved at", content: Time.current.to_date.to_s, type_id: Card::DateID
 
-  # Add "expert approved" tag
-  tag_card = fetch(:tag, new: { type_id: Card::PointerID })
+  # Update tags
+  tag_card_name = "#{name}+tag"
+  tag_card = Card.fetch(tag_card_name) || Card.create!(name: tag_card_name, type_id: Card::PointerID)
   tag_card.add_item "expert approved" unless tag_card.item_names.include?("expert approved")
   add_subcard tag_card
 end

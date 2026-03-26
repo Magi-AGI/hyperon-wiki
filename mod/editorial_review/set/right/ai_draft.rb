@@ -4,12 +4,10 @@
 event :tag_parent_needs_review, :integrate, on: :save do
   parent = left
   return unless parent
-
-  # Only tag if the ai draft has content
   return if content.blank?
 
-  # Add "needs review" tag to parent
-  tag_card = parent.fetch(:tag, new: { type_id: Card::PointerID })
+  tag_card_name = "#{parent.name}+tag"
+  tag_card = Card.fetch(tag_card_name) || Card.create!(name: tag_card_name, type_id: Card::PointerID)
   unless tag_card.item_names.include?("needs review")
     tag_card.add_item "needs review"
     tag_card.save!
@@ -19,7 +17,7 @@ end
 # Event: when an ai draft is merged into the parent card.
 # Triggered by saving with merge_draft param.
 event :merge_ai_draft, :finalize, on: :update,
-      when: proc { |c| Env.params[:merge_draft] == "true" } do
+      when: proc { |_c| Env.params[:merge_draft] == "true" } do
   parent = left
   return unless parent
 
@@ -51,15 +49,13 @@ format :html do
 
   view :core do
     if card.content.present?
-      output [
-        wrap_with(:div, class: "alert alert-info mb-3") do
-          [
-            "<strong>AI Draft</strong> &mdash; Proposed changes pending review.",
-            (" " + render_merge_button if card.ok?(:update))
-          ].compact.join
-        end,
-        super()
-      ]
+      banner = wrap_with(:div, class: "alert alert-info mb-3") do
+        [
+          "<strong>AI Draft</strong> &mdash; Proposed changes pending review.",
+          (" " + render_merge_button if card.ok?(:update))
+        ].compact.join
+      end
+      banner.to_s + super.to_s
     else
       wrap_with(:div, class: "text-muted") { "<em>No AI draft pending.</em>" }
     end
