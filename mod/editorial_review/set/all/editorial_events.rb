@@ -7,18 +7,26 @@ DRAFT_TYPE_NAME = "Draft".freeze
 PUBLISHED_TYPE_NAME = "Published".freeze
 
 # Event: when any card's type changes to Published, stamp approval metadata.
-event :on_publish_card, :finalize, on: :update, changed: :type_id do
+event :on_publish_card, :integrate, on: :update, changed: :type_id do
   new_type = Card.fetch(type_id)&.name
-  return unless new_type == PUBLISHED_TYPE_NAME
+  next unless new_type == PUBLISHED_TYPE_NAME
 
   # Record who approved and when
-  add_subcard "#{name}+approved by", content: Auth.current.name, type_id: Card::PhraseID
-  add_subcard "#{name}+approved at", content: Time.current.to_date.to_s, type_id: Card::DateID
+  Card::Auth.as_bot do
+    approved_by = Card.fetch("#{name}+approved by", new: {})
+    approved_by.type_id = Card::PhraseID
+    approved_by.content = Auth.current.name
+    approved_by.save!
 
-  # Update tags
-  tag_card_name = "#{name}+tag"
-  tag_card = Card.fetch(tag_card_name) || Card.new(name: tag_card_name, type_id: Card::PointerID)
-  tag_card.add_item "human approved" unless tag_card.item_names.include?("human approved")
-  tag_card.drop_item "needs review" if tag_card.item_names.include?("needs review")
-  add_subcard tag_card
+    approved_at = Card.fetch("#{name}+approved at", new: {})
+    approved_at.type_id = Card::DateID
+    approved_at.content = Time.current.to_date.to_s
+    approved_at.save!
+
+    # Update tags
+    tag_card = Card.fetch("#{name}+tag", new: { type_id: Card::PointerID })
+    tag_card.add_item "human approved" unless tag_card.item_names.include?("human approved")
+    tag_card.drop_item "needs review" if tag_card.item_names.include?("needs review")
+    tag_card.save!
+  end
 end
