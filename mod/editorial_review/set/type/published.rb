@@ -15,7 +15,7 @@ format :html do
   end
 
   # Choose banner vs badge based on approval recency
-  view :approval_indicator do
+  view :approval_indicator, cache: :never do
     approver = Card.fetch("#{card.name}+approved by")&.content
     approved_at_str = Card.fetch("#{card.name}+approved at")&.content
 
@@ -29,35 +29,28 @@ format :html do
 
     recent = approved_at && (Date.today - approved_at) <= APPROVAL_BANNER_DAYS
 
+    expert_html = render_expert_indicator
+
     if recent
-      render_approval_banner(approver, approved_at_str)
+      wrap_with :div, class: "alert alert-success d-flex justify-content-between align-items-center mb-3" do
+        [
+          wrap_with(:span) do
+            "<strong>Human Approved</strong> &mdash; by #{h approver} on #{h approved_at_str}"
+          end,
+          expert_html
+        ].compact.join
+      end
     else
-      render_approval_badge(approver, approved_at_str)
+      wrap_with :div, class: "text-muted small mb-2" do
+        [
+          "Approved by #{h approver} on #{h approved_at_str}",
+          expert_html.present? ? " &middot; #{expert_html}" : nil
+        ].compact.join
+      end
     end
   end
 
-  def render_approval_banner(approver, date)
-    wrap_with :div, class: "alert alert-success d-flex justify-content-between align-items-center mb-3" do
-      [
-        wrap_with(:span) do
-          "<strong>Human Approved</strong> &mdash; by #{h approver} on #{h date}"
-        end,
-        render_expert_indicator
-      ].compact.join
-    end
-  end
-
-  def render_approval_badge(approver, date)
-    expert_badge = render_expert_indicator
-    wrap_with :div, class: "text-muted small mb-2" do
-      [
-        "Approved by #{h approver} on #{h date}",
-        expert_badge.present? ? " &middot; #{expert_badge}" : nil
-      ].compact.join
-    end
-  end
-
-  view :expert_indicator do
+  view :expert_indicator, cache: :never do
     expert = Card.fetch("#{card.name}+expert approved by")&.content
 
     if expert
