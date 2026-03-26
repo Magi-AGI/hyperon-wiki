@@ -1,7 +1,14 @@
 # Set module for Draft card type.
 # Adds a draft banner and "Approve & Publish" button for signed-in users.
+# Auto-tags new Draft cards with "needs review".
 
 format :html do
+  # Override core view to prepend the draft banner
+  view :core do
+    banner = render_draft_banner
+    output [banner, super()]
+  end
+
   view :draft_banner do
     wrap_with :div, class: "alert alert-warning d-flex justify-content-between align-items-center mb-3" do
       [
@@ -20,10 +27,13 @@ format :html do
             method: :put,
             data: { confirm: "Publish this card? It will become visible to all users." }
   end
+end
 
-  view :content_with_banner do
-    output [render_draft_banner, _render_core]
-  end
+# Event: auto-tag new Draft cards with "needs review"
+event :tag_draft_needs_review, :integrate, on: :create do
+  tag_card = fetch(:tag, new: { type_id: Card::PointerID })
+  tag_card.add_item "needs review" unless tag_card.item_names.include?("needs review")
+  tag_card.save!
 end
 
 # Event: when a Draft is approved (type changed to Published),

@@ -2,6 +2,16 @@
 # Displays approval seal and optional expert endorsement.
 
 format :html do
+  # Override core view to prepend the approval seal
+  view :core do
+    seal = render_approval_seal
+    if seal.present?
+      output [seal, super()]
+    else
+      super()
+    end
+  end
+
   view :approval_seal do
     approver = Card.fetch("#{card.name}+approved by")&.content
     approved_at = Card.fetch("#{card.name}+approved at")&.content
@@ -36,15 +46,6 @@ format :html do
               data: { confirm: "Add your expert endorsement to this card?" }
     else
       ""
-    end
-  end
-
-  view :content_with_seal do
-    seal = render_approval_seal
-    if seal.present?
-      output [seal, _render_core]
-    else
-      _render_core
     end
   end
 
