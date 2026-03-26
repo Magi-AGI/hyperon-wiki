@@ -75,7 +75,7 @@ format :html do
   end
 
   def user_is_expert?
-    Auth.current&.fetch(:roles)&.item_names&.include?("Expert")
+    Card::Auth.current_roles.include?("Expert")
   rescue StandardError
     false
   end
