@@ -5,7 +5,7 @@
 APPROVAL_BANNER_DAYS = 7
 
 format :html do
-  view :core do
+  view :core, cache: :never do
     seal = render_approval_indicator
     if seal.present?
       output [seal, super()]

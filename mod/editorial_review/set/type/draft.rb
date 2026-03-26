@@ -3,7 +3,7 @@
 # Auto-tags new Draft cards with "needs review".
 
 format :html do
-  view :core do
+  view :core, cache: :never do
     output [render_draft_banner, super()]
   end
 
