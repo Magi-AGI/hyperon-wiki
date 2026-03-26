@@ -51,7 +51,7 @@ format :html do
           (" " + render_merge_button if card.ok?(:update))
         ].compact.join
       end
-      banner.to_s + super.to_s
+      output [banner, super()]
     else
       wrap_with(:div, class: "text-muted") { "<em>No AI draft pending.</em>" }
     end

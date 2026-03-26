@@ -3,9 +3,8 @@
 # Auto-tags new Draft cards with "needs review".
 
 format :html do
-  # Override core view to prepend the draft banner
   view :core do
-    render_draft_banner.to_s + super.to_s
+    output [render_draft_banner, super()]
   end
 
   view :draft_banner do
@@ -41,11 +40,9 @@ end
 # stamp the approval metadata and update tags.
 event :on_approve_draft, :finalize, on: :update, changed: :type_id,
       when: proc { |c| c.type_code == :published } do
-  # Record who approved and when
   add_subcard "#{name}+approved by", content: Auth.current.name, type_id: Card::PhraseID
   add_subcard "#{name}+approved at", content: Time.current.to_date.to_s, type_id: Card::DateID
 
-  # Update tags
   tag_card_name = "#{name}+tag"
   tag_card = Card.fetch(tag_card_name) || Card.create!(name: tag_card_name, type_id: Card::PointerID)
   tag_card.add_item "human approved" unless tag_card.item_names.include?("human approved")

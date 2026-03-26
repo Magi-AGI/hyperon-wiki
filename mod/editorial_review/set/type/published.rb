@@ -2,13 +2,12 @@
 # Displays approval seal and optional expert endorsement.
 
 format :html do
-  # Override core view to prepend the approval seal
   view :core do
     seal = render_approval_seal
     if seal.present?
-      seal.to_s + super.to_s
+      output [seal, super()]
     else
-      super
+      super()
     end
   end
 
@@ -60,7 +59,6 @@ event :on_expert_approve, :finalize, on: :update,
   add_subcard "#{name}+expert approved by", content: Auth.current.name, type_id: Card::PhraseID
   add_subcard "#{name}+expert approved at", content: Time.current.to_date.to_s, type_id: Card::DateID
 
-  # Update tags
   tag_card_name = "#{name}+tag"
   tag_card = Card.fetch(tag_card_name) || Card.create!(name: tag_card_name, type_id: Card::PointerID)
   tag_card.add_item "expert approved" unless tag_card.item_names.include?("expert approved")
