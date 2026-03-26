@@ -1,9 +1,12 @@
 # Set module for Published card type.
-# Displays approval seal and optional expert endorsement.
+# Displays approval seal (banner for 7 days, then subtle badge)
+# and optional expert endorsement.
+
+APPROVAL_BANNER_DAYS = 7
 
 format :html do
   view :core do
-    seal = render_approval_seal
+    seal = render_approval_indicator
     if seal.present?
       output [seal, super()]
     else
@@ -11,36 +14,61 @@ format :html do
     end
   end
 
-  view :approval_seal do
+  # Choose banner vs badge based on approval recency
+  view :approval_indicator do
     approver = Card.fetch("#{card.name}+approved by")&.content
-    approved_at = Card.fetch("#{card.name}+approved at")&.content
+    approved_at_str = Card.fetch("#{card.name}+approved at")&.content
 
     return "" unless approver
 
-    date_display = approved_at || "unknown date"
+    approved_at = begin
+      Date.parse(approved_at_str)
+    rescue StandardError
+      nil
+    end
 
+    recent = approved_at && (Date.today - approved_at) <= APPROVAL_BANNER_DAYS
+
+    if recent
+      render_approval_banner(approver, approved_at_str)
+    else
+      render_approval_badge(approver, approved_at_str)
+    end
+  end
+
+  def render_approval_banner(approver, date)
     wrap_with :div, class: "alert alert-success d-flex justify-content-between align-items-center mb-3" do
       [
         wrap_with(:span) do
-          "<strong>Human Approved</strong> &mdash; by #{h approver} on #{h date_display}"
+          "<strong>Human Approved</strong> &mdash; by #{h approver} on #{h date}"
         end,
-        render_expert_seal_or_button
+        render_expert_indicator
       ].compact.join
     end
   end
 
-  view :expert_seal_or_button do
+  def render_approval_badge(approver, date)
+    expert_badge = render_expert_indicator
+    wrap_with :div, class: "text-muted small mb-2" do
+      [
+        "Approved by #{h approver} on #{h date}",
+        expert_badge.present? ? " &middot; #{expert_badge}" : nil
+      ].compact.join
+    end
+  end
+
+  view :expert_indicator do
     expert = Card.fetch("#{card.name}+expert approved by")&.content
 
     if expert
       expert_at = Card.fetch("#{card.name}+expert approved at")&.content || "unknown date"
-      wrap_with(:span, class: "badge bg-warning text-dark ms-2") do
+      wrap_with(:span, class: "badge bg-warning text-dark") do
         "Expert Approved by #{h expert} on #{h expert_at}"
       end
     elsif user_is_expert?
       link_to_card card.name, "Expert Approve",
                    path: { action: :update, trigger: :expert_approve },
-                   class: "btn btn-warning btn-sm ms-2"
+                   class: "btn btn-warning btn-sm"
     else
       ""
     end
@@ -54,13 +82,21 @@ format :html do
 end
 
 # Event: when an expert endorses a Published card.
-event :on_expert_approve, :finalize, on: :update,
+event :on_expert_approve, :integrate, on: :update,
       when: proc { |_c| Env.params[:trigger] == "expert_approve" } do
-  add_subcard "#{name}+expert approved by", content: Auth.current.name, type_id: Card::PhraseID
-  add_subcard "#{name}+expert approved at", content: Time.current.to_date.to_s, type_id: Card::DateID
+  Card::Auth.as_bot do
+    expert_by = Card.fetch("#{name}+expert approved by", new: {})
+    expert_by.type_id = Card::PhraseID
+    expert_by.content = Auth.current.name
+    expert_by.save!
 
-  tag_card_name = "#{name}+tag"
-  tag_card = Card.fetch(tag_card_name) || Card.create!(name: tag_card_name, type_id: Card::PointerID)
-  tag_card.add_item "expert approved" unless tag_card.item_names.include?("expert approved")
-  add_subcard tag_card
+    expert_at = Card.fetch("#{name}+expert approved at", new: {})
+    expert_at.type_id = Card::DateID
+    expert_at.content = Time.current.to_date.to_s
+    expert_at.save!
+
+    tag_card = Card.fetch("#{name}+tag", new: { type_id: Card::PointerID })
+    tag_card.add_item "expert approved" unless tag_card.item_names.include?("expert approved")
+    tag_card.save!
+  end
 end
