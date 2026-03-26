@@ -36,16 +36,6 @@ event :tag_draft_needs_review, :integrate, on: :create do
   end
 end
 
-# Event: when a Draft is approved (type changed to Published),
-# stamp the approval metadata and update tags.
-event :on_approve_draft, :finalize, on: :update, changed: :type_id,
-      when: proc { |c| c.type_code == :published } do
-  add_subcard "#{name}+approved by", content: Auth.current.name, type_id: Card::PhraseID
-  add_subcard "#{name}+approved at", content: Time.current.to_date.to_s, type_id: Card::DateID
-
-  tag_card_name = "#{name}+tag"
-  tag_card = Card.fetch(tag_card_name) || Card.create!(name: tag_card_name, type_id: Card::PointerID)
-  tag_card.add_item "human approved" unless tag_card.item_names.include?("human approved")
-  tag_card.drop_item "needs review" if tag_card.item_names.include?("needs review")
-  add_subcard tag_card
-end
+# NOTE: The approval event (type change Draft→Published) is in
+# set/all/editorial_events.rb because type-specific sets don't see
+# cross-type transitions.
