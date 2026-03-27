@@ -112,6 +112,10 @@ module HyperonWiki
     #
     # config.relative_url_root = "/mydeck"
 
+    # RECAPTCHA
+    config.recaptcha_site_key = ENV["RECAPTCHA_SITE_KEY"]
+    config.recaptcha_secret_key = ENV["RECAPTCHA_SECRET_KEY"]
+
     # MISCELLANEOUS
     # You can use the following to disallow creating, updating, and deleting
     # cards:
