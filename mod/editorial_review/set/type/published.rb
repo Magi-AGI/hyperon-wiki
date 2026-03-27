@@ -66,6 +66,12 @@ format :html do
       ""
     end
   end
+
+  def user_is_expert?
+    Card::Auth.current_roles.include?("Expert")
+  rescue StandardError
+    false
+  end
 end
 
 # Event: when an expert endorses a Published card.
