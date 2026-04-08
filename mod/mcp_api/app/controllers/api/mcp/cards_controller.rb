@@ -87,6 +87,15 @@ module Api
           else
             content = prepare_content(params[:content], params[:markdown_content])
             @card.content = content if content
+
+            # Handle type change
+            if params[:type]
+              type_card = find_type_by_name(params[:type])
+              return render_error("not_found", "Type '#{params[:type]}' not found") unless type_card
+
+              @card.type_id = type_card.id
+            end
+
             @card.save!
           end
         end
@@ -394,8 +403,11 @@ module Api
       end
 
       def can_modify_card?(card)
-        # Same rules as viewing for now
-        can_view_card?(card)
+        return false if card.trash
+
+        Card::Auth.as(current_account.name) do
+          card.ok?(:update)
+        end
       end
 
       def render_forbidden_content
