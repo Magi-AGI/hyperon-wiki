@@ -5,7 +5,7 @@ require_relative "../../../../lib/mcp/roles"
 module Api
   module Mcp
     class CardsController < BaseController
-      before_action :set_card, only: [:show, :update, :destroy, :rename, :children, :referers, :nested_in, :nests, :links, :linked_by, :history, :revision, :restore]
+      before_action :set_card, only: [:show, :update, :destroy, :rename, :children, :referers, :nested_in, :nests, :links, :linked_by, :history, :revision, :restore, :search_content, :outline]
       before_action :check_admin_role!, only: [:destroy, :rename]
 
       # GET /api/mcp/cards
@@ -343,12 +343,62 @@ module Api
       end
 
 
+      # GET /api/mcp/cards/:name/search_content
+      # Search within a card's raw content and return matching excerpts
+      def search_content
+        return render_forbidden_content unless can_view_card?(@card)
+
+        query = params[:query]
+        return render_error("validation_error", "Missing query parameter") unless query
+
+        context_chars = (params[:context_chars] || 100).to_i
+        content = @card.content || ""
+
+        matches = []
+        search_pos = 0
+        while (idx = content.index(query, search_pos))
+          start_pos = [idx - context_chars, 0].max
+          end_pos = [idx + query.length + context_chars, content.length].min
+          matches << {
+            position: idx,
+            context: content[start_pos...end_pos],
+            context_start: start_pos,
+            match_offset_in_context: idx - start_pos
+          }
+          search_pos = idx + query.length
+        end
+
+        render json: {
+          card: @card.name,
+          query: query,
+          match_count: matches.size,
+          content_length: content.length,
+          matches: matches
+        }
+      end
+
+      # GET /api/mcp/cards/:name/outline
+      # Return the heading structure of a card without full content
+      def outline
+        return render_forbidden_content unless can_view_card?(@card)
+
+        content = @card.content || ""
+        headings = extract_headings(content)
+
+        render json: {
+          card: @card.name,
+          type: @card.type_name,
+          content_length: content.length,
+          headings: headings
+        }
+      end
+
       private
 
       def set_card
         name = params[:name]
         # Look in trash when restoring from trash
-        look_in_trash = action_name == "restore" && 
+        look_in_trash = action_name == "restore" &&
                         (params[:from_trash] == true || params[:from_trash] == "true")
         
         # First check if card exists at all (as bot to bypass permissions)
@@ -735,6 +785,12 @@ end
         case mode
         when "replace_between"
           apply_replace_between(card, patch_params)
+        when "append"
+          apply_append(card, patch_params)
+        when "prepend"
+          apply_prepend(card, patch_params)
+        when "find_replace"
+          apply_find_replace(card, patch_params)
         else
           render_error("validation_error", "Unknown patch mode: #{mode}")
         end
@@ -765,6 +821,82 @@ end
         new_content = content[0...start_idx] + replacement + content[end_idx..-1]
         card.content = new_content
         card.save!
+      end
+
+      def apply_append(card, patch_params)
+        content = patch_params[:content]
+        return render_error("validation_error", "Missing content for append") unless content
+
+        separator = patch_params[:separator] || ""
+        card.content = (card.content || "") + separator + content
+        card.save!
+      end
+
+      def apply_prepend(card, patch_params)
+        content = patch_params[:content]
+        return render_error("validation_error", "Missing content for prepend") unless content
+
+        separator = patch_params[:separator] || ""
+        card.content = content + separator + (card.content || "")
+        card.save!
+      end
+
+      def apply_find_replace(card, patch_params)
+        find_text = patch_params[:find]
+        replace_text = patch_params[:replace]
+        return render_error("validation_error", "Missing 'find' parameter") unless find_text
+        return render_error("validation_error", "Missing 'replace' parameter") unless replace_text.is_a?(String)
+
+        occurrence = patch_params[:occurrence] || "first"
+        content = card.content || ""
+
+        unless content.include?(find_text)
+          return render_error("validation_error", "Text not found in card content",
+                              { find: find_text, card: card.name })
+        end
+
+        card.content = case occurrence
+                        when "all"
+                          content.gsub(find_text, replace_text)
+                        when "last"
+                          idx = content.rindex(find_text)
+                          content[0...idx] + replace_text + content[(idx + find_text.length)..]
+                        else # "first"
+                          content.sub(find_text, replace_text)
+                        end
+        card.save!
+      end
+
+      # Extract heading structure from card content (HTML and Markdown)
+      def extract_headings(content)
+        headings = []
+        pos = 0
+
+        # Scan for HTML headings: <h1>...</h1> through <h6>...</h6>
+        content.scan(/<h(\d)[^>]*>(.*?)<\/h\1>/im) do |level, text|
+          match_pos = content.index($~.to_s, pos)
+          headings << {
+            level: level.to_i,
+            text: text.strip.gsub(/<[^>]+>/, ""), # strip inner HTML tags
+            position: match_pos,
+            format: "html"
+          }
+          pos = match_pos + 1 if match_pos
+        end
+
+        # Scan for Markdown headings: # through ######
+        content.scan(/^(\#{1,6})\s+(.+)$/m) do |hashes, text|
+          match_pos = content.index($~.to_s)
+          headings << {
+            level: hashes.length,
+            text: text.strip,
+            position: match_pos,
+            format: "markdown"
+          }
+        end
+
+        # Sort by position in document
+        headings.sort_by { |h| h[:position] || 0 }
       end
 
       def process_batch_ops(ops)

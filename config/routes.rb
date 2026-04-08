@@ -43,6 +43,8 @@ Decko.application.routes.draw do
           get :nests
           get :links
           get :linked_by
+          get :search_content
+          get :outline
         end
 
         collection do
