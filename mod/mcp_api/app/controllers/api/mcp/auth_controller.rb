@@ -2,6 +2,7 @@
 
 require_relative "../../../../lib/mcp/user_authenticator"
 require_relative "../../../../lib/mcp/api_key_manager"
+require_relative "../../../../lib/mcp/roles"
 
 module Api
   module Mcp
@@ -30,6 +31,37 @@ module Api
         else
           render_error("validation_error", "Must provide either (username + password) or api_key")
         end
+      end
+
+      # POST /api/mcp/auth/debug
+      # Diagnostic endpoint for role detection - shows all role detection methods
+      def debug
+        return render_error("validation_error", "Must provide username + password") unless username_provided?
+
+        username = params[:username]
+        password = params[:password]
+
+        # Authenticate user
+        begin
+          result = ::Mcp::UserAuthenticator.authenticate(username, password)
+        rescue ::Mcp::UserAuthenticator::AuthenticationError => e
+          return render_error("authentication_failed", e.message, {}, status: :unauthorized)
+        rescue StandardError => e
+          return render_error("internal_error", e.message, { exception: e.class.name })
+        end
+
+        user_card = result[:user]
+
+        # Collect all debug info about role detection
+        debug_info = ::Mcp::UserAuthenticator.debug_role_detection(user_card)
+
+        render json: {
+          username: user_card.name,
+          user_card_id: user_card.id,
+          user_card_type: user_card.type_name,
+          detected_role: result[:role],
+          debug: debug_info
+        }
       end
 
       private
@@ -91,13 +123,13 @@ module Api
       # Validate that user has permission for requested role
       def validate_requested_role(requested_role, auto_role, user_card)
         unless valid_role?(requested_role)
-          render_error("validation_error", "Invalid role", { valid_roles: %w[user gm admin] })
+          render_error("validation_error", "Invalid role", { valid_roles: ::Mcp::Roles.all })
           return nil
         end
 
-        # Role hierarchy: admin > gm > user
-        user_level = role_level(auto_role)
-        requested_level = role_level(requested_role)
+        # Role hierarchy check using centralized Roles module
+        user_level = ::Mcp::Roles.level(auto_role)
+        requested_level = ::Mcp::Roles.level(requested_role)
 
         if requested_level > user_level
           render_error(
@@ -113,11 +145,6 @@ module Api
         requested_role
       end
 
-      # Map role to numeric level for comparison
-      def role_level(role)
-        { "admin" => 3, "gm" => 2, "user" => 1 }[role] || 0
-      end
-
       # ==================== API Key Authentication ====================
 
       def api_key_provided?
@@ -130,7 +157,7 @@ module Api
 
         # Validate inputs
         return render_error("validation_error", "Missing role (required with API key)") unless role
-        return render_error("validation_error", "Invalid role", { valid_roles: %w[user gm admin] }) unless valid_role?(role)
+        return render_error("validation_error", "Invalid role", { valid_roles: ::Mcp::Roles.all }) unless valid_role?(role)
 
         # Verify API key
         unless valid_api_key?(api_key)
@@ -214,7 +241,7 @@ module Api
       # ==================== Utilities ====================
 
       def valid_role?(role)
-        %w[user gm admin].include?(role)
+        ::Mcp::Roles.valid?(role)
       end
 
       def token_ttl

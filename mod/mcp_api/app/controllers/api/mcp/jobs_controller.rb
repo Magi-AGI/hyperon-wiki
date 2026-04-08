@@ -107,8 +107,8 @@ module Api
           filtered_cards = filter_cards_by_scope(cards, scope)
 
           filtered_cards.each do |card|
-            # Only report if card is in player-visible content
-            next if current_role == "user" && (card.name.include?("+GM") || card.name.include?("+AI"))
+            # Skip cards the user cannot read (uses Decko's native +*read rules)
+            next unless Card::Auth.as(current_account.name) { card.ok?(:read) }
 
             matches << {
               term: term,
@@ -123,9 +123,14 @@ module Api
       end
 
       def filter_cards_by_scope(cards, scope)
+        # NOTE: This uses name patterns intentionally for CONTENT CATEGORIZATION, not permissions.
+        # The spoiler scan is designed to detect leaks between content categories:
+        # - "player" scope: Content intended for players (no +GM or +AI in name)
+        # - "ai" scope: Content intended for AI processing (has +AI in name)
+        # Actual permission checking is done separately via card.ok?(:read).
         case scope
         when "player"
-          # Exclude GM and AI content
+          # Exclude GM and AI content (by naming convention)
           cards.reject { |c| c.name.include?("+GM") || c.name.include?("+AI") }
         when "ai"
           # Only AI content

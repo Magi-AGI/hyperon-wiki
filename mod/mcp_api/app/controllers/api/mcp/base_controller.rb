@@ -5,12 +5,24 @@ module Api
     class BaseController < ActionController::API
       include RateLimitable
 
+      # Set thread-local flag for reCAPTCHA bypass during API requests
+      before_action :set_mcp_thread_flag
       # Authentication for all MCP API endpoints (except auth)
       before_action :authenticate_mcp_request!, unless: :auth_endpoint?
+      # Clean up thread-local flag after request
+      after_action :clear_mcp_thread_flag
 
       rescue_from StandardError, with: :handle_error
 
       private
+
+      def set_mcp_thread_flag
+        Thread.current[:mcp_api_request] = true
+      end
+
+      def clear_mcp_thread_flag
+        Thread.current[:mcp_api_request] = nil
+      end
 
       def auth_endpoint?
         controller_name == "auth" || controller_name == "jwks"

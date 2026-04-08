@@ -1,20 +1,35 @@
 # frozen_string_literal: true
 
+require_relative "../../../../lib/mcp/roles"
+
 module Api
   module Mcp
     class CardsController < BaseController
-      before_action :set_card, only: [:show, :update, :destroy, :children, :referers, :nested_in, :nests, :links, :linked_by]
-      before_action :check_admin_role!, only: [:destroy]
+      before_action :set_card, only: [:show, :update, :destroy, :rename, :children, :referers, :nested_in, :nests, :links, :linked_by, :history, :revision, :restore]
+      before_action :check_admin_role!, only: [:destroy, :rename]
 
       # GET /api/mcp/cards
       # Search/list cards with filters
       def index
-        query = build_search_query
         limit = [(params[:limit] || 50).to_i, 100].min
         offset = (params[:offset] || 0).to_i
+        include_virtual = params[:include_virtual] == "true" || params[:include_virtual] == true
 
-        cards = execute_search(query, limit, offset)
-        total = count_search_results(query)
+        if params[:updated_since] || params[:updated_before]
+          # Use SQL-level pagination for date range queries.
+          # Decko CQL does not support updated_at filtering, so the old approach
+          # loaded ALL matching cards into memory to filter by date in Ruby.
+          # With ~10K cards, this caused 776MB+ memory bloat and 14s+ GC pauses.
+          cards, total = execute_date_range_search(limit, offset)
+        else
+          query = build_search_query
+          cards = execute_search(query, limit, offset, include_virtual: include_virtual)
+          if @name_filter_words && @name_filter_words.any?
+            total = cards.size
+          else
+            total = count_search_results(query, include_virtual: include_virtual)
+          end
+        end
 
         render json: {
           cards: cards.map { |c| card_summary_json(c) },
@@ -28,7 +43,7 @@ module Api
       # GET /api/mcp/cards/:name
       # Get single card with full content
       def show
-        return render_forbidden_gm_content unless can_view_card?(@card)
+        return render_forbidden_content unless can_view_card?(@card)
 
         render json: card_full_json(@card)
       end
@@ -64,7 +79,7 @@ module Api
       # PATCH /api/mcp/cards/:name
       # Update existing card
       def update
-        return render_forbidden_gm_content unless can_modify_card?(@card)
+        return render_forbidden_content unless can_modify_card?(@card)
 
         Card::Auth.as(current_account.name) do
           if params[:patch]
@@ -93,16 +108,51 @@ module Api
         render_error("delete_failed", "Could not delete card", { error: e.message })
       end
 
+      # PUT /api/mcp/cards/:name/rename
+      # Rename card (admin only)
+      def rename
+        new_name = params[:new_name]
+        return render_error("validation_error", "Missing new_name parameter") unless new_name
+
+        # update_referers defaults to true (update all references when renaming)
+        # Set to false to skip updating referers
+        update_referers = params[:update_referers].nil? ? true : params[:update_referers]
+
+        old_name = @card.name
+
+        Card::Auth.as(current_account.name) do
+          @card.name = new_name
+          # If update_referers is false, skip updating referer content
+          @card.skip = :update_referer_content unless update_referers
+          @card.save!
+        end
+
+        render json: {
+          status: "renamed",
+          old_name: old_name,
+          new_name: @card.name,
+          updated_referers: update_referers,
+          card: card_full_json(@card)
+        }, status: :ok
+      rescue ActiveRecord::RecordInvalid => e
+        render_error("validation_error", "Rename failed", { errors: e.record.errors.full_messages })
+      rescue StandardError => e
+        render_error("rename_failed", "Could not rename card", { error: e.message })
+      end
+
       # GET /api/mcp/cards/:name/children
       # List children cards
       def children
-        return render_forbidden_gm_content unless can_view_card?(@card)
+        return render_forbidden_content unless can_view_card?(@card)
 
         limit = [(params[:limit] || 50).to_i, 100].min
         offset = (params[:offset] || 0).to_i
+        include_virtual = params[:include_virtual] == "true" || params[:include_virtual] == true
         depth = (params[:depth] || 1).to_i
+        include_virtual = params[:include_virtual] == "true" || params[:include_virtual] == true
 
         children_cards = fetch_children(@card, depth: depth).select { |c| can_view_card?(c) }
+        children_cards = children_cards.reject { |c| detect_virtual_card(c) } unless include_virtual
 
         # Apply pagination
         total = children_cards.size
@@ -121,7 +171,7 @@ module Api
       # GET /api/mcp/cards/:name/referers
       # List cards that reference/link to this card
       def referers
-        return render_forbidden_gm_content unless can_view_card?(@card)
+        return render_forbidden_content unless can_view_card?(@card)
 
         referer_cards = fetch_referers(@card).select { |c| can_view_card?(c) }
 
@@ -135,7 +185,7 @@ module Api
       # GET /api/mcp/cards/:name/nested_in
       # List cards that nest/include this card
       def nested_in
-        return render_forbidden_gm_content unless can_view_card?(@card)
+        return render_forbidden_content unless can_view_card?(@card)
 
         nesting_cards = fetch_nested_in(@card).select { |c| can_view_card?(c) }
 
@@ -149,7 +199,7 @@ module Api
       # GET /api/mcp/cards/:name/nests
       # List cards that this card nests/includes
       def nests
-        return render_forbidden_gm_content unless can_view_card?(@card)
+        return render_forbidden_content unless can_view_card?(@card)
 
         nested_cards = fetch_nests(@card).select { |c| can_view_card?(c) }
 
@@ -163,7 +213,7 @@ module Api
       # GET /api/mcp/cards/:name/links
       # List cards that this card links to
       def links
-        return render_forbidden_gm_content unless can_view_card?(@card)
+        return render_forbidden_content unless can_view_card?(@card)
 
         linked_cards = fetch_links(@card).select { |c| can_view_card?(c) }
 
@@ -177,7 +227,7 @@ module Api
       # GET /api/mcp/cards/:name/linked_by
       # List cards that link to this card
       def linked_by
-        return render_forbidden_gm_content unless can_view_card?(@card)
+        return render_forbidden_content unless can_view_card?(@card)
 
         linking_cards = fetch_linked_by(@card).select { |c| can_view_card?(c) }
 
@@ -212,16 +262,108 @@ module Api
         render json: { results: results }, status: status
       end
 
+      # GET /api/mcp/cards/:name/history
+      # Get revision history for a card
+      def history
+        return render_forbidden_content unless can_view_card?(@card)
+
+        limit = [(params[:limit] || 20).to_i, 100].min
+
+        # Get actions for this card, ordered by most recent first
+        actions = Card::Auth.as(current_account.name) do
+          Card::Action.where(card_id: @card.id)
+                      .where(draft: [false, nil])
+                      .order(id: :desc)
+                      .limit(limit)
+                      .includes(:act)
+        end
+
+        total = Card::Action.where(card_id: @card.id).where(draft: [false, nil]).count
+
+        render json: {
+          card: @card.name,
+          revisions: actions.map { |action| action_summary_json(action) },
+          total: total,
+          in_trash: @card.trash
+        }
+      end
+
+      # GET /api/mcp/cards/:name/history/:act_id
+      # Get content from a specific revision
+      def revision
+        return render_forbidden_content unless can_view_card?(@card)
+
+        act_id = params[:act_id].to_i
+
+        # Find the action for this card at this act
+        action = Card::Auth.as(current_account.name) do
+          Card::Action.joins(:act)
+                      .where(card_id: @card.id, card_acts: { id: act_id })
+                      .first
+        end
+
+        unless action
+          return render_error("not_found", "Revision not found",
+                              { card: @card.name, act_id: act_id }, status: :not_found)
+        end
+
+        render json: revision_json(action)
+      end
+
+      # POST /api/mcp/cards/:name/restore
+      # Restore card to previous state or from trash
+      def restore
+        check_admin_role!
+        return unless response_body.nil? # check_admin_role! may have rendered
+
+        from_trash = params[:from_trash] == true || params[:from_trash] == "true"
+        act_id = params[:act_id]&.to_i
+
+        unless from_trash || act_id
+          return render_error("validation_error",
+                              "Must specify either act_id or from_trash: true")
+        end
+
+        Card::Auth.as(current_account.name) do
+          if from_trash
+            restore_from_trash
+          else
+            restore_to_revision(act_id)
+          end
+        end
+      end
+
+
       private
 
       def set_card
         name = params[:name]
-        @card = Card::Auth.as(current_account.name) do
-          Card.fetch(name)
+        # Look in trash when restoring from trash
+        look_in_trash = action_name == "restore" && 
+                        (params[:from_trash] == true || params[:from_trash] == "true")
+        
+        # First check if card exists at all (as bot to bypass permissions)
+        card_exists = Card::Auth.as_bot do
+          Card.exists?(name) || (look_in_trash && Card.where(name: name, trash: true).exists?)
         end
 
+        unless card_exists
+          return render_error("not_found", "Card '#{name}' not found", {}, status: :not_found)
+        end
+
+        # Now fetch with user's permissions
+        @card = Card::Auth.as(current_account.name) do
+          Card.fetch(name, look_in_trash: look_in_trash)
+        end
+
+        # If card exists but fetch returned nil, it's a permission issue
         unless @card
-          render_error("not_found", "Card '#{name}' not found", {}, status: :not_found)
+          render_error(
+            "permission_denied",
+            "You do not have permission to access '#{name}'",
+            { hint: "This card exists but requires elevated permissions to view." },
+            status: :forbidden
+          )
         end
       end
 
@@ -232,10 +374,23 @@ module Api
       end
 
       def can_view_card?(card)
-        # User role cannot see GM or AI content
-        return false if current_role == "user" && (card.name.include?("+GM") || card.name.include?("+AI"))
+        # Filter out trashed/deleted cards
+        return false if card.trash
 
-        true
+        # Use Decko's built-in permission system exclusively.
+        # This respects +*read rules set on cards and their inheritance.
+        #
+        # Permission inheritance works via the permission_propagation mod:
+        # - Child cards inherit parent +*read rules automatically
+        # - New cards under restricted parents get correct permissions on create
+        # - Permission changes propagate to all descendant cards
+        #
+        # DEPRECATED: Previously we also filtered by card name patterns (+GM, +AI).
+        # Cards requiring GM access should have proper +*read rules set instead.
+        # The name-based filtering has been removed for consistency.
+        Card::Auth.as(current_account.name) do
+          card.ok?(:read)
+        end
       end
 
       def can_modify_card?(card)
@@ -243,12 +398,75 @@ module Api
         can_view_card?(card)
       end
 
-      def render_forbidden_gm_content
+      def render_forbidden_content
+        # Used when Decko's native permissions deny access
         render_forbidden(
-          "Role '#{current_role}' cannot access GM content",
-          { card: @card.name, required_role: "gm" }
+          "You do not have permission to access this content",
+          { card: @card.name, hint: "Check card permissions (+*read rules) or contact an admin." }
         )
       end
+
+# SQL-based search for date range queries.
+# Uses ActiveRecord directly instead of Decko CQL to get proper
+# SQL-level LIMIT/OFFSET/WHERE/COUNT. This prevents loading all
+# matching cards into Ruby memory for post-filtering.
+def execute_date_range_search(limit, offset)
+  Card::Auth.as(current_account.name) do
+    scope = Card.where(trash: false)
+
+    if params[:updated_since]
+      scope = scope.where("cards.updated_at >= ?", Time.parse(params[:updated_since]))
+    end
+    if params[:updated_before]
+      scope = scope.where("cards.updated_at < ?", Time.parse(params[:updated_before]))
+    end
+
+    if params[:type]
+      type_card = Card.fetch(params[:type])
+      scope = scope.where(type_id: type_card.id) if type_card
+    end
+
+    if params[:q]
+      escaped = sanitize_sql_like_param(params[:q])
+      search_in = params[:search_in] || "name"
+      case search_in
+      when "content"
+        scope = scope.where("cards.db_content LIKE ?", "%#{escaped}%")
+      when "both"
+        scope = scope.where("cards.name LIKE ? OR cards.db_content LIKE ?",
+                            "%#{escaped}%", "%#{escaped}%")
+      else
+        scope = scope.where("cards.name LIKE ?", "%#{escaped}%")
+      end
+    end
+
+    if params[:prefix]
+      escaped = sanitize_sql_like_param(params[:prefix])
+      scope = scope.where("cards.name LIKE ?", "#{escaped}%")
+    end
+
+    if params[:not_name]
+      pattern = params[:not_name].gsub("*", "%")
+      scope = scope.where("cards.name NOT LIKE ?", pattern)
+    end
+
+    # Filter by permissions
+    scope = scope.order(updated_at: :desc)
+    total = scope.count
+    cards = scope.limit(limit).offset(offset).to_a
+
+    # Post-filter by view permissions (must happen after SQL pagination)
+    cards = cards.select { |c| can_view_card?(c) }
+
+    [cards, total]
+  end
+end
+
+# Sanitize user input for SQL LIKE patterns
+def sanitize_sql_like_param(value)
+  # Use Rails built-in sanitizer for LIKE wildcards
+  ActiveRecord::Base.sanitize_sql_like(value)
+end
 
       def build_search_query
         query = {}
@@ -264,12 +482,28 @@ module Api
           when "both"
             # Search in both name and content using OR condition
             query[:or] = {
-              name: ["match", params[:q]],
+              part: params[:q],
               content: ["match", params[:q]]
             }
           else  # "name" or any other value defaults to name search
-            # Search in name only (default, fastest)
-            query[:name] = ["match", params[:q]]
+            # For multi-word searches, search broadly then filter by full name
+            search_words = params[:q].to_s.split(/\s+/).reject(&:empty?)
+            if search_words.size > 1
+              @name_filter_words = search_words
+              # Search for ALL words to find deeply nested cards
+              all_conditions = []
+              search_words.each do |word|
+                all_conditions += build_single_word_conditions(word)
+              end
+              name_conditions = all_conditions.uniq { |c| c.to_s }
+            else
+              name_conditions = build_hybrid_name_conditions(params[:q])
+            end
+            if name_conditions.size == 1
+              query.merge!(name_conditions.first)
+            else
+              query[:any] = name_conditions
+            end
           end
         end
 
@@ -298,36 +532,138 @@ module Api
         query
       end
 
-      def execute_search(query, limit, offset)
-        # Execute search with proper auth context
-        cards = Card::Auth.as(current_account.name) do
-          Card.search(query.merge(limit: limit, offset: offset))
-        end
 
-        # Apply date range post-filter if needed
-        # Required because Decko CQL doesn't support updated_at filtering
-        if @filter_date_range
-          cards = cards.select do |c|
-            in_range = true
-            in_range = in_range && (c.updated_at >= @filter_date_range[:since]) if @filter_date_range[:since]
-            in_range = in_range && (c.updated_at <= @filter_date_range[:before]) if @filter_date_range[:before]
-            in_range
-          end
-        end
+      # Build hybrid search conditions for compound card name search
+# This enables substring matching by:
+# 1. Searching simple cards with "match" (works for substring on name column)
+# 2. Finding compound cards that have matching simple cards as parts
+# For multi-word searches like "Tharaneth roots", ALL words must match
+def build_hybrid_name_conditions(search_term)
+  # Split search term into words for multi-word searches
+  words = search_term.to_s.split(/\s+/).reject(&:empty?)
+  
+  if words.size <= 1
+    # Single word - use simple approach
+    build_single_word_conditions(words.first || search_term)
+  else
+    # Multi-word search - each word must match (AND logic)
+    build_multi_word_conditions(words)
+  end
+end
 
-        # Filter out GM/AI content for user role
-        if current_role == "user"
-          cards.reject { |c| c.name.include?("+GM") || c.name.include?("+AI") }
-        else
-          cards
-        end
+# Build conditions for a single search word
+def build_single_word_conditions(word)
+  conditions = []
+
+  # 1. Direct name match for simple cards
+  conditions << { name: ["match", word] }
+
+  # 2. Find simple cards matching the word, then add part conditions
+  begin
+    matching_simple_cards = Card::Auth.as(current_account.name) do
+      Card.search(
+        name: ["match", word],
+        limit: 50,
+        return: :name
+      )
+    end
+
+    matching_simple_cards.each do |card_name|
+      conditions << { part: card_name }
+    end
+  rescue => e
+    Rails.logger.warn "Hybrid name search failed for word: #{e.message}"
+  end
+
+  conditions
+end
+
+# Build conditions for multi-word search using AND logic
+# "Tharaneth roots" finds cards matching BOTH "Tharaneth" AND "roots"
+def build_multi_word_conditions(words)
+  # Build conditions for each word
+  word_conditions = words.map do |word|
+    single = build_single_word_conditions(word)
+    # Wrap in "any" if multiple conditions, otherwise use directly
+    single.size == 1 ? single.first : { any: single }
+  end
+
+  # Return AND condition requiring ALL words to match
+  [{ and: word_conditions }]
+end
+
+
+def execute_search(query, limit, offset, include_virtual: false)
+  # Fetch more cards than needed to account for post-filtering
+  # We'll filter then apply offset/limit
+  fetch_limit = [limit * 10, 1000].max  # Fetch enough to handle filtering
+
+  cards = Card::Auth.as(current_account.name) do
+    Card.search(query.merge(limit: fetch_limit))
+  end
+
+  # Apply date range post-filter if needed
+  if @filter_date_range
+    cards = cards.select do |c|
+      in_range = true
+      in_range = false if @filter_date_range[:since] && c.updated_at < @filter_date_range[:since]
+      in_range = false if @filter_date_range[:before] && c.updated_at > @filter_date_range[:before]
+      in_range
+    end
+  end
+
+  # Filter out trashed/deleted cards (all roles)
+  cards = cards.reject { |c| c.trash }
+
+  # Filter by name words if multi-word search
+  if @name_filter_words && @name_filter_words.any?
+    cards = cards.select do |c|
+      card_name_lower = c.name.to_s.downcase
+      @name_filter_words.all? { |word| card_name_lower.include?(word.downcase) }
+    end
+  end
+
+  # Use Decko's native permission system to filter cards
+  # This respects +*read rules and their inheritance to child cards.
+  # DEPRECATED: Previously used name-based filtering (+GM, +AI patterns).
+  # Cards requiring restricted access should have proper +*read rules set.
+  cards = cards.select { |c| can_view_card?(c) }
+
+  # Filter out virtual cards unless explicitly requested
+  unless include_virtual
+    cards = cards.reject { |c| detect_virtual_card(c) }
+  end
+
+  # NOW apply offset and limit to filtered results
+  cards.drop(offset).take(limit)
+end
+
+      def count_search_results(query, include_virtual: true)
+  Card::Auth.as(current_account.name) do
+    cards = Card.search(query.merge(limit: 10000))
+
+    cards = cards.reject { |c| c.trash }
+
+    # Use Decko's native permission system to filter cards
+    # This respects +*read rules and their inheritance to child cards.
+    cards = cards.select { |c| can_view_card?(c) }
+    
+    unless include_virtual
+      cards = cards.reject { |c| detect_virtual_card(c) }
+    end
+    
+    if @filter_date_range
+      cards = cards.select do |c|
+        in_range = true
+        in_range = in_range && (c.updated_at >= @filter_date_range[:since]) if @filter_date_range[:since]
+        in_range = in_range && (c.updated_at <= @filter_date_range[:before]) if @filter_date_range[:before]
+        in_range
       end
-
-      def count_search_results(query)
-        Card::Auth.as(current_account.name) do
-          Card.search(query.merge(return: "count"))
-        end
-      end
+    end
+    
+    cards.size
+  end
+end
 
       def find_type_by_name(name)
         Card::Auth.as(current_account.name) do
@@ -517,6 +853,109 @@ module Api
         end
       end
 
+      # Format an action for the history list
+      def action_summary_json(action)
+        action_type_names = { 0 => "create", 1 => "update", 2 => "delete" }
+        {
+          act_id: action.act.id,
+          action: action_type_names[action.action_type] || action.action_type.to_s,
+          actor: action.act.actor&.name,
+          acted_at: action.act.acted_at&.iso8601,
+          changes: action.all_changes.map { |c| c.field.to_s },
+          comment: action.comment
+        }.compact
+      end
+
+      # Format a single revision with full content snapshot
+      def revision_json(action)
+        snapshot = build_snapshot_at_action(action)
+
+        {
+          card: @card.name,
+          act_id: action.act.id,
+          acted_at: action.act.acted_at&.iso8601,
+          actor: action.act.actor&.name,
+          snapshot: snapshot
+        }
+      end
+
+      # Build what the card looked like at a given action
+      def build_snapshot_at_action(action)
+        snapshot = {
+          name: action.value(:name) || @card.name,
+          type: nil,
+          content: action.value(:db_content) || action.value(:content)
+        }
+
+        # Get type - convert type_id to type name
+        type_id = action.value(:type_id)
+        if type_id
+          type_card = Card.fetch(type_id.to_i)
+          snapshot[:type] = type_card&.name
+        else
+          snapshot[:type] = @card.type_name
+        end
+
+        # If content was not changed in this action, we need to look back
+        if snapshot[:content].nil?
+          prev_content_action = Card::Action.where(card_id: @card.id)
+                                            .where("id <= ?", action.id)
+                                            .order(id: :desc)
+                                            .find { |a| a.value(:db_content) || a.value(:content) }
+          snapshot[:content] = prev_content_action&.value(:db_content) ||
+                               prev_content_action&.value(:content) ||
+                               @card.content
+        end
+
+        snapshot
+      end
+
+      def restore_from_trash
+        unless @card.trash
+          return render_error("validation_error", "Card is not in trash",
+                              { card: @card.name })
+        end
+
+        @card.trash = false
+        @card.save!
+
+        render json: {
+          success: true,
+          card: @card.name,
+          message: "Card restored from trash"
+        }
+      rescue StandardError => e
+        render_error("restore_failed", "Could not restore card", { error: e.message })
+      end
+
+      def restore_to_revision(act_id)
+        action = Card::Action.joins(:act)
+                             .where(card_id: @card.id, card_acts: { id: act_id })
+                             .first
+
+        unless action
+          return render_error("not_found", "Revision not found",
+                              { card: @card.name, act_id: act_id }, status: :not_found)
+        end
+
+        snapshot = build_snapshot_at_action(action)
+        @card.content = snapshot[:content] if snapshot[:content]
+        @card.save!
+
+        render json: {
+          success: true,
+          card: @card.name,
+          restored_from: {
+            act_id: act_id,
+            acted_at: action.act.acted_at&.iso8601
+          },
+          message: "Card restored to revision from #{action.act.acted_at}"
+        }
+      rescue StandardError => e
+        render_error("restore_failed", "Could not restore card", { error: e.message })
+      end
+
+
       def card_summary_json(card)
         {
           name: card.name,
@@ -527,15 +966,46 @@ module Api
       end
 
       def card_full_json(card)
-        {
+        # Detect virtual cards: simple name (no +), empty ancestors, empty/minimal content
+        # Virtual cards are junction cards that exist primarily for naming, with actual
+        # content in compound child cards (e.g., "Trallox" vs "Games+...+Trallox")
+        is_virtual = detect_virtual_card(card)
+        
+        json = {
           name: card.name,
           id: card.id,
           type: card.type_name,
           codename: card.codename,
           content: card.content,
           updated_at: card.updated_at.iso8601,
-          created_at: card.created_at.iso8601
+          created_at: card.created_at.iso8601,
+          virtual_card: is_virtual
         }
+        
+        # Include ancestor information if available (helps detect virtual cards client-side)
+        if card.respond_to?(:ancestors) && card.ancestors.present?
+          json[:ancestors] = card.ancestors.map { |a| { name: a.name, id: a.id } }
+        end
+        
+        json
+      end
+      
+      # Detect if a card is a virtual/junction card
+      # Virtual cards typically have:
+      # 1. Simple name (no + signs indicating compound structure)
+      # 2. No ancestors (not part of a hierarchy)
+      # 3. Empty or minimal content (actual content is in compound child cards)
+      def detect_virtual_card(card)
+        # Child cards (with left_id) are never virtual, even if they have simple names
+        # This is because Decko stores child cards with just the tail name
+        is_child = card.respond_to?(:left_id) && card.left_id.present?
+        return false if is_child
+
+        simple_name = !card.name.include?("+")
+        no_ancestors = !card.respond_to?(:ancestors) || card.ancestors.blank?
+        minimal_content = card.content.blank? || card.content.strip.length < 10
+        
+        simple_name && no_ancestors && minimal_content
       end
 
       # Fetch cards that reference/link to the given card

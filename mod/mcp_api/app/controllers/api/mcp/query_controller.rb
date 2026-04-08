@@ -103,11 +103,11 @@ module Api
           Card.search(query)
         end
 
-        # Apply role-based filtering
-        if current_role == "user"
-          cards.reject { |c| c.name.include?("+GM") || c.name.include?("+AI") }
-        else
-          cards
+        # Filter by Decko's native permission system
+        # This respects +*read rules and their inheritance to child cards.
+        # DEPRECATED: Previously used name-based filtering (+GM, +AI patterns).
+        cards.select do |card|
+          !card.trash && Card::Auth.as(current_account.name) { card.ok?(:read) }
         end
       end
 
