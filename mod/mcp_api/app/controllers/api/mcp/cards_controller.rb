@@ -42,10 +42,18 @@ module Api
 
       # GET /api/mcp/cards/:name
       # Get single card with full content
+      # Pass rendered=true to get fully rendered HTML with all inclusions resolved
       def show
         return render_forbidden_content unless can_view_card?(@card)
 
-        render json: card_full_json(@card)
+        if params[:rendered] == "true" || params[:rendered] == true
+          rendered_content = Card::Auth.as(current_account.name) do
+            @card.format(:html).render(:core)
+          end
+          render json: card_full_json(@card, rendered_content: rendered_content)
+        else
+          render json: card_full_json(@card)
+        end
       end
 
       # POST /api/mcp/cards
@@ -1109,21 +1117,22 @@ end
         }
       end
 
-      def card_full_json(card)
+      def card_full_json(card, rendered_content: nil)
         # Detect virtual cards: simple name (no +), empty ancestors, empty/minimal content
         # Virtual cards are junction cards that exist primarily for naming, with actual
         # content in compound child cards (e.g., "Trallox" vs "Games+...+Trallox")
         is_virtual = detect_virtual_card(card)
-        
+
         json = {
           name: card.name,
           id: card.id,
           type: card.type_name,
           codename: card.codename,
-          content: card.content,
+          content: rendered_content || card.content,
           updated_at: card.updated_at.iso8601,
           created_at: card.created_at.iso8601,
-          virtual_card: is_virtual
+          virtual_card: is_virtual,
+          rendered: !rendered_content.nil?
         }
         
         # Include ancestor information if available (helps detect virtual cards client-side)
