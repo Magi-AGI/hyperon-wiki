@@ -100,7 +100,7 @@ module Api
           end
         end
 
-        render json: card_full_json(@card)
+        render json: card_full_json(@card) unless performed?
       rescue ActiveRecord::RecordInvalid => e
         render_error("validation_error", "Update failed", { errors: e.record.errors.full_messages })
       end
