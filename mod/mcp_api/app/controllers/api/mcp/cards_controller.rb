@@ -1,11 +1,14 @@
 # frozen_string_literal: true
 
+require "base64"
+require "tempfile"
 require_relative "../../../../lib/mcp/roles"
 
 module Api
   module Mcp
     class CardsController < BaseController
-      before_action :set_card, only: [:show, :update, :destroy, :rename, :children, :referers, :nested_in, :nests, :links, :linked_by, :history, :revision, :restore, :search_content, :outline]
+      before_action :set_card, only: [:show, :update, :destroy, :rename, :children, :referers, :nested_in, :nests, :links, :linked_by, :history, :revision, :restore, :search_content, :outline, :file_url]
+      before_action :set_card_if_exists, only: [:upload]
       before_action :check_admin_role!, only: [:destroy, :rename]
 
       # GET /api/mcp/cards
@@ -404,6 +407,111 @@ module Api
         }
       end
 
+      # POST /api/mcp/cards/:name/upload
+      # Upload a file or image to create or update a File/Image card
+      def upload
+        type_name = params[:type]
+        unless type_name && %w[File Image].include?(type_name)
+          return render_error("validation_error", "type must be 'File' or 'Image'")
+        end
+
+        # Handle base64 file data
+        if params[:file_data]
+          filename = params[:filename]
+          return render_error("validation_error", "filename is required with file_data") unless filename
+
+          begin
+            file_content = Base64.strict_decode64(params[:file_data])
+          rescue ArgumentError => e
+            return render_error("validation_error", "Invalid base64 encoding: #{e.message}")
+          end
+
+          # Write to tempfile with correct extension
+          ext = File.extname(filename)
+          tempfile = Tempfile.new(["mcp_upload", ext])
+          tempfile.binmode
+          tempfile.write(file_content)
+          tempfile.rewind
+
+          attachment_param = type_name == "Image" ? :image : :file
+        elsif params[:remote_url]
+          # Handle URL-based upload
+          remote_param = type_name == "Image" ? :remote_image_url : :remote_file_url
+        else
+          return render_error("validation_error", "Either file_data or remote_url is required")
+        end
+
+        card_name = params[:name]
+
+        Card::Auth.as(current_account.name) do
+          if @card
+            # Update existing card
+            return render_forbidden_content unless can_modify_card?(@card)
+
+            attrs = {}
+            if tempfile
+              attrs[attachment_param] = tempfile
+            elsif params[:remote_url]
+              attrs[remote_param] = params[:remote_url]
+            end
+
+            # Store original filename as action comment
+            @card.update!(attrs)
+            @card.acts.last&.actions&.last&.update(comment: filename) if filename
+          else
+            # Create new card
+            type_card = find_type_by_name(type_name)
+            return render_error("not_found", "Type '#{type_name}' not found") unless type_card
+
+            attrs = { name: card_name, type_id: type_card.id }
+            if tempfile
+              attrs[attachment_param] = tempfile
+            elsif params[:remote_url]
+              attrs[remote_param] = params[:remote_url]
+            end
+
+            @card = Card.create!(attrs)
+            @card.acts.last&.actions&.last&.update(comment: filename) if filename
+          end
+        end
+
+        result = card_full_json(@card)
+        # Add file-specific metadata
+        result[:file_url] = file_url_for(@card)
+        result[:original_filename] = filename || File.basename(params[:remote_url].to_s)
+        if type_name == "Image"
+          result[:image_urls] = image_urls_for(@card)
+        end
+
+        render json: result, status: @card.id ? :ok : :created
+      rescue ActiveRecord::RecordInvalid => e
+        render_error("validation_error", "Upload failed: #{e.message}", { errors: e.record&.errors&.full_messages })
+      ensure
+        tempfile&.close
+        tempfile&.unlink
+      end
+
+      # GET /api/mcp/cards/:name/file_url
+      # Get the download URL for a File or Image card
+      def file_url
+        unless %w[File Image].include?(@card.type_name)
+          return render_error("validation_error", "Card '#{@card.name}' is not a File or Image card (type: #{@card.type_name})")
+        end
+
+        result = {
+          name: @card.name,
+          type: @card.type_name,
+          file_url: file_url_for(@card),
+          original_filename: @card.acts.last&.actions&.last&.comment
+        }
+
+        if @card.type_name == "Image"
+          result[:image_urls] = image_urls_for(@card)
+        end
+
+        render json: result
+      end
+
       private
 
       def set_card
@@ -435,6 +543,32 @@ module Api
             status: :forbidden
           )
         end
+      end
+
+      def set_card_if_exists
+        name = params[:name]
+        @card = Card::Auth.as(current_account.name) do
+          Card.fetch(name.tr("_", " "))
+        end
+        # @card may be nil for new cards — that's ok
+      end
+
+      def file_url_for(card)
+        attachment = card.type_name == "Image" ? card.image : card.file
+        return nil unless attachment&.file
+        attachment.url
+      end
+
+      def image_urls_for(card)
+        return {} unless card.type_name == "Image" && card.image&.file
+        sizes = {}
+        %w[icon small medium large original].each do |size|
+          version = size == "original" ? card.image : card.image.send(size)
+          sizes[size] = version&.url if version
+        end
+        sizes
+      rescue StandardError
+        {}
       end
 
       def check_admin_role!

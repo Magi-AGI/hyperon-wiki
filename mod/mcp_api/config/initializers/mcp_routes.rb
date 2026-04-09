@@ -35,6 +35,9 @@ Rails.application.routes.append do
           get :history
           get "history/:act_id", action: :revision, as: :revision
           post :restore
+          # File/Image upload endpoints
+          post :upload
+          get :file_url
         end
 
         collection do
@@ -48,6 +51,9 @@ Rails.application.routes.append do
       # Rename endpoint - defined separately to handle complex card names
       # Using glob constraint to capture full path including encoded characters
       put "cards/*name/rename", to: "cards#rename", format: false, constraints: { name: /.*/ }
+
+      # Upload endpoint - glob route for card names with special characters
+      post "cards/*name/upload", to: "cards#upload", format: false, constraints: { name: /.*/ }
 
       # Render endpoints (Phase 2)
       # Use scope instead of namespace - controller is at Api::Mcp::RenderController
