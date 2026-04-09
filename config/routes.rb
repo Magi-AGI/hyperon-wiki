@@ -46,9 +46,6 @@ Decko.application.routes.draw do
           put :rename
           get :search_content
           get :outline
-          # File/image upload
-          post :upload
-          get :file_url
           # History endpoints
           get :history
           get 'history/:act_id', action: :revision, as: :revision
@@ -62,6 +59,10 @@ Decko.application.routes.draw do
 
       # Trash listing (admin only)
       resources :trash, only: [:index]
+
+      # File/image upload — standalone glob routes to avoid Decko member route conflicts
+      post 'cards/:name/upload', to: 'cards#upload', constraints: { name: /[^\/]+/ }
+      get 'cards/:name/file_url', to: 'cards#file_url', constraints: { name: /[^\/]+/ }
 
       # Render endpoints (Phase 2)
       post 'render', to: 'render#html_to_markdown'
