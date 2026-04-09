@@ -46,6 +46,9 @@ Decko.application.routes.draw do
           put :rename
           get :search_content
           get :outline
+          # File/image upload
+          post :upload
+          get :file_url
           # History endpoints
           get :history
           get 'history/:act_id', action: :revision, as: :revision
