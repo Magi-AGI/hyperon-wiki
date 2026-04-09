@@ -435,8 +435,29 @@ module Api
 
           attachment_param = type_name == "Image" ? :image : :file
         elsif params[:remote_url]
-          # Handle URL-based upload
-          remote_param = type_name == "Image" ? :remote_image_url : :remote_file_url
+          # Download file ourselves with explicit timeout instead of using
+          # CarrierWave's remote_*_url which hangs due to SSRF protection
+          require "net/http"
+          uri = URI.parse(params[:remote_url])
+          http = Net::HTTP.new(uri.host, uri.port)
+          http.use_ssl = (uri.scheme == "https")
+          http.open_timeout = 10
+          http.read_timeout = 30
+          response = http.get(uri.request_uri)
+
+          unless response.is_a?(Net::HTTPSuccess)
+            return render_error("validation_error", "Failed to download from URL: HTTP #{response.code}")
+          end
+
+          filename = File.basename(uri.path)
+          ext = File.extname(filename)
+          ext = ".dat" if ext.empty?
+          tempfile = Tempfile.new(["mcp_remote", ext])
+          tempfile.binmode
+          tempfile.write(response.body)
+          tempfile.rewind
+
+          attachment_param = type_name == "Image" ? :image : :file
         else
           return render_error("validation_error", "Either file_data or remote_url is required")
         end
@@ -448,14 +469,7 @@ module Api
             # Update existing card
             return render_forbidden_content unless can_modify_card?(@card)
 
-            attrs = {}
-            if tempfile
-              attrs[attachment_param] = tempfile
-            elsif params[:remote_url]
-              attrs[remote_param] = params[:remote_url]
-            end
-
-            # Store original filename as action comment
+            attrs = { attachment_param => tempfile }
             @card.update!(attrs)
             @card.acts.last&.actions&.last&.update(comment: filename) if filename
           else
@@ -463,12 +477,7 @@ module Api
             type_card = find_type_by_name(type_name)
             return render_error("not_found", "Type '#{type_name}' not found") unless type_card
 
-            attrs = { name: card_name, type_id: type_card.id }
-            if tempfile
-              attrs[attachment_param] = tempfile
-            elsif params[:remote_url]
-              attrs[remote_param] = params[:remote_url]
-            end
+            attrs = { name: card_name, type_id: type_card.id, attachment_param => tempfile }
 
             @card = Card.create!(attrs)
             @card.acts.last&.actions&.last&.update(comment: filename) if filename
