@@ -181,13 +181,17 @@ module Api
         total = children_cards.size
         paginated_children = children_cards.drop(offset).take(limit)
 
+        next_off = offset + limit < total ? offset + limit : nil
+
         render json: {
           parent: @card.name,
           children: paginated_children.map { |c| card_full_json(c) },
           child_count: total,
           depth: depth,
           limit: limit,
-          offset: offset
+          offset: offset,
+          next_offset: next_off,
+          truncated: paginated_children.size < total - offset
         }
       end
 
@@ -771,7 +775,7 @@ end
 def build_single_word_conditions(word)
   conditions = []
 
-  # 1. Direct name match for simple cards
+  # 1. Direct name match (SQL LIKE on name column)
   conditions << { name: ["match", word] }
 
   # 2. Find simple cards matching the word, then add part conditions
@@ -790,6 +794,12 @@ def build_single_word_conditions(word)
   rescue => e
     Rails.logger.warn "Hybrid name search failed for word: #{e.message}"
   end
+
+  # 3. Left-part match for compound card prefix search
+  # e.g., searching "opencog-ml" finds "RawData+opencog-ml+thread1"
+  # where "opencog-ml" is the right part of the left compound "RawData+opencog-ml"
+  conditions << { left: { name: ["match", word] } }
+  conditions << { right: { name: ["match", word] } }
 
   conditions
 end
