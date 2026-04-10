@@ -584,6 +584,10 @@ module Api
         {}
       end
 
+      def interpret_escape_sequences(str)
+        str.gsub('\n', "\n").gsub('\t', "\t").gsub('\r', "\r")
+      end
+
       def check_admin_role!
         unless current_role == "admin"
           render_forbidden("Only admin role can delete cards")
@@ -991,7 +995,7 @@ end
         content = patch_params[:content]
         return render_error("validation_error", "Missing content for append") unless content
 
-        separator = patch_params[:separator] || ""
+        separator = interpret_escape_sequences(patch_params[:separator] || "")
         card.content = (card.content || "") + separator + content
         card.save!
       end
@@ -1000,7 +1004,7 @@ end
         content = patch_params[:content]
         return render_error("validation_error", "Missing content for prepend") unless content
 
-        separator = patch_params[:separator] || ""
+        separator = interpret_escape_sequences(patch_params[:separator] || "")
         card.content = content + separator + (card.content || "")
         card.save!
       end
