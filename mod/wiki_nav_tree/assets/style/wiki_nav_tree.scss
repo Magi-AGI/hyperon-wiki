@@ -1,0 +1,25 @@
+.wiki-nav-tree {
+  line-height: 1.35;
+
+  .wiki-nav-item {
+    .known-card,
+    .wanted-card {
+      text-decoration: none;
+    }
+
+    .known-card:hover,
+    .wanted-card:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .wiki-nav-expand {
+    cursor: pointer;
+    user-select: none;
+    vertical-align: middle;
+  }
+
+  .wiki-nav-children:empty {
+    display: none;
+  }
+}
