@@ -50,6 +50,65 @@ RSpec.describe "wiki_nav_tree mod" do
     end
   end
 
+  # ── Active ancestor expansion ─────────────────────────────────────────────
+
+  describe "active ancestor expansion" do
+    it "detects ancestors of the current page" do
+      expect(rb).to include("nav_ancestor_of_current?")
+      expect(rb).to include("current_page_ancestors")
+    end
+
+    it "uses part_names to build the ancestor chain" do
+      expect(rb).to include("part_names")
+    end
+
+    it "pre-expands ancestors with a downward triangle (▾)" do
+      expect(rb).to include("▾")
+    end
+
+    it "applies a current-page CSS class to the active item" do
+      expect(rb).to include("wiki-nav-item--current")
+    end
+
+    it "memoises the ancestor set to avoid recomputation per row" do
+      expect(rb).to include("@current_page_ancestors")
+    end
+
+    it "guards against missing params with rescue" do
+      expect(rb).to include("rescue")
+    end
+  end
+
+  # ── Focus Mode (Ben's request) ────────────────────────────────────────────
+
+  describe "Focus Mode" do
+    it "reads nav_root from URL params" do
+      expect(rb).to include("Env.params[:nav_root]")
+    end
+
+    it "falls back to WIKI_NAV_ROOT env var when no URL param" do
+      expect(rb).to include('ENV["WIKI_NAV_ROOT"]')
+    end
+
+    it "shows a focus banner when a nav root is active" do
+      expect(rb).to include("focus_banner")
+    end
+
+    it "provides a clear link to remove nav_root from the URL" do
+      expect(rb).to include("✕ clear")
+      expect(rb).to include("current_path_without")
+    end
+
+    it "renders a ⊙ focus button next to each nav item" do
+      expect(rb).to include("⊙")
+      expect(rb).to include("focus_mode_link")
+    end
+
+    it "skips focus button on the card that is already the root" do
+      expect(rb).to include("nav_root_param == child.name")
+    end
+  end
+
   # ── Permission and visibility filtering ───────────────────────────────────
 
   describe "ok_nav_card? filtering" do
@@ -72,7 +131,6 @@ RSpec.describe "wiki_nav_tree mod" do
     end
 
     it "excludes rule-field compound cards (right side starting with *)" do
-      # e.g. MyCard+*read, MyCard+*self
       expect(rb).to include(".right")
       expect(rb).to include('start_with?("*")')
     end
@@ -81,10 +139,6 @@ RSpec.describe "wiki_nav_tree mod" do
   # ── Environment variable controls ─────────────────────────────────────────
 
   describe "environment variable controls" do
-    it "reads WIKI_NAV_ROOT to set the tree's starting parent" do
-      expect(rb).to include('ENV["WIKI_NAV_ROOT"]')
-    end
-
     it "reads and clamps WIKI_NAV_ROOT_LIMIT" do
       expect(rb).to include("WIKI_NAV_ROOT_LIMIT")
       expect(rb).to include(".clamp(")

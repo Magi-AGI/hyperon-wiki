@@ -1,3 +1,127 @@
+// ─── CSS custom properties ────────────────────────────────────────────────────
+:root {
+  --navbar-h: 56px;     // standard Bootstrap navbar height
+  --sidebar-w: 240px;   // left/right sidebar width
+}
+
+// ─── Two-sidebar wiki layout (body.wiki-layout) ───────────────────────────────
+// Replaces card-mod-layout's float-based layout with CSS Grid.
+// Applied by the layout :default override in set/all/layouts.rb.
+body.wiki-layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr var(--sidebar-w);
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "header  header  header"
+    "left    main    right"
+    "footer  footer  footer";
+  min-height: 100vh;
+  margin: 0;
+
+  > header {
+    grid-area: header;
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+  }
+
+  > #sidebar-left {
+    grid-area: left;
+    position: sticky;
+    top: var(--navbar-h);
+    height: calc(100vh - var(--navbar-h));
+    overflow-y: auto;
+    padding: 0.75rem 0.5rem;
+    border-right: 1px solid var(--bs-border-color, #dee2e6);
+  }
+
+  > article {
+    grid-area: main;
+    min-width: 0;        // prevent grid blowout on wide content
+    padding: 1rem 1.5rem;
+    overflow: hidden;
+  }
+
+  > #sidebar-right {
+    grid-area: right;
+    position: sticky;
+    top: var(--navbar-h);
+    height: calc(100vh - var(--navbar-h));
+    overflow-y: auto;
+    padding: 0.75rem 0.5rem;
+    border-left: 1px solid var(--bs-border-color, #dee2e6);
+    font-size: 0.875rem;
+  }
+
+  > footer {
+    grid-area: footer;
+  }
+
+  // Responsive: collapse sidebars below lg breakpoint
+  @media (max-width: 991.98px) {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "header"
+      "main"
+      "footer";
+
+    > #sidebar-left,
+    > #sidebar-right {
+      display: none; // TODO: Phase 3 — offcanvas drawer for mobile
+    }
+  }
+}
+
+// ─── Sticky nav for non-wiki-layout pages ─────────────────────────────────────
+// Pages using layout :no_side or other layouts still get a sticky header.
+body:not(.wiki-layout) {
+  > header {
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+  }
+}
+
+// ─── Dark mode overrides ──────────────────────────────────────────────────────
+// Bootstrap 5 applies colour tokens via data-bs-theme="dark" on <html>.
+// Only project-specific overrides that Bootstrap doesn't handle automatically
+// belong here.
+[data-bs-theme="dark"] {
+  .wiki-toc-heading {
+    color: var(--bs-secondary-color);
+  }
+
+  .wiki-nav-tree .known-card,
+  .wiki-nav-tree .wanted-card {
+    color: var(--bs-body-color);
+  }
+
+  .wiki-nav-tree .wiki-nav-focus-btn {
+    color: var(--bs-secondary-color);
+  }
+}
+
+// ─── Right sidebar: page TOC ──────────────────────────────────────────────────
+.wiki-toc {
+  .toc-h2 { font-weight: 600; }
+  .toc-h3 { font-size: 0.85em; }
+  .toc-h4 { font-size: 0.8em; }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+
+    &:hover { text-decoration: underline; }
+  }
+}
+
+// ─── Right sidebar: breadcrumbs ───────────────────────────────────────────────
+.wiki-breadcrumbs .breadcrumb {
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+}
+
+// ─── Full-screen edit modal ────────────────────────────────────────────────────
 // Decko's modal-full is normally ~99% width; use the full viewport for edit flows.
 .modal-dialog.modal-full {
   max-width: 100vw;
