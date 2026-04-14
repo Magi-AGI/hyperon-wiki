@@ -26,6 +26,9 @@ public/files/*
 public/assets/
 .sass-cache/
 
+# Decko mod symlinks (regenerated per-environment via `rake decko:mod:symlink`)
+public/mod/
+
 # IDE files
 .vscode/
 .idea/
