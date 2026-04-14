@@ -7,6 +7,7 @@
 - Decko modal made full screen
 
 ## PLANNED
+navbar/sticky fixes → nav tree wiring → TOC → comments → dark mode → avatar → stars → local graph.
 
 # DECKO 
 The site is a wiki meant to utilize Decko's unique "everything is a card" flexibility to support a hypergraph of cards about the SNET Hyperon ecosystem and Atomspace cognitive architectures.
@@ -49,16 +50,16 @@ Navigation UI needs to be visible when you scroll.
 - The left sidebar with the accordion Page Hiererchy Menu needs to stay visible when you scroll
 - The right sidebar with Page Contents needs to stay visible when you scroll
 
-#### Page Section Boxes
-Page Section Boxes need to be highly navigable and the current section needs to stay visible on the top as you scroll from section to section so you know which section you are in if you are in a long section.
+#### Content Collapsible Section Boxes
+Content Collapsible Section Boxes need to be highly navigable and the current section needs to stay visible on the top as you scroll from section to section so you know which section you are in if you are in a long section.
 - The page contents feature expandable/collapsible section boxes which are listed in the Right Sidebar's Page Contents Box.
 
 ### +*account_settings
 account_settings pages need to support user avatar pictures.
 - Check for available Decko mods that implement this.
 
-## LEFT SIDEBAR LAYOUT
-The Decko currently uses the "Left sidebar layout" under *layout.
+## WIKI LAYOUT
+The Decko currently uses the "Left sidebar layout" under *layout. It should be switched to a new "Wiki Layout" layout based on it but with the following changed sections.
 
 ### Left Sidebar
 
@@ -83,12 +84,12 @@ The right sidebar should show
 - The top right should show a local graph showing how the current page connects to linked and hierarchically connected pages.
 
 #### Wiki Page Box
-Wiki pages should have a menu of available actions.
+Wiki pages should have a menu of available actions that make it easier to find the Decko Card Menu options if they already exist.
 - Breadcrumbs: The hierarchy of pages leading to the current page.
 - 📝Edit: Edit current page.
 - 🔗Links: Lists links to and from this page.
-- ⭐Star: Star your favorite pages, shows a count of how many have starred it.
-- 📌Pin: This page should be at the top of navigation menus or search results rather than sorted alphabetically/chronologically.
+- ⭐Star: Star your favorite pages, shows a count of how many have starred it. Stored as CardName+*stars, a Pointer card whose content is a newline-separated list of user card names who starred it
+- 📌Pin: This page should be at the top of navigation menus or search results rather than sorted alphabetically/chronologically. Stored globally as CardName+*pinned with an integer value for priority order if multiple pins exist.
 - 💬Comments: A box where users can write comments on this page. Viewing, writing and moderating comments are separate permissions restrictable to logged in users with certain roles by adminstrators.
 - Move: Move the page to a different place hierarchically (changing its + structured name in Decko).
 - New: Create a new page card at the present level of hierarchy.
@@ -97,6 +98,9 @@ Wiki pages should have a menu of available actions.
 
 #### Page Contents Menu
 -The right sidebar should show a "Page Contents" table of contents of the section headers for the current page.
+
+### Page Footer
+-The page footer can show comments using card-mod-comment.
 
 # FEEDBACK
 We compile feedback and itemize actionable suggestions to prioritize and complete.
