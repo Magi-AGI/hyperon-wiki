@@ -71,7 +71,14 @@ build/
 /_yardoc/
 /doc/
 /rdoc/
+
+# Database dumps (NEVER commit — may contain PII, hashed passwords, secrets)
 backup-*.sql
+/backups/
+/database/*.sql
+/database/*.sql.gz
+*.sql.gz
+*.dump
 
 # Temporary migration and setup scripts (root directory only)
 /*.rb
