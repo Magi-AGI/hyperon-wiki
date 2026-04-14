@@ -1,0 +1,28 @@
+// Decko's modal-full is normally ~99% width; use the full viewport for edit flows.
+.modal-dialog.modal-full {
+  max-width: 100vw;
+  width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
+  margin: 0;
+
+  &.modal-dialog-centered {
+    min-height: 100vh;
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .modal-content {
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
