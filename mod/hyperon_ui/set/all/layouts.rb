@@ -15,7 +15,11 @@
 # It composes the right sidebar from breadcrumbs and page TOC (page_sidebar.rb).
 
 format :html do
+  # Right-sidebar composition view. Always returns a non-blank container so
+  # Decko does not fall back to the home view when breadcrumbs and TOC are
+  # both empty (e.g. top-level pages with no headings).
   view :page_sidebar, cache: :never do
-    [render(:breadcrumbs), render(:page_toc)].reject(&:blank?).join
+    inner = [render(:breadcrumbs), render(:page_toc)].reject(&:blank?).join
+    wrap_with(:aside, class: "wiki-page-sidebar") { inner }
   end
 end
