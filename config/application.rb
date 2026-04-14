@@ -105,7 +105,7 @@ module HyperonWiki
     # be able to find permanent resources (which are stored with the deck).
     # This usually shows up as broken icons.
     #
-    # config.deck_origin = "https://mysite.com"
+    config.deck_origin = ENV.fetch("DECK_ORIGIN", "https://wiki.hyperon.dev")
     #
     # If your deck is not at the url's root but in a subdirectory, such as
     # mysite.com/mydeck, then you must configure the relative_url_root:
