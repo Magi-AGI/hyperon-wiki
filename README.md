@@ -46,6 +46,113 @@ Package as standalone reusable Decko mods.
 
 ---
 
+# TESTING
+
+UI work splits across three test tracks. Each has a different toolchain and a different question it can answer.
+
+## Track 1 — Structural / Behavioral Specs (RSpec, no database)
+
+**Toolchain:** `decko-rspec` (already in Gemfile), run via `bundle exec rspec spec/mod/`
+
+**What they verify:** That every view is defined, that permission guards and slotter wiring are present, that key CSS classes exist in SCSS files. These tests catch regressions when behavioral code is accidentally removed or renamed.
+
+**What they cannot verify:** That views render correctly, that the HTML structure is right, or that cards are queried correctly at runtime. Those require a live Decko test deck (see Track 2).
+
+**Convention:** Every mod that defines `view :` blocks gets a companion spec in `spec/mod/<mod_name>_spec.rb`. Each spec covers:
+- View definition exists (guards against typos / accidental removal)
+- Slotter wiring if lazy-loading is used
+- Permission checks are present (`ok?(:read)`, `trash: false`)
+- SCSS defines the classes referenced in the Ruby
+
+**Running:**
+```bash
+bundle exec rspec spec/mod/
+# ~67ms — no Rails boot, no database needed
+```
+
+**Example pattern** (see `spec/mod/wiki_nav_tree_spec.rb`):
+```ruby
+it "checks read permission on every card" do
+  expect(source).to include(".ok?(:read)")
+end
+```
+
+## Track 2 — View Rendering Specs (RSpec + Capybara, requires Decko test deck)
+
+**Toolchain:** `decko-rspec` + Capybara (both already bundled), but requires a seeded test database
+
+**What they verify:** That views produce correct HTML — heading anchor links in the TOC, correct breadcrumb order, expanded ancestors in the nav tree, the right Bootstrap classes applied.
+
+**Setup:** A Decko test deck needs seed cards. Run `bundle exec decko seed` in the test environment, then write specs using Capybara's `have_css` / `have_link` matchers against rendered view output.
+
+**Convention:** View rendering specs live in `spec/views/<mod_name>/` and use Decko's card test helpers to instantiate a card, call `render(:view_name)`, and assert on the resulting HTML.
+
+**Running:**
+```bash
+RAILS_ENV=test bundle exec rspec spec/views/
+```
+
+**When to write:** Add a rendering spec whenever a new `view :` block is added in Phase 2 or later that produces non-trivial HTML (TOC, breadcrumbs, two-sidebar layout).
+
+## Track 3 — Cypress End-to-End Specs (JS behaviors, requires running server)
+
+**Toolchain:** `decko-cypress` (in Gemfile, currently commented out) — uncomment and run `bundle install` to enable
+
+**What they verify:** JavaScript-dependent behaviors that can't be tested in Ruby:
+- Dark mode toggle persists `data-bs-theme` across page loads (checked via `localStorage`)
+- Collapsible search expands on click and collapses when empty and blurred
+- Focus Mode sets and clears the nav tree root per-session
+- Nav tree slotter loads children on ▸ click without a full page reload
+
+**Running:**
+```bash
+# Requires a running dev server: bundle exec thin start
+bundle exec cypress run
+```
+
+**When to write:** Add a Cypress spec for each JS-dependent item in Phase 2 (dark mode, collapsible search, Focus Mode) as those features are implemented.
+
+## Track 4 — Manual Visual Checklist (CSS/layout, per-phase)
+
+CSS correctness — sticky positioning, grid column widths, opacity gradients, responsive logo hide — cannot be automated. Before marking any phase complete, verify this checklist in a browser:
+
+### Phase 1 checklist
+- [ ] Header stays pinned at top when scrolling a long page
+- [ ] Left sidebar stays pinned and scrolls independently from the article
+- [ ] Nav tree appears in left sidebar (not the old default sidebar content)
+- [ ] Navbox shows "Login 🔑", "Logout ⏻", "Register", "Account 👤"
+- [ ] "Start" and "Recent" appear in place of old labels
+
+### Phase 2 checklist
+- [ ] Right sidebar appears and stays pinned during article scroll
+- [ ] Breadcrumbs show correct parent chain for a nested page
+- [ ] TOC shows all h2/h3/h4 headings; anchor links jump to correct sections
+- [ ] Dark mode toggle switches theme; preference survives a page reload
+- [ ] Logo icon stays visible on narrow viewport; text hides below `md` breakpoint
+- [ ] Search collapses to 🔎 icon by default; expands on click
+- [ ] Nav tree auto-expands ancestors of the current page on load
+- [ ] Focus Mode button narrows the nav tree to the current card's subtree
+
+### Phase 3 checklist
+- [ ] Comment box appears; anonymous and signed-in comments render correctly
+- [ ] Avatar upload field visible in account settings; avatar shown in navbar dropdown
+
+### Phase 4 checklist
+- [ ] Star button toggles; count increments/decrements correctly
+- [ ] Pin badge visible in nav tree for pinned cards
+- [ ] Local graph renders for a card with multiple links; nodes are clickable
+
+## Summary
+
+| Track | Tool | DB needed | Covers |
+|---|---|---|---|
+| 1 — Structural | `bundle exec rspec spec/mod/` | No | View defined, guards present, SCSS classes |
+| 2 — Rendering | `bundle exec rspec spec/views/` | Yes (test deck) | HTML structure, card query output |
+| 3 — Cypress | `bundle exec cypress run` | Yes (dev server) | JS toggle/session behaviors |
+| 4 — Visual | Browser + checklist | Yes (dev server) | CSS layout, responsive breakpoints |
+
+---
+
 # DECKO
 
 The site is a wiki meant to utilize Decko's unique "everything is a card" flexibility to support a hypergraph of cards about the SNET Hyperon ecosystem and Atomspace cognitive architectures.
