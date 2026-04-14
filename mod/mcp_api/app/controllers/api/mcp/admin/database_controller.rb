@@ -131,7 +131,7 @@ module Api
 
         def perform_backup(backup_path)
           # Get database configuration
-          config = ActiveRecord::Base.connection_config
+          config = ActiveRecord::Base.connection_db_config.configuration_hash
 
           case config[:adapter]
           when "postgresql", "postgis"
