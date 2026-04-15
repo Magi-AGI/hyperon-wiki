@@ -1,42 +1,63 @@
-# Client-side right sidebar: breadcrumbs + table of contents.
+# Client-side sidebar builder: left breadcrumb + right TOC.
 #
-# Runs after each Decko slot render (including slotter updates) so the TOC
-# stays in sync when the main content changes via ajax navigation.
+# Left sidebar (#sidebar-breadcrumb): shows hierarchy path for compound-named
+# pages (e.g. "Hyperon > Architecture > Atomspace"). Empty for top-level pages.
 #
-# Breadcrumbs are derived from the page title / card name in the article.
-# TOC is built by scanning <article> for h2, h3, h4 headings.
+# Right sidebar (#sidebar-right): full breadcrumb nav + table of contents
+# built from h2/h3/h4 headings in the article.
+#
+# Runs on initial load and after every Decko slot render.
 
 buildPageSidebar = ->
-  sidebar = document.getElementById("sidebar-right")
   article = document.querySelector("article")
-  return unless sidebar && article
+  return unless article
 
-  sidebar.innerHTML = ""
-  sidebar.appendChild(buildBreadcrumbs(article))
-  toc = buildToc(article)
-  sidebar.appendChild(toc) if toc
+  # ── Left sidebar breadcrumb (above nav tree) ─────────────────────────────
+  leftCrumb = document.getElementById("sidebar-breadcrumb")
+  if leftCrumb
+    crumbFrag = buildBreadcrumbs(article, compact: true)
+    leftCrumb.innerHTML = ""
+    leftCrumb.appendChild(crumbFrag)
+
+  # ── Right sidebar: breadcrumb + TOC ──────────────────────────────────────
+  right = document.getElementById("sidebar-right")
+  if right
+    right.innerHTML = ""
+    right.appendChild(buildBreadcrumbs(article))
+    toc = buildToc(article)
+    right.appendChild(toc) if toc
 
 # ── Breadcrumbs ──────────────────────────────────────────────────────────────
+#
+# opts.compact: omit the final (current) crumb — used in the left sidebar
+# where it would duplicate the highlighted nav item.
 
-buildBreadcrumbs = (article) ->
+buildBreadcrumbs = (article, opts = {}) ->
   frag = document.createDocumentFragment()
 
-  # Derive card name from the h1 title inside the article, or from the URL.
   h1 = article.querySelector("h1.d0-card-header-title .card-title")
   rawName = if h1 then h1.getAttribute("title") else decodeURIComponent(location.pathname.slice(1))
   return frag if !rawName || rawName.indexOf("+") < 0
 
   parts = rawName.split("+")
+  # In compact mode (left sidebar) skip if there's nothing to show (only one ancestor)
+  return frag if opts.compact and parts.length <= 1
+
   nav = document.createElement("nav")
   nav.setAttribute("aria-label", "breadcrumb")
   nav.className = "wiki-breadcrumbs mb-2"
 
   ol = document.createElement("ol")
-  ol.className = "breadcrumb small"
+  ol.className = "breadcrumb small mb-0"
 
-  parts.forEach (part, i) ->
+  # In compact mode, only show the ancestor chain (not the current leaf)
+  display = if opts.compact then parts.slice(0, -1) else parts
+
+  display.forEach (part, i) ->
     li = document.createElement("li")
-    if i == parts.length - 1
+    isLast = (i == display.length - 1)
+
+    if isLast and not opts.compact
       li.className = "breadcrumb-item active"
       li.setAttribute("aria-current", "page")
       li.textContent = part.replace(/_/g, " ")
@@ -59,7 +80,6 @@ buildToc = (article) ->
   headings = Array.from(article.querySelectorAll("h2, h3, h4"))
   return null if headings.length == 0
 
-  # Stamp id attributes on headings that lack them so anchor links work.
   headings.forEach (h) ->
     unless h.id
       h.id = h.textContent.trim().toLowerCase()
@@ -79,7 +99,7 @@ buildToc = (article) ->
   ul.className = "list-unstyled"
 
   headings.forEach (h) ->
-    level = parseInt(h.tagName[1], 10) - 1  # h2→1, h3→2, h4→3
+    level = parseInt(h.tagName[1], 10) - 1
     li = document.createElement("li")
     li.className = "toc-#{h.tagName.toLowerCase()} ps-#{level * 2}"
     a = document.createElement("a")
@@ -93,8 +113,5 @@ buildToc = (article) ->
 
 # ── Event wiring ─────────────────────────────────────────────────────────────
 
-# Run on initial DOM ready (jQuery 3 drops "ready" from .on — use $ directly).
 $ -> buildPageSidebar()
-
-# Re-run after every Decko slot update (ajax navigation / slotter responses).
 $(document).on "slotReady", -> buildPageSidebar()

@@ -7,6 +7,8 @@
 
 ## IN PROGRESS
 - UI overhaul — phased plan below
+Correctly implement the header design spec: Make the header logo small and make the theme switcher correctly swap the background color.  
+Nav Tree: The sidebar links should have background color boxes with descending opacity color. currently selected page should be highlighted. Breadcrumb should be visible in the sidebar above contents.
 
 ## PLANNED — Phased Implementation
 
@@ -162,10 +164,22 @@ The site is a wiki meant to utilize Decko's unique "everything is a card" flexib
 - **Wiki Pattern:** This is a [Wiki design pattern](https://ui-patterns.com/patterns/Wiki).
 - **The Decko Way:** Wherever possible, check for existing Decko mods created by the community or ways of utilizing the unique nested rules that Decko allows for to do things "the decko way" instead of overly complex approaches that use excessive non-Decko code to achieve a less maintainable result.
 - **Make Reusable Decko Mods:** If a new kind of functionality is necessary, find a way to package it as a mod that is reusable and shareable with the Decko community.
+- **Surface Navigational Scaffolding:** UI should make navigational scaffolding totally clear with visible system status changes as feedback for navigating through content menus.
+  - Adopt lessons learned from Wikipedia's successful 2023 redesign research paper: https://www.mdpi.com/2227-9709/12/3/97
+```
+6.1. Theoretical Implications
+Our findings connect directly to core HCI theories about how surfacing navigational scaffolding changes behavior in content-dense systems. The immediate and durable rise in in-site link traversal after launch is consistent with usability heuristics that emphasize visibility and user control: the scroll-persistent table of contents (TOC) and sticky header keep key actions perceptible at the moment of need, strengthening the information scent and reducing the way-finding effort. Framed by cognitive load theory, the TOC externalizes the page structure and lowers the extraneous load by offloading section memory, enabling users to navigate deeper within articles without additional search. Mechanistically, these elements shorten the decision time (Hick–Hyman) and pointing time (Fitts), which explains why internal navigation scales up even as the overall demand remains stable after a brief adjustment period. The transient rollout dip followed by normalization aligns with habit disruption/re-attunement accounts: expert users incur a short relearning cost, then reestablish efficient routines once the new scaffolding is routinized. Theoretically, large-scale redesigns that add persistent, low-friction navigational cues—rather than removing familiar structures—can shift behavior toward richer within-site exploration without depressing traffic, suggesting a general principle for reference platforms: prioritize persistent, context-coupled navigation that minimizes cognitive and motor costs while preserving expert workflows.
+
+6.3. Implications for UI Design
+To increase the paper’s practical impact, we conclude with design implications that translate our evidence into guidance for UI teams. First, strengthen in-site navigation by elevating low-friction, high-salience paths, e.g., persistent/collapsible tables of contents, sticky headers, and clearer on-page link affordances, and track the internal click-through and path diversity as leading indicators. Second, modernize without dismantling expertise: favor additive, progressively disclosed changes over removals; preserve learned workflows; and provide power–user shortcuts or opt-outs alongside novice-friendly defaults. Third, pair rollouts with disciplined measurement: stage deployments, enforce performance budgets, and predefine quasi-experimental evaluations (e.g., regression discontinuity around launch or stepped-wedge rollouts), segmented by device class and user tenure to detect short-term disorientation versus durable gains. For content-dense reference sites, prioritize readability (typographic scale, line length) and navigational scaffolding over purely esthetic revisions. Our openly replicable pipeline enables teams to adopt these practices and evaluate their own redesigns with comparable, policy-relevant metrics.
+
+```
 
 ## Good UI Examples
-
-- [Obsidian Docs](https://docs.obsidian.md/Home)
+- Decko
+  - [Wikirate](https://wikirate.org/)
+- Non-Decko
+  - [Obsidian Docs](https://docs.obsidian.md/Home)
 
 ---
 
@@ -200,6 +214,8 @@ Sign-in/out/up labels come from `card-mod-layout`'s `account_link_text` method a
 - Button (☀️/🌙) in the navbox toggles Bootstrap's `data-bs-theme` attribute on `<html>`.
 - Persisted in `localStorage` so it survives page loads.
 - **Implementation:** CoffeeScript asset in `hyperon_ui` + `[data-bs-theme="dark"] { … }` overrides in `hyperon_ui.scss`. Button added to `*navbox` card content.
+- Top navbox should have a solid background color based on the current light/dark theme.
+- Page background should be dark for dark theme, light for light theme.
 
 ## Always Visible Navigation
 
@@ -258,6 +274,16 @@ This is a wiki UI edit — no code change.
 - **Lazy loading:** Child pages load on demand via Decko's slotter when the ▸ expand button is clicked.
 - **Active ancestor expansion:** `render_wiki_nav_row` will be extended to compare each nav card against the current page's ancestor chain (`card.name.to_name.part_names`) and pre-render matching ancestors inline (expanded) at page load.
 - **Focus Mode:** A "Focus here" button sets `Env.session[:nav_root]` to the current card name, making it the tree root. "Clear focus" resets it. Addresses Ben's feedback about feeling "deep in a subsubsubmenu."
+- **Hide system cards:** Cards that aren't content shouldn't be shown in the left sidebar nav tree or the table of contents right sidebar.
+  - tag
+  - approved by
+  - approved at
+  - expert approved by
+  - expert approved at
+  - table of contents
+  - content
+  - Tags
+  - Discussion
 
 ### Nav Tree Styling
 - Top-level items: solid box borders.

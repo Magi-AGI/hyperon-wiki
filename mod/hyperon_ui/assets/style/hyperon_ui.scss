@@ -4,6 +4,28 @@
   --sidebar-w: 240px;   // left/right sidebar width
 }
 
+// ─── Header logo size ─────────────────────────────────────────────────────────
+// Decko renders the logo card as an <img>; constrain it so it doesn't push the
+// navbar beyond its natural 56px height regardless of the image's native size.
+.nav-logo {
+  display: inline-flex;
+  align-items: center;
+
+  img {
+    max-height: 30px;
+    width: auto;
+    object-fit: contain;
+  }
+}
+
+// ─── Header navbar: solid theme-aware background ─────────────────────────────
+// Overrides bg-body-tertiary (too close to page bg in dark mode) with a clearly
+// distinct colour that still adapts via data-bs-theme on the nav element.
+// --bs-secondary-bg: dark mode = #343a40, light mode = #e9ecef
+.wiki-header-nav {
+  background-color: var(--bs-secondary-bg) !important;
+}
+
 // ─── Two-sidebar wiki layout (body.wiki-layout) ───────────────────────────────
 // Replaces card-mod-layout's float-based layout with CSS Grid.
 // Applied by the layout :default override in set/all/layouts.rb.
@@ -112,6 +134,34 @@ body:not(.wiki-layout) {
     text-decoration: none;
 
     &:hover { text-decoration: underline; }
+  }
+}
+
+// ─── Left sidebar: current-path breadcrumb ────────────────────────────────────
+// Populated by page_sidebar.js.coffee; hidden when empty.
+#sidebar-breadcrumb {
+  &:empty { display: none; }
+
+  padding: 0.35rem 0.5rem 0.4rem;
+  margin-bottom: 0.4rem;
+  border-bottom: 1px solid var(--bs-border-color);
+  font-size: 0.75rem;
+
+  .breadcrumb {
+    margin-bottom: 0;
+    flex-wrap: wrap;
+  }
+
+  .breadcrumb-item + .breadcrumb-item::before {
+    content: "›";
+    padding: 0 0.3rem;
+  }
+
+  a {
+    color: var(--bs-secondary-color);
+    text-decoration: none;
+
+    &:hover { text-decoration: underline; color: var(--bs-body-color); }
   }
 }
 

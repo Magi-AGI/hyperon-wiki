@@ -1,5 +1,15 @@
 # frozen_string_literal: true
 
+# Right-side card names that are metadata/system fields, not content pages.
+# Normalized to lowercase with spaces (underscores and mixed-case are handled
+# at comparison time in ok_nav_card?).
+NAV_BLOCKED_RIGHTS = [
+  "tag", "tags", "content", "discussion",
+  "approved by", "approved at",
+  "expert approved by", "expert approved at",
+  "table of contents"
+].to_set.freeze
+
 # Server-rendered hierarchical nav: compound-name children (left: parent) with
 # lazy-loaded deeper levels via Decko slotters.
 #
@@ -220,13 +230,14 @@ format :html do
   end
 
   # IDs of top-level cards that have at least one real compound child (memoised).
-  # Excludes rule cards (right side starts with "*", e.g. ParentCard+*self).
+  # Excludes rule cards (right side starts with "*") and known metadata fields.
   def card_ids_with_nav_children
     @card_ids_with_nav_children ||=
       Card.joins("INNER JOIN cards right_c ON right_c.id = cards.right_id")
           .where(trash: false)
           .where.not(left_id: nil)
           .where.not("right_c.name LIKE ?", "*%")
+          .where.not("LOWER(right_c.name) IN (?)", NAV_BLOCKED_RIGHTS.to_a)
           .pluck(:left_id)
           .compact.uniq.to_set
   end
@@ -275,6 +286,7 @@ format :html do
 
     right = c.name.to_name.right
     return false if right.present? && right.start_with?("*")
+    return false if right.present? && NAV_BLOCKED_RIGHTS.include?(right.to_s.downcase.tr("_", " ").strip)
     return false if c.name.simple? && c.name.start_with?("*")
 
     true

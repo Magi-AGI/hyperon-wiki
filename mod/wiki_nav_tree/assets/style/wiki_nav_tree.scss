@@ -1,7 +1,16 @@
 .wiki-nav-tree {
-  line-height: 1.35;
+  line-height: 1.4;
 
+  // ── Item row ────────────────────────────────────────────────────────────────
   .wiki-nav-item {
+    border-radius: 5px;
+    padding: 0.2rem 0.5rem;
+    margin-bottom: 2px;
+    transition: background-color 0.1s ease;
+
+    // Suppress Bootstrap default li-list bullet
+    list-style: none;
+
     .known-card,
     .wanted-card {
       text-decoration: none;
@@ -11,14 +20,62 @@
     .wanted-card:hover {
       text-decoration: underline;
     }
+
+    &:hover:not(.wiki-nav-item--current) {
+      background-color: rgba(var(--bs-primary-rgb), 0.09);
+    }
   }
 
+  // ── Depth-based descending background opacity ────────────────────────────────
+  // Root items: most prominent
+  .wiki-nav-branch--root > .wiki-nav-item {
+    background-color: var(--bs-secondary-bg);
+  }
+
+  // First level of children: lighter
+  .wiki-nav-children > .wiki-nav-branch > .wiki-nav-item {
+    background-color: var(--bs-tertiary-bg);
+  }
+
+  // Second level and deeper: very subtle (blends into sidebar bg)
+  .wiki-nav-children > .wiki-nav-branch > .wiki-nav-item
+  .wiki-nav-children > .wiki-nav-branch > .wiki-nav-item {
+    background-color: transparent;
+  }
+
+  // ── Current-page highlight ─────────────────────────────────────────────────
+  .wiki-nav-item--current {
+    background-color: rgba(var(--bs-primary-rgb), 0.15) !important;
+    border-left: 3px solid var(--bs-primary);
+    padding-left: calc(0.5rem - 3px); // compensate for border
+
+    > .known-card,
+    > .wanted-card {
+      color: var(--bs-primary) !important;
+      font-weight: 600;
+    }
+  }
+
+  // ── Expand/collapse toggle ─────────────────────────────────────────────────
   .wiki-nav-expand {
     cursor: pointer;
     user-select: none;
-    vertical-align: middle;
+    font-size: 0.7em;
+    opacity: 0.55;
+
+    &:hover { opacity: 1; }
   }
 
+  // ── Other group toggle (same width as expand, visually consistent) ─────────
+  .wiki-nav-other-toggle {
+    cursor: pointer;
+    opacity: 0.65;
+    font-size: 0.85em;
+
+    &:hover { opacity: 1; }
+  }
+
+  // ── Hide empty child containers (prevents flash of empty space) ────────────
   .wiki-nav-children:empty {
     display: none;
   }
