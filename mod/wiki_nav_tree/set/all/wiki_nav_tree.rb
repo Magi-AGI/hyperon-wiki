@@ -6,26 +6,47 @@
 # Usage (e.g. in *sidebar or any card):
 #   {{_|view:wiki_nav_tree}}
 #
+# Root-level display:
+#   Only content cards that have compound children appear as top-level sections.
+#   Content cards with no children are grouped under a collapsible "Other" item.
+#   "Content" means: type is Draft/Published/RichText/Basic, no system codename, not a rule card.
+#
 # Env:
 #   WIKI_NAV_ROOT — optional parent card name; tree shows its direct children first.
-#                   If unset, lists top-level simple cards (left_id/right_id nil), filtered.
-#   WIKI_NAV_ROOT_LIMIT — max root candidates when WIKI_NAV_ROOT unset (default 150).
+#                   If unset, lists content section cards filtered as above.
 #   WIKI_NAV_CHILD_LIMIT — max children per parent (default 250).
 #
-# Focus Mode (Ben's request):
+# Focus Mode:
 #   Append ?nav_root=CardName to any URL to focus the tree on that card's subtree.
 #   A "⊙" icon appears next to each item to set focus; a banner with "✕ clear" resets it.
 
 format :html do
   view :wiki_nav_tree, cache: :never do
     wrap_with :nav, class: "wiki-nav-tree small", "aria-label": "Wiki outline" do
-      focus_banner + render_wiki_nav_list(nav_tree_seed_cards, tier: :root)
+      parent = nav_tree_parent_card
+      if parent
+        # Focus mode / WIKI_NAV_ROOT: show the focused card's children
+        focus_banner + render_wiki_nav_list(nav_child_cards(parent), tier: :root)
+      else
+        # Normal mode: content section cards + collapsible Other
+        focus_banner +
+          wrap_with(:ul, class: "wiki-nav-branch wiki-nav-branch--root list-unstyled mb-0") do
+            safe_join(nav_section_cards.map { |c| render_wiki_nav_row(c) }) +
+              render_other_group
+          end
+      end
     end
   end
 
   # Loaded into a slot via slotter; +card+ is the parent whose children we list.
   view :wiki_nav_tree_branch, cache: :never do
     render_wiki_nav_list(nav_child_cards(card), tier: :branch)
+  end
+
+  # Loaded into the Other slot via slotter; returns all leaf content cards.
+  view :wiki_nav_tree_leaves, cache: :never do
+    leaves = nav_content_cards.reject { |c| card_ids_with_nav_children.include?(c.id) }
+    render_wiki_nav_list(leaves, tier: :branch)
   end
 
   # ── Focus Mode ─────────────────────────────────────────────────────────────
@@ -36,7 +57,7 @@ format :html do
 
     clear_path = current_path_without(:nav_root)
     wrap_with(:div, class: "wiki-nav-focus-banner small border-bottom pb-1 mb-1") do
-      "Focused: #{root} #{link_to("✕ clear", clear_path, class: "text-muted")}"
+      "Focused: #{root} #{link_to("✕ clear", href: clear_path, class: "text-muted")}"
     end
   end
 
@@ -63,7 +84,7 @@ format :html do
 
     link_to(
       "⊙",
-      "?nav_root=#{ERB::Util.url_encode(child.name)}",
+      href: "?nav_root=#{ERB::Util.url_encode(child.name)}",
       class: "wiki-nav-focus-btn text-muted text-decoration-none ms-1",
       title: "Focus tree on #{child.name.to_name.tag.tr("_", " ")}",
       "aria-label": "Focus navigation on #{child.name}"
@@ -73,7 +94,6 @@ format :html do
   # ── Active-ancestor detection ───────────────────────────────────────────────
 
   # Returns true if +child+ is an ancestor of the page currently being viewed.
-  # Used to pre-expand the tree along the active path on page load.
   def nav_ancestor_of_current?(child)
     current_page_ancestors.include?(child.name.to_name.key)
   rescue
@@ -95,7 +115,6 @@ format :html do
     @current_page_ancestors ||= begin
       main = (Env.params[:mark] || Env.params[:id]).to_s.strip
       return Set.new if main.blank?
-      # part_names returns all ancestor compound names (not including the card itself)
       main.to_name.part_names[0..-2].map { |n| n.to_name.key }.to_set
     rescue
       Set.new
@@ -169,12 +188,30 @@ format :html do
     end
   end
 
-  # ── Data helpers ────────────────────────────────────────────────────────────
+  # Renders an "Other" <li> that lazy-loads leaf content cards on click via slotter.
+  def render_other_group
+    leaves = nav_content_cards.reject { |c| card_ids_with_nav_children.include?(c.id) }
+    return "" if leaves.blank?
 
-  def nav_tree_seed_cards
-    parent = nav_tree_parent_card
-    parent ? nav_child_cards(parent) : nav_root_cards
+    target_id = "wiki-nav-other-items"
+    label = "Other (#{leaves.size})"
+
+    content_tag(:li, class: "wiki-nav-item wiki-nav-other py-1") do
+      expand = link_to_card(
+        card.name, "▸ #{label}",
+        path: { view: :wiki_nav_tree_leaves },
+        slotter: true,
+        class: "wiki-nav-other-toggle wiki-nav-expand text-muted text-decoration-none",
+        "data-slot-selector" => "##{target_id}",
+        role: "button",
+        "aria-label": "Show #{label}"
+      )
+      nest = content_tag(:div, "", id: target_id, class: "wiki-nav-children ms-1")
+      safe_join([expand, nest])
+    end
   end
+
+  # ── Data helpers ────────────────────────────────────────────────────────────
 
   def nav_tree_parent_card
     name = nav_root_param
@@ -182,19 +219,42 @@ format :html do
     Card.fetch name
   end
 
-  def nav_root_cards
-    lim = wiki_nav_root_limit
-    scope = Card.where(trash: false, left_id: nil, right_id: nil)
-                .where.not("cards.name LIKE ?", "*%")
-                .order(:name)
-                .limit(lim)
-    scope.to_a.select { |c| ok_nav_card?(c) && c.ok?(:read) }
+  # IDs of top-level cards that have at least one real compound child (memoised).
+  # Excludes rule cards (right side starts with "*", e.g. ParentCard+*self).
+  def card_ids_with_nav_children
+    @card_ids_with_nav_children ||=
+      Card.joins("INNER JOIN cards right_c ON right_c.id = cards.right_id")
+          .where(trash: false)
+          .where.not(left_id: nil)
+          .where.not("right_c.name LIKE ?", "*%")
+          .pluck(:left_id)
+          .compact.uniq.to_set
+  end
+
+  # Memoised list of all readable simple top-level content cards.
+  # "Content" = type in [Draft, Published, RichText, Basic], no codename, not a rule card.
+  def nav_content_cards
+    @nav_content_cards ||= begin
+      type_ids = Card.where(name: %w[Draft Published RichText]).pluck(:id)
+      Card.where(trash: false, left_id: nil, right_id: nil, codename: nil)
+          .where(type_id: type_ids)
+          .where.not("cards.name LIKE ?", "*%")
+          .order(:name)
+          .to_a
+          .select { |c| ok_nav_card?(c) && c.ok?(:read) }
+    end
+  end
+
+  # Content cards that have compound children — these become top-level nav sections.
+  def nav_section_cards
+    ids = card_ids_with_nav_children
+    nav_content_cards.select { |c| ids.include?(c.id) }
   end
 
   def nav_child_cards(parent)
     return [] unless parent&.real?
 
-    q = { left: parent.name, trash: false, sort: :name, limit: wiki_nav_child_limit }
+    q = { left: parent.name, sort: :name, limit: wiki_nav_child_limit }
     Card.search(q, "wiki_nav_children of #{parent.name}")
         .select { |c| ok_nav_card?(c) && c.ok?(:read) }
   end
@@ -203,7 +263,7 @@ format :html do
     return false unless c&.real?
 
     Card.search(
-      { left: c.name, trash: false, limit: 1, return: :id },
+      { left: c.name, limit: 1, return: :id },
       "wiki_nav_child check #{c.name}"
     ).present?
   end
@@ -222,10 +282,6 @@ format :html do
 
   def wiki_nav_dom_id(card)
     "wiki-nav-ch-#{card.id}"
-  end
-
-  def wiki_nav_root_limit
-    ENV.fetch("WIKI_NAV_ROOT_LIMIT", "150").to_i.clamp(10, 500)
   end
 
   def wiki_nav_child_limit

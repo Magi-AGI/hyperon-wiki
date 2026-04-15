@@ -40,7 +40,7 @@ format :html do
     items = headings.map do |h|
       id = h[:id].presence || slugify(h.text)
       level = h.name[1].to_i - 1 # h2→1, h3→2, h4→3
-      tag.li(link_to(h.text.strip, "##{id}"),
+      tag.li(link_to(h.text.strip, href: "##{id}"),
              class: "toc-#{h.name} ps-#{level * 2}")
     end
 

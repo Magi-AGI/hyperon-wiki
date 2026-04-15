@@ -93,5 +93,8 @@ buildToc = (article) ->
 
 # ── Event wiring ─────────────────────────────────────────────────────────────
 
-# Run on initial load and after every Decko slot update.
-$(document).on "ready slotReady", -> buildPageSidebar()
+# Run on initial DOM ready (jQuery 3 drops "ready" from .on — use $ directly).
+$ -> buildPageSidebar()
+
+# Re-run after every Decko slot update (ajax navigation / slotter responses).
+$(document).on "slotReady", -> buildPageSidebar()

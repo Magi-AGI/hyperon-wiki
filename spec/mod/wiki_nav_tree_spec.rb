@@ -28,6 +28,10 @@ RSpec.describe "wiki_nav_tree mod" do
       expect(rb).to include("view :wiki_nav_tree_branch")
     end
 
+    it "defines wiki_nav_tree_leaves for lazy Other group loading" do
+      expect(rb).to include("view :wiki_nav_tree_leaves")
+    end
+
     it "wraps the tree in a <nav> element with aria-label" do
       expect(rb).to include("wrap_with :nav")
       expect(rb).to include("aria-label")
@@ -116,8 +120,8 @@ RSpec.describe "wiki_nav_tree mod" do
       expect(rb).to include(".ok?(:read)")
     end
 
-    it "excludes trashed cards from queries" do
-      expect(rb).to include("trash: false")
+    it "excludes trashed cards via c.trash check in ok_nav_card?" do
+      expect(rb).to include("c.trash")
     end
 
     it "excludes Image and File type cards" do
@@ -139,14 +143,43 @@ RSpec.describe "wiki_nav_tree mod" do
   # ── Environment variable controls ─────────────────────────────────────────
 
   describe "environment variable controls" do
-    it "reads and clamps WIKI_NAV_ROOT_LIMIT" do
-      expect(rb).to include("WIKI_NAV_ROOT_LIMIT")
-      expect(rb).to include(".clamp(")
-    end
-
     it "reads and clamps WIKI_NAV_CHILD_LIMIT" do
       expect(rb).to include("WIKI_NAV_CHILD_LIMIT")
       expect(rb).to include(".clamp(")
+    end
+  end
+
+  # ── Content-type filtering (root cards) ───────────────────────────────────
+
+  describe "content-type root filtering" do
+    it "whitelists content types (Draft, Published, RichText) — excludes Basic" do
+      expect(rb).to include("Draft")
+      expect(rb).to include("Published")
+      expect(rb).to include("RichText")
+      expect(rb).not_to match(/"Basic"/)
+    end
+
+    it "excludes system cards by filtering on codename: nil" do
+      expect(rb).to include("codename: nil")
+    end
+
+    it "excludes rule-child cards via SQL join on right-card name not starting with *" do
+      expect(rb).to include("right_c.name LIKE")
+    end
+
+    it "separates section cards (have children) from leaf cards" do
+      expect(rb).to include("nav_section_cards")
+      expect(rb).to include("card_ids_with_nav_children")
+    end
+
+    it "renders a lazy-loaded Other group for leaf content cards" do
+      expect(rb).to include("render_other_group")
+      expect(rb).to include("Other")
+      expect(rb).to include("wiki_nav_tree_leaves")
+    end
+
+    it "Other group shows count of leaf cards in label" do
+      expect(rb).to include("leaves.size")
     end
   end
 
