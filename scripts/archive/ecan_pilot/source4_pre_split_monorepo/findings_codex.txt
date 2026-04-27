@@ -1,0 +1,335 @@
+# Source 4 Codex Findings: pre-split OpenCog monorepo archaeology
+
+Pilot: ECAN / Attention cluster
+Source target: `opencog-singnet` historical monorepo, read-only at `b31c7e3`
+Codex pass date: 2026-04-26
+
+No wiki writes. No repo edits. No historical checkout performed.
+
+## Source identity
+
+- Local repo: `E:\GitHub\hyperon reference\opencog-singnet`
+- Origin: `https://github.com/singnet/opencog.git`
+- Upstream: `https://github.com/opencog/opencog.git`
+- Working-tree HEAD, not checked out: `68d0e553185f227125302b8f31560d02b917f3a4`
+- Audit commit: `b31c7e3b9beab7a458c84117f3b654a03ca9ffe2`
+- Audit commit metadata: `2019-09-04 15:35:43 -0500 Linas Vepstas, "Modernize the test framework"`
+- AttentionBank removal commit: `318c0b4cb9e791e433d0d1ecddc1fb776d6f77dc`
+- Removal commit metadata: `2019-09-06 14:13:01 -0500 Linas Vepstas, "First rough cut at removing the attentionbank"`
+
+Method: `git show <commit>:<path>`, `git grep <commit>`, `git log -S`, `git ls-tree`, and `git show --stat`; no working-tree checkout.
+
+## Executive verdict
+
+C4-01. Source 4 confirms the Source 3 ECAN-PLN/URE narrative, with one refinement:
+
+- No additional active PLN runtime coupling to AttentionBank exists at the `b31c7e3` monorepo snapshot.
+- `cog-bind-af` was historically consumed by PLN unit tests, but Nil Geisweiller replaced those calls with `cog-execute!` on 2019-07-04 because "attention focus is irrelevant for these unit tests."
+- Therefore, beyond the URE STI source-selection hook from Source 3, I found no durable executable ECAN-PLN inference-control bridge.
+
+C4-02. Source 4 also shows ECAN/AttentionBank was not an orphan in the broader monorepo. At `b31c7e3`, active non-PLN consumers existed:
+
+- OpenPsi action selection used `cog-av-sti` in rule weighting.
+- Ghost rule/action selection used `cog-av-sti`, `cog-af`, and `cog-set-sti!`.
+- NLP fuzzy matching used `AttentionBank` and `atom_is_in_AF`.
+- Python web APIs exposed AttentionValue / AttentionalFocus read-write surfaces.
+
+C4-03. Cluster-level impact: the "only executable ECAN-PLN/URE coupling was the narrow URE STI source-selection hook" remains true if scoped to PLN/URE. It is false if interpreted as "AttentionBank had no executable consumers." The correct wording must distinguish PLN/URE from broader OpenCog consumers.
+
+C4-04. The 2019-09-06 AttentionBank removal deleted ECAN's core modules, tests, Scheme bindings, and Cython wrapper, but left some higher-level consumers elsewhere in the monorepo at or near that transition. This supports the view that AttentionBank removal was broad subsystem removal, not just cleanup of an unused directory.
+
+## Q1: `cog-bind-af` consumers
+
+### Snapshot at `b31c7e3`
+
+C4-05. `git grep "cog-bind-af" b31c7e3 -- "*.scm" "*.py" "*.cc" "*.h"` returns only definition/export/documentation hits:
+
+- `opencog/attentionbank/bank/AttentionSCM.cc:88` defines Scheme primitive `cog-bind-af`.
+- `opencog/attentionbank/bank/AttentionSCM.cc:186` uses the name in the implementation context.
+- `opencog/attentionbank/scm/attention-bank.scm:20` exports the symbol.
+- `opencog/attentionbank/scm/attention-bank.scm:256-258` documents it.
+
+C4-06. At `b31c7e3`, no active caller of `cog-bind-af` exists outside `opencog/attentionbank/`.
+
+### Historical consumers
+
+C4-07. `git log --all -S "cog-bind-af"` includes relevant commits:
+
+- `0064bfab935042a7b63c1502a9fc5f01b0a2d82a` (2019-07-04, Nil Geisweiller), "Use cog-execute! instead of cog-bind-af"
+- `fbcf89985297cced9793a8f9e49ee3134d97a749` (2015-08-26, Nil Geisweiller), "Add or-construction rule unit test"
+- `759f258ed63250e209c4b718d05401e4ee324853` (2015-06-17, Nil Geisweiller), "Add PLNRuleUTest from RuleUTest atomspace repo"
+
+The broad `git log --all -S` command emitted Windows Git/Cygwin `CreateFileMapping` noise after producing these SHAs. A path-limited rerun against `tests/pln` and `opencog/pln` completed cleanly and confirmed the PLN-test path.
+
+C4-08. Commit `0064bfab` is decisive. It changed `tests/pln/rules/PLNRulesUTest.cxxtest`:
+
+- `cog-bind-af and-introduction-rule` -> `cog-execute! and-introduction-rule`
+- `cog-bind-af or-introduction-rule` -> `cog-execute! or-introduction-rule`
+- `cog-bind-af not-introduction-rule` -> `cog-execute! not-introduction-rule`
+
+Commit message:
+
+> Use cog-execute! instead of cog-bind-af
+>
+> since attention focus is irrelevant for these unit tests.
+
+C4-09. Parent snapshot `0064bfab^` has the old calls:
+
+- `tests/pln/rules/PLNRulesUTest.cxxtest:182`
+- `tests/pln/rules/PLNRulesUTest.cxxtest:200`
+- `tests/pln/rules/PLNRulesUTest.cxxtest:218`
+
+C4-10. Classification: `cog-bind-af` was **HISTORICAL-ONLY** for PLN tests, removed before the audit snapshot. It was not an active PLN runtime bridge at `b31c7e3`.
+
+C4-11. Narrative implication: there was a test-level / convenience use of attention-focus-restricted BindLink execution in PLN rule tests. The removal commit explicitly denies semantic relevance to those tests, so this should not be upgraded into a claim of ECAN-driven PLN inference control.
+
+## Q2: `opencog/pln/` direct AttentionBank references
+
+C4-12. In-monorepo PLN inventory at `b31c7e3` includes `opencog/pln/CMakeLists.txt`, `README.md`, `pln-config.scm`, `pln.scm`, rule/meta-rule directories, and Scheme rule files. It is smaller than later standalone `pln-singnet`, but already a URE-mediated PLN rulebase.
+
+C4-13. `git grep` at `b31c7e3` for AttentionBank / AttentionValue / AF / STI tokens under `opencog/pln/` returns only:
+
+- `opencog/pln/pln-config.scm:62`: `(ure-set-fuzzy-bool-parameter pln-rbs "URE:attention-allocation" 0)`
+
+C4-14. `opencog/pln/pln-config.scm` documents this as:
+
+```scheme
+; Attention allocation (0 to disable it, 1 to enable it)
+(ure-set-fuzzy-bool-parameter pln-rbs "URE:attention-allocation" 0)
+```
+
+C4-15. No direct `AttentionBank`, `AttentionalFocus`, `AttentionValue`, `cog-bind-af`, `cog-av-sti`, `getSTI`, or `set_sti` read/write exists in `opencog/pln/` at the audit snapshot.
+
+C4-16. `git log --all -S "AttentionBank" -- opencog/pln` produced only structural history around PLN removal / old directory cleanup, not active PLN logic:
+
+- `088bde90cebe74d6b9d861064a53d78e7403bafc` (2019-11-27, Nil Geisweiller), "Remove PLN and configure cmake to find it elsewhere"
+- `85abd1feb4dbed9ac664e99854f2e859c06211c4` (2015-12-23, Linas Vepstas), "Eliminate under-populated directories"
+
+C4-17. `git log --all -S "getSTI" -- opencog/pln` did not surface a direct PLN implementation path during this pass.
+
+C4-18. Classification: `opencog/pln/` is **DEAD-WRAPPER / CONFIG-ONLY** with respect to ECAN. It delegates attention-allocation to URE's parameter path and sets it to disabled in the in-monorepo config.
+
+C4-19. This matches Source 3's standalone `pln-singnet` finding, except that the later explicit `pln-set-attention-allocation` wrapper was not present in the monorepo snapshot.
+
+## Q3: `opencog/openpsi/` AttentionBank / STI coupling
+
+C4-20. OpenPsi has active STI-based rule weighting at `b31c7e3`.
+
+C4-21. `git grep` under `opencog/openpsi/` returns:
+
+- `opencog/openpsi/action-selector.scm:63`: `(* (cog-confidence RULE) (cog-mean RULE) (cog-av-sti RULE))`
+
+C4-22. Context from `action-selector.scm`:
+
+```scheme
+(define (rule-sca-weight RULE)
+"
+  rule-sca-weight RULE
+    Return the weight of RULE, which defined as product of strength,
+    confidence, and short-term-importance.
+"
+  (* (cog-confidence RULE) (cog-mean RULE) (cog-av-sti RULE))
+)
+```
+
+C4-23. `git log --all -S "cog-av-sti" -- opencog/openpsi` gives:
+
+- `e5bae708fa5b1e6a5a18ef6c2e4ca6a40f981d98` (2017-11-09, Amen Belayneh), "Cleanup openpsi action-selector functions"
+
+C4-24. Classification: OpenPsi is **COUPLED** to AttentionValue/STI at the audit snapshot. It does not call `AttentionBank` C++ APIs directly in the grep result, but Scheme `cog-av-sti` is an active STI read and is used directly in action/rule selection.
+
+C4-25. Cluster impact: ECAN/AttentionValue had a real executable consumer in motivation/action selection. This is outside the PLN/URE coupling question but important for the broader ECAN / Attention cluster.
+
+## Q4: `pln-set-attention-allocation` evolution
+
+C4-26. `pln-set-attention-allocation` is absent from `opencog/pln/` at the `b31c7e3` monorepo snapshot.
+
+C4-27. In standalone `pln-singnet`, `git log -S "pln-set-attention-allocation" -- opencog/pln` identifies:
+
+- `86b433fea5973905c49ea7e4785340f6dbb20c5a` (2020-03-30, Nil Geisweiller), "Add pln helpers to configure the ure"
+
+C4-28. The `86b433` diff adds:
+
+```scheme
+(define (pln-set-attention-allocation value)
+"
+  Wrapper around ure-set-attention-allocation using (pln-rb) as rule base.
+
+  See (help ure-set-attention-allocation) for more info.
+"
+  (ure-set-attention-allocation (pln-rb) value))
+```
+
+C4-29. `git log -S "attention-allocation" -- opencog/pln` in `pln-singnet` returns:
+
+- `86b433fea...` (2020 helper addition)
+- `160df0af61d2d28f09d9052d93890cb24e8079f2` (2015-12-23, Linas Vepstas), old directory cleanup lineage
+
+C4-30. Classification: `pln-set-attention-allocation` was introduced post-monorepo as a **DEAD-WRAPPER** around URE's already-dead hook. I found no richer historical implementation.
+
+## Q5: broader monorepo ECAN consumers at `b31c7e3`
+
+C4-31. A broad grep at `b31c7e3`, excluding `opencog/attention/` and `opencog/attentionbank/`, found active ECAN/AttentionValue consumers outside PLN and OpenPsi.
+
+### Ghost
+
+C4-32. `opencog/ghost/matcher.scm` uses STI in rule weighting and rule acceptance:
+
+- `opencog/ghost/matcher.scm:127`: `(* sti-weight (cog-av-sti R))`
+- `opencog/ghost/matcher.scm:139`: checks `(> (cog-av-sti r) 0)`
+- `opencog/ghost/matcher.scm:268`: filters `(cog-af)` for psi rules
+
+C4-33. `opencog/ghost/procedures/schemas.scm` actively reads the current attentional focus and writes STI:
+
+- `schemas.scm:478`: `(define max-sti (cog-av-sti (car (cog-af 1))))`
+- `schemas.scm:480`: `(cog-set-sti! (Word ... ) max-sti)`
+- Similar patterns for concepts and rules at lines 491-506.
+- `schemas.scm:518`, `530`, `542`: set STI to zero for words/concepts/rules.
+
+C4-34. `opencog/ghost/procedures/pln-trail-*.scm` sets `URE:attention-allocation` to `0`, which is config residue, not active ECAN-PLN integration.
+
+C4-35. Classification: Ghost is **COUPLED** to STI/AF for dialogue/action-rule selection and schema procedures, but its PLN trail configs still disable URE attention allocation.
+
+### NLP fuzzy matching
+
+C4-36. `opencog/nlp/fuzzy/Fuzzy.cc` / `.h` directly include and use `AttentionBank`.
+
+Snapshot evidence:
+
+- `opencog/nlp/fuzzy/Fuzzy.cc:27`: includes `<opencog/attentionbank/bank/AttentionBank.h>`
+- `Fuzzy.cc:46` and `:55`: initialize `bank(&attentionbank(as))`
+- `Fuzzy.cc:321`: if `_af_only`, reject matches where `!bank->atom_is_in_AF(soln)`
+- `opencog/nlp/fuzzy/Fuzzy.h:29`: includes `AttentionBank.h`
+- `Fuzzy.h:61`: stores `AttentionBank* bank`
+
+C4-37. Pickaxe evidence:
+
+- `12673ff1081464dc8e50ad058f9f1bae785aadf0` (2016-12-29, Linas Vepstas), "Move to the new attention API"
+- Diff changed an older STI-boundary comparison to a new attentionbank API path and added `AttentionBank* bank`.
+
+C4-38. Classification: NLP fuzzy matching is **COUPLED** to AttentionBank at `b31c7e3`.
+
+### Python web API
+
+C4-39. `opencog/python/web/api/apiatomcollection.py` exposes AttentionValue / AttentionalFocus REST-ish surfaces:
+
+- `:97`, `:450`, `:588`, `:620`: `attentionvalue`
+- `:113`, `:163`: AttentionalFocus documentation
+- `:686-706`: update logic accepts `attentionvalue`, parses it, and writes it
+
+C4-40. `opencog/python/web/api/mappers.py` defines `ParseAttentionValue` and serializes `attentionvalue`.
+
+C4-41. Classification: Python web API is **COUPLED / API-SURFACE** for AttentionValue, not PLN/URE logic.
+
+### NLP utility docs
+
+C4-42. `opencog/nlp/scm/nlp-utils.scm:461` mentions a possible alternative of lowering AttentionValue and letting the ForgettingAgent work. This is documentation/commentary, not an active consumer in that file.
+
+## AttentionBank removal commit
+
+C4-43. `318c0b4cb` removed the core ECAN/AttentionBank subsystem:
+
+- `opencog/attention/*`
+- `opencog/attentionbank/*`
+- attention and attentionbank tests
+- attentionbank Cython wrapper
+- attentionbank Scheme file
+
+C4-44. The removal stat is large and targeted: "First rough cut at removing the attentionbank" deletes the agent modules, bank data structures, `AttentionSCM`, `AttentionValue`, `StochasticImportanceDiffusion`, tests, and wrappers.
+
+C4-45. Some consumers remained around the transition. For example, `git grep "AttentionBank" 318c0b4 -- opencog/nlp/fuzzy` still finds `Fuzzy.cc/.h` including `AttentionBank.h` and storing `AttentionBank* bank`. This suggests the "rough cut" was not a clean ecosystem-wide migration; it removed core modules while some dependent code still referenced attention concepts.
+
+## Cluster narrative impact
+
+C4-46. The Source 3 narrative is **TRUE but must stay scoped**:
+
+> The only verified executable ECAN-PLN/URE coupling beyond tests was the narrow URE STI source-selection hook, active from 2016-03-09 to 2018-10-23.
+
+C4-47. The broader statement "AttentionBank had no active executable consumers" is **FALSE**:
+
+- OpenPsi used STI in action selection.
+- Ghost used STI and AF in matcher/action procedures.
+- NLP fuzzy matching used AttentionBank for AF-only fuzzy search.
+- Python web APIs exposed AttentionValue surfaces.
+
+C4-48. `cog-bind-af` specifically should be classified as:
+
+- Definition/export/docs active at `b31c7e3`.
+- Historical PLN unit-test consumer only.
+- Removed from tests in `0064bfab` because attention focus was irrelevant.
+- No active runtime consumer found at the audit snapshot.
+
+C4-49. `opencog/pln/` should be classified as:
+
+- No direct AttentionBank/STI runtime logic at `b31c7e3`.
+- Config-only `URE:attention-allocation` set to `0`.
+- Later standalone wrapper `pln-set-attention-allocation` is thin and introduced after monorepo split.
+
+C4-50. OpenPsi / Ghost / NLP should become ECAN cluster side branches or cross-links, not PLN-control evidence.
+
+## Discovered publications / docs
+
+C4-51. No new paper citation was extracted in this pass. The pass was source-code archaeology only.
+
+C4-52. Documentation/design artifacts worth linking in synthesis:
+
+- `opencog/attentionbank/README.md` at `b31c7e3` for AttentionBank architecture.
+- `opencog/attention/README` / `README.md` at `b31c7e3` for Classic ECAN agent descriptions.
+- `opencog/openpsi/README.md` at `b31c7e3` for OpenPsi subsystem context.
+
+## Author attribution
+
+C4-53. `git shortlog -sne b31c7e3` top contributors:
+
+- Linas Vepstas: 10562 commits plus alias rows (`Linas Vepštas` 2207, `linas` 568)
+- Nil Geisweiller: 3248 plus alias rows (`ngeiswei` 282, `Nil Geiswiller` 181, `nilg` 136)
+- leungmanhin / Leung Man Hin: 1304 plus alias rows
+- Amen Belayneh: 1215 plus alias rows
+- Jared Wigmore: 734
+- Joel Pitt: 732
+- Cosmo Harrigan: 600
+- Misgana Bayetta: 590
+- Sebastian Ruder: 220
+
+C4-54. Source 4 cohort is broad OpenCog monorepo: Linas/Nil dominant, Leung Man Hin prominent for NLP fuzzy matching, Amen Belayneh prominent in OpenPsi/Ghost-era work, Cosmo Harrigan/Misgana present from attention/URE lineages.
+
+## Standing-correction candidates
+
+C4-55. Do not say `cog-bind-af` was never consumed. It was consumed by PLN unit tests before `0064bfab`, then deliberately replaced by `cog-execute!` because attention focus was irrelevant.
+
+C4-56. Do not say direct PLN/AttentionBank runtime coupling existed at `b31c7e3`. It did not; PLN had config-only `URE:attention-allocation` set to zero.
+
+C4-57. Do say OpenPsi was an active STI consumer at `b31c7e3`: `rule-sca-weight = confidence * strength * STI`.
+
+C4-58. Do say Ghost was an active STI/AF consumer at `b31c7e3`: matcher weights and schema procedures read AF/STI and write STI.
+
+C4-59. Do say NLP fuzzy matching was an active AttentionBank consumer at `b31c7e3`: AF-only fuzzy search filtered via `bank->atom_is_in_AF`.
+
+C4-60. Do say the AttentionBank removal was ecosystem-disruptive beyond PLN/URE, because non-PLN consumers existed at the pre-removal snapshot.
+
+C4-61. Keep the ECAN/PLN-control narrative scoped: the PLN/URE executable bridge was narrow and historical; broader OpenCog attention usage was real.
+
+## Recommendation for cluster wiki-edit pivot
+
+C4-62. The ECAN cluster extraction is ready to pivot to wiki edits after cross-model reconciliation. Source 4 closes the main uncertainty from Source 3:
+
+- No additional active PLN runtime coupling found.
+- Historical `cog-bind-af` PLN use was test-only and deliberately replaced.
+- Broader non-PLN consumers found and should be documented.
+
+C4-63. No Source 5 is necessary before wiki edits unless the user wants a dedicated OpenPsi/Ghost/NLP side-cluster. Those are real attention consumers, but they are not blockers for the ECAN-PLN control-layer narrative.
+
+## Verification notes
+
+C4-64. Commands used included:
+
+- `git show -s --format=... b31c7e3`
+- `git grep -n "cog-bind-af" b31c7e3 -- "*.scm" "*.py" "*.cc" "*.h"`
+- `git log --all -S "cog-bind-af"`
+- `git grep -n -E "<attention tokens>" b31c7e3 -- opencog/pln`
+- `git grep -n -E "<attention tokens>" b31c7e3 -- opencog/openpsi`
+- broad `git grep` at `b31c7e3`, excluding attention/attentionbank paths
+- targeted `git show` for `0064bfab`, `86b433`, `12673ff`, and `318c0b4`
+
+C4-65. No tests were run; this pass is historical source archaeology only.
+

@@ -1,0 +1,330 @@
+# Source 4 — Pre-Split OpenCog Monorepo Archaeology — Cross-Model Reconciliation
+
+**Cluster:** ECAN / Attention pilot, Source 4 of N (FINAL extraction-phase source; cluster closure recommended)
+**Source target:** `opencog/opencog` monorepo at the **last commit before AttentionBank removal**, accessed via `singnet/opencog` fork's preserved upstream history.
+**Local checkout:** `E:\GitHub\hyperon reference\opencog-singnet\` (working-tree HEAD `68d0e553...`, NOT checked out for audit)
+**Audit target commit:** `b31c7e3b9beab7a458c84117f3b654a03ca9ffe2` (short `b31c7e3`, 2019-09-04, Linas Vepstas, "Modernize the test framework") — last commit before `318c0b4cb` (2019-09-06 "First rough cut at removing the attentionbank")
+**Reconciliation date:** 2026-04-26
+**Orchestrator:** Claude Opus 4.7 (1M context)
+**Models reconciled:**
+- **Codex single-pass** — `findings_codex.txt` (65 numbered claims, ~14 KB; `git show <commit>:<path>`, `git grep <commit>`, `git log -S`, `git ls-tree`, `git show --stat`; no working-tree checkout)
+- **Gemini single-pass** — forwarded inline by user (cog-bind-af consumer audit, GHOST/Fuzzy AttentionBank refs, pln-set-attention-allocation dead-wrapper status, OpenPsi NO-COUPLING claim, pickaxe-confirmation of STI hook timeline); `findings_gemini.txt` save **pending**. Tagged "[Gemini, forwarded]" below.
+- **Orchestrator cross-checks** — direct `git grep b31c7e3 -- "opencog/openpsi/"` to settle the V0-1 OpenPsi dissent. Tagged "[Claude orchestrator, repo-verified]".
+
+**Coverage note:** Two-model + orchestrator-cross-check, same as Sources 2-3. The two passes agree on most findings but diverge sharply on OpenPsi (V0-1 below). Orchestrator's grep settles it.
+
+**Brief:** `scripts/archive/ecan_pilot/source4_pre_split_monorepo_brief.txt`
+
+---
+
+## Headline answer
+
+**Cluster closure condition (defined in brief):** "if Q1-Q5 all return NO-COUPLING or HISTORICAL-ONLY-PRE-2018, the Source 3 cluster-narrative position locks in. The ECAN cluster pilot extraction phase closes; pivot to wiki-edit pass with the locked narrative."
+
+**Result:** **Closure condition met for the PLN/URE narrative scope.** Source 3's "ECAN-PLN coupling once existed narrowly via URE STI source-selection (2016-2018), deliberately unwired in 2018 URE rewrite" verdict **locks in**. No additional active PLN runtime coupling to AttentionBank was found at `b31c7e3`.
+
+**Refinement (both models converge on this):** the broader-OpenCog version of the same claim — "AttentionBank had no executable consumers" — is **FALSE** at `b31c7e3`. Active non-PLN consumers existed:
+- **OpenPsi** action selection used `cog-av-sti` in `rule-sca-weight = strength × confidence × STI` (`action-selector.scm:63`)
+- **Ghost** dialogue rule/action selection used `cog-av-sti`, `cog-af`, `cog-set-sti!` actively
+- **NLP fuzzy matching** included `AttentionBank.h` directly and used `bank->atom_is_in_AF` for AF-only fuzzy search
+- **Python web API** (`apiatomcollection.py`) exposed REST AttentionValue read/write surfaces
+
+**Cluster narrative wording (reconciled):**
+
+> The only verified executable ECAN-**PLN/URE** coupling (beyond unit tests) was the narrow URE STI source-selection hook in forward chaining, active 2016-03-09 to 2018-10-23. Deliberately unwired in commit `0b744dbab` with the explicit comment "An attentionbank is needed in order to get the STI..." — predating the MeTTa transition.
+>
+> Broader-OpenCog AttentionBank consumers existed at the pre-removal monorepo snapshot (2019-09-04 `b31c7e3`): OpenPsi action selection used STI weighting, Ghost dialogue used STI/AF actively, NLP fuzzy matching used AttentionBank directly, and Python web APIs exposed AttentionValue surfaces. The 2019-09-06 AttentionBank removal was an ecosystem-disruptive subsystem deletion, not a cleanup of an unused directory.
+>
+> The "missing inference-control layer" remains a 2018 OpenCog Classic deliberate removal (URE rewrite), not a Hyperon-era regression. ECAN/AttentionValue had broader executable use in 2017-2019 OpenCog (motivation, dialogue, NLP, web APIs) — that broader usage was lost in the 2019 AttentionBank removal and was not preserved in the metta-attention rewrite.
+
+---
+
+## Source-of-truth checks (cross-model dissent + orchestrator verification)
+
+### V0-1 — OpenPsi AttentionBank/STI coupling status (CRITICAL DISSENT)
+
+**Dissent:**
+- **Gemini [forwarded]:** "openpsi Coupling: Status: **NO-COUPLING.** git grep for `AttentionBank`, `AttentionValue`, `get_sti`, and `get_lti` returned zero results in the `opencog/openpsi` directory at commit `b31c7e3`."
+- **Codex C4-20, C4-21, C4-22, C4-24:** "OpenPsi has active STI-based rule weighting at `b31c7e3`. **`opencog/openpsi/action-selector.scm:63`: `(* (cog-confidence RULE) (cog-mean RULE) (cog-av-sti RULE))`**. Classification: OpenPsi is **COUPLED** to AttentionValue/STI at the audit snapshot."
+
+**[Claude orchestrator, repo-verified]** Direct `git grep b31c7e3 -- opencog/openpsi/` for Scheme-side AND C++-side tokens:
+```
+b31c7e3:opencog/openpsi/action-selector.scm:63:  (* (cog-confidence RULE) (cog-mean RULE) (cog-av-sti RULE))
+```
+Verbatim from `git show b31c7e3:opencog/openpsi/action-selector.scm` lines 55-65:
+```scheme
+; --------------------------------------------------------------
+(define (rule-sca-weight RULE)
+"
+  rule-sca-weight RULE
+    Return the weight of RULE, which defined as product of strength,
+    confidence, and short-term-importance.
+"
+  (* (cog-confidence RULE) (cog-mean RULE) (cog-av-sti RULE))
+)
+```
+
+**Resolution:** **Codex's COUPLED verdict is correct.** Gemini's NO-COUPLING verdict is **wrong due to grep-token methodology**. Gemini grepped for C++-side tokens (`AttentionBank | AttentionValue | get_sti | get_lti`) and missed the Scheme-side `cog-av-sti` API. Pickaxe history (Codex C4-23) confirms `e5bae708...` (2017-11-09 Amen Belayneh "Cleanup openpsi action-selector functions") — STI weighting in OpenPsi has existed at least since 2017.
+
+**Reconciled status: COUPLED.** OpenPsi rule-selection weight at `b31c7e3` is `strength × confidence × STI` — a direct, executable use of AttentionValue's STI in motivation/action-selection.
+
+**Cluster-narrative impact:** Add OpenPsi as a **third executable ECAN consumer** alongside the URE STI source-selection hook (Source 3) and Ghost/NLP-fuzzy (this source). All three are non-PLN consumers; the PLN-specific narrative is unchanged.
+
+**Methodological lesson (reinforces the existing pickaxe rule + ADDS a new rule):** for ECAN-coupling audits, agents must grep both **C++-side** tokens (`AttentionBank`, `AttentionValue`, `getSTI`, `set_sti`, `atom_is_in_AF`) AND **Scheme-side** tokens (`cog-av-sti`, `cog-set-sti!`, `cog-af`, `cog-stimulate`, `cog-bind-af`). C++-only grep misses Scheme consumers; Scheme-only grep misses C++ consumers. **New standing rule (Source 4 V0-1 driven): for ECAN-coupling audits, grep both API layers explicitly. Document the token list in the brief.**
+
+### V0-2 — Methodological convergence on the bigger picture
+
+**Both models agree** (consensus, no dissent):
+- `cog-bind-af` is HISTORICAL-ONLY for PLN unit tests, deliberately replaced by `cog-execute!` in commit `0064bfab` (2019-07-04 Nil Geisweiller, "Use cog-execute! instead of cog-bind-af / since attention focus is irrelevant for these unit tests"). Codex cites verbatim diff at `tests/pln/rules/PLNRulesUTest.cxxtest:182, 200, 218`.
+- `opencog/pln/` at `b31c7e3` has **only one** AttentionBank-related reference: `pln-config.scm:62` setting `URE:attention-allocation` to `0`. No direct AttentionBank/STI runtime logic. Both models agree this is DEAD-WRAPPER / CONFIG-ONLY status.
+- Ghost is COUPLED to STI/AF in `matcher.scm:127, 139, 268` and `procedures/schemas.scm:478, 480, 491-506, 518, 530, 542` (Codex's specific line citations; Gemini cited `ghost/stimulation.scm` more generically).
+- NLP fuzzy matching is COUPLED to AttentionBank in `Fuzzy.cc:27, 46, 55, 321` and `Fuzzy.h:29, 61` (Codex's specifics). Gemini cited `Fuzzy.cc:304` for `try_match`'s `_af_only` mode — minor line-number drift, same finding.
+- `pln-set-attention-allocation` is a DEAD-WRAPPER, introduced post-monorepo in commit `86b433fea...` (2020-03-30 Nil Geisweiller, "Add pln helpers to configure the ure"). Codex cites the verbatim wrapper definition. Gemini cited a chatbot-eva TODO comment "to be replaced when a fine-tuned attention-allocation system is [available]" — useful added detail confirming the developer-intent never matured.
+
+### V0-3 — `cog-bind-af` design-doubt comment (Gemini-original)
+
+**Gemini [forwarded]:** "A comment in `AFImplicator.cc` explicitly questions its modularity/performance value: 'XXX FIXME -- do we need this function, at all?'"
+
+**Codex C4-05, C4-06:** Codex did not flag this specific comment but did extensively cite `AttentionSCM.cc:88, 186` and `attention-bank.scm:20, 256-258` for `cog-bind-af` definition/export/docs.
+
+**Resolution:** Gemini's `AFImplicator.cc` comment is a useful **design-doubt artifact** that strengthens the "niche utility / questionable modularity" framing. Codex's grep was comprehensive but did not extract editorial comments. Both pieces of evidence are valid; merge into the reconciled `cog-bind-af` finding:
+
+> `cog-bind-af` was a niche AF-restricted pattern matcher (defined in `AttentionSCM.cc`, executed via `af_bindlink`). Historical PLN unit-test consumer only, removed in 2019-07-04 commit `0064bfab` because "attention focus is irrelevant for these unit tests." Implementation source includes the design-doubt comment "XXX FIXME -- do we need this function, at all?" at `AFImplicator.cc`. **Status: niche utility, practically abandoned by the audit snapshot.**
+
+### V0-4 — Cohort cross-source overlap details
+
+**Both models agree** Source 4 cohort is broad OpenCog monorepo: Linas Vepstas dominant (~13K commits across aliases), Nil Geisweiller (~3.8K), Leung Man Hin prominent in NLP-fuzzy area, Amen Belayneh prominent in OpenPsi/Ghost-era work, Cosmo Harrigan and Misgana Bayetta present from attention/URE lineages.
+
+**Specific cross-source overlaps (orchestrator-noted from prior reconciliations):**
+- **Cosmo Harrigan**: Source 2 (file-header Copyright on attention diffusion subsystem 2014-2016), Source 3 (496 URE commits), Source 4 (600 monorepo commits). **Same person across all three sources** — diffusion-subsystem original architect with consistent presence across the attention/URE/monorepo cohort.
+- **Misgana Bayetta**: Source 2 (149 attention commits), Source 3 (375 URE commits — including the `0a0b09912` 2016 STI wire-up), Source 4 (590 monorepo commits). **The author who first wired up `source_selection_mode::STI`** — central to Source 3 V0-1 timeline.
+- **Nil Geisweiller**: Source 3 dominant URE author (~3.5K commits), Source 4 (3248 monorepo commits). **The author who unwired `source_selection_mode::STI`** in 2018 (`0b744dbab`) and removed the constructor arg in 2019 (`5a5b7785d`). Also authored the 2019-07-04 `cog-bind-af` → `cog-execute!` PLN-test replacement (`0064bfab`) and the 2020 `pln-set-attention-allocation` wrapper (`86b433fea`). Single-author thread for the PLN/URE-side architectural decisions.
+- **Leung Man Hin**: Source 4 (1304 monorepo commits, prominent in NLP-fuzzy area), prior cluster mention as `hyperon-pln 0.2 MP` author lineage. Cross-source overlap noted.
+- **Sebastian Ruder**: Source 3 V0-2 (219 URE commits, identity-as-NLP-researcher unverified), Source 4 (220 monorepo commits, same period 2014). Pickaxe could verify identity but not in scope.
+
+---
+
+## Universal agreement (2-of-2 consensus, orchestrator-confirmed where verified)
+
+1. **`cog-bind-af` is HISTORICAL-ONLY** for PLN unit tests; replaced by `cog-execute!` in 2019-07-04 `0064bfab` because "attention focus is irrelevant for these unit tests."
+
+2. **`opencog/pln/` has NO direct AttentionBank/STI runtime coupling** at `b31c7e3`. Only `pln-config.scm:62` setting `URE:attention-allocation` to `0` (config-only, dead).
+
+3. **`pln-set-attention-allocation` is a DEAD-WRAPPER** introduced post-monorepo (`86b433fea` 2020-03-30 Nil Geisweiller). Always wrapped URE's already-dead `URE:attention-allocation` flag.
+
+4. **Ghost is an active ECAN consumer** at `b31c7e3`: matcher rule weights, schema procedures actively read AF/STI and write STI back. Heavy STI/AF usage in dialogue rule selection.
+
+5. **NLP fuzzy matching is an active AttentionBank consumer** at `b31c7e3`: `Fuzzy.cc` includes `AttentionBank.h` and uses `bank->atom_is_in_AF` for AF-only fuzzy search. Pickaxe history at `12673ff10...` (2016-12-29 Linas Vepstas, "Move to the new attention API").
+
+6. **Pre-Source-3 STI hook timeline confirmed via pickaxe**: `source_selection_mode::STI` in URE forward chaining was wired 2016-03-09 (`0a0b09912`) to 2018-10-23 (`0b744dbab`). Source 4 confirms.
+
+7. **AttentionBank removal in 2019-09-06 (`318c0b4cb`) was ecosystem-disruptive**: deleted core ECAN agents, AttentionBank, AttentionSCM, AttentionValue, StochasticImportanceDiffusion, tests, and Cython wrapper. Some consumers (Fuzzy.cc) still referenced AttentionBank.h after the removal commit — Codex C4-45 notes the "rough cut" was not a clean ecosystem-wide migration.
+
+8. **PLN/URE-scoped narrative locks in**: only the URE STI source-selection hook (2016-2018) was an executable PLN/URE-side ECAN coupling. Cluster pilot extraction phase closes for the PLN/URE control-layer question.
+
+9. **Broader OpenCog narrative requires explicit scoping**: AttentionBank had real non-PLN executable consumers (OpenPsi, Ghost, NLP fuzzy, Python web API). Wiki claims must distinguish PLN/URE scope from broader OpenCog scope.
+
+10. **Cohort:** Linas Vepstas + Nil Geisweiller dominant across Source 4. Cross-source contributors (Cosmo Harrigan, Misgana Bayetta, Leung Man Hin, Sebastian Ruder) document a coherent OpenCog-era cohort, distinct from Source 1's iCog-Labs-Dev metta-attention cohort.
+
+---
+
+## Differentiated insights
+
+### Codex only
+
+- **Specific `cog-bind-af` historical SHA list**: `0064bfab935042a7b63c1502a9fc5f01b0a2d82a` (2019-07-04 Nil Geisweiller, decisive PLN-test replacement); `fbcf89985...` (2015-08-26 Nil Geisweiller, "Add or-construction rule unit test"); `759f258ed...` (2015-06-17 Nil Geisweiller, "Add PLNRuleUTest from RuleUTest atomspace repo"). Pickaxe ground truth.
+- **Verbatim diff context** for `0064bfab`: shows `cog-bind-af and-introduction-rule` → `cog-execute! and-introduction-rule` substitution at `tests/pln/rules/PLNRulesUTest.cxxtest:182, 200, 218`.
+- **Specific Ghost line citations**: `matcher.scm:127, 139, 268`; `schemas.scm:478, 480, 491-506, 518, 530, 542`. More precise than Gemini's general `ghost/stimulation.scm` citation.
+- **Python web API consumer**: `opencog/python/web/api/apiatomcollection.py` and `mappers.py` expose REST AttentionValue surfaces. Gemini missed this entirely.
+- **NLP utility doc reference**: `opencog/nlp/scm/nlp-utils.scm:461` mentions ForgettingAgent as an alternative to lowering AttentionValue — documentation note, not consumer.
+- **AttentionBank removal stat detail**: `318c0b4cb` removed 19 module files including agent .cc/.h pairs, AttentionSCM, AttentionValue, StochasticImportanceDiffusion. Targeted, not collateral.
+- **Cluster-pilot-impact analysis (C4-46-C4-50)**: clear separation of PLN/URE scope vs broader OpenCog scope; explicit recommendation for ECAN cluster side-branches (OpenPsi/Ghost/NLP) without blocking the main narrative.
+
+### Gemini only [all forwarded]
+
+- **`AFImplicator.cc` design-doubt comment**: "XXX FIXME -- do we need this function, at all?" — strengthens the cog-bind-af niche-utility framing.
+- **`ghost/stimulation.scm` heavy usage**: Gemini cited this file specifically as "heavy consumer using cog-stimulate to apply STI to words during perception hooks and nlp-parse." Codex noted Ghost matcher/schemas usage but did not specifically flag stimulation.scm as a perception-hook integration.
+- **Chatbot-eva TODO comment** "to be replaced when a fine-tuned attention-allocation system is [available]" — confirms developer-intent for richer attention-allocation never matured. Year cited as 2019.
+- **Final cluster wording** "The 'missing control layer' was a realized feature of Tradition 2 (Classic C++) that was shed due to dependency/modularization pressures in 2018" — useful one-sentence framing for the cluster wiki anchor.
+
+### Orchestrator only [Claude orchestrator, repo-verified]
+
+- **OpenPsi V0-1 verification**: direct `git grep b31c7e3 -- opencog/openpsi/` confirms `cog-av-sti` usage at `action-selector.scm:63`. Codex was right; Gemini's C++-only grep missed it.
+- **Methodological standing rule**: ECAN-coupling audits must grep BOTH C++-side tokens AND Scheme-side tokens. Will save to memory.
+
+---
+
+## Reconciled per-Q verdicts
+
+### Q1: `cog-bind-af` consumers
+
+**Verdict: HISTORICAL-ONLY (PLN unit tests, deliberately replaced 2019-07-04)**.
+
+Active at `b31c7e3`: only definition/export/docs in `opencog/attentionbank/`. No active runtime consumer.
+
+Historical consumers: PLN unit tests at `tests/pln/rules/PLNRulesUTest.cxxtest:182, 200, 218` (and-introduction, or-introduction, not-introduction rules), removed by Nil Geisweiller in commit `0064bfab` (2019-07-04) with explicit comment "since attention focus is irrelevant for these unit tests." Earlier introducing commits: `759f258ed` (2015-06-17) and `fbcf89985` (2015-08-26).
+
+Design-doubt comment at `AFImplicator.cc`: "XXX FIXME -- do we need this function, at all?" — confirms niche-utility status.
+
+**No active non-test consumer found in the audited monorepo history.** Pickaxe coverage was bounded by Windows Git/Cygwin `CreateFileMapping` errors during broad `git log -S` runs (Codex C4-07), so the no-consumer claim is scoped to what successful pickaxe runs surfaced rather than asserted as an absolute "never". Cluster narrative impact: `cog-bind-af` was always a paper-aspirational URE-facing utility; confirmed consumers were PLN unit tests only, removed by `0064bfab` because attention focus was irrelevant for their semantic content.
+
+### Q2: `opencog/pln/` direct AttentionBank references
+
+**Verdict: DEAD-WRAPPER / CONFIG-ONLY**.
+
+Only one AttentionBank-related reference at `b31c7e3`:
+```scheme
+; opencog/pln/pln-config.scm:62
+; Attention allocation (0 to disable it, 1 to enable it)
+(ure-set-fuzzy-bool-parameter pln-rbs "URE:attention-allocation" 0)
+```
+
+No `AttentionBank`, `AttentionalFocus`, `AttentionValue`, `cog-bind-af`, `cog-av-sti`, `getSTI`, `set_sti` reads/writes in `opencog/pln/` source. Pickaxe history (`git log --all -S "AttentionBank" -- opencog/pln`) returned only structural cleanup commits (PLN removal `088bde90c` 2019-11-27; under-populated-directory cleanup `85abd1feb` 2015-12-23). No active PLN-AttentionBank logic ever existed.
+
+### Q3: `opencog/openpsi/` AttentionBank/STI coupling
+
+**Verdict: COUPLED (Scheme-layer)** — orchestrator-verified, settles V0-1.
+
+`opencog/openpsi/action-selector.scm:63`:
+```scheme
+(define (rule-sca-weight RULE)
+"
+  rule-sca-weight RULE
+    Return the weight of RULE, which defined as product of strength,
+    confidence, and short-term-importance.
+"
+  (* (cog-confidence RULE) (cog-mean RULE) (cog-av-sti RULE))
+)
+```
+
+OpenPsi action-selector weights candidate rules by `strength × confidence × STI`. STI is read from each rule's AttentionValue via the Scheme-side `cog-av-sti` API. Pickaxe history: `e5bae708fa5b1e6a5a18ef6c2e4ca6a40f981d98` (2017-11-09 Amen Belayneh, "Cleanup openpsi action-selector functions"). STI weighting has existed in OpenPsi since at least 2017.
+
+**Cluster-narrative addition:** OpenPsi is a confirmed third executable ECAN consumer (alongside URE STI hook and Ghost/NLP-fuzzy). PLN-side narrative unchanged; broader-OpenCog narrative gains a documented action-selection consumer.
+
+### Q4: `pln-set-attention-allocation` evolution
+
+**Verdict: ALWAYS DEAD-WRAPPER**.
+
+Absent from `opencog/pln/` at `b31c7e3` monorepo snapshot. Introduced post-monorepo in standalone `pln-singnet/` at commit `86b433fea5973905c49ea7e4785340f6dbb20c5a` (2020-03-30 Nil Geisweiller, "Add pln helpers to configure the ure"):
+
+```scheme
+(define (pln-set-attention-allocation value)
+"
+  Wrapper around ure-set-attention-allocation using (pln-rb) as rule base.
+  See (help ure-set-attention-allocation) for more info.
+"
+  (ure-set-attention-allocation (pln-rb) value))
+```
+
+The wrapper has always been a thin forwarding layer to `ure-set-attention-allocation`, which itself sets the `URE:attention-allocation` flag — a flag URE no longer reads at runtime (Source 3 V0-1 finding). Never matured beyond a placeholder. Chatbot-eva [Gemini, forwarded] contains a 2019 TODO: "to be replaced when a fine-tuned attention-allocation system is [available]" — confirming the developer-intent never materialized.
+
+### Q5: Broader monorepo ECAN consumers at `b31c7e3`
+
+**Verdict: REAL but NON-PLN consumers exist** (4 active; 1 documentation-only):
+
+| Consumer | Status | Key evidence | Pickaxe SHA |
+|---|---|---|---|
+| **OpenPsi** action-selector | COUPLED | `action-selector.scm:63` `cog-av-sti` in rule weighting | `e5bae708...` 2017-11-09 Amen Belayneh |
+| **Ghost** matcher + schemas | COUPLED | `matcher.scm:127, 139, 268`; `schemas.scm:478, 480, 491-506, 518, 530, 542`; `stimulation.scm` perception hooks | not pickaxe-attributed in this pass |
+| **NLP fuzzy matching** | COUPLED | `Fuzzy.cc:27, 46, 55, 321`; `Fuzzy.h:29, 61` includes `AttentionBank.h`, uses `bank->atom_is_in_AF` | `12673ff10...` 2016-12-29 Linas Vepstas "Move to the new attention API" |
+| **Python web API** | COUPLED / API-SURFACE | `apiatomcollection.py:97, 113, 163, 450, 588, 620, 686-706`; `mappers.py` `ParseAttentionValue` | not pickaxe-attributed in this pass |
+| **NLP utils** | DOCUMENTATION-ONLY | `nlp-utils.scm:461` mentions ForgettingAgent as alternative; not active consumer | n/a |
+
+The 2019-09-06 AttentionBank removal (`318c0b4cb`) deleted core ECAN modules but left these consumers around the transition (Codex C4-45). The "rough cut" framing in the commit message confirms it was not a clean ecosystem-wide migration.
+
+---
+
+## Reconciled cluster-narrative position (FINAL for extraction phase)
+
+The ECAN cluster pilot extraction phase narrative, after Sources 1-4:
+
+### PLN/URE-scoped narrative (locks in)
+
+> The only verified executable ECAN-PLN/URE coupling beyond unit tests was the **narrow URE forward-chainer STI source-selection hook**, active **2016-03-09 to 2018-10-23**. The hook read atom STI values via `s->getSTI()` for tournament selection of inference sources; it did not run ECAN agents, did not couple PLN reward signals to ECAN currency dynamics, and did not realize the 2009 paper's full ECAN-driven inference control vision. Deliberately unwired by Nil Geisweiller in commit `0b744dbab` (2018-10-23 URE rewrite) with the explicit comment "An attentionbank is needed in order to get the STI..." — the 2018 rewrite authors explicitly knew the AttentionBank dependency was required and chose not to wire the new `SourceSet` path through it. The constructor argument was removed in commit `5a5b7785d` (2019-01-08), leaving only the dead enum at `ForwardChainer.h:42` in current HEAD. URE replaced the old STI hook with internal **TV-fitness × `exp2(-complexity_penalty × complexity)` source weighting in `SourceSet`** (`SourceSet.cc:38-54, 217`); separately, the backward/control-rule `MixtureModel` uses an exponential complexity prior (`exp(-cpx_penalty × length)`, `MixtureModel.h:88`-area). Both are local URE control mechanisms, decoupled from any global AttentionBank.
+>
+> Source 4 confirms this scope: at the pre-removal monorepo snapshot `b31c7e3` (2019-09-04), `opencog/pln/` had no direct AttentionBank coupling — only a config flag `URE:attention-allocation` set to `0`. PLN-related `cog-bind-af` was unit-test-only and replaced by `cog-execute!` in `0064bfab` (2019-07-04 Nil Geisweiller) with the explicit comment "since attention focus is irrelevant for these unit tests." `pln-set-attention-allocation` is a thin wrapper around URE's already-dead flag, introduced post-monorepo in `86b433fea` (2020-03-30) and never matured.
+>
+> The "missing inference-control layer" in modern Hyperon PLN is **not a Hyperon-era regression**. It is a 2018 OpenCog Classic deliberate removal during URE modularization, predating the MeTTa transition by 4+ years. The 2009 paper's ECAN-PLN aspirations were realized at the executable layer only as the narrow STI source-selection hook; the richer ECAN-driven inference control loop the paper described was always paper-coupling and architectural aspiration.
+
+### Broader-OpenCog scope (additions)
+
+> ECAN/AttentionValue had real executable use beyond PLN/URE in the 2017-2019 OpenCog era: **OpenPsi** weighted action-selection rules by `strength × confidence × STI` (`action-selector.scm:63`, since at least 2017-11-09); **Ghost** dialogue rule/action selection used `cog-av-sti`, `cog-af`, and `cog-set-sti!` actively in `matcher.scm`, `schemas.scm`, and `stimulation.scm`; **NLP fuzzy matching** included `AttentionBank.h` directly and used `bank->atom_is_in_AF` for AF-only fuzzy search (`Fuzzy.cc:321`, since 2016-12-29 commit `12673ff10`); **Python web API** exposed REST AttentionValue read/write surfaces (`apiatomcollection.py`).
+>
+> The 2019-09-06 AttentionBank removal commit `318c0b4cb` ("First rough cut at removing the attentionbank") was an ecosystem-disruptive subsystem deletion that removed agent modules, AttentionBank, AttentionSCM, AttentionValue, StochasticImportanceDiffusion, tests, and Cython wrapper. Source 4 found these consumers were **not preserved as functioning ECAN integrations across the removal** — some (Fuzzy.cc) still referenced the deleted headers post-removal in stale, broken form rather than being cleanly migrated or cleanly absent. Ghost, OpenPsi, and the NLP/Python web-API consumers are out of scope for the metta-attention port; no documented MeTTa equivalents were found.
+
+### Five-tradition map decision (FINAL — settles Source 2 deferral)
+
+**Tradition 2 extension confirmed; no sixth tradition.** The cluster wiki anchor's five-tradition map should extend Tradition 2 (Historical OpenCog / URE / ECAN control) with:
+
+> **Tradition 2 sub-branch: iCog-Labs-Dev / SingularityNET Ethiopia maintained a modern MeTTa/C++ ECAN attention line (`metta-attention`, `attention`) isolated from the trueagi-io PLN production line.** The MeTTa port (Source 1) is a faithful continuation of the pragmatic Classic C++ variant (Source 2), with strict-literal score 0/4 against the 2009 paper in both implementations. The port preserves the pre-existing engineered surrogates and inherits the underlying Classic C++ bugs (WA rent compounding mutation, `WAImportanceDiffusionAgent` parameter mis-read), while introducing a few new regressions of its own (`LOCAL_FAR_LINK_RATIO` shadowing, `recentVal` commenting, runner-loop differences).
+>
+> The "missing inference-control layer" between this tradition and the PLN tradition was **never realized as a complete executable integration**. The narrow URE STI source-selection hook (2016-2018) was the only verified executable PLN/URE-side coupling, deliberately unwired in the 2018 URE rewrite. Broader OpenCog AttentionValue consumers (OpenPsi, Ghost, NLP fuzzy, Python web API) existed pre-2019 but were not preserved across the AttentionBank removal nor in the metta-attention MeTTa rewrite.
+
+---
+
+## Standing-corrections candidates (FINAL, cluster-close)
+
+For the cluster narrative anchor (top-level `hyperon-wiki/CLAUDE.md`):
+
+1. **PLN/URE-scoped narrative locks in (Sources 3+4):** the only verified executable ECAN-PLN/URE coupling was the narrow URE STI source-selection hook (2016-03-09 to 2018-10-23). Cite `0a0b09912` (wire-up), `0b744dbab` (unwire with attentionbank comment), `5a5b7785d` (constructor-arg removal).
+
+2. **Broader-OpenCog scope (Source 4 addition):** AttentionBank had non-PLN executable consumers at `b31c7e3` (2019-09-04). OpenPsi action-selector, Ghost matcher/schemas/stimulation, NLP fuzzy matching, Python web API. Cite per-consumer file:line.
+
+3. **`cog-bind-af` is HISTORICAL-ONLY for PLN** (Source 4): unit tests only, replaced by `cog-execute!` in `0064bfab` (2019-07-04 Nil Geisweiller, "since attention focus is irrelevant for these unit tests"). Implementation comment "XXX FIXME -- do we need this function, at all?" at `AFImplicator.cc` confirms niche-utility framing.
+
+4. **`pln-set-attention-allocation` is a DEAD-WRAPPER** introduced post-monorepo (`86b433fea` 2020-03-30 Nil Geisweiller). Always thin; never matured.
+
+5. **`opencog/pln/` had no direct AttentionBank/STI runtime logic** at `b31c7e3`. Only `pln-config.scm:62` `URE:attention-allocation` set to `0` (config-only, dead). Same pattern in standalone `pln-singnet/`.
+
+6. **`OpenPsi action-selector`** weights rules by `strength × confidence × STI` at `action-selector.scm:63` — a confirmed third executable ECAN consumer (alongside URE STI hook + Ghost/NLP-fuzzy).
+
+7. **2019-09-06 AttentionBank removal was ecosystem-disruptive** — Fuzzy.cc and other consumers were left referencing deleted headers. The "rough cut" commit was not a clean migration.
+
+8. **NEW operational rule (Source 4 V0-1 driven):** for ECAN-coupling audits, agents must grep BOTH C++-side tokens (`AttentionBank`, `AttentionValue`, `getSTI`, `set_sti`, `atom_is_in_AF`) AND Scheme-side tokens (`cog-av-sti`, `cog-set-sti!`, `cog-af`, `cog-stimulate`, `cog-bind-af`). C++-only or Scheme-only grep misses half the API surface. Document the token list explicitly in audit briefs.
+
+9. **Tradition 2 extension confirmed; no sixth tradition.** iCog-Labs-Dev / SingularityNET Ethiopia ECAN-on-MeTTa is a Tradition 2 sub-branch.
+
+10. **Cohort cross-source overlap:** Cosmo Harrigan (Sources 2+3+4 — diffusion-subsystem original architect), Misgana Bayetta (Sources 2+3+4 — wired up STI hook 2016), Nil Geisweiller (Sources 3+4 — unwired STI hook 2018, replaced cog-bind-af 2019, added pln-set-attention-allocation 2020), Linas Vepstas (Sources 2+3+4 dominant maintainer + AttentionBank-removal author 2019). Single coherent OpenCog-era cohort, distinct from Source 1 iCog-Labs-Dev metta-attention cohort.
+
+11. **AttentionBank removal commit `318c0b4cb`** by Linas Vepstas (2019-09-06) is the historical pin for "ECAN as runtime subsystem in monorepo" — record this in the cluster wiki anchor as a key transition date.
+
+---
+
+## Closure recommendation: cluster pilot extraction phase ENDS here
+
+Both Codex (C4-62, C4-63) and Gemini ("Conclusion: Source 3/4 narrative is locked. ... Ready for the wiki-edit pass or cluster close.") agree the ECAN cluster pilot extraction phase is **ready to close**. Source 4 settled all four of Codex's open Source-3 questions:
+
+1. **Scheme-binding history of `cog-bind-af`** — settled (Q1: HISTORICAL-ONLY PLN tests, replaced 2019-07-04).
+2. **Pre-split monorepo broader AttentionBank-URE coupling** — settled (Q2-Q5: PLN had no direct coupling; OpenPsi/Ghost/NLP-fuzzy/Python-web-API were the broader consumers).
+3. **`cog-bind-af` historical consumers** — settled (Q1).
+4. **`pln-set-attention-allocation` evolution** — settled (Q4: always dead-wrapper, introduced post-monorepo 2020-03-30).
+
+**Next deliverables (recommended order):**
+
+1. **Wiki-edit pivot** — apply the cluster pilot findings to the ECAN-related wiki cards. Specific candidate cards (defer to user for confirmation):
+   - `Hyperon AI Algorithms+ECAN` family (whatever exists; check `search_cards`)
+   - `Publications+Economic Attention Networks` (already touched in PLN cluster Phase 3 — extend with Source 1+2 findings on metta-attention port status)
+   - `Publications+Shifting and Drifting Attention While Reading` (2018 Goertzel et al., ResearchGate 326576861) — Source 1 discovered publication, no card yet
+   - Top-level `hyperon-wiki/CLAUDE.md` — extend the five-tradition map with the iCog-Labs-Dev sub-branch under Tradition 2 + the Source 3/4 narrative refinements
+
+2. **Backlog items** to decide:
+   - Pending file saves: `findings_gemini.txt` for Sources 1, 2, 3, 4 (orchestrator should persist verbatim Gemini text from forwarded content if Gemini doesn't deliver from clean transcript)
+   - Advisor-overstep cleanup: `AGENTS.md` / `GEMINI.md` / `CLAUDE.md` files in `metta-attention/`, `attention/`, `ure/`, `pln-singnet/`, `opencog-singnet/` (per user deferral)
+   - 2018 "Shifting and Drifting Attention While Reading" RawData wiki card creation
+   - Optional Source 5 (NOT recommended unless user requests): dedicated OpenPsi/Ghost/NLP-fuzzy ECAN side-cluster audit, going beyond PLN/URE scope
+
+3. **New memory entry** to add: `feedback_ecan_audit_token_list.md` documenting the V0-1 lesson that ECAN-coupling audits must grep BOTH C++ and Scheme token sets.
+
+---
+
+## Audit trail
+
+- All file:line citations come from Codex's `findings_codex.txt` or Gemini's forwarded summary.
+- Cross-model dissents (V0-1, V0-2, V0-3, V0-4) documented above with explicit resolution rationale.
+- V0-1 (OpenPsi COUPLED vs NO-COUPLING) is the methodology-driven dissent; orchestrator `git grep b31c7e3` settled it via Codex-correct.
+- No wiki edits performed in this reconciliation pass.
+- No repo file edits performed (read-only access to opencog-singnet repo).
+- No working-tree checkout of audit-target commit (per brief operational rule).
+- No tests run.
+
+*End of Source 4 cross-model reconciliation — ECAN cluster pilot. Extraction phase CLOSED.*

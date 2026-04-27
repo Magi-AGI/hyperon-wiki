@@ -1,0 +1,372 @@
+# Source 3 Codex Findings: legacy URE + legacy C++ PLN
+
+Pilot: ECAN / Attention cluster
+Source target: paired audit of legacy URE and legacy C++ PLN
+Codex pass date: 2026-04-26
+
+Audited repositories:
+
+- URE: `E:\GitHub\hyperon reference\ure`
+  - Origin: `https://github.com/opencog/ure.git`
+  - HEAD: `cec5509762fac3c20046fff7d29284e4ef07fdde`
+  - Short: `cec5509`
+  - Commit: `2025-09-23 Linas Vepstas, "Remove usage of obsolete API"`
+- legacy PLN: `E:\GitHub\hyperon reference\pln-singnet`
+  - Origin: `https://github.com/singnet/pln.git`
+  - Upstream: `https://github.com/opencog/pln.git`
+  - HEAD: `a0983ada8295d441d459c71c467f6f16ba8778e6`
+  - Short: `a0983ada8`
+  - Commit: `2021-10-28 Nil Geisweiller, "Merge pull request #42 from tanksha/conditionalConjunction"`
+
+No wiki writes. No repo edits. No tests run.
+
+## Executive verdict
+
+C3-01. The Source 3 smoking-gun question resolves as: `source_selection_mode::STI` is **dead at current URE HEAD**, but it was **historically implemented and then removed / unwired**. The brief's "dead enum" hypothesis is correct only for current HEAD, not for the full git-history audit.
+
+C3-02. The historical implementation was narrow: forward-chainer source selection could weight candidate source atoms by `s->getSTI()` and then use URE tournament selection. It was not a full ECAN-PLN control loop, not an AttentionBank coupling, not ECAN agent execution, and not evidence that PLN inference was executable-coupled to the ECAN currency economy.
+
+C3-03. Current URE has only residues of attention coupling:
+
+- `source_selection_mode { TV_FITNESS, STI, UNIFORM }` remains in `opencog/ure/forwardchainer/ForwardChainer.h`, but current constructors do not accept a mode and current source selection ignores the enum.
+- `URE:attention-allocation` has Scheme wrappers and configs, but `ure-utils.scm` explicitly says it "isn't in use presently", and current `UREConfig` has no corresponding C++ parameter.
+- Repo-wide current grep found no active `AttentionBank`, `AttentionValue`, `AttentionalFocus`, or `cog-bind-af` use in URE source paths.
+
+C3-04. Legacy C++ PLN (`pln-singnet`) is a URE rulebase/library plus Scheme wrappers, not an independent attention-controlled runtime. It depends on URE and exposes wrappers such as `pln-fc`, `pln-bc`, and `pln-set-attention-allocation`; the latter inherits URE's dead attention-allocation path. Example configs set `URE:attention-allocation` to `0` / false.
+
+C3-05. The ECAN-PLN cluster narrative should be: a narrow STI source-selection hook once existed in URE and was later removed during source/rule-selection rewrites. The richer ECAN-as-inference-control architecture remained paper-level or design-level at the executable layer. Modern Hyperon did not inherit a working ECAN-PLN control loop; it inherited, at most, a historical narrow hook that had already disappeared from current URE.
+
+## Q1: `source_selection_mode::STI` status
+
+### Current HEAD
+
+C3-06. Current URE still declares the enum:
+
+- `opencog/ure/forwardchainer/ForwardChainer.h:40-43`
+- Values: `TV_FITNESS`, `STI`, `UNIFORM`
+
+C3-07. Current URE constructors no longer accept a `source_selection_mode` argument:
+
+- `ForwardChainer.h:58-69`
+- `ForwardChainer.h:75-82`
+
+C3-08. Current source selection uses `SourceSet` weights. The only current source-weight formula is TV fitness:
+
+- `opencog/ure/forwardchainer/SourceSet.cc:38-54`
+- Formula: `complexity_factor * strength * confidence`
+- TODO in source: "Support more fitness functions"
+
+C3-09. Current `select_source` consumes `_sources.get_weights()` and samples a discrete distribution. I found no current switch over `source_selection_mode` in active source paths.
+
+### Historical implementation
+
+C3-10. Git history shows `source_selection_mode::STI` was actually wired in commit `0a0b09912` (`2016-03-09 Misgana Bayetta, "Pass source selection mode to the constructor"`).
+
+Evidence:
+
+- Historical path: `opencog/rule-engine/forwardchainer/ForwardChainer.h`
+- Constructor accepted `source_selection_mode sm = source_selection_mode::UNIFORM`
+- Historical path: `opencog/rule-engine/forwardchainer/ForwardChainer.cc`
+- `switch (_ts_mode)` contained:
+
+```cpp
+case source_selection_mode::TV_FITNESS:
+    for (const Handle& s : to_select_sources)
+        tournament_elem[s] = urec.tv_fitness(s);
+    hchosen = urec.tournament_select(tournament_elem);
+    break;
+
+case source_selection_mode::STI:
+    for (const Handle& s : to_select_sources)
+        tournament_elem[s] = s->getSTI();
+    hchosen = urec.tournament_select(tournament_elem);
+    break;
+
+case source_selection_mode::UNIFORM:
+    hchosen = rand_element(to_select_sources);
+    break;
+```
+
+C3-11. Earlier commit `36fdff1fb` (`2016-02-23 Nil Geisweiller, "Add UNIFORM source selection"`) had the enum shape but defaulted / initialized around uniform behavior. The decisive proof of STI being callable is `0a0b09912`, where the constructor accepted the mode and the switch used `s->getSTI()`.
+
+C3-12. Commit `0b744dbab` (`2018-10-23 Nil Geisweiller, "Re-work source and rule selection in the forward chainer"`) removed the active switch and removed `_ts_mode = sm`. In the patch, the old `STI` case was removed with a comment:
+
+```cpp
+An attentionbank is needed in order to get the STI...
+```
+
+That comment is important: it shows the rewrite authors knew STI source selection needed attention infrastructure, but the new `SourceSet` path did not implement it.
+
+C3-13. Commit `5a5b7785d` (`2019-01-08 Nil Geisweiller, "Have forward and backward chainer support separate rule-base atomspace"`) removed the `source_selection_mode sm` constructor argument. The enum itself survived as dead residue.
+
+### Q1 classification
+
+C3-14. Reconciled status: **ONCE IMPLEMENTED, THEN REMOVED / UNWIRED**.
+
+C3-15. Not classification: "never implemented" is false.
+
+C3-16. Not classification: "still wired indirectly" is false for current HEAD based on grep and current constructor/source-selection code.
+
+C3-17. Not classification: "full ECAN-PLN integration" is false. Historical `STI` selection read atom STI values only; it did not run ECAN agents, update AttentionValues, or couple PLN reward signals to an ECAN control loop.
+
+## Q2: Current URE attention / ECAN coupling
+
+C3-18. Current URE source grep for `AttentionBank`, `AttentionValue`, `AttentionalFocus`, `attentionbank`, `cog-bind-af`, `cog-av-sti`, `get_av`, `get_sti`, and `set_sti` produced no active implementation hits under current `opencog/`, `examples/`, or `tests/` source paths.
+
+C3-19. `URE:attention-allocation` persists in Scheme-facing utilities:
+
+- `opencog/scm/opencog/ure/ure-utils.scm:869-882` defines `ure-set-attention-allocation`
+- It writes an `EvaluationLink` with schema `"URE:attention-allocation"`
+
+C3-20. The same file documents the current state:
+
+- `opencog/scm/opencog/ure/ure-utils.scm:1012`
+- Comment: `URE:attention-allocation isn't set b/c it isn't in use presently.`
+
+C3-21. Current `UREConfig.h` / `UREConfig.cc` do not expose an attention-allocation parameter. The real current config surface is maximum iterations, complexity penalty, jobs, expansion pool size, retry exhausted sources, full rule application, BC max BIT size, and BC mixture-model parameters.
+
+C3-22. Many URE and PLN Scheme configs still set `URE:attention-allocation` to `0` or false. These are best read as compatibility/config residue, not active ECAN control.
+
+C3-23. Current URE `ForwardChainer` still accepts a `focus_set` argument in constructors and URESCM wrappers, but that is not equivalent to ECAN. It is a set of atoms under focus passed to the chainer, not an AttentionBank/ECAN runtime.
+
+## Q3: URE inference-control architecture inventory
+
+C3-24. URE still contains the mature control-theory stack that Source 7's `chaining/` only sketches. The key classes are real code, not just docs.
+
+### BetaDistribution
+
+C3-25. `opencog/ure/BetaDistribution.h` defines a beta distribution over TruthValues.
+
+C3-26. `opencog/ure/BetaDistribution.cc` maps TruthValue to positive count and total count, then builds alpha/beta parameters with priors.
+
+C3-27. `BetaDistribution::operator()` draws samples via inverse incomplete beta (`boost::math::ibeta_inv(alpha(), beta(), rng.randdouble())`).
+
+### ThompsonSampling
+
+C3-28. `opencog/ure/ThompsonSampling.h` and `.cc` implement a distribution over candidate TruthValues. The code computes per-candidate probabilities using each candidate's beta PDF and the product of other candidates' beta CDFs.
+
+C3-29. `ThompsonSampling::operator()` also supports direct sample-and-max selection by drawing from each candidate's beta distribution.
+
+### ActionSelection
+
+C3-30. `opencog/ure/ActionSelection.h` / `.cc` wrap Thompson sampling for Handle-to-TV action maps. It extracts the TV sequence, computes Thompson probabilities, and maps them back to action handles.
+
+### MixtureModel
+
+C3-31. `opencog/ure/MixtureModel.h` describes a Universal-Operator-Induction-style mixture model over control rules:
+
+- Each model/control rule receives a prior based on complexity.
+- Each model's likelihood is represented as a beta distribution.
+- Weighted-average TV is computed from these priors and beta factors.
+
+C3-32. `MixtureModel.cc` implements:
+
+- `prior_estimate(model) * beta_factor(model)` weighting
+- normalized weighted average of beta means/variances
+- complexity prior `exp(-cpx_penalty * length)`
+
+### BIT / AndBIT / BITNode
+
+C3-33. `opencog/ure/backwardchainer/BIT.h` and `.cc` implement Backward Inference Tree machinery.
+
+C3-34. `BITNode::operator()` estimates probability of usefulness from its fitness bounds and current fitness; exhausted nodes return zero.
+
+C3-35. `AndBIT::expand` applies backward chaining expansions to a FocusSet; `AndBIT::select_leaf` samples leaves by computed weights.
+
+### ControlPolicy
+
+C3-36. `opencog/ure/backwardchainer/ControlPolicy.h` / `.cc` implement backward-chaining control-rule selection.
+
+C3-37. If no active control rules are found, `ControlPolicy` falls back to default rule TVs. If active control rules exist, it uses `MixtureModel` to derive success TVs, then `ActionSelection` to choose rules.
+
+C3-38. `ControlPolicy` has explicit support for expansion control rules and recognizes `EvaluationLink` / `ExecutionLink` structures such as `URE:BC:expand-and-BIT` and `URE:BC:preproof-of`.
+
+### BackwardChainer
+
+C3-39. `opencog/ure/backwardchainer/BackwardChainer.h` accepts optional `control_as` and `focus_set` parameters. The comment states focus-set support is not implemented for BC.
+
+C3-40. `BackwardChainer.cc` runs an iterative loop of `expand_bit`, `fulfill_bit`, and `reduce_bit`; expansion selection uses weighted BIT probabilities.
+
+### ForwardChainer / SourceSet / SourceRuleSet
+
+C3-41. Current forward chaining uses:
+
+- `SourceSet`: current source weights from TV fitness (`strength * confidence * complexity_factor`)
+- `SourceRuleSet`: source/rule pairs weighted by second-order TVs
+- Thompson sampling over source/rule pair TVs
+
+C3-42. This is inference-control code, but not ECAN code. It is a probabilistic control stack over rule/source quality estimates, not attention-currency dynamics.
+
+### Test status
+
+C3-43. URE's active tests are much thinner than its architecture:
+
+- `tests/ure/CMakeLists.txt` actively includes `BetaDistributionUTest`, `ActionSelectionUTest`, and `UtilsUTest`.
+- Forward-chainer tests are present but `ForwardChainerUTest` is commented out in the subdirectory CMake.
+- Backward-chainer tests are disabled; the CMake file contains a note that code bit-rotted and tests no longer work / URE is no longer supported.
+
+C3-44. Therefore the URE control stack is historically substantial, but its current maintenance/test status is degraded. Do not cite current URE as a healthy maintained inference-control runtime without this caveat.
+
+## Q4: Legacy C++ PLN relationship to URE and ECAN
+
+C3-45. `pln-singnet` is a URE-dependent PLN rulebase/library, not a standalone attention-controlled PLN engine.
+
+C3-46. Root `CMakeLists.txt` requires URE (`FIND_PACKAGE(URE 1.0.0 CONFIG REQUIRED)`) and includes URE headers/libraries.
+
+C3-47. `opencog/pln/README.md` says the current implementation uses URE and that PLN is represented as one or more rule bases configured by Scheme functions and Scheme rules.
+
+C3-48. `opencog/pln/pln-utils.scm` exposes PLN wrappers around URE:
+
+- `pln-set-attention-allocation` wraps `ure-set-attention-allocation`
+- `pln-set-maximum-iterations` wraps URE maximum iterations
+- `pln-set-complexity-penalty` wraps URE complexity penalty
+- `pln-fc` wraps `cog-fc`
+- `pln-bc` wraps `cog-bc`
+
+C3-49. Because URE's attention-allocation path is dead at current HEAD, `pln-set-attention-allocation` is a dead or compatibility wrapper, not active ECAN control.
+
+C3-50. Legacy PLN configs repeatedly set `URE:attention-allocation` to `0` / false. This is consistent with no active ECAN-mediated PLN execution.
+
+C3-51. Repo grep in `pln-singnet` did not find active direct use of `AttentionBank`, `AttentionalFocus`, `AttentionValue`, or `cog-bind-af` as an ECAN runtime bridge.
+
+C3-52. Legacy PLN does contain substantial PLN rule surfaces under `opencog/pln/rules/` and meta-rules under `opencog/pln/meta-rules/`, but inference control is delegated to URE.
+
+## Q5: Inference-control meta-learning examples in legacy PLN
+
+C3-53. Source 3 finds an important design/example corpus not present in the URE clone itself: `pln-singnet/examples/pln/inference-control-meta-learning/`.
+
+C3-54. The README explicitly says it is not recommended for new users and is a toy experiment. It describes the loop:
+
+1. Run backward inferences.
+2. Create a corpus of inference traces.
+3. Run the pattern miner and other learning algorithms.
+4. Build inference-control rules from those patterns.
+5. Repeat while reusing learned rules to speed the backward chainer.
+
+C3-55. The same README says "No ECAN is necessary." This is strong evidence that the mature URE inference-control direction was trace/control-rule meta-learning, not ECAN currency integration.
+
+C3-56. `distributed-inference-control-learning.md` describes the conceptual distributed version:
+
+- Run reasoning over a collection of problems.
+- Record traces of every URE decision.
+- Mine hidden patterns in traces.
+- Turn patterns into control rules so URE becomes more efficient.
+
+C3-57. `icl.scm` invokes:
+
+```scheme
+(pln-bc target #:trace-as trace-as #:control-as control-as)
+```
+
+This directly exercises URE's backward-chaining trace/control-atomspace path.
+
+C3-58. `pln-rb.scm` sets backward-control parameters:
+
+- `URE:maximum-iterations`
+- `URE:complexity-penalty`
+- `URE:BC:MM:compressiveness`
+- `URE:BC:MM:complexity-penalty`
+
+C3-59. This corpus is the executable/documentary counterpart to URE's `ActionSelection`, `ThompsonSampling`, `MixtureModel`, `ControlPolicy`, and BIT architecture.
+
+C3-60. It is not evidence of ECAN-PLN integration. It is evidence that URE/PLN pursued a separate Bayesian/control-rule meta-learning route.
+
+## Comparison to PLN cluster Source 7 (`chaining/`)
+
+C3-61. Source 7's "only about 5 of 16 URE features survived into `chaining/`" finding is supported by this audit.
+
+C3-62. URE has full C++ implementations of:
+
+- beta-distribution TV uncertainty
+- Thompson sampling
+- action selection
+- mixture-model control-rule aggregation
+- backward inference tree structures
+- control-policy rule selection
+- trace/control atomspace plumbing
+- forward source/rule pair scoring
+
+C3-63. `chaining/` sketches or experiments with some of these concepts, but does not carry the mature C++ stack wholesale.
+
+C3-64. The ECAN/attention question should remain separate from the URE-control question:
+
+- ECAN path: attention currency, STI/LTI, rent/diffusion/Hebbian dynamics.
+- URE path: Bayesian rule/source/action selection, BIT, traces, meta-learned control rules.
+
+C3-65. Historical URE briefly connected to STI source selection, but the durable URE control architecture is Bayesian/control-rule-based rather than ECAN-agent-based.
+
+## Contributor / cohort notes
+
+C3-66. URE `git shortlog -sne --all` top contributors from local repo:
+
+- Linas Vepstas: 6084 commits plus alias rows (`Linas Vepstas`, `Linas Vepstas` with diacritic, `linas`)
+- Nil Geisweiller: 3141 plus alias rows (`ngeiswei`, `Nil Geiswiller`, `nilg`)
+- Jared Wigmore: 704
+- Joel Pitt: 595 plus alias row
+- Cosmo Harrigan: 496
+- Misgana Bayetta: 375
+- Sebastian Ruder: 219
+
+C3-67. Sebastian Ruder does appear in URE history with 219 commits in the local shortlog. I did not verify identity beyond email/name in git; if the wiki wants to assert "the well-known NLP researcher", that needs an external identity check or source beyond this repo.
+
+C3-68. `pln-singnet` contributor lineage is dominated by OpenCog-era contributors: Linas Vepstas, Nil Geisweiller, Joel Pitt, Misgana Bayetta, Jared Wigmore, Shujing Ke, Cosmo Harrigan, and others.
+
+C3-69. Source 3 is therefore mostly OpenCog-era work, not the iCog-Labs-Dev ECAN-on-MeTTa cohort from Sources 1-2 and not the trueagi-io Local-Rule PLN cohort from the modern PLN cluster.
+
+## Reconciled cluster implications
+
+C3-70. The strongest correction to the emerging ECAN narrative is that "ECAN was never executable-coupled to PLN/URE" needs one qualification: URE once had an executable STI-based source selector. That selector was narrow and later removed.
+
+C3-71. Better wording:
+
+> OpenCog URE historically had a narrow STI-based source-selection mode for forward chaining, but current URE and legacy PLN no longer wire it through. The richer ECAN control-layer architecture was not productionized as an executable PLN/URE inference-control loop; current evidence points to dead config hooks, historical residues, and a separate Bayesian/control-rule URE control stack.
+
+C3-72. This also reframes the PLN cluster finding. Modern Hyperon PLN did not simply drop a working ECAN-PLN runtime. The current URE/legacy PLN evidence suggests the practical control lineage had already diverged: URE invested in Thompson sampling, mixture models, BITs, and trace/control-rule meta-learning, while ECAN remained largely paper-coupled or narrowly represented by STI source selection.
+
+C3-73. For wiki synthesis, keep three distinct concepts separate:
+
+- ECAN attention dynamics: rent, wages, diffusion, Hebbian attention links, STI/LTI currency.
+- URE inference control: Thompson sampling, mixture models, BIT, source/rule selection, control rules.
+- PLN rule semantics: PLN rule formulas, truth values, rule bases, forward/backward chaining.
+
+C3-74. The old architecture wanted these to interact. Source 3 does not show that they formed a complete executable integration.
+
+## Standing-correction candidates
+
+C3-75. Add to ECAN pilot standing corrections: `source_selection_mode::STI` in URE is not merely a dead enum. It was historically implemented and later removed/unwired. Cite `0a0b09912`, `0b744dbab`, and `5a5b7785d`.
+
+C3-76. Add: current `URE:attention-allocation` is a dead Scheme/config hook. Do not cite it as active ECAN coupling unless a separate source shows a current reader.
+
+C3-77. Add: `pln-set-attention-allocation` in legacy PLN is only a wrapper around URE's dead hook.
+
+C3-78. Add: legacy PLN's inference-control meta-learning examples explicitly say "No ECAN is necessary" and implement a trace/control-rule path, not attention-currency control.
+
+C3-79. Add: Sebastian Ruder appears in URE git shortlog, but identity beyond git author name/email is unverified.
+
+## Open questions for reconciliation / Source 4
+
+C3-80. Was `source_selection_mode::STI` ever exposed through Scheme APIs to PLN users before removal? I verified the C++ constructor path and current dead state; I did not fully reconstruct every historical Scheme binding across 2016-2019.
+
+C3-81. Did OpenCog monorepo history before the split contain any stronger AttentionBank-to-URE coupling than the standalone current repos preserve? The local current monorepo is trimmed, so answering this may require older monorepo tags or full historical checkout.
+
+C3-82. Did `attention-bank.scm`'s `cog-bind-af` utility ever get consumed by URE in the monorepo era? Source 2 confirmed it exists as a URE-facing pattern matcher; Source 3 current standalone URE does not consume it.
+
+C3-83. Should the ECAN cluster Source 4 be old monorepo archaeology or the modern `metta-attention` / `attention` wiki-edit pass? If the goal is final narrative accuracy, one short old-monorepo archaeology pass would be valuable before wiki updates.
+
+## Commands / verification summary
+
+C3-84. Local grep/current-code audit covered:
+
+- `source_selection_mode`, `TV_FITNESS`, `STI`, `AttentionBank`, `AttentionalFocus`, `AttentionValue`, `cog-bind-af`, `URE:attention-allocation` in URE.
+- URE `ForwardChainer`, `SourceSet`, `SourceRuleSet`, `UREConfig`, `URESCM`, `BetaDistribution`, `ThompsonSampling`, `ActionSelection`, `MixtureModel`, `ControlPolicy`, `BIT`, `BackwardChainer`.
+- legacy PLN `CMakeLists`, README, `pln-utils.scm`, configs, examples, and inference-control meta-learning directory.
+
+C3-85. Git-history audit used:
+
+- `git log --all -S 'source_selection_mode'`
+- `git show 0a0b09912`
+- `git show 0b744dbab`
+- `git show 5a5b7785d`
+
+C3-86. No build/test commands were run. This pass is source archaeology and architecture extraction only.
+

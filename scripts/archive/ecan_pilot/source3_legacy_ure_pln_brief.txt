@@ -1,0 +1,305 @@
+# Source 3 — Legacy URE + Legacy C++ PLN — Cross-Model Extraction Brief
+
+**Pilot:** ECAN / Attention cluster — Source 3 of N
+**Source target:** **Two paired targets** (single brief, single reconciliation):
+- **3a.** `opencog/ure` legacy URE C++ runtime
+- **3b.** `opencog/pln` legacy C++ PLN (via `singnet/pln` fork as the local checkout)
+
+**Brief author:** Claude orchestrator
+**Brief date:** 2026-04-26
+**No wiki writes during extraction. No repo edits.**
+
+---
+
+## Why this source, why now
+
+Sources 1 + 2 reconciliation answered: **the PLN-cluster "missing inference-control layer" was already absent at the executable-code level in OpenCog Classic ECAN.** ECAN exposed `cog-bind-af` as a URE-facing utility but did not drive PLN inference control.
+
+Codex and Gemini both recommended Source 3 = `opencog/opencog` monorepo to verify whether ECAN-PLN executable coupling **ever** existed in the pre-split codebase, or whether the 2009 paper's control-layer aspirations were "purely theoretical."
+
+**Orchestrator finding during scoping:** the local `opencog/opencog` monorepo at HEAD `ae68bda` (2025-08-26, Linas Vepštas, "Fix broken header includes") has been **fully trimmed** — only `nlp/`, `ghost/`, `eva/`, `openpsi/`, `cython/`, `neighbors/` subdirectories remain. The historical `attention/`, `pln/`, `ure/` subdirectories were split out into separate repos years ago and are no longer present in the monorepo at HEAD. The de-facto pre-split source is therefore distributed across three legacy standalone repos:
+
+- `opencog/attention` — Source 2 (already audited)
+- `opencog/ure` — Source 3a (this brief)
+- `opencog/pln` — Source 3b (this brief, via local `pln-singnet/` fork)
+
+**Smoking-gun preview from orchestrator scoping:** `opencog/ure/opencog/ure/forwardchainer/ForwardChainer.h:40-43` declares an enum `source_selection_mode { TV_FITNESS, STI, UNIFORM }`. The `STI` value is the architectural hook for ECAN coupling — URE forward chaining could have selected inference sources weighted by their STI (Short-Term Importance, the ECAN attention currency). However, the actual weight calculation at `SourceSet.cc:38-54` (`calculate_weight`) **only implements the `complexity_factor * strength * confidence` (TV_FITNESS) variant**; the implementation comment says "for now only one fitness function is hard coded // TODO: 1. Support more fitness functions". The `STI` enum value is **declared but never wired up**.
+
+This is the cluster-narrative-deciding finding. Source 3's job is to verify rigorously:
+
+1. Is `source_selection_mode::STI` actually dead enum, or did it ever have a working implementation that was later removed?
+2. Are there other ECAN-coupling architectural hooks in URE/PLN that were left dead?
+3. Does any URE/PLN code import AttentionBank, AttentionalFocus, or AttentionValue headers?
+4. Did URE/PLN ever drive ECAN agents (write back STI)? Or was the data flow always one-way (ECAN ← AtomSpace, URE ← AtomSpace, no URE ↔ ECAN direct path)?
+5. What was the canonical PLN/URE inference-control architecture (MixtureModel, ThompsonSampling, BetaDistribution, ActionSelection — all visible at `opencog/ure/opencog/ure/`), and how does it relate to the PLN cluster Source 7 finding that ~5/16 features survived in modern MeTTa `chaining/`?
+
+The answer to #1 alone, if it confirms dead enum, **closes** the cluster-narrative open item: "the lost glue never existed; the 2009 control-layer aspiration was architected but never wired up; both Classic and Hyperon are continuations of an unrealized intent."
+
+---
+
+## Source 3a identification — legacy URE
+
+- **Repository (local):** `E:\GitHub\hyperon reference\ure\`
+- **Origin remote:** `https://github.com/opencog/ure.git`
+- **Audited HEAD:** `cec5509762fac3c20046fff7d29284e4ef07fdde` (short `cec5509`)
+- **HEAD commit:** "Remove usage of obsolete API" by Linas Vepštas on 2025-09-23 — recent maintenance/modernization commit, not new feature work.
+- **Drift since scoping:** orchestrator pulled before brief; if agents pull later, **report new HEAD and any divergence**.
+
+### Repo map (verified by orchestrator)
+
+```
+ure/
+├── opencog/
+│   ├── ure/
+│   │   ├── ActionSelection.cc / .h         # Inference-control: action selection (PLN cluster Source 7)
+│   │   ├── BetaDistribution.cc / .h        # Inference-control: Beta distribution sampling
+│   │   ├── MixtureModel.cc / .h            # Inference-control: Mixture Model (PLN cluster Source 7)
+│   │   ├── Rule.cc / .h                    # Rule definition + matching
+│   │   ├── ThompsonSampling.cc / .h        # Inference-control: Bayesian Thompson sampling (PLN cluster Source 7)
+│   │   ├── UREConfig.cc / .h               # Configuration
+│   │   ├── URELogger.cc / .h
+│   │   ├── URESCM.cc                       # Scheme bindings entry
+│   │   ├── Utils.cc / .h
+│   │   ├── version.h
+│   │   ├── backwardchainer/                # Backward chaining engine
+│   │   ├── forwardchainer/
+│   │   │   ├── ForwardChainer.cc / .h      # ★ source_selection_mode::STI declared at .h:42 ★
+│   │   │   ├── Source.cc / .h              # Single source (one inference candidate)
+│   │   │   ├── SourceSet.cc / .h           # Source collection + weighting
+│   │   │   ├── SourceRuleSet.cc / .h
+│   │   │   └── ...
+│   │   ├── types/                          # Type definitions
+│   │   ├── cython/                         # Python bindings
+│   │   └── scm/                            # Scheme bindings
+├── examples/
+├── tests/                                  # Test suite
+├── lib/, scripts/, doc/                    # Build/scripts/docs
+├── AGENTS.md / CLAUDE.md / GEMINI.md       # Untracked local orientation files (do not rely on)
+├── CMakeLists.txt, README.md
+```
+
+### URE §Git-history (pre-populated; do not re-run)
+
+`git shortlog -sne --all` top contributors:
+
+| Rank | Commits | Author | Email | Cohort |
+|---|---|---|---|---|
+| 1 | 6084 | Linas Vepstas | linasvepstas@gmail.com | OpenCog founder |
+| 2 | 3141 | Nil Geisweiller | ngeiswei@gmail.com | URE primary architect / trueagi-io PLN cluster |
+| 3 | 867 | Linas Vepštas | linasvepstas@gmail.com | (alias of #1; non-ASCII spelling) |
+| 4 | 704 | Jared Wigmore | jared.wigmore@gmail.com | OpenCog Classic era |
+| 5 | 595 | Joel Pitt | joel@joelpitt.com | OpenCog Classic era |
+| 6 | 563 | linas | (no email) | (alias of #1) |
+| 7 | 496 | Cosmo Harrigan | cosmo.harrigan@singularityu.org | **Diffusion-subsystem author from Source 2; same person** |
+| 8 | 430 | shujingke | rainkekekeke@gmail.com | OpenCog era |
+| 9 | 388 | ngeiswei | ngeiswei@gmail.com | (alias of #2) |
+| 10 | 375 | Misgana Bayetta | misgana.bayetta@gmail.com | OpenCog Ethiopia / iCog (also in Source 2) |
+| 11 | 357 | William Ma | (Github noreply) | OpenCog era |
+| 12 | 243 | Jade O'Neill | jadicorn@gmail.com | OpenCog era |
+| 13 | 219 | Sebastian Ruder | ruder.sebastian@gmail.com | (note: this is **the** Sebastian Ruder, NLP researcher) |
+| 14 | 202 | Amen Belayneh | amenbelayneh@gmail.com | OpenCog Ethiopia (also in Source 2) |
+| 15 | 193 | Zhenhua Cai | czhedu@gmail.com | OpenCog era |
+
+Deduplicated headline (top-tier):
+- **Linas Vepštas:** 6084+867+563 = **7514 commits** (overwhelmingly dominant maintainer)
+- **Nil Geisweiller:** 3141+388+other aliases = **~3500+ commits** (URE primary architect; cross-cluster overlap with trueagi-io PLN)
+- **Cosmo Harrigan:** 496 (cross-Source-2 overlap — same person who authored attention/`ImportanceDiffusionBase.cc`)
+- **Misgana Bayetta + Amen Belayneh:** ~575 combined (OpenCog Ethiopia, cross-Source-2 overlap)
+
+**Recent history (last 10 commits):** mostly Linas Vepštas modernization work — "Remove usage of obsolete API", "Modernize CMakefile", "Convert TruthValue to modern API", "Port to cmake-4.0 Python3 API". **No substantive new feature development in the recent commits.** URE is in maintenance-only state.
+
+---
+
+## Source 3b identification — legacy C++ PLN
+
+- **Repository (local):** `E:\GitHub\hyperon reference\pln-singnet\`
+- **Origin remote:** `https://github.com/singnet/pln.git`
+- **Upstream remote (configured):** `https://github.com/opencog/pln.git`
+- **Audited HEAD:** `a0983ada8` (2021-10-28, "Merge pull request #42 from tanksha/conditionalConjunction") — **last commit 4+ years ago. The legacy C++ PLN is retired/dormant.**
+
+### Repo map (orchestrator-verified; agents to confirm)
+
+```
+pln-singnet/
+├── opencog/                # C++ source (rules, formulas, etc.)
+├── examples/
+├── tests/
+├── lib/
+├── CMakeLists.txt
+├── README.md
+├── AUTHORS
+└── LICENSE
+```
+
+(Brief author did not deep-survey the PLN tree; agents to inventory `opencog/` and report subdirs and source-file counts.)
+
+### PLN-legacy §Git-history (suggested for agents; not pre-populated to keep brief size bounded)
+
+Agents should run `git shortlog -sne --all` at HEAD `a0983ada8` and report top contributors. Expected pattern: Linas Vepštas + Nil Geisweiller dominant, with OpenCog Classic-era contributors.
+
+**Hypothesis to verify:** the legacy C++ PLN was the original PLN runtime that the modern Local-Rule MeTTa PLN (PLN cluster Source 3, trueagi-io/PLN, `lib_pln.metta`) was meant to replace. If so:
+- Are there any inference-control hooks that the modern MeTTa rewrite preserved or dropped?
+- Are there any AttentionBank / AttentionalFocus references that the modern rewrite preserved?
+- Did legacy C++ PLN integrate with URE (dependency import), or did it have its own chainer?
+
+---
+
+## Comparison targets
+
+### Q1 (highest priority): Was `source_selection_mode::STI` ever implemented?
+
+**Orchestrator scoping evidence (verbatim from `opencog/ure/opencog/ure/forwardchainer/SourceSet.cc:38-54`):**
+```cpp
+double calculate_weight(const Handle& bdy, double cpx_fctr)
+{
+    // Calculate weight, for now only one fitness function is hard
+    // coded
+    //
+    // complexity_factor * strength * confidence
+    //
+    // The minimum value is 1e-16 to not ignore completely the source
+    // when the it is a default TV.
+    //
+    // TODO:
+    // 1. Support more fitness functions
+    // 2. Explicitely turn the fitness into a probability of success
+    TruthValuePtr tv = TruthValueCast(bdy->getValue(truth_key()));
+    double fitness = tv->get_mean() * tv->get_confidence();
+    return std::max(1e-16, cpx_fctr * fitness);
+}
+```
+
+**The `STI` enum value at `ForwardChainer.h:42` is never read by `calculate_weight`.** The function only returns `cpx_fctr * tv->get_mean() * tv->get_confidence()`.
+
+**Agents to verify rigorously:**
+- Run `git log -p --all -- opencog/ure/forwardchainer/SourceSet.cc opencog/ure/forwardchainer/ForwardChainer.cc opencog/ure/forwardchainer/ForwardChainer.h` and look for any historical commit that wired up STI weighting and was later removed. (If yes: cite SHA + author + date.)
+- Repo-wide `rg "source_selection_mode|::STI\b|sti.*weight|STI.*weight|attentionvalue|AttentionBank|AttentionalFocus"` across active C++ source. Report all hits.
+- Check `UREConfig.cc/.h` — is there a config option for source-selection mode? Is it parameterized at the URE config level?
+- Check `examples/` and `tests/` — does any test or example use STI-weighted source selection? If yes: how does it set that mode?
+
+**Outcome interpretation:**
+- **If `STI` is confirmed dead enum** (declared, no implementation path, no historical implementation in git log): the cluster-narrative finding is **"the lost glue never existed in executable code."** This closes the missing-control-layer question definitively. The 2009 paper's ECAN-PLN coupling was **architected but never realized**.
+- **If `STI` was once implemented and later removed:** find the commit, attribute it, and report. This becomes a **"the lost glue existed and was deliberately removed"** finding — different cluster narrative.
+- **If `STI` is wired up via a path the orchestrator missed** (e.g., in a base class, via a config callback): cite the path. This is a **"the lost glue is alive but rarely used"** finding.
+
+### Q2: ECAN coupling beyond the dead enum — broader URE audit
+
+Beyond the `source_selection_mode::STI` enum, repo-wide grep targets:
+
+| Token | Expected | Interpretation |
+|---|---|---|
+| `AttentionBank` (case-sensitive) | 0 hits if no executable coupling | Any non-zero hit needs file:line + context |
+| `AttentionalFocus` (case-sensitive) | 0 hits or comment-only | Any non-zero hit needs file:line + context |
+| `AttentionValue` (case-sensitive) | 0 hits or comment-only | AtomSpace AV is a different layer; URE shouldn't reference unless reading STI |
+| `attentionvalue.h` (header include) | 0 hits | Any include is direct C++ coupling |
+| `\bSTI\b` / `\bLTI\b` (word-boundary, case-sensitive) | Few hits, likely just the `source_selection_mode` enum | Anything else is suspicious-novel; verify and report |
+| `cog-bind-af` | 0 hits in C++; possibly some Scheme-level callback | URE-facing Scheme utility from Source 2 — verify if URE actually invokes it |
+| `attention.scm` `default-param-values.scm` | 0 hits in URE source | URE shouldn't depend on attention's Scheme layer |
+
+**Outcome interpretation:** if all hits are zero or comment-only, **URE has no executable ECAN coupling**, full stop. The cluster verdict locks in.
+
+### Q3: PLN cluster Source 7 control architecture in URE
+
+PLN cluster Source 7 (URE C++ legacy → modern `chaining/`) found that **only ~5 of 16 URE control features survived in modern MeTTa `chaining/` at toy scale**. Verify which features actually exist in URE C++ at HEAD `cec5509`:
+
+- `MixtureModel.cc/.h` — what does it do? Used by what?
+- `ThompsonSampling.cc/.h` — Bayesian rule selection? Used by `ForwardChainer` or `BackwardChainer`?
+- `BetaDistribution.cc/.h` — used as a prior? Used by Thompson?
+- `ActionSelection.cc/.h` — what does it do? PLN-rule action-selection? Or generic decision-theoretic action?
+- `Rule.cc/.h` — rule data structure
+- Forward chainer: `ForwardChainer.cc/.h`, `Source.cc/.h`, `SourceSet.cc/.h`, `SourceRuleSet.cc/.h`
+- Backward chainer: `backwardchainer/` subdirectory contents
+
+Map each to the PLN cluster Source 7 reconciliation feature list (if available; reference `scripts/archive/pln_pilot/source7*/findings_reconciled_crossmodel.txt`). For each: present in URE C++ HEAD, present in modern MeTTa `chaining/`, present in modern MeTTa `PLN/`. Three-axis comparison.
+
+**Outcome interpretation:** confirms or refutes the PLN cluster Source 7 finding at the C++ ground-truth level.
+
+### Q4: Legacy C++ PLN inventory + ECAN coupling check
+
+Same grep targets as Q2, applied to `pln-singnet/` (HEAD `a0983ada8`).
+
+Specific deliverables:
+- Inventory `opencog/` subdirectory layout in `pln-singnet/` and report top-level subdirs
+- Repo-wide `rg "AttentionBank|AttentionalFocus|AttentionValue|\\bSTI\\b|cog-bind-af"` — report hits
+- Did legacy C++ PLN have its own chainer, or did it import URE? Look for `#include "opencog/ure/..."` directives.
+- Did legacy C++ PLN have inference-control architecture (MixtureModel, ThompsonSampling) that paralleled URE? Or did it delegate control to URE?
+- Compare with modern MeTTa Local-Rule PLN (trueagi-io/PLN; PLN cluster Source 3) — what was preserved, what was dropped?
+
+### Q5: PLN cluster Source 7 carryover sanity check
+
+PLN cluster Source 7 finding: chaining/ preserves ~5/16 URE control features. Verify by listing **all** control-architecture C++ files at URE HEAD `cec5509`:
+
+Then map to chaining/ MeTTa equivalents (if extracted in PLN cluster Source 7 reconciliation). The Source 3 deliverable here is: **does the URE C++ source-of-truth list match the PLN cluster Source 7 reconciliation's "16 features" inventory?**
+
+If the inventory differs substantially, flag for re-reconciliation of PLN cluster Source 7. (Not a wiki edit; just a flag for cluster integrity.)
+
+## Required output format
+
+Per cluster-pilot convention. For each major component (URE forwardchainer, URE backwardchainer, URE control modules, PLN-legacy major modules), structured fields:
+
+```
+### <Module name>
+
+**Repo:** ure or pln-singnet
+**Path:** <relative path>
+**LOC:** approx
+**Implements:** what concept(s)
+**ECAN-coupling status (one of):**
+- COUPLED — actively reads/writes AttentionBank/STI/AV
+- ARCHITECTED-DEAD — declares hooks (enums, configs) for ECAN coupling but doesn't wire up
+- NEVER-COUPLED — no ECAN reference anywhere
+
+**Code evidence:** file:line citations
+**Cross-references:** which other modules use this; whether tests exercise it
+```
+
+After per-module extraction, produce:
+
+1. **Q1 verdict** — `source_selection_mode::STI` status: dead enum / once implemented and removed / wired-up-via-missed-path. Cite git log + grep results.
+2. **Q2 verdict** — broader URE ECAN-coupling: list all hits for the grep tokens; classify each as actual coupling vs comment-only.
+3. **Q3 verdict** — URE inference-control architecture inventory: what's present, what's exercised by tests, what's used by PLN.
+4. **Q4 verdict** — legacy C++ PLN inventory + ECAN-coupling status; URE dependency.
+5. **Q5 verdict** — PLN cluster Source 7 carryover sanity check; flag for re-reconciliation if needed.
+6. **Cluster-narrative impact** — given Q1-Q4 findings, does the "missing inference-control layer was already absent in OpenCog Classic" finding lock in, or does it need refinement?
+7. **Discovered publications** — track paper references in C++ comments, README files, `doc/`. PLN cluster Source 7 referenced multiple papers (MixtureModel, Thompson, etc.). Look for in-source citations.
+8. **Author attribution** — verify against `git shortlog -sne --all` for both repos. Cosmo Harrigan and Sebastian Ruder appear in URE's top contributors — this is unusual and warrants verification (Ruder is the well-known NLP researcher; was he involved in OpenCog?).
+9. **Standing-corrections candidates** — surface any cluster-narrative findings.
+10. **Runnability check** — both repos depend on AtomSpace + CogUtil. Don't run; report build infrastructure only.
+
+## Cross-model lane assignments
+
+All three models read both repos. Emphasis hints (not exclusions):
+- **Codex / Gemini** — direct repo grep for ECAN-coupling tokens; rigorous git-log audit for `source_selection_mode::STI` historical implementation. Math/code axis.
+- **Claude** — narrative synthesis (does the cluster narrative lock in?), PLN cluster Source 7 carryover cross-reference.
+- All three: Q1 verdict is mandatory and grep-cited.
+
+## Standing corrections to carry into the bundle
+
+1. **Source 2 carryover:** ECAN was **architecturally/paper-coupled** to PLN/URE but exposed only `cog-bind-af` URE-facing utility — no executable inference-control coupling. Source 3 must verify the URE/PLN side of this.
+2. **PLN cluster Source 7 carryover:** chaining/ preserves ~5/16 URE control features. Source 3 should provide the C++ ground-truth feature inventory for cross-check.
+3. **One writer only**: orchestrating model writes findings files; advisors do not.
+4. **Verify model "Verified" claims** against the source — Gemini drift on identity-between-artifacts and equation-source attribution (V0-3 in Source 1, V0-3 in Source 2).
+5. **Local orientation docs:** `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` exist in `ure/`. Treat as unreviewed.
+6. **Scope discipline:** Source 3 is a **two-target paired audit** (URE + legacy PLN), not three sources. Reconciliation is one file.
+
+## Output paths
+
+Write per-model findings to:
+- `E:\GitHub\Magi-AGI\hyperon-wiki\scripts\archive\ecan_pilot\source3_legacy_ure_pln\findings_<model>.txt`
+
+Create directory if missing. After all 3 model passes land, the orchestrator writes `findings_reconciled_crossmodel.txt`.
+
+## Rules
+
+- **No wiki writes.**
+- **No repo file edits.**
+- **Do not run tests** unless separately approved.
+- Read each cited C++ file verbatim — do NOT summarize from filename.
+- Cite file:line for every concrete equation/claim.
+- Pre-populated §Git-history above is authoritative for URE chronology and cohort — do not re-run `git shortlog --all` on URE unless adding detail (e.g., per-file `git blame` on the `source_selection_mode` enum line). PLN-legacy §Git-history not pre-populated; agents should run on PLN-legacy.
+- Follow standing rule `feedback_attribution_verify_against_git.md` for any author/contributor claim.
+- If write blocked (sub-agent .md guardrail), use .txt + inline-paste fallback.
+
+---
+
+*End of Source 3 brief — ECAN cluster pilot.*

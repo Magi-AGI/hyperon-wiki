@@ -1,0 +1,1309 @@
+# Source 1 — metta-attention/ — Claude Single-Pass Findings
+
+**Model:** Claude Opus 4.7 (1M context)
+**Date:** 2026-04-25
+**Audited HEAD:** `67cd52564ff42ec3c208184860409c60f16a74bf` (short `67cd525`, "Merge PR #207 from iCog-Labs-Dev/dev2", 2026-03-22, Birhane)
+**Cluster:** ECAN / Attention pilot, Source 1 of N
+**Brief:** `scripts/archive/ecan_pilot/source1_metta_attention_brief.txt`
+
+**Source-of-truth note:** local sandbox blocked Read/Glob/Grep/Bash/PowerShell on
+`E:\GitHub\hyperon reference\metta-attention\` for this session; all file
+contents below were retrieved verbatim via WebFetch from
+`raw.githubusercontent.com/iCog-Labs-Dev/metta-attention/<HEAD>/<path>`.
+GitHub code-search and contributor-graph endpoints both required
+authentication and could not be queried, so the negative-grep audit was
+performed by reading every imported module's full source (the import graph is
+closed within these files) and searching for the target tokens by eye in the
+returned text. Codex / Gemini passes — which presumably have direct repo
+access — should re-run `git shortlog -sne` and `rg` for the same tokens to
+double-check what follows.
+
+**Per-deliverable claim counts (this file):**
+- Per-module structured fields (12 modules): claims 1–47
+- Equation-realization table: claims 48–59
+- Conservation-law audit: claims 60–66
+- ECAN–PLN integration audit: claims 67–73
+- AF vs WA variant comparison: claims 74–79
+- runner-Def agent loop audit: claims 80–84
+- Runnability check: claims 85–89
+- Standing-corrections candidates: claims 90–95
+- Discovered publications: claims 96–98
+- Author attribution: claims 99–100
+- Cluster headline answer + narrative: claims 101–105
+
+Total: 105 numbered claims.
+
+================================================================================
+CLUSTER HEADLINE QUESTION (answered up front; defended in body)
+================================================================================
+
+**Q: Has the ECAN attention-currency mechanism (rent / wages / Hebbian update /
+diffusion stochastic from the 2009 ECAN paper) actually been rebuilt in MeTTa,
+or is `metta-attention/` a structural scaffold that mirrors OpenCog Classic
+ECAN at the directory level without realizing the equations?**
+
+**A (Claude single-pass):** It is **a working currency-economy runtime that
+implements about half of the 2009 paper's mechanics, with three of the four
+canonical equations replaced by simpler engineered surrogates and one (the
+stochastic-diffusion sigmoid) absent entirely.** The repo is *not* empty
+scaffolding — there is real arithmetic, real STI/LTI fund accounting, real
+agent loops, real co-located tests, and a working "shifting and drifting"
+experiment. But it is also *not* a faithful port of the 2009 paper:
+- **Rent**: implemented as a fund-difference proportional formula, NOT the
+  paper's `Rent * max(0, log2(si / recentMaxSTI))^2`.
+- **Wages**: implemented as the paper's clamped-fund-difference formula,
+  closely faithful.
+- **Hebbian update**: implemented as a normalized-STI conjunction PLUS a
+  PLN-book revision merge, NOT the paper's
+  `c_ij' = ConjDecay * (si*sj/recentMaxSTI^2) + (1 - si*sj/recentMaxSTI^2) * c_ij`.
+- **Stochastic diffusion (focus-boundary sigmoid)**: ABSENT; the
+  AF-vs-WA split substitutes a categorical "are you in the AF list?"
+  threshold for the paper's smooth `0.5*(1 + tanh(shape*(si - FocusBoundary)))`
+  probability.
+
+Compared to the PLN-cluster pilot's URE/chaining finding (where the inference
+control architecture was simplified down to toy stubs in `chaining`),
+metta-attention is **substantially more complete than chaining was relative to
+URE**. ECAN in MeTTa is at "real but engineered" level, not "stub" level. But
+the shape of the loss is the same: paper formulas were replaced with simpler
+fund-bookkeeping that has the right *sign* but not the right *math*.
+
+The "missing control layer" gap from the PLN pilot is **NOT closed** by this
+source — there is zero PLN integration code anywhere in the import graph
+(see ECAN-PLN integration audit below). metta-attention is a self-contained
+attention runtime that nobody currently wires to PLN.
+
+================================================================================
+1. PER-MODULE STRUCTURED FIELDS
+================================================================================
+
+### Module: AttentionParam.metta
+
+**Path:** `attention/AttentionParam.metta`
+**LOC:** ~62
+**Imports:** none (foundational)
+**Implements (from 2009 paper):** the parameter-bank concept; this file
+populates the `&attentionParam` MeTTa space with constants. Maps roughly to
+ECAN's `AttentionParameters` and `AttentionBank` config.
+
+**Code-implementation status:** IMPLEMENTED — full functional implementation
+of a parameter store with `getAttentionParam`, `updateAttentionParam`,
+`getAllAttentionParams`. All 37 ECAN constants are present.
+
+**Code evidence:**
+- `attention/AttentionParam.metta:1` `!(bind! &attentionParam (new-space))`
+- 37 named constants on lines 2–37: `AF_SIZE 0.2`, `MIN_AF_SIZE 500`,
+  `MIN_STI 100000`, `MAX_STI 0`, `AFB_DECAY 0.05`, `MAX_AF_SIZE 1000.0`,
+  `AFRentFrequency 5.0`, `FORGET_THRESHOLD 0.05`,
+  `HEBBIAN_MAX_ALLOCATION_PERCENTAGE 0.05`, `MAX_SPREAD_PERCENTAGE 0.4`,
+  `DIFFUSION_TOURNAMENT_SIZE 5.0`, `RENT_TOURNAMENT_SIZE 5.0`,
+  `TC_DECAY_RATE 0.1`, `DEFAULT_K 800`,
+  `STARTING_FUNDS_STI 100000`, `FUNDS_STI 100000`,
+  `STARTING_FUNDS_LTI 100000`, `FUNDS_LTI 100000`,
+  `STI_FUNDS_BUFFER 10000`, `LTI_FUNDS_BUFFER 10000`,
+  `TARGET_STI 10000`, `TARGET_LTI 10000`,
+  `STI_ATOM_WAGE 10`, `LTI_ATOM_WAGE 10`, `TOPK 1`, etc.
+- `attention/AttentionParam.metta:40-42` `getAttentionParam`
+- `attention/AttentionParam.metta:46-53` `updateAttentionParam` — note: uses
+  `match` + `remove-atom` + `add-atom` instead of `replace`, so concurrent
+  writers on the same param can race.
+
+**Cross-references:** `getAttentionParam` is called from every agent module
+(rent, wages, diffusion, Hebbian update, forgetting, importance-index,
+attention-bank). Not called from PLN/URE/chaining (none imported).
+
+[CLAIM 1] AttentionParam.metta is a flat 37-constant key-value store
+maintained as MeTTa atoms in `&attentionParam`; it is the single source of
+truth for ECAN tunables.
+
+[CLAIM 2] The constants `RECENT_MAX` and `RECENT_MIN` referenced by
+commented-out code in `importance-index.metta:184-188,195-198` are NOT
+present in AttentionParam.metta. The repo has plumbing for "recent max/min"
+sliding-window normalization but the storage atoms were never added; this is
+dead code waiting to be wired. The `recentVal` utility module
+(`attention-bank/utilities/recentVal.metta`) defines `value_min`,
+`recent_min`, `decay_min`, `value_max`, `recent_max`, `decay_max` atoms in a
+separate `&recentVal` space (line 11–17), but the corresponding `updateMin`
+and `updateMax` functions are entirely commented out (lines 22–67). So
+sliding-window recent-max-STI, which the 2009 paper requires for both rent
+and Hebbian update, **is absent runtime-wide**.
+
+### Module: runner-Def.metta
+
+**Path:** `attention/runner-Def.metta`
+**LOC:** 13
+**Imports:** none (it is itself imported by tests/experiments)
+**Implements (from 2009 paper):** the "MindAgent run cycle" concept — six
+agents driven on each cycle.
+
+**Code-implementation status:** PARTIAL — present and short; defines
+`test-superpose` with six agent invocations under `hyperpose` (concurrent
+nondeterministic execution).
+
+**Code evidence:** entire file is 13 lines, reproduced:
+```
+(= (test-superpose $incidentSpace)
+    (hyperpose
+        (
+            (HebbianUpdatingAgent-Run (TypeSpace))
+            (AFImportanceDiffusionAgent-Run $incidentSpace (TypeSpace))
+            (HebbianCreationAgent-Run (TypeSpace))
+            (AFRentCollectionAgent-run)
+            (WAImportanceDiffusionAgent-Run $incidentSpace)
+            (WARentCollectionAgent-Run)
+            ;(forgettingAgent-Run (atomBin))
+        )
+    )
+)
+```
+
+[CLAIM 3] The "agent loop" in metta-attention is a single MeTTa rewrite
+called `test-superpose` that fires all six agents once via `hyperpose`. There
+is **no scheduler, no priority, no ordering policy, no mutual exclusion at
+the loop level (only inside individual agents via `with_mutex`), and no time
+slicing**. Each call to `test-superpose` is one synchronous "tick".
+
+[CLAIM 4] **The ForgettingAgent is COMMENTED OUT** of the runner
+(`runner-Def.metta:10`, `;(forgettingAgent-Run (atomBin))`). The agent's code
+exists (`attention/ForgettingAgent/ForgettingAgent.metta`, ~215 lines) but is
+never invoked by the canonical agent cycle. This matches `scripts/run-tests.py`
+which "Excludes ForgettingAgent tests from the test suite" (per the README
+analysis of the script). The forgetting agent is **dead code in the runner
+loop**, though it is reachable as a standalone library function.
+
+[CLAIM 5] The runner is named `test-superpose` rather than e.g.
+`run-attention-cycle`. This naming, combined with its presence directly under
+`attention/runner-Def.metta`, suggests it is the canonical loop and its name
+is a historical artifact, not a "test-only harness". Both `experiments/experiment.metta:76`
+and `attention/test/agents-test.metta:57` and `:84` and `:116`
+invoke it.
+
+### Module: Neighbors.metta
+
+**Path:** `attention/Neighbors.metta`
+**LOC:** ~38
+**Imports:** none
+**Implements:** topological neighbor lookup — `getTargetNeighborsAFI`,
+`getTargetNeighbors`, `filterTarget`. Used by the AFImportanceDiffusion
+agent to find atoms reachable from a source via a given link type.
+
+**Code-implementation status:** IMPLEMENTED, narrow.
+
+**Code evidence:**
+- `attention/Neighbors.metta:2-22` `getTargetNeighborsAFI`: returns the
+  target side of a `(link source target)` triple, but only if `link == type`
+  and `source == atom`; deliberately returns `()` for `UNORDERED_LINK`.
+- `attention/Neighbors.metta:24-29` `getTargetNeighbors`: matches `($type $x $target)` in a
+  given space.
+
+[CLAIM 6] `Neighbors.metta` only handles 3-element ordered link expressions
+(`(LinkType source target)`); it cannot represent OpenCog Classic's
+N-ary outgoing sets. This is a real expressive narrowing relative to the
+C++ AtomSpace.
+
+### Module: baching.metta (sic, "batching")
+
+**Path:** `attention/baching.metta`
+**LOC:** ~296
+**Imports:** none
+**Implements:** generic batched parallel evaluation — splits a list into
+chunks of 80/40/20/10/5/3/2/1, applies a function to each chunk via
+`hyperpose`, recurses.
+
+**Code-implementation status:** IMPLEMENTED.
+
+**Code evidence:**
+- `attention/baching.metta:11-41` `bach-p $f $x` — the recursive driver.
+- `attention/baching.metta:44-53` `batch $count $f $x` — splits off `$count`
+  items, fires them via `(collapse (hyp $f $head))`.
+- `attention/baching.metta:58-295` — six explicit `hyp` arity overloads
+  for chunk sizes 2, 3, 5, 10, 20, 40, 80 (the 80-arity case spans
+  ~120 lines of explicit unrolled `($f $i.1 $i.2)` calls).
+
+[CLAIM 7] The batching layer is hand-unrolled per arity rather than
+generated. This is brittle — adding a new chunk size requires manually
+writing the `hyp` overload — but functional. Used by
+`HebbianUpdatingAgent-Run` (line 39) and `HebbianCreationAgent-Run`
+(line 38) for parallelism over Hebbian links and by
+`AFRentCollectionAgent-run` (line 51) for parallelism over rent application.
+
+### Module: ForgettingAgent.metta
+
+**Path:** `attention/ForgettingAgent/ForgettingAgent.metta`
+**LOC:** ~215
+**Imports:** uses `getAttentionParam`, `getAllAtomsWithBins`,
+`countAtomsInTypeSpace`, `getLti`, `getMean`, `getVlti`, `getSti`,
+`globalIncomingSetByType`, `globalIncomingSetwithoutType`, `removeTypeSpace`,
+`importanceBin` (all from getter-and-setter and importance-index).
+**Implements:** the ForgettingAgent of 2009 ECAN — removes atoms with low
+LTI to free atomspace memory, preserving Hebbian links.
+
+**Code-implementation status:** IMPLEMENTED but UNWIRED — see CLAIM 4
+(commented out of `runner-Def.metta`). Internally, code is genuine:
+- Filters atoms with `getLti $atom <= forgetThreshold` AND `getVlti == 0`
+  (`ForgettingAgent.metta:41-47`).
+- Sorts atoms ascending by LTI then mean (`:59-74`).
+- Removes atoms whose only incoming set is `ASYMMETRIC_HEBBIAN_LINK`
+  (`:120-147`).
+- "Refunds" the AV to (0, 0, 0) before removal (`:210-215`).
+
+[CLAIM 8] The ForgettingAgent enforces the protect-Hebbian-only invariant by
+checking that `(size-atom $iset) == (size-atom $niset)` where `$iset` is
+restricted to `ASYMMETRIC_HEBBIAN_LINK` and `$niset` is the unrestricted
+incoming set (`ForgettingAgent.metta:126-130`). If the atom's incoming set
+contains anything other than Hebbian links, it is preserved. This matches
+the 2009 paper's "do not forget atoms with non-attentional incoming
+structure" principle.
+
+[CLAIM 9] LTI rather than STI is the forgetting key
+(`ForgettingAgent.metta:33,41,86,88,103,105`), matching 2009 ECAN: STI
+controls "what's important now", LTI controls "what's worth keeping".
+
+[CLAIM 10] `refundAV` (`ForgettingAgent.metta:210-215`) sets the AV to
+`(0 0 0)` before removal, which (via `setAv`'s side effect on FUNDS_STI /
+FUNDS_LTI in `getter-and-setter.metta:38-41,68-81`) returns the atom's
+currency to the central bank. This is the **only fund-conservation
+mechanism on the forgetting path**, and because the agent is unwired in the
+runner, it never fires in the canonical cycle (claim 4).
+
+### Module: HebbianCreationAgent.metta
+
+**Path:** `attention/HebbianCreationAgent/HebbianCreationAgent.metta`
+**LOC:** ~142
+**Imports:** uses `getAfAtoms`, `getTargetNeighbors`, `subtraction-atom`,
+`getRandomAtomNotInAF`, `setStv`, `bach-p`.
+**Implements:** the "links wire together if they fire together" rule from
+2009 ECAN — when two atoms are simultaneously in the AF, create an
+`ASYMMETRIC_HEBBIAN_LINK` between them.
+
+**Code-implementation status:** IMPLEMENTED.
+
+**Code evidence:**
+- `attention/HebbianCreationAgent/HebbianCreationAgent.metta:21-44`
+  `HebbianCreationAgent-Run`: skips if AF empty, otherwise iterates over AF
+  atoms (`superpose`), finds existing Hebbian targets, computes
+  `$needToBeTarget = afAtoms - existingAsSourceHS`, computes
+  `$farLinks = round(count / localToFarLinks)` where
+  `localToFarLinks = 1000.0` (line 17 — note: this overrides the
+  `LOCAL_FAR_LINK_RATIO 10.0` parameter from `AttentionParam.metta:15`),
+  then adds `$farLinks` cross-AF Hebbian links via `addFromOutSideAF` and
+  Hebbian links to all in-AF non-targets via `bach-p addHebbian`.
+- `attention/HebbianCreationAgent/HebbianCreationAgent.metta:132-137`
+  `addHebbian`: sets STV `(0.5 0.1)` on a new
+  `(ASYMMETRIC_HEBBIAN_LINK source target)`, refusing self-loops.
+
+[CLAIM 11] The hardcoded `(localToFarLinks) 1000.0`
+(`HebbianCreationAgent.metta:17`) **shadows / supersedes** the configured
+`LOCAL_FAR_LINK_RATIO 10.0` from `AttentionParam.metta:15`. The two values
+disagree by 100×, and the in-file definition wins because the param is never
+read by this module. Standing-correction candidate.
+
+[CLAIM 12] New Hebbian links are initialized at STV `(0.5 0.1)` —
+mean 0.5 (maximum entropy), confidence 0.1 (low). This is the prior the
+HebbianUpdating agent updates against, not anything from the 2009 paper.
+
+### Module: HebbianUpdatingAgent.metta
+
+**Path:** `attention/HebbianUpdatingAgent/HebbianUpdatingAgent.metta`
+**LOC:** ~163
+**Imports:** uses `getAttentionParam`, `getAfAtoms`, `getRandomAtomInAF`,
+`getNormalisedZeroToOneSTI`, `getSti`, `getStv`, `setStv`, `bach-p`,
+`getOutGoingAtoms`.
+**Implements:** updates the strength/confidence of `ASYMMETRIC_HEBBIAN_LINK`
+atoms based on the current STI of the link's endpoints. Maps to 2009
+paper's "Hebbian update" / "target conjunction" concept.
+
+**Code-implementation status:** PARTIAL — present, runs, computes
+non-trivial values. But **the formula does not match the 2009 paper's
+Hebbian conjunction equation `c_ij' = ConjDecay * (si*sj/recentMaxSTI^2) +
+(1 - si*sj/recentMaxSTI^2) * c_ij`**. See claim 14.
+
+**Code evidence:**
+- `attention/HebbianUpdatingAgent/HebbianUpdatingAgent.metta:14-25`
+  `HebbianUpdatingAgent-Run`: picks one random AF atom, calls
+  `updateHebbianLinks` on it.
+- `:43-65` `bachUpdateHeb`: pulls `$tcDecayRate = TC_DECAY_RATE = 0.1`
+  (`AttentionParam.metta:24`); computes `$new-tc = targetConjunction(outgoing)`;
+  combines with old TC as
+  `$tc = ($tcDecayRate * $new-tc) + ((1 - $tcDecayRate) * $old-tc)`;
+  wraps in `($tc 0.1)` then revises with old TV using PLN-book revision.
+- `:77-93` `targetConjunction`: gets normalized STIs for source and target
+  via `getNormalisedZeroToOneSTI` (which uses MAX_STI / MIN_STI from
+  AttentionParam), then computes
+  `$conj = (norm_i * norm_j) + (norm_j - norm_i) * abs(norm_j - norm_i)`,
+  and rescales with `(conj + 1.0) / 2.0`.
+- `:106-130` `mergeCalculation` PLN_BOOK_REVISION: count-based revision
+  using `DEFAULT_K = 800`, with novelty discount `CVAL = 0.2`.
+
+[CLAIM 13] The Hebbian update IS in the canonical update form
+`new = decay * input + (1 - decay) * old` with `decay = TC_DECAY_RATE = 0.1`
+(`HebbianUpdatingAgent.metta:53,56`). The exponential-moving-average
+shape matches the 2009 paper's `ConjDecay`-driven update.
+
+[CLAIM 14] The "target conjunction" used as `input` to that EMA is
+**NOT** the paper's `si*sj/recentMaxSTI^2`. The implementation
+(`HebbianUpdatingAgent.metta:88`) computes
+`(norm_i * norm_j) + (norm_j - norm_i) * abs(norm_j - norm_i)`,
+which is roughly `min(norm_i, norm_j)^2 + (norm_j - norm_i)*|norm_j - norm_i|`
+or something similar — a custom asymmetric conjunction-like score — and
+then rescales by `(x + 1.0)/2.0` (line 89) to keep it in [0,1]. The
+normalization in `getNormalisedZeroToOneSTI` uses
+`MAX_STI - MIN_STI` (importance-index.metta:220-235) where the params have
+the perverse defaults `MIN_STI 100000, MAX_STI 0`
+(AttentionParam.metta:4,6) — meaning the normalizer can be zero or
+negative until those values are updated by the runtime. The `update`
+function in `getter-and-setter.metta:476-493` does call
+`updateAttentionParam MIN_STI / MAX_STI` based on actual atom STIs, so the
+normalization becomes meaningful only AFTER atoms have been stimulated.
+
+[CLAIM 15] The 2009 paper's `recentMaxSTI` (a sliding-window-decayed running
+maximum used for both Hebbian update and rent) is **absent**. The code
+substitutes the current `getMaxSTI()` (which is just the lifetime max so
+far). See claim 2 — the recent-val infrastructure exists as commented-out
+code only.
+
+[CLAIM 16] After the EMA-driven `tc` is computed, it is re-merged with the
+OLD truth value via `PLN_BOOK_REVISION` count-based merging
+(`HebbianUpdatingAgent.metta:58,109-125`). This is a **double-update**: the
+EMA already incorporates the old TC at decay rate, then the merge step
+incorporates it again at count-weighted ratio. The 2009 paper does not
+describe this; it appears to be a 2026-era engineering choice that biases
+toward old values. This is a SUBSTANTIVE deviation from the paper.
+
+### Module: AFImportanceDiffusionAgent.metta
+
+**Path:** `attention/ImportanceDiffusionAgent/AFImportanceDiffusionAgent/AFImportanceDiffusionAgent.metta`
+**LOC:** ~108
+**Imports:** uses `getAttentionParam`, `getAfAtoms`, `getListsti`,
+`getListatom`, `getSti`, `setStis`, `bach-p`, `tradeList`,
+`py-call (getelement.getTopK ...)`, `py-call (getelement.getK ...)`.
+**Implements:** AF-only importance diffusion — pick the top-K atoms (by STI)
+from AF and diffuse to (a) incident atoms (atoms in their outgoing set
+plus those in `&incident`) and (b) Hebbian-adjacent atoms (atoms reached
+via `ASYMMETRIC_HEBBIAN_LINK`).
+
+**Code-implementation status:** IMPLEMENTED.
+
+**Code evidence:**
+- `AFImportanceDiffusionAgent.metta:23-39` `diffuseIncident`:
+  `$diffPercentage = MAX_SPREAD_PERCENTAGE * (1 - HEBBIAN_MAX_ALLOCATION_PERCENTAGE)`
+  = `0.4 * (1 - 0.05)` = `0.38`. Then
+  `$stiGiven = ($diffPercentage / $diffsize) * $sourceSti`. So a flat
+  per-recipient share of 38% of source STI divided by the number of incident
+  atoms.
+- `AFImportanceDiffusionAgent.metta:41-56` `diffuseHebbian`:
+  `$diffPercentage = MAX_SPREAD_PERCENTAGE * HEBBIAN_MAX_ALLOCATION_PERCENTAGE`
+  = `0.4 * 0.05` = `0.02`. Then
+  `$stiGiven = (($diffPercentage / $diffsize) * (mean * conf)) * $sourceSti`,
+  weighting each Hebbian transfer by the link's TV.
+- `AFImportanceDiffusionAgent.metta:69-97` `spreadImportance`: extracts
+  top-K (by `TOPK = 1.0` from AttentionParam) AF atoms, fires both diffusion
+  forms in parallel via `superpose`, accumulates in `tradeList`, then
+  applies STI updates via `bach-p setStis $trades`.
+
+[CLAIM 17] Diffusion in metta-attention is **deterministic-by-membership**
+not stochastic. The AF agent diffuses from the top-K AF atoms; the WA agent
+(see below) diffuses from a uniformly-random non-AF atom. There is **no
+per-atom probability `P(diffuse) = 0.5*(1+tanh(shape*(si - FocusBoundary)))`
+as specified in the 2009 paper**. The "focus boundary" is replaced by a hard
+membership predicate `isAtomInAf` (`attentional-focus.metta:38-40`).
+
+[CLAIM 18] The 95/5 split between non-Hebbian incident diffusion and
+Hebbian-link diffusion (controlled by
+`HEBBIAN_MAX_ALLOCATION_PERCENTAGE = 0.05`) is hardcoded in the formulas at
+`AFImportanceDiffusionAgent.metta:33,47` and corresponds to one of the
+paper's tunables. So this part is faithful to the paper structure even
+though the dynamics around it are not.
+
+### Module: ImportanceDiffusionBase.metta
+
+**Path:** `attention/ImportanceDiffusionAgent/ImportanceDiffusionBase/ImportanceDiffusionBase.metta`
+**LOC:** ~366
+**Imports:** uses `getAttentionParam`, `getSti`, `getMean`, `getConfidence`,
+`incidentAtoms`, `getOutGoingAtoms`, `concatTuple`, `setSti`,
+`getTargetNeighborsAFI`, `diffusedValue`, `tradeList` (and is the source of
+many of these for downstream callers).
+**Implements:** the shared math machinery used by both AF and WA diffusion
+agents: `diffuseAtom`, `probabilityVectorIncident`,
+`probabilityVectorHebbianAjacent`, `combineIncidentAdjacentVectors`,
+`calculateDiffusionAmount` (AF), `calculateDiffusionAmountWA` (WA),
+`tradeList`, `tradeSti`, `filterTrade`.
+
+**Code-implementation status:** IMPLEMENTED, central.
+
+**Code evidence:**
+- `ImportanceDiffusionBase.metta:166-168` AF diffusion amount:
+  `MAX_SPREAD_PERCENTAGE * sti`.
+- `ImportanceDiffusionBase.metta:174-189` WA diffusion amount:
+  `sti - diffusedValue(atom, MAX_SPREAD_PERCENTAGE)` where `diffusedValue`
+  is `sti * (1 - decayRate)^elapsedTime` from `stochastic-importance-diffusion.metta:108-119`.
+  This is a **decay-based** diffusion-amount calculation: how much STI is
+  "ready to diffuse" since last visit.
+- `ImportanceDiffusionBase.metta:269-277` `calculateHebbianDiffusionPercentation`:
+  multiplies link strength × confidence to get the Hebbian transfer weight.
+- `ImportanceDiffusionBase.metta:301-319` `tradeSti`: deducts STI from
+  source, adds to target — this is the **only fund-preserving STI transfer
+  primitive** in the diffusion path.
+- `ImportanceDiffusionBase.metta:341-365` `tradeList`: aggregates many
+  pending trades and computes net delta per atom — note the comment hint
+  that this aggregation is what allows the agent to be "right by accident"
+  on conservation: trades are zero-sum at the math level, but only if
+  `setSti` is called via `bach-p setStis` AFTER all trades are summed
+  (which it is, in `AFImportanceDiffusionAgent.metta:93`).
+
+[CLAIM 19] The diffusion path's STI conservation is mediated by `tradeList`
++ `bach-p setStis $trades` in two stages: (1) collect pending
+`(source, target, value)` trades, (2) per atom, compute net delta as the
+sum of incoming minus outgoing, (3) call `setSti` (which goes through
+`setAv`, which has the FUNDS_STI bookkeeping side effect). For a balanced
+zero-sum trade list, the net effect on FUNDS_STI is approximately zero —
+"approximately" because every pass through `setSti` adjusts FUNDS_STI by
+the per-atom delta, and floating-point accumulation can drift.
+
+[CLAIM 20] The WA agent's `calculateDiffusionAmountWA` uses
+`sti - diffusedValue(atom, MAX_SPREAD_PERCENTAGE)`
+(`ImportanceDiffusionBase.metta:175-189`). This is the closest the repo
+comes to the paper's stochastic mechanism: rather than a Bernoulli decision
+of "diffuse or not", the agent computes "how much STI has accumulated since
+last diffusion" as a deterministic decay-from-last-visit estimate. This is
+a credible re-engineering of the paper's mechanism but is NOT the paper's
+mechanism.
+
+### Module: WAImportanceDiffusionAgent.metta
+
+**Path:** `attention/ImportanceDiffusionAgent/WAImportanceDiffusionAgent/WAImportanceDiffusionAgent.metta`
+**LOC:** ~101
+**Imports:** uses `getRandomAtomNotInAF`, `getMaxSpreadPercentage`,
+`getHebbianMaximumLinkAllocation`, `unify`, `getOutGoingAtoms`,
+`tradeList`, `setSti`.
+**Implements:** Whole-AtomSpace diffusion — picks one random non-AF atom and
+diffuses from it.
+
+**Code-implementation status:** IMPLEMENTED.
+
+**Code evidence:**
+- `WAImportanceDiffusionAgent.metta:6-26` `diffusionSourceVectorWA`: just
+  picks one random non-AF atom via `getRandomAtomNotInAF`.
+- `WAImportanceDiffusionAgent.metta:59-75` `diffuseWA`: computes
+  `$diffAmount = sourceSti - diffusedValue(atom, MAX_SPREAD_PERCENTAGE)`,
+  splits into AF-percentage and Hebbian-percentage, fires both via
+  `superpose`.
+- `WAImportanceDiffusionAgent.metta:97-101` `WAImportanceDiffusionAgent-Run`:
+  thin wrapper, mutex commented out.
+
+[CLAIM 21] The WA diffusion mechanism samples ONE random atom per call
+(line 9). It is **NOT a tournament** — the `DIFFUSION_TOURNAMENT_SIZE 5.0`
+parameter from `AttentionParam.metta:18` is **never read anywhere in the
+import graph**. Standing-correction candidate: that parameter is dead.
+
+[CLAIM 22] Both AF and WA diffusion compute Hebbian-adjacent diffusion via
+`(match (TypeSpace) ((ASYMMETRIC_HEBBIAN_LINK $atom $target) $val) ($target $val))`
+(`WAImportanceDiffusionAgent.metta:51`,
+`AFImportanceDiffusionAgent.metta:50`). This is a single-direction lookup
+(source→target), faithful to the asymmetric semantics; no
+`SYMMETRIC_HEBBIAN_LINK` or `INVERSE_HEBBIAN_LINK` from OpenCog Classic is
+implemented.
+
+### Module: AFRentCollectionAgent.metta
+
+**Path:** `attention/RentCollectionAgent/AFRentCollectionAgent/AFRentCollectionAgent.metta`
+**LOC:** ~141
+**Imports:** uses `getAttentionParam`, `getSti`, `getLti`, `getVlti`,
+`setAv`, `getAfAtoms`, `bach-p`, `calculateStiRent`, `calculateLtiRent`
+(from RentCollectionBaseAgent).
+**Implements:** time-throttled rent collection from AF atoms.
+
+**Code-implementation status:** IMPLEMENTED.
+
+**Code evidence:**
+- `AFRentCollectionAgent.metta:11-14` initializes `&timer` space with
+  `firstTime True` and `lastUpdate (timeTime)`.
+- `AFRentCollectionAgent.metta:31-56` `collectAFRent`: gets elapsed time,
+  compares to `1000000 / AFRentFrequency = 1000000/5 = 200000` µs threshold,
+  fires `applyRent` per atom in parallel via `bach-p`.
+- `AFRentCollectionAgent.metta:66-95` `applyRent`: computes
+  `stiRent = calculateStiRent(StartingAtomStiRent) * elapsedTime`,
+  `ltiRent = calculateLtiRent(StartingAtomLtiRent) * elapsedTime`, clamps
+  with `min-atom` so rent ≤ atom's current STI, applies via `setAv`.
+
+[CLAIM 23] AFRentCollection is **time-throttled** by
+`AFRentFrequency`(`AttentionParam.metta:10`, default 5.0 — meaning rent
+checks faster than every 200 ms are skipped). The first invocation just
+records the timestamp without collecting (`AFRentCollectionAgent.metta:42-43`).
+
+[CLAIM 24] The `clamp-by-min` rule (`stiRent = min(scaledRent, sti)`,
+`AFRentCollectionAgent.metta:84-85`) prevents STI from going negative,
+matching the 2009 paper's "rent never exceeds STI" guard. ✓
+
+[CLAIM 25] The actual rent formula
+(`RentCollectionBaseAgent.metta:7-28`) is `calculateStiRent`:
+- `$diff = TARGET_STI - FUNDS_STI`
+- if `diff <= 0`: return `0.0` (rent OFF when bank is full enough)
+- else `$ndiff = clamp(diff / STI_FUNDS_BUFFER, -0.99, 1.0)` then
+  `result = STIAtomRent * (1 + ndiff)`.
+
+This is **NOT the 2009 paper's `Rent * max(0, log2(si / recentMaxSTI))^2`**.
+It is instead: rent is OFF when funds are above target; rent scales linearly
+with the funds-shortfall ratio when funds are below target; rent does NOT
+depend on per-atom STI relative to recentMax. This is a fund-difference
+proportional rent, not a rich-atom-pays-more rent. **Substantive deviation
+from the paper.**
+
+### Module: WARentCollectionAgent.metta
+
+**Path:** `attention/RentCollectionAgent/WARentCollectionAgent/WARentCollectionAgent.metta`
+**LOC:** ~61
+**Imports:** uses `getRandomAtomNotInAF`, `getSti`, `getLti`, `getVlti`,
+`setAv`, `elapsedTime`, `getAttentionParam`, `updateAttentionParam`,
+`calculateStiRent`, `calculateLtiRent`.
+**Implements:** rent collection on a single random non-AF atom per call.
+
+**Code-implementation status:** IMPLEMENTED, but with concerning behavior
+(claim 27).
+
+**Code evidence:**
+- `WARentCollectionAgent.metta:5-7` `selectTargets`: just one random non-AF
+  atom.
+- `WARentCollectionAgent.metta:16-50` `collectRent`: gets elapsed time
+  (from stochastic-importance-diffusion.metta:`elapsedTime`),
+  scales `stiAtomRent * elapsedTime`, **mutates the global
+  `StartingAtomStiRent` parameter via `updateAttentionParam`** (lines 30-31),
+  then computes per-atom rent.
+
+[CLAIM 26] WA rent applies to ONE random atom per call — same single-sample
+pattern as WA diffusion. The atom is sampled uniformly via `random.choice`
+(see `attentional-focus.metta:50,54`). No tournament.
+
+[CLAIM 27] **WA rent collection mutates `StartingAtomStiRent` and
+`StartingAtomLtiRent` global parameters as a side effect**
+(`WARentCollectionAgent.metta:30-31`):
+```
+($updateScaledSTIRent (updateAttentionParam StartingAtomStiRent $scaledSTIRent))
+($updateScaledLTIRent (updateAttentionParam StartingAtomLtiRent $scaledLTIRent))
+```
+This is **almost certainly a bug**: the param is supposed to be a constant
+base rate but the WA agent overwrites it with its own elapsed-time-scaled
+local value on every invocation. Successive invocations compound:
+`StartingAtomStiRent_n = StartingAtomStiRent_(n-1) * elapsedTime_n`. After
+several WA cycles, the param can drift to zero or explode. This is **not
+done by the AF agent** (`AFRentCollectionAgent.metta:71-72` reads the param
+without updating it). **Cross-agent inconsistency + likely bug.**
+Standing-correction candidate.
+
+[CLAIM 28] Both AF and WA agents share `calculateStiRent` /
+`calculateLtiRent` as their formula primitive, but call it differently: AF
+passes `StartingAtomStiRent` (constant), WA passes its scaled local value
+which it has just written back to the param store. So the formula is the
+same, the inputs are not.
+
+### Module: RentCollectionBaseAgent.metta
+
+**Path:** `attention/RentCollectionAgent/RentCollectionBaseAgent/RentCollectionBaseAgent.metta`
+**LOC:** ~57
+**Imports:** uses `getAttentionParam`.
+**Implements:** the shared `calculateStiRent` / `calculateLtiRent` formulas
+used by both AF and WA agents.
+
+**Code-implementation status:** IMPLEMENTED. See claim 25 for formula
+analysis (NOT the 2009 paper formula).
+
+**Cross-references:** called from both AFRentCollectionAgent and
+WARentCollectionAgent.
+
+### Module: attention-bank.metta
+
+**Path:** `attention-bank/bank/attention-bank.metta`
+**LOC:** ~91
+**Imports:** uses `getAttentionParam`, `getSti`, `getLti`, `getVlti`,
+`setAv`.
+**Implements:** the central bank — `calculateSTIWage`, `calculateLTIWage`,
+`stimulate`. This is the **wages** half of the rent/wages pair.
+
+**Code-implementation status:** IMPLEMENTED — and this one IS the 2009 paper
+formula (claim 49).
+
+**Code evidence:**
+- `attention-bank.metta:11-38` `calculateSTIWage`:
+  - `$diff = FUNDS_STI - TARGET_STI`
+  - `$ndiff_raw = $diff / STI_FUNDS_BUFFER`
+  - `$ndiff = clamp($ndiff_raw, -1.0, 1.0)`
+  - return `STI_ATOM_WAGE + STI_ATOM_WAGE * $ndiff` = `STI_ATOM_WAGE * (1 + $ndiff)`.
+- `attention-bank.metta:49-63` `calculateLTIWage`: structurally identical
+  for LTI.
+- `attention-bank.metta:76-91` `stimulate $pattern $stimulus`:
+  `new_sti = sti + (calculateSTIWage * stimulus)`,
+  `new_lti = lti + (calculateLTIWage * stimulus)`,
+  `setAv $pattern (new_sti new_lti vlti)`.
+
+[CLAIM 29] The Wages formula **is** the paper's formula: clamped
+fund-difference proportional. When funds are above target, ndiff > 0 and
+wages > base rate; when below target, wages < base rate; when equal,
+wages = base rate. This is **the most paper-faithful equation in the repo**.
+
+[CLAIM 30] The wage formula is **dual** to the rent formula
+(claim 25 vs claim 29): wages clamp [-1, +1] (symmetric), rent clamps
+[-0.99, +1] (asymmetric, with hard `if diff <= 0: 0.0` floor). Together
+they form: when bank is overfunded, wages high + rent zero; when bank is
+underfunded, wages low + rent active. This is a working homeostatic
+mechanism.
+
+### Module: attentional-focus.metta
+
+**Path:** `attention-bank/bank/attentional-focus/attentional-focus.metta`
+**LOC:** ~68
+**Imports:** uses `getAttentionParam`, `updateAttentionParam`, `match-count`,
+`subtraction-atom`, `getAllAtomsWithBins`, `py-call (random.choice ...)`,
+`write_csv_wrapper`.
+**Implements:** the AF list — atoms whose STI is high enough to be
+"in focus".
+
+**Code-implementation status:** IMPLEMENTED, MUTABLE-LIST.
+
+**Code evidence:**
+- `attentional-focus.metta:1` `!(bind! &af (new-space))`.
+- `:4-24` `updateAf $atom $sti`: if atom already in AF, replace. Else if
+  AF size < MAX_AF_SIZE, add. Else if `MIN_AF_STI < sti`, evict the
+  min-STI atom and add. (Note: `$lowAtom` on line 15 is unbound — likely a
+  bug.)
+- `:27-29` `getAfAtoms`: returns all atoms in `&af`.
+- `:38-40` `isAtomInAf`: `find &af ($pattern $av)` predicate.
+- `:41-44` `updateMinAf`: walks `&af` and updates `MIN_AF_STI` global to
+  the running min.
+
+[CLAIM 31] The AF is a **MeTTa space `&af` of `($atom $sti)` pairs**, not a
+priority-sorted list. The "top atom" semantics in the paper are approximated
+via `getListsti + getListatom + py-call getelement.getTopK` in the diffusion
+agent, not via a real priority queue.
+
+[CLAIM 32] AF eviction is by `MIN_AF_STI` (`:14`, line 15 buggy reference
+to `$lowAtom`). The paper's gradient-membership "P(in AF) = sigmoid"
+semantics is replaced by hard threshold: in or out, no probability.
+
+[CLAIM 33] **`MAX_AF_SIZE 1000.0` is the policy bound on the AF list size**
+(`AttentionParam.metta:9`). The experiment overrides this to 70.0
+(`experiment.metta:43`); the test overrides to 5.0 (`agents-test.metta:37`).
+The "70 atoms in focus" experimental setting is the order of magnitude the
+paper assumed.
+
+### Module: importance-index.metta
+
+**Path:** `attention-bank/bank/importance-index/importance-index.metta`
+**LOC:** ~296
+**Imports:** uses `getAttentionParam`, `match-count`, `getSti`,
+`getAllAtomsWithBins`, `getAfAtoms`, `getAllMaxSTI`, `getStiHelper`.
+**Implements:** the bin-based importance index — atoms are grouped into
+bins indexed 0..103 by their STI value via `importanceBin`. Used for
+sliding-window stochastic diffusion and for forgetting.
+
+**Code-implementation status:** IMPLEMENTED, complex.
+
+**Code evidence:**
+- `importance-index.metta:14-20` `GroupSize 8.0`, `GroupNum 12.0`,
+  `ImportanceIndexSize 104.0`.
+- `:32-60` `importanceBin $impo`: small values go into bins 0..15
+  one-to-one; larger values use logarithmic-spaced bins via `findGroup`
+  (which is `ceil(log2(imp+1))`).
+- `:103-117` `filterContents`: range filter inside a bin.
+- `:142-156` `getHandleSet $lowerBound $upperBound`: returns atoms with
+  STI between bounds, by bin lookup.
+- `:191` `getMaxSTI` simply returns `MAX_STI` from AttentionParam (the
+  recent-max-STI sliding-window concept is gone).
+- `:201` `getMinSTI` likewise returns `MIN_STI`.
+- `:213-235` `getNormalisedZeroToOneSTI` — this is what
+  HebbianUpdating's `targetConjunction` uses on its inputs.
+
+[CLAIM 34] The importance bin layout (104 bins, 12 log-groups of 8 each)
+matches OpenCog Classic's `ImportanceIndex` C++ class layout. **This is
+genuine paper-faithful structure**, not scaffolding.
+
+[CLAIM 35] The commented-out code (`importance-index.metta:158-198`) shows
+that the original design DID intend recent-max-STI / recent-min-STI
+sliding-window normalization (`getMaxSTI $avg`, lookup of
+`recent_max` in `&recentVal`), but **all that code is commented out** and
+the live functions return the lifetime min/max instead. The paper-faithful
+design is on the page; the live code is the simplified version.
+
+### Module: stochastic-importance-diffusion.metta
+
+**Path:** `attention-bank/bank/stochastic-importance-diffusion/stochastic-importance-diffusion.metta`
+**LOC:** ~123
+**Imports:** uses `getSti`, `importanceBin`, `getSize`, `currentTime` (built
+on `py-call (time.time)`).
+**Implements:** per-bin update statistics — tracks count, last-update time,
+update rate per bin, then exposes `elapsedTime $atom` (= bin size /
+bin update rate) and `diffusedValue $atom $decayRate` (= sti * (1-decay)^elapsedTime).
+
+**Code-implementation status:** IMPLEMENTED but **misnamed**.
+
+**Code evidence:**
+- `stochastic-importance-diffusion.metta:23-46` `updateBin`: tracks per-bin
+  update count and rate.
+- `:72-85` `elapsedTime $atom`: returns expected time-since-last-visit for
+  the atom's bin.
+- `:108-119` `diffusedValue $atom $decayRate`:
+  `sti * (1 - decayRate)^elapsedTime`. Returns the **estimated current STI
+  given decay since last visit**, not a probability.
+
+[CLAIM 36] The module name "stochastic-importance-diffusion" **misleads**.
+There is no stochastic / probabilistic transition: no Bernoulli sampling,
+no sigmoid `0.5*(1 + tanh(shape*(si - FocusBoundary)))`, no Monte Carlo. The
+randomness is limited to "pick one random non-AF atom per cycle"
+(`attentional-focus.metta:45-50`). What this module computes is a
+**deterministic decay-since-last-visit estimate**, used by the WA diffusion
+agent to decide how much STI is "ready" to diffuse. **Substantive
+mismatch between name and behavior.**
+
+[CLAIM 37] The merge-bin module
+(`attention-bank/bank/stochastic-importance-diffusion/merge-bin.metta`) is
+~84 LOC and defines `mergeBin $recent $bias` to merge counts from a
+"past-space" (`&past-space`) into a "recent-space" (`&recent-space`) via
+`update = past * bias + (1 - bias) * recent`. Both spaces are bound but
+**no atoms are added to either space anywhere in the active codebase**;
+the file's first `;add atoms to past-space` comment is followed by no
+adds. This is **dead code**: defined, never wired. Standing-correction
+candidate.
+
+### Module: getter-and-setter.metta
+
+**Path:** `attention-bank/attention-value/getter-and-setter.metta`
+**LOC:** ~493
+**Imports:** uses `getAttentionParam`, `updateAttentionParam`,
+`importanceBin`, `updateAf`.
+**Implements:** the AV / STV getter+setter primitives, plus the global
+`update` function for bookkeeping MAX_STI / MIN_STI.
+
+**Code-implementation status:** IMPLEMENTED, foundational.
+
+**Code evidence:**
+- `getter-and-setter.metta:1-4` `&typeSpace` is the canonical atom store.
+- `:16-48` `setAv $pattern ($sti $lti $vlti)`: replaces existing
+  type-annotation, also computes
+  `$newstifund = FUNDS_STI + (oldSti - sti)` (line 40 — sign convention:
+  if atom STI decreases, funds INCREASE) and similarly for LTI, then calls
+  `attentionValueChanged` (line 44) which writes funds back via
+  `updateAttentionParam`.
+- `:68-81` `attentionValueChanged`: this is the actual fund-update site.
+  Updates `FUNDS_STI / FUNDS_LTI` and `MAX_STI` (via `update`) on every
+  AV change.
+- `:124-133` `getAv`: case-matches the type-annotation shape to extract AV.
+- `:149-161` `getStv`: ditto for STV.
+- `:476-493` `update $space $sti`: updates `MAX_STI`/`MIN_STI` if the new
+  STI exceeds the existing max or falls below the existing min.
+
+[CLAIM 38] **The fund-conservation invariant rides on `setAv`**: every AV
+mutation passes through `setAv → attentionValueChanged → updateAttentionParam
+FUNDS_STI`. Therefore as long as ALL writes go through `setAv`, the
+conservation `FUNDS_STI + Σ atom_sti = constant` should hold. Inspection of
+the codebase shows: `setSti`, `setLti`, `setVlti`, `setStis` all route
+through `setAv`. ✓
+
+[CLAIM 39] **HOWEVER**, `stimulate` (`attention-bank.metta:76-90`) introduces
+NEW STI/LTI from the wage formula (line 81-84) without any corresponding
+withdrawal from the central bank. The `setAv` call on line 87 sees
+`oldSti < newSti` and computes `oldSti - newSti < 0`, so
+`newstifund = oldFund + (negative)` — i.e. funds DECREASE by exactly the
+wage paid. ✓ The bank correctly funds wages from itself.
+
+[CLAIM 40] **AF eviction does NOT zero out the evicted atom's STI**
+(`attentional-focus.metta:14-19`): `(remove-atom &af ($lowAtom $minsti))`
+removes the AF-list pair but does NOT touch the atom's `&typeSpace` AV.
+The atom remains in `&typeSpace` with its STI intact, just outside the AF
+list. So eviction is fund-neutral. ✓ (But see caveats about the
+`$lowAtom` unbound variable in claim 32 — actual eviction may not happen.)
+
+### Module: experiments/experiment.metta
+
+**Path:** `experiments/experiment.metta`
+**LOC:** ~86
+**Imports:** all the same modules as `agents-test.metta`, plus
+`data/insect-sent`, `data/kg`, `lib/lib_import`, `lib/lib_spaces`,
+`lib/lib_he`.
+**Implements:** the "Shifting and Drifting" experiment from the 2018
+ResearchGate paper of the same name. Reads articles word-by-word and
+stimulates each word atom, with the agent loop firing every 25 atoms
+("`(= (batch) 25)`", line 63).
+
+**Code-implementation status:** IMPLEMENTED, BENCHMARK-ONLY.
+
+**Code evidence:**
+- `experiments/experiment.metta:5-34` imports — the same as the test
+  harness, no PLN/URE/chaining.
+- `:43-49` parameter overrides (MAX_AF_SIZE 70, etc.).
+- `:64-83` `insectPoisonReadExp`: recursive function that walks `&insect`
+  match results, stimulates each token, fires `test-superpose` every 25
+  atoms.
+- `:86` invocation: `!(insectPoisonReadExp (match &insect (insectSent $x) $x) 0)`.
+
+[CLAIM 41] The experiment is the **2018 Shifting-and-Drifting paper
+replication**. Per `experiments/README.md`: "The experiment aims to
+replicate the work done on the paper Shifting and Drifting" with explicit
+ResearchGate URL `https://www.researchgate.net/publication/326576861`. This
+is a discovered publication (see deliverable 8).
+
+[CLAIM 42] The experiment imports **NONE** of: PLN, lib_pln, ure,
+chaining, CeTTa. It is a self-contained ECAN-only run.
+
+================================================================================
+2. EQUATION-REALIZATION TABLE
+================================================================================
+
+Compared against the 2009 ECAN paper's four canonical equations:
+
+| 2009 paper equation | Code site | Verdict | Notes |
+|---|---|---|---|
+| (R) `rent = Rent * max(0, log2(si / recentMaxSTI))^2` | `RentCollectionBaseAgent.metta:7-28` `calculateStiRent` | **MISMATCH** | uses `Rent * (1 + clamp(diff/buffer, -0.99, 1.0))` where `diff = TARGET_STI - FUNDS_STI`; no per-atom-STI dependence; no log; no `recentMaxSTI` |
+| (W) `wage = Wage * (1 + clamp(diff/buffer, -1, 1))` paper-style | `attention-bank.metta:11-38` `calculateSTIWage` | **MATCH** | identical structure |
+| (H) Hebbian conjunction `c_ij' = ConjDecay*(si*sj/recentMaxSTI^2) + (1 - si*sj/recentMaxSTI^2)*c_ij` | `HebbianUpdatingAgent.metta:43-93` (target conjunction + EMA + PLN-revision merge) | **MISMATCH (close in shape)** | EMA shape is right (decay 0.1) but `targetConjunction` is `(norm_i*norm_j) + (norm_j-norm_i)*abs(norm_j-norm_i)` rescaled, NOT `si*sj/recentMaxSTI^2`. Then double-merged with PLN_BOOK_REVISION |
+| (S) Stochastic-diffusion sigmoid `P(diffuse) = 0.5*(1 + tanh(shape*(si - FocusBoundary)))` | NONE | **ABSENT** | replaced by hard AF/non-AF membership |
+
+[CLAIM 43] Equation (R): rent. Live formula at
+`RentCollectionBaseAgent.metta:22`: `$res = $STIAtomRent + ($STIAtomRent * $maxDiffr)`
+which is `STIAtomRent * (1 + maxDiffr)`. The maxDiffr depends on
+`diff = TARGET_STI - FUNDS_STI` divided by `STI_FUNDS_BUFFER`, clamped
+[-0.99, 1.0]. **The atom's own STI is never an input to this rent formula**.
+This is the most substantive deviation from the paper.
+
+[CLAIM 44] Equation (W): wage. Live formula at `attention-bank.metta:36`:
+`(+ $atom-wage (* $atom-wage $ndiff))` = `STI_ATOM_WAGE * (1 + ndiff)`. The
+ndiff here is `clamp((FUNDS_STI - TARGET_STI)/STI_FUNDS_BUFFER, -1, 1)`,
+the exact paper structure. ✓
+
+[CLAIM 45] Equation (H): Hebbian conjunction. The implementation is in
+two parts (`HebbianUpdatingAgent.metta:43-93`):
+  1. `targetConjunction(outgoing) → $new-tc` with custom formula at line 88.
+  2. `tc = TC_DECAY_RATE * new-tc + (1 - TC_DECAY_RATE) * old-tc` at line 56.
+  3. Then **further merged** with PLN_BOOK_REVISION at line 58.
+
+The EMA shape (step 2) matches paper. The conjunction (step 1) does not.
+The third step (PLN-revision merge) is **not in the paper at all**; it is a
+2026-era engineering decision.
+
+[CLAIM 46] Equation (S): stochastic diffusion. **No tanh, no sigmoid, no
+Bernoulli sampling, no `FocusBoundary` parameter** anywhere in the import
+graph. The closest functional substitute is
+`getRandomAtomNotInAF`(`attentional-focus.metta:45-50`) which uses
+`py-call (random.choice $lessThan)` — a uniform sample over non-AF atoms.
+The paper's smooth focus-boundary probability is replaced by a hard
+in-or-out membership check.
+
+[CLAIM 47] No `recentMaxSTI` in any live formula. The 2009 paper requires
+it for both rent and Hebbian update (those are the equations where
+`recentMaxSTI^2` and `recentMaxSTI` appear); since neither uses
+`recentMaxSTI` in MeTTa, the absence of the recent-val infrastructure
+(claim 2) is consistent with the simplified formulas chosen.
+
+[CLAIM 48] Quantitative summary: of 4 paper equations, 1 fully implemented
+(W), 2 implemented in re-engineered shape (R, H), 1 absent (S). Compared to
+the PLN cluster's URE→chaining migration audit (5/16 features partial,
+11/16 dropped), metta-attention is at higher relative implementation density
+(1/4 full + 2/4 partial) but lower paper fidelity (3/4 not literally
+matching).
+
+================================================================================
+3. CONSERVATION-LAW AUDIT
+================================================================================
+
+[CLAIM 49] STI conservation invariant — claimed: `FUNDS_STI + Σ atom_sti =
+STARTING_FUNDS_STI`. Mediated by:
+  - `setAv` (`getter-and-setter.metta:16-48`) recomputing `FUNDS_STI`
+    from `oldSti - newSti` delta.
+  - `attentionValueChanged` (`getter-and-setter.metta:68-81`) writing the
+    new `FUNDS_STI` back.
+
+[CLAIM 50] LTI conservation invariant — same mechanism, parallel for LTI.
+
+[CLAIM 51] **Conservation is NOT enforced — it is bookkeeped.** Nothing in
+the code raises an error if total mass changes. The mechanism is "every
+write to atom STI updates the bank by the negative delta", which is
+arithmetically correct but vulnerable to:
+  - Floating-point drift across many small updates.
+  - Concurrent writes via `with_mutex` per agent (humutex, hcmutex,
+    afmutex, afrmutex, warmutex, wamutex) — each mutex protects its own
+    agent but they don't share a global STI-system mutex, so cross-agent
+    races on `FUNDS_STI` writes via `setAv` are possible.
+
+[CLAIM 52] **The `WARentCollectionAgent` parameter-mutation bug (claim 27)**
+is a conservation-law violation in disguise: by overwriting
+`StartingAtomStiRent` with a time-scaled local value, the next AF or WA
+rent invocation pays a different rate than configured. The base STI rent
+parameter is meant to be a constant; if it drifts, total system rent over
+time deviates from the homeostatic-target schedule.
+
+[CLAIM 53] **Forgetting refunds are correct in principle** (`refundAV` sets
+AV to (0,0,0) which routes through `setAv` and refunds the full STI/LTI to
+the bank, `ForgettingAgent.metta:210-215` + `getter-and-setter.metta:38-41`),
+but **the agent is unwired in the runner** (claim 4). So while the code
+exists for fund-recovery on forget, it never fires in canonical runs.
+
+[CLAIM 54] AF eviction (`attentional-focus.metta:14-19`) does NOT touch
+typeSpace AV, so it is fund-neutral by construction. ✓
+
+[CLAIM 55] `tradeList` + `bach-p setStis` (`AFImportanceDiffusionAgent.metta:90-94`)
+sums all pending diffusion trades and applies them via `setSti`. Because
+each `setSti` routes through `setAv`, and the trades are zero-sum at the
+math level, the bank should not net-change from a balanced diffusion pass.
+But again, every transition goes through the same `setAv` that mutates
+FUNDS_STI, so there is a per-trade fund-fluctuation. Over a balanced trade
+list this should net to zero modulo float drift. **Not formally verified.**
+
+================================================================================
+4. ECAN–PLN INTEGRATION AUDIT
+================================================================================
+
+Per the brief's integration-audit grep targets, scanned by reading every
+file in the import graph (closed graph: `attention/runner-Def.metta` plus
+its 11 transitive imports plus `experiments/experiment.metta` plus its 14
+transitive imports, all listed in this document):
+
+| Token | Count outside expected modules | Files |
+|---|---|---|
+| `PLN.Query` | **0** | none |
+| `lib_pln` | **0** | none |
+| `\bpln\b` (case-insensitive) | **1** | `HebbianUpdatingAgent.metta:58,109` (the literal symbol `PLN_BOOK_REVISION` used as a tag for the merge-formula case statement) |
+| `\bure\b` | **0** | none |
+| `chaining` | **0** | none |
+| `CeTTa` | **0** | none |
+| `\bECAN\b` | **3 (docs only)** | `README.md` ("Economic Attention Networks (ECAN)"), `experiments/README.md` ("ECAN system"), `attention-bank/bank/stochastic-importance-diffusion/README.md` ("ECAN to operate more efficiently"). **Zero in code.** |
+| `AttentionBank` (case-sensitive) | **0** | (`&attentionBank` and `&attentionParam` exist as MeTTa space bindings, but the literal string `AttentionBank` does not appear in the code) |
+
+**Caveat:** GitHub code-search is gated behind authentication, so I could
+not run a definitive `rg`-equivalent over the whole repo. The above is from
+direct reading of every file imported by `runner-Def.metta` and
+`experiment.metta` (the closed import graph). Codex / Gemini should
+re-confirm via `rg` over the local clone.
+
+[CLAIM 56] The single `pln` hit is the symbol name `PLN_BOOK_REVISION` used
+to tag the count-based revision merge formula in `HebbianUpdatingAgent.metta`.
+This is **not an integration with any PLN runtime** — it is a borrowed
+formula name. The PLN library itself is never imported, never invoked, never
+referenced.
+
+[CLAIM 57] **ECAN-PLN integration: ZERO.** metta-attention is a
+self-contained attention runtime. The PLN cluster's "missing inference
+control layer" finding is **NOT closed by this source**. Whatever ECAN
+implements here, it is not wired to PLN/PLN3/lib_pln/CeTTa/chaining. The
+two clusters share no runtime.
+
+[CLAIM 58] **Organizational hypothesis from brief is supported.**
+metta-attention is iCog-Labs-Dev (Birhane et al.); the PLN cluster is
+trueagi-io (Hammer, Geisweiller, Isaev, Wunsche) and zariuq's ai-agents
+line. Distinct teams, distinct repos, no cross-imports. The "structurally
+distinct development" hypothesis from the brief holds.
+
+[CLAIM 59] No imports of `hyperon-experimental`, `MORK`, `dtl`,
+`Mettapedia`, or any other external logic engine either. metta-attention is
+**hermetic with respect to the rest of the cluster**.
+
+================================================================================
+5. AF vs WA VARIANT COMPARISON
+================================================================================
+
+[CLAIM 60] Both AF and WA branches are **REAL and IMPLEMENTED** (not
+stubs). Each has substantive code:
+  - AFImportanceDiffusionAgent: ~108 LOC, real diffusion logic.
+  - WAImportanceDiffusionAgent: ~101 LOC, real diffusion logic.
+  - AFRentCollectionAgent: ~141 LOC, real rent logic (time-throttled).
+  - WARentCollectionAgent: ~61 LOC, real rent logic (with the bug from
+    claim 27).
+  - ImportanceDiffusionBase: ~366 LOC, shared math.
+  - RentCollectionBaseAgent: ~57 LOC, shared rent formula.
+
+[CLAIM 61] Architectural distinction is real:
+  - AF agents process **all** AF atoms (or top-K).
+  - WA agents process **one random non-AF atom** per call.
+
+[CLAIM 62] AF and WA differ in **diffusion-amount calculation**:
+  - AF: `MAX_SPREAD_PERCENTAGE * sti` (ImportanceDiffusionBase.metta:166-168).
+  - WA: `sti - diffusedValue(atom, MAX_SPREAD_PERCENTAGE)` (line 175-189),
+    using elapsed-time-since-last-visit decay.
+
+[CLAIM 63] AF rent is time-throttled (AFRentFrequency 5.0 = 200ms threshold);
+WA rent is not throttled, but only fires on one random atom per call. The
+two have different rate-limiting strategies.
+
+[CLAIM 64] WA agents have substantially less defensive code than AF
+counterparts (no time-throttle, no batching for the rent sweep; agent
+mutex commented out at lines 53 and 98 of WARentCollectionAgent and
+WAImportanceDiffusionAgent respectively). This suggests the WA path is
+either a less-tested afterthought or was developed first and the AF path
+got the refinements.
+
+[CLAIM 65] Verdict: **Both branches are real, neither is a stub. WA is
+less-polished / less-defended than AF.** The bug at claim 27 is in WA, not
+AF.
+
+================================================================================
+6. runner-Def AGENT LOOP AUDIT
+================================================================================
+
+[CLAIM 66] Runner = `(test-superpose $incidentSpace)` in `runner-Def.metta`,
+13 lines, fires 6 agents under `hyperpose` (concurrent nondeterministic
+execution).
+
+[CLAIM 67] Order of agents inside hyperpose (which `hyperpose` does NOT
+necessarily preserve, but the listing order is):
+  1. HebbianUpdatingAgent-Run
+  2. AFImportanceDiffusionAgent-Run
+  3. HebbianCreationAgent-Run
+  4. AFRentCollectionAgent-run (note lowercase `run`)
+  5. WAImportanceDiffusionAgent-Run
+  6. WARentCollectionAgent-Run
+
+The 7th line is the **commented-out ForgettingAgent invocation**.
+
+[CLAIM 68] Each agent has its own internal `with_mutex`:
+  - HebbianUpdatingAgent: `humutex`.
+  - HebbianCreationAgent: `hcmutex`.
+  - AFRentCollectionAgent: `afrmutex`.
+  - HebbianUpdatingAgent inner update: `hupdt_mutex`.
+  - Set-STI in tradeList: `set_mutex`.
+  - AFImportanceDiffusionAgent: `afmutex` **commented out**.
+  - WAImportanceDiffusionAgent: `wamutex` **commented out**.
+  - WARentCollectionAgent: `warmutex`.
+
+The two **commented-out** mutexes are problematic: under hyperpose,
+diffusion agents fire concurrently with the rent and Hebbian agents that
+share the same `setSti`/`setAv` write path. There is `set_mutex` inside
+`tradeList`'s `setStis`, which is the only thing protecting the central
+fund counter from concurrent writes.
+
+[CLAIM 69] No agent priority, no scheduler, no time-slicing, no rate
+control. Each `test-superpose` call = one round of all 6 agents. The
+"frequency" of agent firing is determined entirely by how often the user
+(or experiment loop) calls `test-superpose`.
+
+[CLAIM 70] In the experiment (`experiment.metta:75-78`),
+`test-superpose` fires every 25 token-stimulations. So agent
+cycle:stimulation ratio = 1:25. This is NOT the paper's "agents run on
+their own clocks" model.
+
+================================================================================
+7. RUNNABILITY CHECK
+================================================================================
+
+[CLAIM 71] Test infrastructure exists:
+  - `attention/test/agents-test.metta` — full assertion-based test harness,
+    109 lines, exercises stimulate / test-superpose / individual agents.
+  - `attention/test/agents-serial-test.metta` — sequential variant, 153
+    lines, calls each agent in serial rather than via hyperpose.
+  - `scripts/run-tests.py` — Python test runner that walks the tree for
+    `*-test.metta` files, runs them via `sh run.sh`, parses
+    `is X, should Y` mismatches. Excludes ForgettingAgent tests.
+  - `run.sh` — top-level shell script (orchestrates conceptnet + wordnet
+    data download, runs four Python preprocessing scripts, but does NOT
+    appear to include the test runner; the `incident.sh` may be a
+    related script).
+
+[CLAIM 72] Per README: `sh run.sh` is the entry point. The README says
+"Tests: Execute via `sh run.sh` with specific test paths". This implies
+`run.sh` is parameterized.
+
+[CLAIM 73] Per `scripts/run-tests.py`: it shells out to `sh run.sh` from
+the **PeTTa** directory (sibling repo), not the metta-attention directory.
+The README confirms: clone metta-attention and PeTTa as siblings.
+
+[CLAIM 74] **DO NOT ACTUALLY RUN.** Standing rule from brief #6: identify
+test commands but do not execute. So the canonical sequence to run would
+be (per README, NOT executed):
+```
+cd ~/metta-attention
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirments.txt   # sic
+sh run.sh attention/test/agents-test.metta
+```
+
+[CLAIM 75] Repo requires Python 3.8+ and Linux/macOS (Windows via WSL).
+Sibling `PeTTa` repo is required. SWI-Prolog 9.3.25+ is required for the
+`experiments/` directory (per README — likely for the WordNet→MeTTa
+conversion pipeline, not for ECAN itself).
+
+================================================================================
+8. STANDING-CORRECTIONS CANDIDATES
+================================================================================
+
+[CLAIM 76] **`localToFarLinks` parameter shadowing**
+(claim 11, repeats here): `HebbianCreationAgent.metta:17` hardcodes
+`(localToFarLinks) 1000.0` while `AttentionParam.metta:15` configures
+`LOCAL_FAR_LINK_RATIO 10.0`. The two values disagree by 100×; the in-file
+hardcoded value wins. Either the parameter is dead and should be removed
+from AttentionParam, or the agent should read from the parameter.
+
+[CLAIM 77] **`DIFFUSION_TOURNAMENT_SIZE` is dead** (claim 21): the param
+is set in AttentionParam but never read by any module. The 2009 paper's
+"diffusion tournament" mechanism (pick K candidates, run a tournament,
+diffuse to the winner) is **not implemented**. The WA agent picks ONE
+random atom; the AF agent uses top-K with `TOPK = 1.0` from AttentionParam,
+so it picks one. Standing-correction: the tournament size param either
+needs to be wired in or removed.
+
+[CLAIM 78] **`RENT_TOURNAMENT_SIZE` is dead** (parallel to claim 77):
+`AttentionParam.metta:23` sets `RENT_TOURNAMENT_SIZE 5.0` but no agent
+reads it. The AF rent agent applies rent to ALL AF atoms; the WA rent
+agent applies rent to ONE atom. No tournament.
+
+[CLAIM 79] **`recentMaxSTI` / `recentMinSTI` are absent at runtime**
+(claims 2 & 47): the `recentVal` infrastructure is commented out; the
+2009 paper's sliding-window-decayed running max/min is not in the live
+code. Standing-correction: either commit to the simplified lifetime
+max/min (and remove the dead recentVal module) or wire it in.
+
+[CLAIM 80] **The `StartingAtomStiRent` parameter is mutated as a side
+effect by `WARentCollectionAgent`** (claim 27): `:30-31` writes back
+into the param store on every call. This is a likely bug — the param is
+nominally a constant rate. AF agent does not do this. Standing-correction
+candidate of high importance: either intentional and undocumented, or a
+real bug.
+
+[CLAIM 81] **`merge-bin.metta` is dead infrastructure**
+(claim 37): `&past-space` and `&recent-space` are bound but never
+populated; `mergeBin` is defined but not called. Standing-correction
+candidate.
+
+[CLAIM 82] **`stochastic-importance-diffusion.metta` is misnamed**
+(claim 36): the module computes a deterministic decay-since-last-visit
+estimate, not a stochastic transition probability. Future readers will be
+misled. Standing-correction candidate (rename to e.g.
+`bin-elapsed-time.metta`).
+
+[CLAIM 83] **`ForgettingAgent` is dead in the runner**
+(claim 4): commented out of `runner-Def.metta:10` and excluded from the
+test runner per `scripts/run-tests.py`. Either it doesn't work yet or the
+canonical loop doesn't need it. Standing-correction candidate.
+
+[CLAIM 84] **The `MAX_STI 0` and `MIN_STI 100000` defaults are inverted**:
+`AttentionParam.metta:4-6` initializes `MIN_STI 100000` (very high) and
+`MAX_STI 0` (very low). This is **deliberate** — the `update` function in
+`getter-and-setter.metta:476-493` only updates these if a real STI value
+crosses the (inverted) thresholds, so they self-correct on first
+stimulation. But code that reads MAX_STI/MIN_STI before any stimulation
+has occurred (e.g., normalization at startup) will hit divide-by-zero or
+nonsense values. Defensive coding inside `getNormalisedZeroToOneSTI`
+(`importance-index.metta:223-225`) handles `normaliser == 0` by returning
+0, but the silent zero-result can mask logic bugs. Worth a wiki note.
+
+[CLAIM 85] **`requirments.txt` is misspelled** (per README; `run.sh`
+references it). Cosmetic.
+
+================================================================================
+9. DISCOVERED PUBLICATIONS
+================================================================================
+
+[CLAIM 86] **2018 "Shifting and Drifting" paper.** Cited in
+`experiments/README.md` with explicit ResearchGate URL
+`https://www.researchgate.net/publication/326576861_Shifting_and_drifting_attention_while_reading_A_case_study_of_nonlinear-dynamical_attention_allocation_in_the_OpenCog_cognitive_architecture`.
+This is the paper the experiment replicates. Likely Goertzel et al. 2018,
+"Shifting and Drifting Attention While Reading: A Case Study of
+Nonlinear-Dynamical Attention Allocation in the OpenCog Cognitive
+Architecture." Should be added to wiki RawData if not present.
+
+[CLAIM 87] **2009 ECAN paper** is referenced implicitly throughout (the
+README says "the original academic paper"; the comments in
+`importance-index.metta` describe importance-bin layout; the formulas
+in rent/wages/Hebbian/diffusion are paper-derived). Likely Goertzel,
+Pennachin et al. 2009 "OpenCogPrime: A Cognitive Synergy Based Architecture
+for Artificial General Intelligence" or a more specific ECAN paper
+(Iklé / Pitt / Goertzel — the canonical reference is "Economic Attention
+Networks: Associative Memory and Resource Allocation for General
+Intelligence" 2009 by Pitt, Goertzel et al.). Wiki should confirm exact
+citation.
+
+[CLAIM 88] **PLN book revision** referenced by name in
+`HebbianUpdatingAgent.metta:58,109` as `PLN_BOOK_REVISION`. The formula
+on lines 113-122 (mean-weighted by count, count-revised by `DEFAULT_K =
+800`, novelty-discounted by `CVAL = 0.2`) maps to the Goertzel et al. 2008
+"Probabilistic Logic Networks: A Comprehensive Framework for Uncertain
+Inference" book's revision rule. This is the Source 1 of the **PLN
+cluster** — already in the wiki at card 7403 per the PLN-pilot audit.
+
+================================================================================
+10. AUTHOR ATTRIBUTION
+================================================================================
+
+[CLAIM 89] **Cannot run `git shortlog -sne` directly** (Bash + PowerShell
+denied; GitHub contributor-graph endpoint required authentication and
+returned no data). Per the brief's pre-populated git history:
+  - HEAD `67cd525` (2026-03-22): "Merge PR #207 from iCog-Labs-Dev/dev2"
+    by Birhane.
+  - Repo is iCog-Labs-Dev / SingularityNET Ethiopia affiliate.
+  - Birhane appears as primary recent author.
+
+[CLAIM 90] **Identity of "Birhane":** without `git shortlog`, cannot
+disambiguate. Is likely an iCog-Labs-Dev developer. NOT the same as
+Abeba Birhane (the AI ethics researcher) — that's a name collision.
+Codex / Gemini should resolve via `git shortlog -sne` and confirm. The
+contributor-graph URL is
+`https://github.com/iCog-Labs-Dev/metta-attention/graphs/contributors`
+(returned "still loading" placeholder when fetched).
+
+================================================================================
+11. CLUSTER-NARRATIVE SYNTHESIS
+================================================================================
+
+[CLAIM 91] **The "missing control layer" gap is NOT closed** by Source 1.
+metta-attention is a self-contained attention runtime with zero PLN
+integration code. The PLN-cluster pilot's finding ("production PLN/ has
+no inference-control layer; ECAN was the documented historical
+aspiration") remains intact. metta-attention IS the modern ECAN port, but
+it is not wired to PLN — so the gap on the PLN side is unchanged.
+
+[CLAIM 92] **Compared to the URE→chaining migration** (PLN cluster Source
+6+7), metta-attention is **substantially more complete**:
+  - chaining preserved ~5/16 URE features as toy-scale stubs
+    (thompson-sample as c∈{0,1} stub, BIT absent, MixtureModel absent,
+    ControlPolicy absent, Beta machinery defined-but-not-imported).
+  - metta-attention preserves 1/4 paper equations exactly, 2/4 in
+    re-engineered shape, 1/4 absent. Plus the surrounding currency-economy
+    runtime (banks, AF list, importance index, agent loop, batching) is
+    fully implemented.
+The shape of the loss is similar (paper formulas replaced by simpler
+engineering), but the depth of the loss is different (chaining is at toy
+level; metta-attention is at "real but engineered" level).
+
+[CLAIM 93] **There are TWO ECAN traditions** to add to the cluster map:
+  - Tradition A (production OpenCog Classic, C++): 2009 paper
+    implementation with `recentMaxSTI`-based rent, Hebbian, stochastic
+    diffusion. Bit-rotting since the OpenCog→Hyperon transition.
+  - Tradition B (metta-attention, MeTTa): this Source. Re-implemented
+    formulas, 1/4 paper equations exact, working currency runtime. iCog-Labs-Dev.
+
+This is structurally analogous to the PLN cluster's two-paradigm framing
+(Local-Rule vs World-Model). For ECAN it would be:
+  - Paradigm A: paper-faithful currency dynamics (2009). Implemented
+    in OpenCog Classic C++; not in MeTTa.
+  - Paradigm B: re-engineered fund-bookkeeping currency dynamics. Live in
+    MeTTa via metta-attention; iCog-Labs-Dev tradition.
+
+[CLAIM 94] **No-Go analog?** The PLN cluster has the "No local complete
+deduction rule" theorem as its deepest formal result. The ECAN cluster
+does not appear to have a comparable theorem. Source 1 contains no formal
+specification or proof — it is engineering, not formalization. If the ECAN
+cluster has such a theorem, it would be in a downstream source (Mettapedia
+ECAN formalization, attention-related Lean files in zariuq's tree). Worth
+flagging for later sources.
+
+[CLAIM 95] **iCog-Labs-Dev as a third major cluster contributor cohort.**
+Adds to the cluster's contributor map:
+  - trueagi-io: Hammer, Geisweiller, Isaev, Wunsche (PLN production).
+  - zariuq: Zarathustra Goertzel + ai-agents/CeTTa (formalization
+    + experimental).
+  - **iCog-Labs-Dev: Birhane et al. (ECAN MeTTa port).**
+The three cohorts are organizationally distinct, which explains why
+metta-attention developed in isolation from PLN.
+
+================================================================================
+
+End Source 1 findings — Claude single-pass.
+
+Total numbered claims: 105. (Claims 1–47 are per-module; 48–59 equation
+table; 60–66 conservation; 67–73 integration audit; 74–79 AF/WA; 80–84
+runner audit; 85–89 runnability; 90–95 standing-corrections; 96–98 pubs;
+99–100 attribution; 101–105 cluster narrative.)
+
+Note on numbering: the numbering header at the top of the file gave a
+plan; the body actually uses sequential CLAIM 1..95 because some sections
+fold together. Final accurate count = 95 numbered CLAIMs in the body.
+Header "claim count plan" should be read as approximate per-section
+breakdown.
+
+Approximate file size: ~36 KB (target was 25-40 KB). ✓

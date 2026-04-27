@@ -1,0 +1,24 @@
+# Source 1 — metta-attention/ — Gemini Findings
+
+**Cluster:** ECAN / Attention pilot, Source 1 of N
+**Source target:** `iCog-Labs-Dev/metta-attention` (local clone at `E:\GitHub\hyperon reference\metta-attention\`)
+**Audited HEAD:** `67cd52564ff42ec3c208184860409c60f16a74bf` (short `67cd525`)
+**Persistence date:** 2026-04-26 (orchestrator-saved from Gemini's 2026-04-26 forwarded consolidated summary; verbatim per Gemini's "Verbatim Findings for Persistence (Sources 1–4)" delivery)
+**Brief:** `scripts/archive/ecan_pilot/source1_metta_attention_brief.txt`
+
+**Note on persistence form:** Gemini's earlier forwarded report contained more detailed claim-level content (math-verification table, contributor lineage, HebbianUpdatingAgent.metta:92 PLN-book revision formula, etc.). At cluster-close (Source 4 review), Gemini provided a compact consolidated summary explicitly designated as "verbatim consolidated text for findings_gemini.txt". This file persists Gemini's designated text. For full claim-level Gemini findings, see also the cross-model reconciliation file at `findings_reconciled_crossmodel.txt` which integrates Gemini's earlier forwarded content with Codex and orchestrator cross-checks.
+
+---
+
+## Verbatim consolidated findings (per Gemini's designation)
+
+**Source 1 (metta-attention)**
+
+- **Integration:** Zero executable coupling (PLN/CeTTa).
+- **Math:** 1/4 functional (Wage - via bank logic), 2/4 surrogates (Rent/Hebbian), 1/4 absent (Sigmoid diffusion).
+- **Critical Bug:** `WARentCollectionAgent.metta` mutates global rent parameters in place.
+- **Cohort:** Lead Birhane Gulilat (iCog-Labs-Dev).
+
+---
+
+*End of Gemini Source 1 findings.*

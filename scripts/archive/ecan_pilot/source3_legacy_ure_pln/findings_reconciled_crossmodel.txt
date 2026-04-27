@@ -1,0 +1,268 @@
+# Source 3 — Legacy URE + Legacy C++ PLN — Cross-Model Reconciliation
+
+**Cluster:** ECAN / Attention pilot, Source 3 of N
+**Source targets:**
+- **3a.** `opencog/ure` legacy URE C++ — local checkout `E:\GitHub\hyperon reference\ure\` — HEAD `cec5509762fac3c20046fff7d29284e4ef07fdde` (2025-09-23, Linas Vepštas, "Remove usage of obsolete API")
+- **3b.** `opencog/pln` legacy C++ PLN — local checkout `E:\GitHub\hyperon reference\pln-singnet\` (singnet fork; upstream `opencog/pln`) — HEAD `a0983ada8295d441d459c71c467f6f16ba8778e6` (2021-10-28, Nil Geisweiller, "Merge pull request #42 from tanksha/conditionalConjunction")
+
+**Reconciliation date:** 2026-04-26
+**Orchestrator:** Claude Opus 4.7 (1M context)
+**Models reconciled:**
+- **Codex single-pass** — `findings_codex.txt` (86 numbered claims, ~14 KB; direct repo + `git log --all -S 'source_selection_mode'` pickaxe history audit + grep across both repos)
+- **Gemini single-pass** — forwarded inline by user (STI smoking-gun finding, URE inference-control ground-truth inventory, continuity vs regression analysis, cohort verification); `findings_gemini.txt` save **pending**. All Gemini citations below tagged "[Gemini, forwarded]".
+- **Orchestrator cross-checks** — direct git-history verification of Codex's three cited commits (`0a0b09912`, `0b744dbab`, `5a5b7785d`). Tagged "[Claude orchestrator, repo-verified]".
+
+**Coverage note:** Two-model + orchestrator-cross-check, same as Source 2. The two passes diverge sharply on the cluster-narrative-deciding question (V0-1 below); orchestrator git-log verification settles it. Other findings converge tightly enough that a third Claude single-pass would mostly rubber-stamp.
+
+**Brief:** `scripts/archive/ecan_pilot/source3_legacy_ure_pln_brief.txt`
+
+---
+
+## Headline answers
+
+### Q1 (highest priority): Was `source_selection_mode::STI` ever implemented?
+
+**A (orchestrator-verified, settles V0-1 dissent):** **Once implemented, then removed/unwired.** The STI source-selection mode was actively wired up in URE forward chaining from **2016-03-09 to 2018-10-23** (~2.5 years), reading atom STI values via `s->getSTI()` for tournament selection. It was commented out on **2018-10-23** with the explicit comment "An attentionbank is needed in order to get the STI...", and the constructor argument was removed entirely on **2019-01-08**, leaving only the dead enum value at `ForwardChainer.h:42` in current HEAD.
+
+**This is the cluster-narrative-deciding finding for Source 3.** Codex's claim (verified by orchestrator) substantively corrects Gemini's "never implemented" reading.
+
+### Q2: Broader URE/PLN ECAN coupling at current HEAD?
+
+**A (consensus):** **None active.** Repo-wide grep across both URE and legacy PLN at current HEADs found no active reads of `AttentionBank`, `AttentionValue`, `AttentionalFocus`, or `cog-bind-af`. `URE:attention-allocation` Scheme hook persists but is **explicitly documented as dead** (`opencog/scm/opencog/ure/ure-utils.scm:1012` "URE:attention-allocation isn't set b/c it isn't in use presently."). `pln-set-attention-allocation` is a thin wrapper around URE's dead hook.
+
+### Q3: URE inference-control architecture inventory
+
+**A (consensus):** URE has a **substantial mature inference-control stack** at HEAD `cec5509`, most of which was simplified or omitted in modern MeTTa `chaining/`. Confirmed components (both models agree):
+- **`MixtureModel.cc/.h`** — Universal-Operator-Induction-style aggregation; per-rule beta-distribution likelihood × complexity prior `exp(-cpx_penalty * length)`; weighted average TV
+- **`ThompsonSampling.cc/.h`** — distribution over candidate TruthValues; per-candidate beta-PDF × product of others' beta-CDFs; supports direct sample-and-max
+- **`BetaDistribution.cc/.h`** — alpha/beta from TV strength × confidence; sample via `boost::math::ibeta_inv(alpha, beta, rng.randdouble())`
+- **`ActionSelection.cc/.h`** — Handle-to-TV action maps, Thompson-wrapped
+- **`backwardchainer/BIT.h/.cc`** — Backward Inference Tree; `BITNode::operator()` estimates probability-of-usefulness; `AndBIT::expand` + `AndBIT::select_leaf`
+- **`backwardchainer/ControlPolicy.cc/.h`** — backward-chaining control-rule selection; uses `MixtureModel` + `ActionSelection`; recognizes `URE:BC:expand-and-BIT` and `URE:BC:preproof-of` patterns
+- **`forwardchainer/ForwardChainer.cc/.h` + `SourceSet.cc/.h` + `SourceRuleSet.cc/.h`** — current source weighting via TV fitness only (`complexity_factor * strength * confidence`); Thompson sampling over source-rule pairs
+- **`UREConfig.cc/.h`** — current parameters: maximum iterations, complexity penalty, jobs, expansion pool size, retry exhausted sources, full rule application, BC max BIT size, BC mixture-model parameters
+
+**Both models converge** that this is **inference-control code, not ECAN code**. The URE pursued a **separate Bayesian / control-rule meta-learning route** that did not realize the 2009 paper's ECAN-coupling vision.
+
+### Q4: Legacy C++ PLN dependency on URE; ECAN coupling
+
+**A (consensus):** Legacy C++ PLN (`pln-singnet`) is a **URE-dependent rulebase/library**, not a standalone attention-controlled engine. `CMakeLists.txt` requires URE (`FIND_PACKAGE(URE 1.0.0 CONFIG REQUIRED)`). Inference control is entirely delegated to URE. Wrappers `pln-fc`/`pln-bc` invoke URE chainers; `pln-set-attention-allocation` wraps URE's dead `URE:attention-allocation` hook. **No active AttentionBank / AttentionValue / AttentionalFocus reads in legacy PLN source.** Configs repeatedly set `URE:attention-allocation` to `0` / false. Substantial PLN rule + meta-rule surfaces under `opencog/pln/rules/` and `opencog/pln/meta-rules/`, but no ECAN runtime bridge.
+
+### Q5: PLN cluster Source 7 carryover sanity check
+
+**A (consensus):** PLN cluster Source 7 finding ("only ~5 of 16 URE features survived in `chaining/`") is **supported** by Source 3's URE C++ ground-truth inventory. URE has full mature implementations of beta-distribution TV uncertainty, Thompson sampling, action selection, mixture-model control-rule aggregation, BIT backward inference trees, control-policy rule selection, trace/control atomspace plumbing, and forward source/rule pair scoring. **Modern MeTTa `chaining/` sketches some concepts but does not carry the mature C++ stack wholesale.**
+
+**Important caveat (Codex C3-43, C3-44 — Gemini did not flag):** URE's active **test status is degraded**. `tests/ure/CMakeLists.txt` only actively includes `BetaDistributionUTest`, `ActionSelectionUTest`, and `UtilsUTest`. **`ForwardChainerUTest` is commented out**; **backward-chainer tests are disabled** with a CMake comment that code bit-rotted and tests no longer work / URE is no longer supported. Do not cite current URE as a healthy maintained inference-control runtime without this caveat.
+
+---
+
+## Source-of-truth checks (cross-model dissent + orchestrator verification)
+
+### V0-1 — `source_selection_mode::STI` historical implementation status (CRITICAL DISSENT)
+
+**Dissent:**
+- **Gemini [forwarded]:** "Confirmed Dead Enum (Architected but **NEVER implemented**)." Method: current-HEAD repo-wide grep + read of `SourceSet.cc:38-54`'s TODO comment.
+- **Codex C3-01, C3-10, C3-12, C3-13:** "Once implemented, then removed/unwired." Method: `git log --all -S 'source_selection_mode'` pickaxe + `git show` on three specific commits.
+
+**[Claude orchestrator, repo-verified]** Direct `git show` on Codex's three cited commits:
+
+**Commit `0a0b09912` — 2016-03-09 Misgana Bayetta "Pass source selection mode to the constructor":** confirmed. Verbatim diff at historical path `opencog/rule-engine/forwardchainer/ForwardChainer.cc`:
+```cpp
+ForwardChainer::ForwardChainer(AtomSpace& as, Handle rbs, Handle hsource,
+-                               const HandleSeq& focus_set) :
+-    _as(as), _rec(as), _rbs(rbs), _configReader(as, rbs)
++                               const HandleSeq& focus_set /* = HandleSeq()*/,
++                               source_selection_mode sm /*= source_selection_mode::UNIFORM */) :
++        _as(as), _rec(as), _rbs(rbs), _configReader(as, rbs)
+{
++    _ts_mode = sm;
+    init(hsource, focus_set);
+}
+```
+The constructor accepted a `source_selection_mode sm` parameter and stored it in `_ts_mode` member. The STI case in the switch read `s->getSTI()` for tournament selection (per Codex C3-10's verbatim cited code block).
+
+**Commit `0b744dbab` — 2018-10-23 Nil Geisweiller "Re-work source and rule selection in the forward chainer":** confirmed. Verbatim diff context shows the STI case was **commented out** with this explicit comment block:
+```
+/*
+An attentionbank is needed in order to get the STI...
+	case source_selection_mode::STI:
+	    for (const Handle& s : to_select_sources)
+		    tournament_elem[s] = s->getSTI();
+	    hchosen = urec.tournament_select(tournament_elem);
+	    break;
+*/
+```
+The 2018 rewrite authors **explicitly knew** the STI hook needed AttentionBank infrastructure and **declined to wire the new SourceSet path through that infrastructure**. This is direct documentation of the unwiring decision.
+
+**Commit `5a5b7785d` — 2019-01-08 Nil Geisweiller "Have forward and backward chainer support seperate rule-base atomspace" [sic — typo "seperate"]:** confirmed. The `source_selection_mode sm` constructor argument was removed; the enum at `ForwardChainer.h:40-43` survived as dead residue (`TV_FITNESS, STI, UNIFORM`).
+
+**Resolution:** **Codex's "once implemented, then removed/unwired" is correct.** Gemini's "never implemented" reading is wrong. The cluster-narrative-deciding finding is:
+
+> **STI source selection in URE forward chaining was a real, executable, narrow ECAN-PLN coupling that existed from 2016-03-09 to 2018-10-23. It was an atom-STI-read for tournament selection of inference sources, not a full ECAN agent integration. It was deliberately commented out by Nil Geisweiller in the 2018 rewrite with the explicit comment "An attentionbank is needed in order to get the STI...", and the constructor parameter was fully removed in 2019. The enum value persists at `ForwardChainer.h:42` in current HEAD as dead residue.**
+
+Cluster-narrative implications:
+1. The PLN-cluster "missing inference-control layer" was **not** purely a Hyperon-era loss. It was lost in OpenCog's own 2018 URE rewrite, predating the MeTTa transition. The "lost glue" was real, narrow, and deliberately unwired.
+2. The 2009 paper's ECAN-PLN aspirations **were** realized at the executable layer, but only as a narrow STI source-selection hook in URE forward chaining — never as the full attention-currency-driven inference control loop the paper described.
+3. Modern Hyperon did not inherit a working ECAN-PLN runtime because **even OpenCog's own 2019 URE state did not have one** — the integration had already been removed.
+
+**Patched 2026-04-26 per Codex correction (post-reconciliation review):** The original reconciliation conflated two distinct URE complexity-penalty formulas. Precise statement: **forward chaining `SourceSet` weighting** uses `strength × confidence × std::exp2(-complexity_penalty × complexity)` (`SourceSet.cc:38-54, 217`, orchestrator-verified), i.e. TV-fitness × base-2 complexity factor. **Backward/control-rule `MixtureModel` prior** uses `exp(-cpx_penalty × length)` separately (Gemini-cited at `MixtureModel.h:88`-area). Both are local URE control mechanisms decoupled from any global AttentionBank, but they are **distinct formulas in distinct subsystems**, not a single shared replacement for ECAN-STI.
+
+Why the dissent occurred:
+- **Gemini's method:** current-HEAD repo-wide grep + reading the `SourceSet.cc:38-54` TODO comment. This finds the enum is unused at HEAD but **misses git history**.
+- **Codex's method:** `git log --all -S 'source_selection_mode'` pickaxe across all history. This **catches deleted code**.
+
+**Standing rule reinforcement:** for "dead enum" / "dead config" claims, agents must run `git log --all -S '<token>'` pickaxe before classifying as "never implemented." Current-HEAD-only grep is not sufficient. This is now a **standing operational rule** for the cluster pilot.
+
+### V0-2 — Sebastian Ruder identity (Gemini-original, Codex-noted)
+
+**Gemini [forwarded]:** "Sebastian Ruder: VERIFIED. 219 commits in ure (ranked #13). However, contributions (dated 2014) are primarily documentation, refinements, and early composition logic (e.g., c40990c, ab055db). This confirms a notable cross-cluster historical contribution before his prominence in mainstream NLP."
+
+**Codex C3-67:** "Sebastian Ruder does appear in URE history with 219 commits in the local shortlog. I did not verify identity beyond email/name in git; if the wiki wants to assert 'the well-known NLP researcher', that needs an external identity check or source beyond this repo."
+
+**Resolution:** Both models confirm 219 commits attributed to "Sebastian Ruder <ruder.sebastian@gmail.com>" in the URE git history at HEAD `cec5509`. Gemini's claim of "the well-known NLP researcher" is **plausible but not independently verified**. The 2014 contribution timeframe is **consistent** with that identification (Ruder's NLP research career began ~2015-2016, so a 2014 OpenCog stint would predate his prominence). Codex's caution is well-founded; the wiki should treat this as "**git-name match: Sebastian Ruder, identity-with-NLP-researcher unverified**" until independently confirmed.
+
+For cluster wiki purposes, the safe wording is:
+> "URE git history at HEAD `cec5509` includes 219 commits attributed to 'Sebastian Ruder <ruder.sebastian@gmail.com>' dated ~2014. Identity beyond git author name/email is unverified; if this is the same Sebastian Ruder later prominent in mainstream NLP research, this is a notable cross-cluster historical contribution. Verify before citing in synthesis."
+
+### V0-3 — Test status (Codex-original, Gemini-not-flagged)
+
+**Codex C3-43, C3-44, C3-208 [paraphrased]:** URE's active test status is degraded. `tests/ure/CMakeLists.txt` only actively includes `BetaDistributionUTest`, `ActionSelectionUTest`, `UtilsUTest`. `ForwardChainerUTest` commented out; backward-chainer tests disabled with CMake note that "code bit-rotted and tests no longer work / URE is no longer supported."
+
+**Gemini [forwarded]:** Did not flag test status. Gemini's report focused on the inference-control architecture inventory without addressing test-status degradation.
+
+**Resolution (orchestrator):** Codex's caveat is important and should be carried forward to the cluster wiki anchor. URE is in **architecture-rich but maintenance-degraded** state — substantial code, but with disabled tests and the explicit CMake comment that URE is no longer supported. Wiki claims about URE as "the maintained OpenCog inference-control runtime" should be downgraded accordingly.
+
+### V0-4 — Inference-control naming convention (minor)
+
+**Gemini [forwarded]:** Used "BIT (Back Inference Tree)" terminology and listed `MixtureModel.h:88` and `ThompsonSampling.h:60` as specific line-citations.
+
+**Codex C3-33-C3-35:** Used "Backward Inference Tree" full spelling; cited file-level not line-level.
+
+**Resolution:** "BIT" = "Backward Inference Tree" — both correct. Gemini's specific line citations (`MixtureModel.h:88`, `ThompsonSampling.h:60`, `ControlPolicy.h:74`) add detail-level pin-points; Codex's evidence covers more code paths. Use both: Gemini's line-pins are useful for wiki citation; Codex's broader evidence sets the architecture frame.
+
+---
+
+## Universal agreement (2-of-2 consensus, orchestrator-confirmed where verified)
+
+1. **No active ECAN coupling at current HEAD in either URE or legacy PLN.** Repo-wide grep across both at HEADs `cec5509` (URE) and `a0983ada8` (legacy PLN) returned no active `AttentionBank`/`AttentionValue`/`AttentionalFocus`/`cog-bind-af` reads.
+
+2. **`URE:attention-allocation` Scheme hook is explicitly dead.** `ure-utils.scm:1012` documents "URE:attention-allocation isn't set b/c it isn't in use presently." Configs in legacy PLN repeatedly set it to `0`/false — compatibility/config residue, not active control.
+
+3. **Legacy C++ PLN is URE-dependent, not standalone.** `CMakeLists.txt` requires URE; inference control delegated to URE. `pln-set-attention-allocation` wraps URE's dead hook.
+
+4. **URE inference-control architecture is rich but separate from ECAN.** Bayesian / control-rule meta-learning route: MixtureModel + ThompsonSampling + BetaDistribution + ActionSelection + ControlPolicy + BIT. Distinct from the ECAN attention-currency route. The 2009 paper-aspiration of "ECAN drives PLN inference control" did not materialize as the durable URE control architecture.
+
+5. **PLN cluster Source 7 finding ("~5/16 features survived in chaining/") is supported.** URE has full C++ implementations the modern MeTTa `chaining/` lacks.
+
+6. **Inference-control meta-learning examples in `pln-singnet/examples/pln/inference-control-meta-learning/` explicitly say "No ECAN is necessary"** (Codex C3-55) — design-level documentation that the mature URE inference-control direction was **trace/control-rule meta-learning, not ECAN currency integration**.
+
+7. **Cohort:** Linas Vepštas + Nil Geisweiller dominant for both URE (~7500 + ~3500 commits) and legacy PLN. Cosmo Harrigan (Source 2 diffusion-subsystem author) appears in URE with 496 commits — same person, cross-source overlap. Misgana Bayetta + Amen Belayneh (OpenCog Ethiopia, also Source 2) appear in URE.
+
+8. **`focus_set` parameter in URE chainers ≠ ECAN.** Both `ForwardChainer` and `BackwardChainer` accept `focus_set` but it's a passed-in HandleSet of atoms under focus, **not an AttentionBank/ECAN runtime hookup**.
+
+---
+
+## Differentiated insights
+
+### Codex only
+
+- **Git-history pickaxe audit** (V0-1 above): three specific commits `0a0b09912` (2016 wire-up), `0b744dbab` (2018 unwire with attentionbank comment), `5a5b7785d` (2019 constructor-arg removal). This is the **most consequential finding of the source** and Gemini missed it.
+- **URE test-status degradation** (V0-3 above): `ForwardChainerUTest` commented out, BC tests disabled with "URE no longer supported" CMake note.
+- **Earlier commit `36fdff1fb`** (2016-02-23 Nil Geisweiller, "Add UNIFORM source selection") established the enum shape before STI was wired up — useful for the timeline.
+- **Detailed implementation evidence for URE control modules**: `BetaDistribution::operator()` uses `boost::math::ibeta_inv`; `MixtureModel.cc` implements `prior_estimate(model) * beta_factor(model)` weighting; `ControlPolicy` recognizes `URE:BC:expand-and-BIT`/`URE:BC:preproof-of` patterns.
+- **Inference-control meta-learning corpus inventory**: `pln-singnet/examples/pln/inference-control-meta-learning/` has `icl.scm` invoking `pln-bc target #:trace-as trace-as #:control-as control-as`, `pln-rb.scm` setting `URE:BC:MM:compressiveness` and `URE:BC:MM:complexity-penalty`, and a README with the loop "run BC → record traces → mine patterns → build control rules → repeat". Strong design-level evidence that URE/PLN pursued the trace/control-rule route, not ECAN.
+
+### Gemini only [forwarded]
+
+- **MixtureModel mathematical specification** at `MixtureModel.h:88`: $K(D) = |D|^{(1-c)}$ — Kolmogorov complexity estimate. Specific formula citation that Codex described prose-level.
+- **ControlPolicy expansion-rule role** at `ControlPolicy.h:74`: "Expansion Control Rules (meta-rules for rule selection)" — specific framing for the wiki narrative.
+- **Complexity penalty as ECAN-STI functional analog**: Gemini-original framing is "the closest executable functional analog to ECAN's STI-based importance, but it operates purely within the URE's local logic, decoupled from any global AttentionBank." Conceptual insight is correct, but **formula attribution needs correction (Codex post-review)**: the `exp(-cpx_penalty × length)` formula Gemini cites belongs specifically to the **backward/control-rule `MixtureModel` prior**, not the forward `SourceSet` source-quality measure. The forward `SourceSet` uses `strength × confidence × exp2(-complexity_penalty × complexity)` at `SourceSet.cc:38-54, 217` — TV-fitness × base-2 complexity factor (orchestrator-verified). Both formulas are local URE control mechanisms decoupled from any global AttentionBank, but they are **distinct mechanisms in distinct subsystems**.
+- **Sebastian Ruder commit-date verification** (V0-2): cites specific commits `c40990c`, `ab055db` from 2014 — predates Ruder's NLP prominence.
+
+### Orchestrator only [Claude orchestrator, repo-verified]
+
+- **2018 unwiring comment is direct documentation of the decision**: "An attentionbank is needed in order to get the STI..." — the rewrite authors explicitly knew about the AttentionBank dependency and chose not to wire it through. This is **smoking-gun evidence** that the decision was deliberate, not accidental drift.
+- **Pickaxe-audit standing rule**: agents must use `git log --all -S '<token>'` for "dead enum" / "dead config" claims. Current-HEAD-only grep misses removed code. Codex's audit caught what Gemini's did not.
+
+---
+
+## Reconciled cluster-narrative position
+
+The cluster-narrative position from Sources 1 + 2 was:
+
+> "ECAN was architecturally/paper-coupled to PLN/URE but never executable-coupled at the inference-control level. The Hyperon 'missing inference-control layer' is a continuation of the OpenCog Classic state, not a Hyperon-era regression."
+
+**Source 3 refinement (V0-1 driven):**
+
+> **"ECAN was architecturally/paper-coupled to PLN/URE, with one narrow executable hook in URE forward chaining (STI-weighted source selection) that lived from 2016-03-09 to 2018-10-23. The hook read atom STI values for tournament selection of inference sources; it did not run ECAN agents, did not couple PLN reward signals to ECAN currency dynamics, and did not realize the 2009 paper's full ECAN-driven inference control vision. The hook was deliberately unwired by Nil Geisweiller in the 2018-10-23 URE rewrite (commit `0b744dbab`) with the explicit reason that an AttentionBank dependency was required and not provided in the new SourceSet path. The constructor parameter was removed in 2019 (commit `5a5b7785d`). The 'missing inference-control layer' is therefore not a Hyperon-era regression but a 2018-OpenCog-era deliberate removal — predating the MeTTa transition. The durable URE control architecture (Thompson sampling, MixtureModel, BIT, ControlPolicy, trace/control-rule meta-learning) is conceptually distinct from the ECAN currency-economy route. URE replaced the old STI source-selection hook with internal **TV-fitness plus complexity-penalty source weighting in `SourceSet`** (`strength × confidence × exp2(-complexity_penalty × complexity)`, `SourceSet.cc:38-54, 217`); separately, the backward/control-rule `MixtureModel` uses an **exponential complexity prior** (`exp(-cpx_penalty × length)`, `MixtureModel.h:88`-area). Both are local URE control mechanisms decoupled from any global AttentionBank."**
+
+**Three concepts to keep separate** (Codex C3-73, Gemini-corroborated):
+- **ECAN attention dynamics:** rent, wages, diffusion, Hebbian attention links, STI/LTI currency. Source 1+2.
+- **URE inference control:** Thompson sampling, mixture models, BIT, source/rule selection, trace/control-rule meta-learning. Source 3.
+- **PLN rule semantics:** PLN rule formulas, truth values, rule bases, forward/backward chaining. PLN cluster Sources 3, 4, 11.
+
+**Old design wanted these to interact. Source 3 confirms the executable integration was never complete.**
+
+---
+
+## Standing-corrections candidates (reconciled)
+
+For the cluster narrative anchor (top-level `hyperon-wiki/CLAUDE.md`):
+
+1. **`source_selection_mode::STI` is NOT merely a dead enum.** It was historically implemented (commit `0a0b09912`, 2016-03-09 Misgana Bayetta) and later removed/unwired (commit `0b744dbab`, 2018-10-23 Nil Geisweiller, with explicit comment "An attentionbank is needed in order to get the STI..."), then constructor argument removed (commit `5a5b7785d`, 2019-01-08 Nil Geisweiller). Cite all three commits when discussing the historical ECAN-PLN coupling status.
+
+2. **`URE:attention-allocation` is a dead Scheme/config hook.** `opencog/scm/opencog/ure/ure-utils.scm:1012` "URE:attention-allocation isn't set b/c it isn't in use presently." Do not cite as active ECAN coupling.
+
+3. **`pln-set-attention-allocation` in legacy PLN is a wrapper around URE's dead hook.** Not active ECAN coupling.
+
+4. **Legacy PLN's inference-control meta-learning examples explicitly say "No ECAN is necessary"** (`pln-singnet/examples/pln/inference-control-meta-learning/README`). The mature URE inference-control direction was trace/control-rule meta-learning, not attention-currency control.
+
+5. **URE has a substantial mature inference-control stack** (MixtureModel, ThompsonSampling, BetaDistribution, ActionSelection, ControlPolicy, BIT, BackwardChainer). PLN cluster Source 7's "~5/16 features survived in chaining/" finding is supported by C++ ground-truth inventory.
+
+6. **URE test status is degraded.** `ForwardChainerUTest` commented out; backward-chainer tests disabled with "URE no longer supported" CMake comment. Active test set is `BetaDistributionUTest`, `ActionSelectionUTest`, `UtilsUTest` only. Wiki claims about URE as "maintained inference-control runtime" should be downgraded.
+
+7. **URE replaced ECAN-STI source selection with internal TV-fitness plus complexity-penalty source weighting in `SourceSet`** (`strength × confidence × exp2(-complexity_penalty × complexity)`, `SourceSet.cc:38-54, 217`). **Separately**, the backward/control-rule `MixtureModel` uses an exponential complexity prior (`exp(-cpx_penalty × length)`, `MixtureModel.h:88`-area). Both are local URE control mechanisms decoupled from any global AttentionBank. Conceptual replacement of ECAN-STI by URE-internal complexity-based weighting, but in **two distinct formulas across two distinct subsystems** — not a single shared replacement. Gemini-original framing was correct in spirit but conflated the two formulas; Codex post-review corrected the attribution.
+
+8. **Sebastian Ruder appears in URE git shortlog** (219 commits, 2014). Identity beyond git author name/email is unverified; treat as "git-name match, identity-with-NLP-researcher unverified" until independently confirmed.
+
+9. **Cohort cross-source overlap**: Cosmo Harrigan (Source 2 diffusion-subsystem author) has 496 URE commits; Misgana Bayetta + Amen Belayneh (Source 2 + OpenCog Ethiopia) appear in URE. URE/PLN-legacy is dominated by **OpenCog-era contributors**, not the iCog-Labs-Dev ECAN-on-MeTTa cohort (Sources 1-2) and not the trueagi-io Local-Rule PLN cohort (modern PLN cluster).
+
+10. **Standing operational rule (NEW from Source 3 V0-1)**: for "dead enum" / "dead config" / "never implemented" claims, agents must use `git log --all -S '<token>'` pickaxe before classifying. Current-HEAD-only grep is insufficient. This rule is now part of the cluster pilot operating procedure.
+
+---
+
+## Open questions / next-source recommendations
+
+### From Codex (C3-80 through C3-83)
+
+1. **Was `source_selection_mode::STI` ever exposed through Scheme APIs to PLN users before removal?** Codex verified the C++ constructor path and current dead state but did not fully reconstruct every historical Scheme binding 2016-2019. Worth a focused Source 4 follow-up if the cluster narrative needs PLN-user-visible coupling status.
+2. **Did pre-split OpenCog monorepo history contain stronger AttentionBank-to-URE coupling than the standalone repos preserve?** Local current monorepo is trimmed; older monorepo tags or full historical checkout may surface additional coupling.
+3. **Did `attention-bank.scm`'s `cog-bind-af` utility ever get consumed by URE in the monorepo era?** Source 2 confirmed the utility exists as URE-facing pattern matcher; Source 3 current standalone URE does not consume it. Pre-split monorepo audit may resolve.
+4. **Should ECAN cluster Source 4 be old monorepo archaeology or pivot to wiki-edit pass?** Codex notes "If the goal is final narrative accuracy, one short old-monorepo archaeology pass would be valuable before wiki updates."
+
+### From orchestrator
+
+5. **Pending file save: `findings_gemini.txt` for Sources 1, 2, 3.** Three sources of forwarded-but-unsaved Gemini content. Per one-writer-rule, orchestrator should persist verbatim Gemini text to disk when available. Backlog item.
+6. **2018 "Shifting and Drifting Attention While Reading" publication** (Source 1 discovery) still pending wiki backlog addition.
+7. **Advisor-overstep cleanup** (`AGENTS.md` / `GEMINI.md` / `CLAUDE.md` files in `attention/`, `metta-attention/`, `ure/`, `pln-singnet/`) — backlog item per user deferral.
+
+### Source 4 candidate options
+
+- **Option A: Pre-split monorepo archaeology.** Use `opencog-singnet/`, `opencog-zariuq/`, or any other fork that preserves the historical full-monorepo state. Search for older AttentionBank ↔ URE coupling, older `cog-bind-af` consumers, and verify the Codex C3-80 / C3-81 / C3-82 open questions. **Risk:** historical monorepos are massive; targeting must be tight. **Value:** definitively closes the cluster narrative on "did the lost glue ever exist beyond the narrow URE STI hook?"
+- **Option B: Pivot to wiki-edit pass.** Take the Source 1+2+3 reconciliation findings and update the wiki / cluster anchor. **Risk:** open Source 4 questions remain unsettled. **Value:** delivers user-visible synthesis.
+- **Option C: PLN cluster Source 7 re-reconciliation.** Now that Source 3 has provided URE C++ ground truth, revisit the PLN cluster Source 7 reconciliation to see if the "~5/16" feature inventory needs updating. **Risk:** cross-cluster scope creep. **Value:** integrity check on prior cluster work.
+
+**Orchestrator recommendation (defer to user):** **Option A short-and-tight** — one focused pre-split monorepo archaeology pass to settle the four Codex open questions, then pivot to Option B for the wiki-edit pass. Option C can be done as a side-deliverable during the wiki-edit pass.
+
+---
+
+## Audit trail
+
+- All file:line citations come from Codex's `findings_codex.txt` or Gemini's forwarded summary.
+- Cross-model dissents (V0-1, V0-2, V0-3, V0-4) documented above with explicit resolution rationale.
+- V0-1 is the cluster-narrative-deciding finding; orchestrator git-show verification of three commits (`0a0b09912`, `0b744dbab`, `5a5b7785d`) confirms Codex's "once implemented, then removed/unwired" reading and falsifies Gemini's "never implemented" reading.
+- No wiki edits performed in this reconciliation pass.
+- No repo file edits performed (read-only access to URE and pln-singnet repos).
+- No tests run.
+
+*End of Source 3 cross-model reconciliation — ECAN cluster pilot.*

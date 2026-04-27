@@ -1,0 +1,25 @@
+# Source 2 — attention/ Classic ECAN C++ — Gemini Findings
+
+**Cluster:** ECAN / Attention pilot, Source 2 of N
+**Source target:** `iCog-Labs-Dev/attention` (canonical OpenCog Classic ECAN C++ codebase, with iCog-Labs-Dev maintenance commits on top of upstream history)
+**Local checkout:** `E:\GitHub\hyperon reference\attention\`
+**Audited HEAD:** `e8162a57ca95d1d914feeedec68160154ec6264f` (short `e8162a5`)
+**Persistence date:** 2026-04-26 (orchestrator-saved from Gemini's 2026-04-26 forwarded consolidated summary; verbatim per Gemini's "Verbatim Findings for Persistence (Sources 1–4)" delivery)
+**Brief:** `scripts/archive/ecan_pilot/source2_attention_classic_brief.txt`
+
+**Note on persistence form:** Gemini's earlier forwarded report contained more detailed claim-level content (math-verification table with VARIANT/Stabilizing labels for Rent and Wage, ABSENT label for Wage Agent, ForgettingAgent.cc maxSize=2 hardcoded test parameters, Cosmo Harrigan file-header Copyright attribution, etc.). At cluster-close (Source 4 review), Gemini provided a compact consolidated summary explicitly designated as "verbatim consolidated text for findings_gemini.txt". This file persists Gemini's designated text. For full claim-level Gemini findings, see also the cross-model reconciliation file at `findings_reconciled_crossmodel.txt` which integrates Gemini's earlier forwarded content with Codex and orchestrator cross-checks.
+
+---
+
+## Verbatim consolidated findings (per Gemini's designation)
+
+**Source 2 (attention Classic C++)**
+
+- **Integration:** Legacy `cog-bind-af` hook for URE.
+- **Math:** 0/4 strict-literal. Verified that MeTTa port's surrogates were inherited from this baseline.
+- **Critical Bug:** `WARentCollectionAgent.cc` inherited mutation bug; `WAImportanceDiffusionAgent.cc` reads `dif_tournament_size` into hebbian percentage (Logic Error).
+- **Attribution:** Cosmo Harrigan (Architecture), Linas Vepstas (Lead).
+
+---
+
+*End of Gemini Source 2 findings.*

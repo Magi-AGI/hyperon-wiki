@@ -1,0 +1,247 @@
+# Source 4 — Pre-Split OpenCog Monorepo Archaeology — Cross-Model Extraction Brief
+
+**Pilot:** ECAN / Attention cluster — Source 4 of N (likely final source before wiki-edit pivot)
+**Source target:** `opencog/opencog` monorepo at the **last commit before AttentionBank removal**, accessed via the `singnet/opencog` fork which preserves full upstream history.
+**Brief author:** Claude orchestrator
+**Brief date:** 2026-04-26
+**No wiki writes during extraction. No repo edits. No `git checkout` of the working tree** — agents must use `git show <commit>:<path>` and `git log -S '<token>'` for historical inspection, leaving HEAD intact.
+
+---
+
+## Why this source, why now
+
+Source 3 reconciliation settled the cluster-narrative-deciding question: ECAN-PLN coupling **was** narrowly executable (URE forward-chainer STI source-selection, 2016-03-09 to 2018-10-23) but was deliberately unwired in the 2018 URE rewrite (commit `0b744dbab`, "An attentionbank is needed in order to get the STI..."). The current standalone URE and legacy PLN repos preserve only the post-removal state.
+
+Codex flagged four open questions (C3-80 through C3-83) that the standalone repos cannot answer:
+
+1. **Scheme-binding history**: was `source_selection_mode::STI` ever exposed through Scheme APIs to PLN users before its 2018 removal? The C++ constructor path is verified; the historical Scheme bindings are not yet reconstructed.
+2. **Pre-split monorepo coupling**: did the monorepo era contain stronger AttentionBank-to-URE / AttentionBank-to-PLN coupling than the standalone repos preserve? Standalone repos have post-split state only.
+3. **`cog-bind-af` historical consumers**: Source 2 confirmed `cog-bind-af` exists as a URE-facing pattern matcher in `attention-bank.scm:272-276`. Did anything actually consume it in the monorepo era?
+4. **`pln-set-attention-allocation` evolution**: was there ever a working version that did more than wrap URE's dead hook?
+
+**Source 4's job is to settle these four questions definitively, then close the ECAN cluster pilot extraction phase.**
+
+Gemini and Codex both pre-approved Source 4 = pre-split monorepo archaeology in their Source 3 review responses.
+
+## Source identification
+
+- **Repository (local):** `E:\GitHub\hyperon reference\opencog-singnet\`
+- **Origin remote:** `https://github.com/singnet/opencog.git`
+- **Upstream remote (configured):** `https://github.com/opencog/opencog.git`
+- **Working-tree HEAD (DO NOT CHECKOUT):** `68d0e553185f227125302b8f31560d02b917f3a4` (2022-10-30, Amen Belayneh, "Merge pull request #103 from amebel/lojban") — this is post-removal, and the working tree should remain at this state.
+- **Audit target commit (read-only via `git show`):** `b31c7e3b9beab7a458c84117f3b654a03ca9ffe2` (short `b31c7e3`, 2019-09-04, Linas Vepstas, "Modernize the test framework") — this is the **last commit before AttentionBank removal** (parent of `318c0b4cb` "First rough cut at removing the attentionbank" 2019-09-06).
+
+**Critical operational rule (NEW for Source 4):** because the audit target is a historical commit and the live HEAD is post-removal, agents **MUST use** `git show <commit>:<path>`, `git log -p <commit-range>`, `git ls-tree <commit>`, and `git log -S '<token>'` for historical inspection. Do NOT run `git checkout b31c7e3` — that would leave the working tree in detached state and could disrupt parallel work.
+
+## Pre-removal monorepo structure (orchestrator-verified at `b31c7e3`)
+
+`git ls-tree -d --name-only b31c7e3 -- opencog/` produces:
+
+```
+opencog/
+├── attention/        # ★ Classic ECAN agents (Source 2 lineage; in-monorepo at this point)
+├── attentionbank/    # ★ AttentionBank C++ (Source 2 lineage; in-monorepo at this point)
+├── cython/           # Python bindings
+├── eva/              # Eva embodied agent
+├── ghost/            # Ghost dialogue
+├── neighbors/        # Atom neighbor utilities
+├── nlp/              # NLP pipeline
+├── openpsi/          # ★ OpenPsi motivation/action-selection (potential AttentionBank consumer)
+├── pln/              # ★ Legacy C++ PLN in-monorepo (different from later split-out pln-singnet)
+└── python/           # Python tools
+```
+
+**Important absences:**
+- **`opencog/rule-engine/` is NOT present at `b31c7e3`.** URE was split out of the monorepo before this commit. The Source 3 URE timeline (`0a0b09912` 2016-03-09 wire-up, `0b744dbab` 2018-10-23 unwire, `5a5b7785d` 2019-01-08 constructor-arg removal) all happened in the URE repo's own history, which by `b31c7e3` had been a separate repo for ~4+ years.
+- This means `b31c7e3` shows **the monorepo state AFTER URE's 2018 unwiring** but **BEFORE AttentionBank's 2019-09 removal**. There is no overlap window where in-monorepo-URE could have called AttentionBank — that window was already closed by 2018-10-23 in the URE repo itself.
+
+**Implication for Source 4 deliverables:** the open question is no longer "did URE call AttentionBank?" — Source 3 already proved it did, narrowly, until 2018. The open question becomes:
+
+> **Did `opencog/pln/`, `opencog/openpsi/`, or any other monorepo subsystem at `b31c7e3` (2019-09-04) read AttentionBank, AttentionalFocus, AttentionValue, STI, or `cog-bind-af` directly — bypassing URE?**
+
+If yes: there were direct ECAN consumers in the pre-split monorepo that were lost when AttentionBank was removed in 2019-09 — additional "lost glue" beyond the URE STI hook.
+
+If no: the cluster narrative locks in. The only executable ECAN-PLN/URE coupling that ever existed was the narrow URE STI source-selection hook (2016-2018), and the rest was paper-coupling and architectural aspiration.
+
+## §Git-history (pre-populated for agents — do not re-run)
+
+**Key timeline commits in `opencog-singnet`** (orchestrator-verified):
+
+| Commit | Date | Author | Subject | Significance |
+|---|---|---|---|---|
+| `b31c7e3b9beab7a458c84117f3b654a03ca9ffe2` | 2019-09-04 | Linas Vepstas | "Modernize the test framework" | **Audit target** — last commit with attentionbank+attention+pln coexisting in monorepo |
+| `318c0b4cb9e791e433d0d1ecddc1fb776d6f77dc` | 2019-09-06 | Linas Vepstas | "First rough cut at removing the attentionbank" | Removed `opencog/attention/` + most of `opencog/attentionbank/` from monorepo |
+| `492fcc424...` | 2019-06-20 | (orchestrator did not pin author) | "Move AttentionBank Cython wrapper from attentionbank module to cython" | Architectural prep for the eventual removal |
+| `b58dbc0b1...` | 2019-07-16 | (not pinned) | "Avoid test failures if URE is not installed" | Confirms URE was already an external dep at that time |
+| `a04acf200...` | 2019-09-11 | (not pinned) | "Remove the attentionbank examples" | Final cleanup post-removal |
+| `088bde90c...` | 2019-11-27 | (not pinned) | "Remove PLN and configure cmake to find it elsewhere" | PLN itself was removed from monorepo a few months later |
+
+**Cross-cluster reference** (Source 3 timeline, in URE repo's own history):
+- 2016-03-09: URE `0a0b09912` (Misgana Bayetta) — `source_selection_mode::STI` wired up
+- 2018-10-23: URE `0b744dbab` (Nil Geisweiller) — STI case commented out with "An attentionbank is needed..." comment
+- 2019-01-08: URE `5a5b7785d` (Nil Geisweiller) — constructor argument removed
+
+**Inferred timeline interpretation:** by 2019-09-04 (`b31c7e3`), URE's STI hook had been dead for 11 months. AttentionBank was still in the monorepo. The 2019-09-06 removal of AttentionBank from the monorepo was the final disconnection of an already-orphaned subsystem. Source 4 must verify this interpretation.
+
+## Comparison targets — five primary deliverables
+
+### Q1 (highest priority): Was `cog-bind-af` ever consumed by anything?
+
+`cog-bind-af` is the URE-facing pattern-matcher utility documented at `opencog/attentionbank/scm/attention-bank.scm:272-276` (Source 2 finding). It's defined in `AttentionSCM.cc`. The Source 3 standalone URE pass found no consumer in URE source. **Source 4 must verify whether anything in the pre-split monorepo era ever called `cog-bind-af`.**
+
+**Methodology:**
+
+1. `git log --all -S 'cog-bind-af'` in `opencog-singnet/` — find all commits that added or removed `cog-bind-af` references. Report SHAs + dates + paths.
+2. At commit `b31c7e3`, run `git grep cog-bind-af b31c7e3 -- '*.scm' '*.py' '*.cc' '*.h'` — find every active reference at the snapshot.
+3. Cross-reference with `opencog/pln/` and `opencog/openpsi/` at `b31c7e3`. Did either subsystem invoke `cog-bind-af`?
+4. If active consumers exist: cite them. If only definition + documentation hits: confirm dead utility.
+
+**Outcome interpretation:**
+- **Active consumers exist**: ECAN-PLN coupling existed via this Scheme bridge, separate from the URE C++ STI hook. Significant cluster-narrative addition.
+- **No active consumers, ever**: utility was always paper-aspirational. Cluster narrative locks in.
+
+### Q2: Did `opencog/pln/` (in-monorepo legacy C++ PLN) reference AttentionBank?
+
+This is **distinct from** the standalone `pln-singnet/` audited in Source 3 (HEAD `a0983ada8`, 2021-10-28). The in-monorepo `opencog/pln/` at `b31c7e3` (2019-09-04) is an **earlier state** of the same codebase, before the split.
+
+**Methodology:**
+
+1. `git ls-tree -r b31c7e3 -- opencog/pln/` — inventory in-monorepo PLN subdirs and files. Compare to standalone `pln-singnet/` HEAD `a0983ada8` to see what was added/removed in the post-split period.
+2. `git grep -n -E 'AttentionBank|AttentionalFocus|AttentionValue|attentionvalue|cog-bind-af|cog-av-sti|getSTI|set_sti|URE:attention-allocation' b31c7e3 -- opencog/pln/` — find every coupling reference at the snapshot.
+3. Pickaxe history: `git log --all -S 'AttentionBank' -- opencog/pln/` and `git log --all -S 'getSTI' -- opencog/pln/` — find any pre-`b31c7e3` commits that wired AttentionBank into PLN and were later removed.
+4. Compare against `pln-singnet/` standalone. If `opencog/pln/` at `b31c7e3` had AttentionBank references that `pln-singnet/` `a0983ada8` does not, cite the diff.
+
+**Outcome interpretation:**
+- **Active references with non-trivial logic**: legacy C++ PLN did directly read AttentionBank — significant additional ECAN-PLN coupling beyond the URE STI hook. Standing correction.
+- **Wrapper/config-only references** (e.g., `pln-set-attention-allocation` setting URE's flag): consistent with Source 3 finding that PLN delegates to URE; no new coupling.
+- **No references**: confirms PLN was URE-mediated and ECAN-decoupled even in the monorepo era.
+
+### Q3: Did `opencog/openpsi/` (motivation/action-selection) integrate with AttentionBank?
+
+OpenPsi is OpenCog's motivation/action-selection subsystem and a candidate consumer of attention dynamics. PLN cluster Sources did not audit OpenPsi-AttentionBank coupling. Worth a focused look.
+
+**Methodology:**
+
+1. `git ls-tree -r b31c7e3 -- opencog/openpsi/` — inventory.
+2. `git grep -n -E 'AttentionBank|AttentionalFocus|AttentionValue|getSTI|set_sti' b31c7e3 -- opencog/openpsi/`.
+3. Pickaxe: `git log --all -S 'AttentionBank' -- opencog/openpsi/`.
+4. Look for OpenPsi-internal documentation describing its relationship to ECAN.
+
+**Outcome interpretation:**
+- **Active OpenPsi-AttentionBank coupling**: OpenPsi was a real ECAN consumer. Add to ECAN cluster narrative as a third executable coupling point (along with URE STI hook and any PLN-direct references found in Q2).
+- **No coupling**: OpenPsi is conceptually distinct; defers to other subsystems for attention-driven action selection.
+
+### Q4: `pln-set-attention-allocation` evolution
+
+Source 3 found `pln-set-attention-allocation` is a thin wrapper around URE's dead `URE:attention-allocation` hook in standalone `pln-singnet/`. **Source 4 must reconstruct its history.**
+
+**Methodology:**
+
+1. `git log --all -p -S 'pln-set-attention-allocation'` across both `opencog-singnet/` (monorepo) and standalone `pln-singnet/` if needed. Report all introducing/modifying commits.
+2. `git log --all -p -S 'attention-allocation'` for the broader hook lifecycle.
+3. Specifically: was there ever a working version that did anything beyond setting the URE flag? Or was it always a wrapper?
+
+**Outcome interpretation:**
+- **Always a wrapper**: confirms Source 3's "thin wrapper" framing. No new finding.
+- **Once richer**: the hook had real attention-driven PLN behavior at some point. Standing correction.
+
+### Q5: Broader monorepo audit for ECAN consumers
+
+A safety-net deliverable. After Q1-Q4, the agent should run a final repo-wide pickaxe at `b31c7e3` to ensure nothing has been missed:
+
+`git grep -n -E 'AttentionBank|AttentionalFocus|AttentionValue|cog-bind-af|cog-av-sti|getSTI|set_sti' b31c7e3` — report every hit, classify each as:
+- DEFINITION (the Source 2 attentionbank/attention modules themselves)
+- ACTIVE-CONSUMER (a non-attentionbank module reading or writing the hook)
+- DOCUMENTATION (comments, READMEs, examples)
+- TEST (tests of the attentionbank itself)
+
+If ACTIVE-CONSUMER hits exist outside `opencog/attention/`, `opencog/attentionbank/`, and the already-audited `opencog/pln/` + `opencog/openpsi/`, those are surprising and warrant their own structured-fields entries.
+
+## Required output format
+
+Per cluster-pilot convention. For each major deliverable (Q1-Q5), structured fields:
+
+```
+### <Deliverable / consumer module>
+
+**Repo:** opencog-singnet
+**Audit commit:** b31c7e3 (specific files cited via `git show b31c7e3:<path>`)
+**File:line citations:** ...
+**ECAN-coupling status (one of):**
+- COUPLED — actively reads/writes AttentionBank/STI/AV at this snapshot
+- DEAD-WRAPPER — defines a hook but only forwards to another (now-dead) hook
+- HISTORICAL-ONLY — git-log shows past coupling, removed before snapshot. Cite SHA + date + author of removal.
+- NO-COUPLING — never coupled in any commit reachable from `--all`
+
+**Pickaxe evidence (mandatory for HISTORICAL-ONLY and NO-COUPLING claims):** `git log --all -S '<token>'` output / SHA list
+
+**Standalone-repo cross-reference:** how does this differ from pln-singnet/ (Source 3) or post-2019-09-06 monorepo state?
+```
+
+After per-Q extraction, produce:
+
+1. **Q1 verdict** — `cog-bind-af` consumers (ever-existed list with SHAs, snapshot-active list, classification)
+2. **Q2 verdict** — `opencog/pln/` direct AttentionBank coupling (snapshot-grep results, pickaxe history, snapshot vs `pln-singnet/` comparison)
+3. **Q3 verdict** — `opencog/openpsi/` direct AttentionBank coupling
+4. **Q4 verdict** — `pln-set-attention-allocation` evolution (introducing commit, modifying commits, current-vs-historical comparison)
+5. **Q5 verdict** — broader-monorepo ECAN-consumer audit at `b31c7e3` (any surprising consumer modules?)
+6. **Cluster-narrative impact** — given Q1-Q5 findings, does the Source 3 cluster-narrative position lock in, or does it need refinement? Specifically: "the only executable ECAN-PLN/URE coupling that ever existed was the narrow URE STI source-selection hook (2016-2018)" — TRUE, FALSE, or REFINED?
+7. **Discovered publications** — track paper references in pre-split monorepo subsystems. PLN cluster sources have not seen the in-monorepo PLN era; new citations possible.
+8. **Author attribution** — `git shortlog -sne` at `b31c7e3` for `opencog-singnet/`. Compare cohort to URE (Source 3) and standalone PLN (Source 3).
+9. **Standing-corrections candidates** — surface any cluster-narrative findings.
+10. **Recommendation for cluster wiki-edit pivot** — given Source 4 findings, is the cluster narrative ready for wiki edits, or does another source need to run?
+
+## Cross-model lane assignments
+
+All three models read the audit-target commit. Emphasis hints (not exclusions):
+- **Codex / Gemini** — direct repo `git log -S` pickaxe + `git grep` at `b31c7e3` + `git ls-tree`. Source-of-truth file-line evidence.
+- **Claude** — narrative synthesis; final cluster-narrative lock-in or refinement; cluster wiki-edit pivot recommendation.
+- All three: pickaxe-history audit is mandatory and SHA-cited. Per the new standing rule from Source 3 V0-1, "never coupled" / "never implemented" claims **must** be supported by `git log --all -S '<token>'` evidence.
+
+## Standing corrections to carry into the bundle
+
+1. **Source 3 carryover (V0-1):** ECAN-PLN coupling once existed narrowly via URE STI source-selection (2016-2018), deliberately unwired in 2018-10-23 URE rewrite. Source 4 must determine whether other coupling existed in the monorepo era.
+2. **Source 3 carryover (post-Codex-correction):** URE replaced the old STI hook with TV-fitness × `exp2(-complexity_penalty × complexity)` source weighting in `SourceSet`; separately, the backward/control-rule `MixtureModel` uses `exp(-cpx_penalty × length)` prior. Two distinct formulas in two distinct subsystems.
+3. **NEW operational rule (Source 3 V0-1 driven, Source 4 enforced):** for "never used" / "never implemented" / "dead" claims, agents must cite `git log --all -S '<token>'` pickaxe results with SHAs. Current-HEAD-only grep is insufficient.
+4. **One writer only**: orchestrating model writes findings files; advisors do not.
+5. **No working-tree checkout**: agents must use `git show <commit>:<path>` and `git log` for historical inspection. Do not run `git checkout` on the audit-target commit.
+6. **Verify model "Verified" claims** against the source — Gemini drift on V-N-X identity assertions and current-HEAD-only audit completeness (V0-1 in Source 3).
+7. **Local orientation docs:** `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` may exist in `opencog-singnet/`. Treat as unreviewed.
+
+## Output paths
+
+Write per-model findings to:
+- `E:\GitHub\Magi-AGI\hyperon-wiki\scripts\archive\ecan_pilot\source4_pre_split_monorepo\findings_<model>.txt`
+
+Create directory if missing. After all 3 model passes land, the orchestrator writes `findings_reconciled_crossmodel.txt`.
+
+## Rules
+
+- **No wiki writes.**
+- **No repo file edits.**
+- **No working-tree checkout** of the audit-target commit. Use `git show <commit>:<path>`, `git log -p`, `git ls-tree`, `git log -S '<token>'`.
+- **Do not run tests** unless separately approved.
+- Read each cited file verbatim — do NOT summarize from filename.
+- Cite `<commit>:<path>:<line>` for every concrete claim.
+- Pre-populated §Git-history above is authoritative for chronology — do not re-run unless adding detail.
+- Follow standing rule `feedback_attribution_verify_against_git.md` for any author/contributor claim.
+- Follow new standing rule from Source 3 V0-1: pickaxe (`git log --all -S '<token>'`) for "never used" / "never coupled" / "dead" claims.
+- If write blocked (sub-agent .md guardrail), use .txt + inline-paste fallback.
+
+## Source 4 → cluster-pilot crosswalk
+
+| Source 4 question | Source 3 carryover | Cluster-narrative impact if yes |
+|---|---|---|
+| Q1: `cog-bind-af` consumers? | Source 2: defined as URE-facing utility. Source 3: no current URE consumer. | Adds Scheme-bridge ECAN-PLN coupling. Refinement to cluster narrative. |
+| Q2: `opencog/pln/` AttentionBank refs? | Source 3 standalone PLN: only via URE wrapper. | Adds direct PLN-AttentionBank coupling in monorepo era; "lost glue" was broader than URE STI hook. |
+| Q3: `opencog/openpsi/` AttentionBank refs? | Not previously audited. | New cluster scope: OpenPsi as a third ECAN consumer. |
+| Q4: `pln-set-attention-allocation` evolution? | Source 3 standalone PLN: thin wrapper. | If once richer: standing correction. |
+| Q5: broader audit | Sources 1-3 didn't cover this. | Catches anything unexpected. |
+
+**Closure condition:** if Q1-Q5 all return NO-COUPLING or HISTORICAL-ONLY-PRE-2018, the Source 3 cluster-narrative position **locks in**. The ECAN cluster pilot extraction phase closes; pivot to wiki-edit pass with the locked narrative.
+
+If anything returns COUPLED at `b31c7e3` (i.e., active in the pre-removal monorepo era), the cluster narrative refines — there were additional executable coupling points beyond the URE STI hook, lost when the AttentionBank was removed in 2019-09-06.
+
+---
+
+*End of Source 4 brief — ECAN cluster pilot.*

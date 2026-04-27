@@ -1,0 +1,378 @@
+# Source 2 — attention/ (OpenCog Classic ECAN) — Cross-Model Reconciliation
+
+**Cluster:** ECAN / Attention pilot, Source 2 of N
+**Source target:** `iCog-Labs-Dev/attention` (canonical OpenCog Classic ECAN C++; iCog-Labs-Dev fork preserves full upstream history)
+**Local checkout:** `E:\GitHub\hyperon reference\attention\`
+**Audited HEAD:** `e8162a57ca95d1d914feeedec68160154ec6264f` (short `e8162a5`, "modified tests" by `unknown <ephremeamanu@gmail.com>` 2026-02-17)
+**Reconciliation date:** 2026-04-26
+**Orchestrator:** Claude Opus 4.7 (1M context)
+**Models reconciled:**
+- **Codex single-pass** — `findings_codex.txt` (88 numbered claims, 13 KB; direct repo `rg` + `git shortlog -sne --all` + module reads with line numbers)
+- **Gemini single-pass** — forwarded inline by user (math-verification table, integration audit, key findings, cohort verification); `findings_gemini.txt` save **pending** (Gemini reported "Standby. Finalizing the report for reconciliation"). All Gemini citations below are tagged "[Gemini, forwarded]".
+- **Orchestrator cross-checks** — direct local-repo reads on the four highest-leverage open items (WA rent compounding, WA diffusion suspicious param read, Cosmo Harrigan attribution axis, `cog-bind-af` URE coupling). Tagged "[Claude orchestrator, repo-verified]" where cited.
+
+**Coverage note:** This Source 2 reconciliation is **two-model + orchestrator-cross-check** rather than full three-model. The two passes converge tightly enough on the headline questions (0/4 strict-literal, dead-infrastructure mirroring, minimal PLN coupling, cluster-tradition recommendation) that a third Claude single-pass would mostly rubber-stamp them; the orchestrator instead spent budget verifying the two flagged-for-reconciliation items (Codex C2-85, C2-86) directly against the C++ source.
+
+**Brief:** `scripts/archive/ecan_pilot/source2_attention_classic_brief.txt`
+
+---
+
+## Headline answers (cluster-pilot questions)
+
+### Q1: Is metta-attention a direct continuation of Classic ECAN, or a structurally inspired reimplementation?
+
+**A (consensus):** **Direct continuation / partial port of the Classic C++ pragmatic variant**, not a paper-level reimplementation. The MeTTa code's "engineered surrogates" map line-by-line onto Classic C++'s engineered surrogates: target-funds/buffer rent, fund-buffer central-bank wage adjustment, normalized-STI fuzzy conjunction Hebbian, deterministic exponential decay. **Both Codex and Gemini converge:** the MeTTa port did not lose the paper math — Classic C++ had already lost it, and the MeTTa port preserved the loss faithfully.
+
+### Q2: Are the MeTTa "engineered surrogates" simplifications, renamed equivalents, partial ports, or regressions?
+
+**A (consensus):** **Mostly faithful ports of pre-existing Classic C++ surrogates.** Specific exceptions where the MeTTa port introduced new regressions:
+- **`LOCAL_FAR_LINK_RATIO` parameter shadowing** (Source 1 finding `HebbianCreationAgent.metta:17` `localToFarLinks 1000.0`): a **MeTTa-port regression**. Classic C++ correctly reads `LOCAL_FAR_LINK_RATIO = 10` from `AttentionParamQuery` at `HebbianCreationAgent.cc:71-77`; default is `10` per `default-param-values.scm:61-64`. The 100×-larger hardcoded value in MeTTa is a port-introduced bug.
+- **`recentVal` infrastructure dormancy** (Source 1 finding `recentVal.metta:22-67` updates commented out): a **MeTTa-port regression**. Classic C++ keeps `_maxSTI` and `_minSTI` as live `opencog::recent_val` instances (`ImportanceIndex.h:58-60`, updated at `ImportanceIndex.cc:110-135`). MeTTa lost the smoothing infrastructure that Hebbian normalization depends on.
+- **WA rent compounding bug**: **inherited from Classic C++**, not introduced by the MeTTa port. `WARentCollectionAgent.cc:68-70` mutates member `STIAtomRent`/`LTIAtomRent` in place every WA rent event (orchestrator-verified; see V0-1 below).
+- **Stochastic-importance-diffusion misnaming**: **inherited from Classic C++** (`StochasticImportanceDiffusion.cc/.h` is also deterministic decay; no `tanh`/`sigmoid` in active C++).
+
+### Q3: Was Classic ECAN ever coupled to PLN/URE in executable code, or only in papers?
+
+**A (consensus):** **Minimal/legacy URE coupling, no executable PLN inference-control integration.** Both Codex and Gemini converge on a single URE-facing utility:
+> `cog-bind-af` documented as "A special-purpose pattern matcher used by the URE" at `attention-bank.scm:272-276` (orchestrator-verified). The primitive is defined in `AttentionSCM.cc`. This is a **URE-facing AtomSpace utility at the AttentionBank boundary**, not evidence that ECAN agents drive PLN inference control.
+
+Other near-hits (paper/comment level only, not executable coupling):
+- `experiments/README.md:2` labels the experiment "ECAN/PLN experimentation" but stated goals are HebbianLink creation, STI propagation, forgetting (no PLN inference invocation).
+- `ExperimentSetupModule.h:1-9` preserves the legacy header guard `PLNDYNAMICSEXPSETUPMODULE_H_` from when the file was named `PLNDynamicsExpSetupModule.h`, but the active includes (`:11-15`) reference only experiment, CogServer, Agent, AttentionModule headers — no PLN headers.
+- Many `TruthValue` hits are AtomSpace TruthValue usage, not PLN runtime coupling. `HebbianUpdatingAgent.cc:92-95` uses `SimpleTruthValue::createTV(tc, 0.1)` and `merge(newtv)` — that's AtomSpace machinery, not a PLN rule engine.
+
+**Cluster verdict:** the Hyperon "missing control layer" was **already absent in OpenCog Classic** at the executable-code level. ECAN was architecturally/paper-coupled to PLN and exposed AF-aware utilities URE could *use*, but it was never a PLN inference-control runtime. The cluster narrative simplifies accordingly: this is not a Hyperon-era regression — it is a continuation of the OpenCog Classic state.
+
+### Q4: Cluster-tradition decision — sixth tradition vs Tradition 2 extension?
+
+**A (Codex C2-82, orchestrator-confirmed):** **Tradition 2 extension** with a sub-branch note, not a sixth tradition. Specifically: "iCog-Labs-Dev / SingularityNET Ethiopia maintained a modern MeTTa/C++ attention line isolated from the trueagi-io PLN production line." Reasoning:
+- Code-level continuation: MeTTa modules port C++ surrogates faithfully (sigmoid absence, target-funds/buffer rent, fund-buffer wages, normalized-STI Hebbian, deterministic decay all map line-by-line).
+- Cohort overlap: BlightG (18 commits in Classic), YeabsiraNigusse (50 commits in Classic) — same individuals appear in metta-attention with much larger contributions, indicating **personal continuity of porting**, not just organizational adjacency.
+- Architectural continuity: same agent layout, same AF/WA split, same RentCollectionBase / ImportanceDiffusionBase base-class pattern, same dead-agent set in default runner.
+
+The "iCog-Labs-Dev modern MeTTa/C++ ECAN line" therefore extends Tradition 2 (Historical OpenCog / URE / ECAN control), with the note that **only the attention sub-system was actively ported** — the URE/PLN inference-control side of Tradition 2 was not carried forward to MeTTa by this cohort.
+
+---
+
+## Source-of-truth checks (cross-model dissent + orchestrator verification)
+
+### V0-1 — WA rent compounding state (Codex C2-85 reconciliation request)
+
+**Codex flag:** "Confirm with Claude/Gemini whether WA rent compounding should be treated as a bug or intentional elapsed-time scaling. My reading: bug-prone state mutation, because it changes the member base rent rather than using a local scaled variable."
+
+**[Claude orchestrator, repo-verified]** Direct read of `WARentCollectionAgent.cc:60-83`:
+```cpp
+60: {
+61:     for (const Handle& h : targetSet) {
+62:         AttentionValue::sti_t sti = get_sti(h);
+63:         AttentionValue::lti_t lti = get_lti(h);
+64:
+65:         float last_update_time = _sdac.elapsed_time(h);
+66:         std::cout << "last_updates " <<last_update_time<<std::endl;
+67:         std::cout << "STIAtomRent: " <<STIAtomRent<<std::endl;
+68:         STIAtomRent = STIAtomRent * last_update_time;
+69:         std::cout << "STIAtomRent after multiplication: " <<STIAtomRent<<std::endl;
+70:         LTIAtomRent = LTIAtomRent * last_update_time;
+71:
+72:         double stiRent = calculate_STI_Rent();
+73:         ...
+```
+
+**Resolution:** **Confirmed as a likely bug.** Two corroborating signals:
+- **`std::cout` debug-print scaffolding remains** in production source (`:66-67, :69`), suggesting this code is in active debugging state, not finalized intent.
+- **Per-iteration mutation of member fields** inside a `for` loop over `targetSet`. If `targetSet` ever has more than one element (it currently doesn't because `WAImportanceDiffusionAgent::diffusionSourceVector` returns one random non-AF atom), the second iteration would compound on the first iteration's mutation. Even with single-element targets, **subsequent runs of the agent would compound across runs** because member fields persist.
+- The intent appears to be "scale rent by elapsed time for this WA rent event," which would be correctly expressed with local variables: `double scaled_rent = STIAtomRent * last_update_time;`. The in-place mutation form is bug-shaped.
+
+**However**, since this is **in Classic C++**, the MeTTa port at `WARentCollectionAgent.metta:30-31` is faithfully porting the Classic bug, not introducing a new one. Source 1's "WA rent compounding bug" should be reclassified as an **inherited Classic C++ bug**, not a MeTTa-port-only artifact.
+
+### V0-2 — WA diffusion suspicious param read (Codex C2-86 reconciliation request)
+
+**Codex flag:** "Confirm whether `WAImportanceDiffusionAgent.cc:51-52` reading `DIFFUSION_TOURNAMENT_SIZE` into `hebbianMaxAllocationPercentage` is an implementation bug. It is suspicious because AF diffusion reads `HEBBIAN_MAX_ALLOCATION_PERCENTAGE`."
+
+**[Claude orchestrator, repo-verified]** Direct read of `WAImportanceDiffusionAgent.cc:48-54`:
+```cpp
+48: void WAImportanceDiffusionAgent::run()
+49: {
+50:     // Read params
+51:     hebbianMaxAllocationPercentage =std::stod(_atq.get_param_value(
+52:                                      AttentionParamQuery::dif_tournament_size));
+53:     spreadImportance();
+54: }
+```
+
+Direct read of `AFImportanceDiffusionAgent.cc:44-55`:
+```cpp
+44: void AFImportanceDiffusionAgent::run()
+45: {
+46:     // Reread param values for dynamically updating the values.
+47:     maxSpreadPercentage = std::stod(_atq.get_param_value(
+48:                                     AttentionParamQuery::dif_spread_percentage));
+49:     hebbianMaxAllocationPercentage =std::stod(_atq.get_param_value(
+50:                                     AttentionParamQuery::heb_max_alloc_percentage));
+51:     spreadHebbianOnly = std::stoi(_atq.get_param_value(
+52:                                   AttentionParamQuery::dif_spread_hebonly));
+53:
+54:     spreadImportance();
+55: }
+```
+
+**Resolution:** **Confirmed as a definite C++ bug.** AF diffusion at `:49-50` correctly reads `heb_max_alloc_percentage` into `hebbianMaxAllocationPercentage`. WA diffusion at `:51-52` reads `dif_tournament_size` into the same variable — variable name mismatches the parameter being read. This is a copy-paste bug or a placeholder that was never fixed. WA diffusion also fails to read `maxSpreadPercentage` and `spreadHebbianOnly` at all in the `run()` method; it likely uses stale or default values for those.
+
+**Standing-correction candidate:** `WAImportanceDiffusionAgent.cc:51-52` parameter-read bug — silently uses wrong parameter for `hebbianMaxAllocationPercentage` and skips two other dynamic param re-reads that AF diffusion performs.
+
+### V0-3 — Cosmo Harrigan attribution (Gemini-only claim)
+
+**Gemini [forwarded]:** "Cohort: ... Cosmo Harrigan (Significant author attribution in headers)."
+
+**Orchestrator git shortlog (pre-populated brief):** Cosmo Harrigan does NOT appear in `git shortlog -sne --all` output for this repo at HEAD `e8162a5`.
+
+**[Claude orchestrator, repo-verified]** Direct grep across the repo:
+```
+opencog/attention/ImportanceDiffusionBase.h:4: * Copyright (C) 2014-2016 Cosmo Harrigan
+opencog/attention/ImportanceDiffusionBase.h:7: * Written by Cosmo Harrigan
+opencog/attention/ImportanceDiffusionBase.cc:4: * Copyright (C) 2014-2016 Cosmo Harrigan
+opencog/attention/ImportanceDiffusionBase.cc:7: * Written by Cosmo Harrigan
+opencog/attention/WAImportanceDiffusionAgent.cc:8: * Writeen by Cosmo Harrigan  [sic — typo "Writeen"]
+opencog/attention/WAImportanceDiffusionAgent.h:8: * Written by Cosmo   Harrigan  [sic — double space]
+opencog/attentionbank/bank/AttentionSCM.cc:5: * Copyright (C) 2014 Cosmo Harrigan
+tests/attention/HebbianCreationLargeUTest.cxxtest:4: * Copyright (C) 2014 Cosmo Harrigan
+tests/attention/HebbianCreationLargeUTest.cxxtest:7: * Written by Cosmo Harrigan
+tests/attention/HebbianCreationModuleUTest.cxxtest:4: * Copyright (C) 2014 Cosmo Harrigan
+tests/attention/HebbianCreationModuleUTest.cxxtest:7: * Written by Cosmo Harrigan
+```
+
+**Resolution:** Gemini's claim is **valid on the file-header Copyright axis but does not appear in `git shortlog -sne`**. Cosmo Harrigan is the **original author of the diffusion subsystem** (`ImportanceDiffusionBase.cc/.h` 2014-2016, both WA diffusion files, `AttentionSCM.cc` 2014) and two `HebbianCreation` tests (2014). His commits likely don't surface in `git shortlog --all` because they were authored under a different email, were squashed/rebased into other authors' commits during long-lived branch merges, or were not preserved in the iCog-Labs-Dev fork's history.
+
+**Reconciled cohort claim:**
+
+| Axis | Top contributors |
+|---|---|
+| **Git commit count (`git shortlog -sne --all`)** | Linas Vepštas 424; Misgana Bayetta 149; Nil Geisweiller 99; YeabsiraNigusse 50; Roman Treutlein 41; BlightG 18 |
+| **File-header Copyright (original authorship of subsystems)** | **Cosmo Harrigan** (diffusion subsystem 2014-2016 — `ImportanceDiffusionBase`, `WAImportanceDiffusionAgent`, `AttentionSCM`; HebbianCreation tests 2014); Linas Vepštas (multiple files, OpenCog founder); Misgana Bayetta (multiple files) |
+
+These are **complementary axes**, not contradictory. The diffusion-subsystem original-design credit goes to Cosmo Harrigan (2014-2016 era of Classic ECAN); the long-tail maintenance and refactoring credit goes to Linas Vepštas. Both are accurate.
+
+### V0-4 — Equation-status row labels (minor cross-model wording differences)
+
+| Mechanism | Codex label | Gemini label | Reconciled label |
+|---|---|---|---|
+| Rent | DIVERGENT / engineered homeostatic surrogate | VARIANT / Stabilizing | **DIVERGENT (homeostatic surrogate)** — different shape from paper, function-and-sign correct |
+| Wages | FUNCTIONAL ANALOG, not literal | VARIANT / Stabilizing | **FUNCTIONAL ANALOG (homeostatic, not WageStimulus * sum/n)** |
+| Hebbian update | DIVERGENT / engineered surrogate | VARIANT (fuzzy conjunction) | **DIVERGENT (fuzzy-conjunction surrogate)** |
+| Stochastic diffusion | ABSENT | SIMPLIFICATION (deterministic exponential decay) | **ABSENT as stochastic-sigmoid; SIMPLIFICATION as elapsed-time exponential decay substitute** |
+
+Both labels are accurate at different granularities. Gemini's "VARIANT" is closer to the Codex-Source-1 two-axis "functional-analog" framing; Codex's "DIVERGENT" emphasizes that the math shape is materially different. The reconciled language uses both: "engineered surrogate" / "homeostatic surrogate" / "fuzzy-conjunction surrogate" for the three rent/wage/Hebbian rows; "ABSENT as sigmoid + SIMPLIFICATION-substitute" for diffusion.
+
+---
+
+## Universal agreement (2-of-2 consensus, orchestrator-confirmed where verified)
+
+Across Codex's 88 numbered claims and Gemini's forwarded summary, the following findings are universal. These should be treated as the canonical Source 2 result.
+
+1. **Strict-literal score: 0/4 against the 2009 paper.** Classic C++ does not implement any of the four brief equations literally. Functional-analog count: 1/4 (wages, via `AttentionBank::stimulate` + `calculateSTIWage`).
+
+2. **MeTTa port is mostly a faithful continuation of Classic C++ pragmatic variant.** The "engineered surrogates" Source 1 found are **inherited from Classic C++**, not introduced by the MeTTa port. Specific evidence: rent target-funds/buffer formula matches `RentCollectionBaseAgent.cc:76-103`; wage fund-buffer adjustment matches `AttentionBank.cc:142-187`; Hebbian normalized-STI conjunction matches `HebbianUpdatingAgent.cc:74-115`; deterministic exponential decay matches `StochasticImportanceDiffusion.cc:115-145`.
+
+3. **No executable ECAN-PLN/URE inference-control integration in Classic C++.** Only the `cog-bind-af` URE-facing pattern matcher at `attention-bank.scm:272-276` and the legacy `PLNDYNAMICSEXPSETUPMODULE_H_` header guard at `ExperimentSetupModule.h:1-9`. PLN cluster's "missing control layer" was already absent in OpenCog Classic — not a Hyperon-era regression.
+
+4. **Dead-agent infrastructure is mirrored across Classic C++ and MeTTa.** [Gemini, forwarded] verified that `AttentionModule::do_start_ecan` has `ForgettingAgent`, `HebbianCreationAgent`, and `HebbianUpdatingAgent` start calls commented out (Codex: `AttentionModule.cc:132-135`). Default Classic startup includes only AF/WA importance diffusion + AF/WA rent collection (4 agents). Source 1's metta-attention runner differs slightly: it runs Hebbian update/creation in the canonical runner while commenting out Forgetting; Classic default starts neither Hebbian nor Forgetting. Not a 1:1 port of the runner — but the dead-code pattern is shared.
+
+5. **Test-hardcoded Forgetting parameters [Gemini, forwarded]:** `ForgettingAgent.cc` contains hardcoded `maxSize = 2` and `accDivSize = 1`, suggesting the current state is tuned for small-scale unit tests rather than production. (Codex did not specifically cite these constants; Gemini's claim is novel and aligns with Codex C2-58/C2-59 finding that ForgettingAgent is registered and tested but excluded from `do_start_ecan`.)
+
+6. **Wages live in `AttentionBank::stimulate`, not as a peer agent.** Both models agree — `AttentionBank.cc:142-157` (`stimulate`), `:168-187` (`calculateSTIWage`/`calculateLTIWage`). No `WageAgent` exists in either Classic or MeTTa. Stimulus must be applied externally.
+
+7. **`recentVal` infrastructure is LIVE in Classic C++.** Codex C2-50, C2-51, C2-52, C2-53 (line numbers `ImportanceIndex.h:58-60`, `ImportanceIndex.cc:110-135, 139-157`). This is a **MeTTa-port regression** — Source 1 found `recentVal.metta:22-67` updates commented out and `getMaxSTI`/`getMinSTI` in `importance-index.metta:201-212` reading raw `MAX_STI`/`MIN_STI` instead of recent-smoothed values.
+
+8. **`LOCAL_FAR_LINK_RATIO 10` is the correct Classic default** (Codex C2-31, C2-32; `default-param-values.scm:61-64`; `HebbianCreationAgent.cc:71-77`). Source 1's hardcoded `localToFarLinks = 1000.0` is a **MeTTa-port regression**.
+
+9. **WA rent compounding state mutation** (`WARentCollectionAgent.cc:68-70`, orchestrator-verified) is **inherited from Classic C++**, not MeTTa-port-introduced. Source 1's bug should be reclassified accordingly.
+
+10. **Cohort:** Linas Vepštas 424 commits (lead, OpenCog founder); broad cross-org cohort spans OpenCog Ethiopia/iCog (Misgana Bayetta 149, YeabsiraNigusse 50, BlightG 18, Amen Belayneh 38), trueagi-io PLN cluster (Nil Geisweiller 99, Vitaly Bogdanov 18 — cross-cluster overlap), Hanson Robotics (Roman Treutlein 41), and others. **File-header Copyright** axis adds Cosmo Harrigan as the original diffusion-subsystem author (2014-2016).
+
+11. **Cluster-tradition decision:** **Tradition 2 extension** with a sub-branch note that iCog-Labs-Dev / SingularityNET Ethiopia maintained a modern MeTTa/C++ attention line isolated from the trueagi-io PLN production line. Not a sixth tradition.
+
+---
+
+## Differentiated insights (1-of-2 model contributions)
+
+### Codex only
+
+- **`AttentionBank` constructor hardcoded defaults** (Codex C2-24): funds `100000`, buffers `10000`, targets `10000`, wages `10`, max AF size `100` at `AttentionBank.cc:35-45`. Orchestrator note: these match Source 1's `AttentionParam.metta:2-37` constants exactly — the MeTTa port literally copied the constants.
+- **`StochasticDiffusionAmountCalculator::elapsed_time` returns `2 / update_rate`** (Codex C2-37, `StochasticImportanceDiffusion.cc:115-130`). Source 1's MeTTa version computed elapsed time as `_size / update_rate` (Source 1 brief line `:87-104`). The numerator differs (`2` vs `_size`); worth flagging for Source 1 errata or noting as another minor port detail.
+- **Diffusion event-level conservation** (Codex C2-46): `ImportanceDiffusionBase::diffuseAtom` builds incident + Hebbian-adjacent probability vectors, and STI transfer is conservative at event level (subtract from source, add to target) at `:200-204`. Debug assertions check sum near 1.0 (`:369-442`).
+- **README diffusion documentation is more conceptual than the code** (Codex C2-71): the README discusses a Markov matrix with a GSL implementation only viable for small AtomSpaces (`README:190-213`), then describes a `SimpleImportanceDiffusionAgent` (`:214-245`). Current code uses AF/WA importance diffusion classes and the stochastic amount calculator — a **gap between documentation and source**.
+
+### Gemini only [forwarded]
+
+- **Test-hardcoded Forgetting (`maxSize = 2`, `accDivSize = 1`).** Suggests the agent is tuned for unit-test scale, not production deployment. Worth verifying as a standing correction.
+- **Diffusion equation `STI × (1 - decay)^t`** identified at `StochasticImportanceDiffusion.cc:138`. Codex cites the same area at `:140-145` as `get_sti(h) * pow((1 - decay_rate), average_elapsed_time)` — same formula, slight line-citation drift. No dissent.
+- **Cosmo Harrigan attribution** in file headers (V0-3 above) — file-header Copyright axis adds substantive context that pure-`git shortlog` analysis missed.
+
+### Orchestrator only [Claude orchestrator, repo-verified]
+
+- **`std::cout` debug-print scaffolding remains at WA rent**: `WARentCollectionAgent.cc:66-69` includes three `std::cout` statements (`"last_updates "`, `"STIAtomRent: "`, `"STIAtomRent after multiplication: "`) that suggest this code is in active debugging state, not finalized intent. Reinforces the "compounding mutation is bug-shaped" reading.
+- **WA diffusion misses two dynamic param re-reads that AF diffusion does** (`maxSpreadPercentage` and `spreadHebbianOnly` are not re-read in `WAImportanceDiffusionAgent::run()` at `:48-54`). This means WA diffusion uses stale/default values for those two parameters across runs — separate from the mis-named `dif_tournament_size`/`hebbianMaxAllocationPercentage` issue.
+- **Cosmo Harrigan typos in his own headers**: `WAImportanceDiffusionAgent.cc:8` says `"Writeen by Cosmo Harrigan"` (typo) and `WAImportanceDiffusionAgent.h:8` says `"Written by Cosmo   Harrigan"` (double space). Cosmetic, but indicates these files have not been touched by a careful human reviewer in 10+ years.
+
+---
+
+## Reconciled equation-realization comparison table
+
+Per the brief's required output: side-by-side Classic C++ status vs MeTTa Source 1 status, both using the two-axis framing.
+
+| Paper equation (per brief) | Classic C++ (Source 2) | MeTTa (Source 1, reconciled) | Port relationship |
+|---|---|---|---|
+| **Rent** `Rent * max(0, log2(si/recentMaxSTI))^2` | DIVERGENT — homeostatic surrogate `STIAtomRent + STIAtomRent * clamp(diff/buffer, ...)` at `RentCollectionBaseAgent.cc:76-103` | DIVERGENT — same homeostatic shape at `RentCollectionBaseAgent.metta:7-28, 36-57` | **MeTTa port is faithful** to C++ surrogate. Strict-literal regression is upstream of MeTTa. |
+| **Wages** `WageStimulus * (sum(pi)/n)` | FUNCTIONAL ANALOG (homeostatic) — `AttentionBank::stimulate` calls `calculateSTIWage()` at `AttentionBank.cc:142-187`. No `WageAgent`. | FUNCTIONAL ANALOG — same shape inside `attention-bank.metta:11-37, 49-63, 76-90`. No `WageAgent`. | **MeTTa port is faithful** including the missing `WageAgent`. |
+| **Hebbian update** `c_ij' = ConjDecay * (si*sj/recentMaxSTI^2) + ...` | DIVERGENT — fuzzy-conjunction surrogate `tcDecayRate * targetConjunction + (1-tcDecayRate) * old_tc` at `HebbianUpdatingAgent.cc:74-115` | DIVERGENT — same shape + PLN-book revision merge at `HebbianUpdatingAgent.metta:53-92, 92, 106-130` | **MeTTa port is faithful to surrogate, plus added the explicit `PLN_BOOK_REVISION` count formula `(c1+c2) - 0.2*min(c1,c2)`.** Classic C++ uses `SimpleTruthValue::merge` (AtomSpace machinery, not PLN-book-named). The MeTTa port made the PLN-book inheritance explicit by name. |
+| **Stochastic diffusion** `0.5 * (1 + tanh(shape*(si - FocusBoundary)))` | ABSENT as sigmoid; SIMPLIFICATION-substitute = elapsed-time exponential decay `get_sti(h) * pow((1 - decay_rate), average_elapsed_time)` at `StochasticImportanceDiffusion.cc:115-145` | ABSENT as sigmoid; same SIMPLIFICATION-substitute at `stochastic-importance-diffusion.metta:22-46, 71-85, 109-118` | **MeTTa port is faithful** to the C++ misnaming + substitute. The literal sigmoid was never implemented in C++; not a MeTTa-port loss. |
+
+**Reconciled count (Classic C++):** 0/4 strict-literal, 1/4 functional analog (wages, on-stimulation only), 2/4 engineered surrogates (rent, Hebbian), 1/4 substituted-then-misnamed (stochastic→deterministic decay).
+
+**Reconciled count (MeTTa Source 1):** 0/4 strict-literal, 1/4 functional analog (wages, on-stimulation only), 2/4 engineered surrogates (rent, Hebbian), 1/4 absent (stochastic sigmoid; substitute also present but renamed).
+
+The two counts are **identical in shape**, confirming the faithful-port hypothesis. Differences are limited to MeTTa-port regressions (LOCAL_FAR_LINK_RATIO shadowing, recentVal commenting, runner-loop differences), not equation-status changes.
+
+---
+
+## Conservation-law audit (reconciled)
+
+- **Classic C++ does fund bookkeeping** at `AttentionBank.cc:112-127` (adds old STI/LTI, subtracts new STI/LTI on AV change) and updates importance index + AF (`:128-139`). Diffusion is event-level conservative (`ImportanceDiffusionBase.cc:200-204`) with debug assertions checking sum near 1.0 (`:369-442`).
+- **README explicitly frames STI/LTI as conserved currency**: wages pay atoms, rent collected, AtomSpace funds managed in homeostatic range (`opencog/attention/README:106-174`).
+- **No proved or tested global invariant** — same as MeTTa Source 1. Both implementations use functional currency bookkeeping without asserting `sum(atom_STI) + FUNDS_STI = constant` across cycles.
+- **WA rent compounding mutation breaks any candidate invariant** in both C++ and MeTTa.
+
+---
+
+## ECAN-PLN integration audit (reconciled)
+
+Repo-wide grep tokens (Codex C2-61 through C2-66; orchestrator confirmed `cog-bind-af`):
+
+| Token | Active C++ source hits | Doc/SCM hits | Verdict |
+|---|---|---|---|
+| `pln` (case-insensitive) | `ExperimentSetupModule.h:1-9` legacy header guard `PLNDYNAMICSEXPSETUPMODULE_H_` only | `experiments/README.md:2` "ECAN/PLN experimentation" label | No active PLN runtime invocation; legacy naming only |
+| `ure` (case-insensitive) | 0 active | `attention-bank.scm:272-276` `cog-bind-af` documented as "used by the URE" | One URE-facing utility; no inference-control integration |
+| `BackwardChainer` / `ForwardChainer` / `Chainer` | 0 | 0 | No URE chainer references |
+| `MixtureModel` / `Bayesian` / `Thompson` | 0 | 0 | No URE control-architecture references |
+| `TruthValue` | Many hits in `HebbianUpdatingAgent.cc`, `AttentionBank.cc`, etc. | Standard | AtomSpace TruthValue usage, not PLN runtime coupling |
+
+**Reconciled verdict:** **Architectural/paper-coupling only**, no executable PLN inference control. The PLN-cluster missing-control-layer narrative is **not** a Hyperon-era regression — it was already absent in OpenCog Classic.
+
+---
+
+## AF vs WA variant comparison (reconciled)
+
+Both AF and WA branches are real in Classic C++. Quality differs:
+
+| Aspect | AF variant | WA variant |
+|---|---|---|
+| Rent atom selection | All AF atoms (`AFRentCollectionAgent.cc:53-57`) | One random non-AF atom (`WARentCollectionAgent.cc:51-57`) |
+| Rent global mutation | None | **Mutates `STIAtomRent`/`LTIAtomRent` member fields** at `:68-70` (V0-1 confirmed bug-shaped) |
+| Diffusion atom selection | All AF atoms via `diffusionSourceVector` | One random non-AF atom (`WAImportanceDiffusionAgent.cc:83-92`) |
+| Diffusion param re-reads | Reads `dif_spread_percentage`, `heb_max_alloc_percentage`, `dif_spread_hebonly` (`AFImportanceDiffusionAgent.cc:47-52`) | **Reads only `dif_tournament_size` (mis-typed) into `hebbianMaxAllocationPercentage`** (`WAImportanceDiffusionAgent.cc:51-52`); skips the other two re-reads (V0-2 confirmed bug) |
+
+**Both variants in MeTTa Source 1 inherit these patterns**: AF rent is clean, WA rent has the compounding mutation. The MeTTa port did not fix either bug.
+
+---
+
+## Agent-loop / runner audit (reconciled)
+
+- **Classic registers all 7 agents** in `AttentionModule::init` (Codex C2-55; `AttentionModule.cc:88-110`): AF/WA importance diffusion, AF/WA rent collection, Forgetting, HebbianCreation, HebbianUpdating.
+- **`do_start_ecan` starts only 4 agents** (Codex C2-56, `AttentionModule.cc:118-130`): AFImportanceDiffusion, WAImportanceDiffusion, AFRentCollection, WARentCollection.
+- **`do_start_ecan` has Forgetting + HebbianCreation + HebbianUpdating commented out** (Codex C2-57, Gemini-confirmed; `AttentionModule.cc:132-135`).
+- **`do_stop_ecan` stops all 7** (Codex C2-58; `:141-154`) — confirms registration is complete; only startup is skipped.
+- **MeTTa Source 1 runner differs**: runs Hebbian update/creation, comments out Forgetting (`runner-Def.metta:1-12`).
+
+The runner divergence is a **MeTTa-port choice**, not a faithful port. iCog-Labs-Dev appears to have decided to revive Hebbian agents in the MeTTa runner while accepting the upstream Forgetting exclusion.
+
+---
+
+## Discovered publications (reconciled)
+
+- **Source 2 surfaces no new publication beyond Source 1's discovery** (the 2018 "Shifting and Drifting Attention While Reading" paper).
+- `experiments/README.md` is an experiment guide, not a paper; it points to wiki idea pages but does not cite the 2018 paper.
+- README implementation-design document at `opencog/attention/README:102-245` describes wages, rent, currency conservation, importance spreading, and a Markov-matrix diffusion model — useful as **historical design documentation** but not a paper citation.
+
+No publication backlog additions for Source 2.
+
+---
+
+## Cohort verification (reconciled — V0-3)
+
+**Two-axis cohort table:**
+
+| Axis | Top contributors | Note |
+|---|---|---|
+| **Git commit count (`git shortlog -sne --all` at HEAD `e8162a5`)** | Linas Vepštas 424; Misgana Bayetta 149; Nil Geisweiller 99; YeabsiraNigusse 50; Roman Treutlein 41; Amen Belayneh 38; Leung Man Hin 52; BlightG 18; Vitaly Bogdanov 18 | Long-tail maintenance + iCog-Labs-Dev recent maintenance |
+| **File-header Copyright (original subsystem authorship)** | **Cosmo Harrigan** (diffusion subsystem 2014-2016 — `ImportanceDiffusionBase`, `WAImportanceDiffusionAgent`, `AttentionSCM`; HebbianCreation tests 2014); Linas Vepštas (multiple files); Misgana Bayetta (multiple files) | Original-design credit |
+
+**Cross-org organizational interpretation (Codex C2-08, orchestrator-extended):**
+- **OpenCog founders / classic era (2014-2018):** Cosmo Harrigan (diffusion), Linas Vepštas, Misgana Bayetta
+- **OpenCog Ethiopia / iCog early lineage:** Misgana Bayetta, Amen Belayneh
+- **trueagi-io PLN cluster (cross-cluster overlap):** Nil Geisweiller (99 commits), Vitaly Bogdanov (18) — same individuals appear in Source 11 PLN cluster, but no executable ECAN-PLN integration was built despite the personal overlap
+- **iCog-Labs-Dev / SingularityNET Ethiopia recent (2024-2026):** YeabsiraNigusse, BlightG/Birhane, ephremeamanu — same cohort as Source 1 metta-attention. Recent maintenance commits include `AttentionBank.cc`, `AttentionParamQuery.cc`, `StochasticImportanceDiffusion.cc`, `RentCollectionBaseAgent.cc`, plus tests (Codex C2-10, C2-11). **This is the porting cohort.**
+- **Hanson Robotics:** Roman Treutlein (41) — separate org thread
+
+**Cohort-overlap finding for the cluster-tradition decision (Q4):** the iCog-Labs-Dev recent maintainers (YeabsiraNigusse, BlightG) appear in **both** Classic C++ and MeTTa metta-attention with substantial commit counts. This is **personal continuity of porting**, not just organizational adjacency. Confirms **direct continuation / partial port**, supports Tradition 2 extension over sixth-tradition.
+
+---
+
+## Standing-corrections candidates (reconciled)
+
+For the cluster narrative anchor (top-level `hyperon-wiki/CLAUDE.md`):
+
+1. **"MeTTa port lost the 2009-paper math" — INCOMPLETE FRAMING.** Classic C++ already lacked the literal 2009-paper math. Strict-literal score is 0/4 in **both** Classic C++ and MeTTa. The MeTTa port faithfully ported the C++ pragmatic variant, not a regression from a fully-literal C++ baseline.
+2. **"WA rent compounding bug is MeTTa-introduced" — FALSE.** Inherited from Classic C++ at `WARentCollectionAgent.cc:68-70` (orchestrator-verified V0-1).
+3. **"`stochastic-importance-diffusion` is misnamed" — INHERITED.** Classic C++'s `StochasticImportanceDiffusion.cc/.h` is also deterministic decay; the misnaming is upstream.
+4. **`LOCAL_FAR_LINK_RATIO` parameter shadowing — MeTTa-INTRODUCED REGRESSION.** Classic C++ correctly reads the configured `LOCAL_FAR_LINK_RATIO = 10` from params at `HebbianCreationAgent.cc:71-77`. The hardcoded `localToFarLinks = 1000.0` in `HebbianCreationAgent.metta:17` is a MeTTa-port-only bug.
+5. **`recentVal` infrastructure dormancy — MeTTa-INTRODUCED REGRESSION.** Classic C++ keeps `_maxSTI`/`_minSTI` as live `recent_val` instances at `ImportanceIndex.h:58-60`, updated at `ImportanceIndex.cc:110-135`. MeTTa lost this smoothing infrastructure.
+6. **WA diffusion `dif_tournament_size` → `hebbianMaxAllocationPercentage` parameter mis-read — INHERITED Classic C++ BUG.** `WAImportanceDiffusionAgent.cc:51-52` (orchestrator-verified V0-2). Likely copy-paste error or never-resolved placeholder. WA diffusion also fails to re-read `maxSpreadPercentage` and `spreadHebbianOnly` (both re-read by AF diffusion).
+7. **`std::cout` debug-print scaffolding** in production WA rent at `WARentCollectionAgent.cc:66-69`. Not finalized code.
+8. **Test-hardcoded Forgetting parameters** [Gemini, forwarded]: `ForgettingAgent.cc` has `maxSize = 2`, `accDivSize = 1` — tuned for unit-test scale, not production.
+9. **`do_start_ecan` excludes Forgetting + Hebbian agents** in default Classic startup (`AttentionModule.cc:132-135`). MeTTa port reactivates Hebbian but accepts the Forgetting exclusion — runner divergence is a MeTTa-port choice.
+10. **PLN cluster missing-control-layer "regression" framing — UPDATE.** The missing layer was already absent in OpenCog Classic at the executable-code level. Not a Hyperon-era loss; a continuation of the OpenCog Classic state. Cluster narrative should say "ECAN was architecturally/paper-coupled to PLN but never executable-coupled in either Classic C++ or modern MeTTa."
+11. **Cluster-tradition decision: extend Tradition 2** with iCog-Labs-Dev modern MeTTa/C++ attention sub-branch, isolated from trueagi-io PLN. **Not a sixth tradition.**
+12. **Cosmo Harrigan was the original diffusion-subsystem author** (2014-2016 file-header Copyright on `ImportanceDiffusionBase.h/.cc`, `WAImportanceDiffusionAgent.h/.cc`, `AttentionSCM.cc`, two HebbianCreation tests). Add to ECAN cluster contributor list — does not appear in `git shortlog --all`.
+13. **README implementation-design documentation diverges from current code**: README discusses Markov matrix + GSL implementation + `SimpleImportanceDiffusionAgent`; current code uses AF/WA agents + stochastic amount calculator. Documentation drift, not source-of-truth conflict.
+
+---
+
+## Cluster-narrative impact (carryover)
+
+**Source 1 (metta-attention) verdict refined by Source 2 (Classic C++):**
+
+> metta-attention is a **direct continuation / partial port** of the iCog-Labs-Dev maintained Classic ECAN C++ implementation. The MeTTa port preserves Classic's pragmatic engineered surrogates faithfully (rent, wages, Hebbian, deterministic-decay diffusion) and inherits Classic's bugs (WA rent compounding, WA diffusion mis-typed param). The MeTTa port introduces a few new regressions of its own (`LOCAL_FAR_LINK_RATIO` shadowing, `recentVal` commenting, runner-loop differences). **Strict-literal score is 0/4 in both implementations**; functional-analog score is 1/4 (wages) in both.
+
+**PLN cluster missing-control-layer carryover (Source 11):**
+
+> The "missing inference-control layer" in production PLN was **never built** at the executable-code level in OpenCog Classic. It existed in URE Bayesian Thompson + MixtureModel inference control (PLN cluster Source 7), but URE was a separate subsystem that **did not couple to ECAN attention agents**. ECAN exposed `cog-bind-af` as a URE-facing utility, but URE invocation flowed AtomSpace → URE chainer, not ECAN agent → URE chainer. The Hyperon-era state (PLN/ has no ECAN integration; ECAN as a separate metta-attention runtime) is therefore **a continuation of the OpenCog Classic split**, not a Hyperon-era regression. The cluster wiki anchor's two-paradigm framing should reflect this: World-Model PLN (Tradition 3+4) is the **first** attempt to formally close the loop between attention/evidence and inference control, because Local-Rule PLN (Tradition 1) inherited the OpenCog split unchanged.
+
+**Five-tradition map update (proposed, defer to user):**
+
+- **Tradition 2 (Historical OpenCog / URE / ECAN control)** — extend with sub-branch: "iCog-Labs-Dev / SingularityNET Ethiopia maintained a modern MeTTa/C++ ECAN attention line (`metta-attention`, `attention`) isolated from the trueagi-io PLN production line. Source 2 audit (2026-04-26 HEAD `e8162a5`) confirmed strict-literal score 0/4 against 2009 paper and faithful MeTTa port of the C++ pragmatic variant."
+
+---
+
+## Open items / next-source recommendations
+
+1. **Save `findings_gemini.txt`** when Gemini delivers the verbatim file (orchestrator one-writer-rule still applies; current reconciliation is built from forwarded summary content + Codex's verbatim file + orchestrator cross-checks).
+2. **Source 3 candidate options:**
+   - **`opencog/opencog` monorepo** for any ECAN-PLN integration code that may have lived there before the `attention/` split. Specifically: did URE invocation paths reference AttentionBank or AF in `pln/` or `ure/` directories of the older monorepo?
+   - **`opencog/atomspace` AttentionValue / AttentionalFocusCB integration tests** — does the AtomSpace itself have any tests demonstrating ECAN-PLN coupling?
+   - **`zariuq/CeTTa` and `zariuq/ai-agents`** — is there any attention/evidence coupling on the World-Model PLN side that could close the loop the original cluster never closed?
+3. **2018 "Shifting and Drifting Attention While Reading" publication** still pending wiki backlog addition (Source 1 discovery, no Source 2 update).
+4. **Advisor-overstep cleanup** (`AGENTS.md` / `GEMINI.md` / `CLAUDE.md` files in `attention/` and Source 1's `metta-attention/`) — backlog item per user deferral.
+5. **ECAN cluster wiki edits** — defer to cluster close after at least one more source. Decision points: Tradition 2 extension language, standing corrections for Source 1 findings now reclassified as inherited Classic bugs vs MeTTa-introduced regressions.
+
+---
+
+## Audit trail
+
+- All file:line citations come from Codex's `findings_codex.txt` or Gemini's forwarded summary, with orchestrator cross-checks on V0-1 (WA rent compounding), V0-2 (WA diffusion suspicious param read), V0-3 (Cosmo Harrigan attribution axis), and the `cog-bind-af` URE coupling.
+- Cross-model dissents (V0-1 through V0-4) documented above with explicit resolution rationale.
+- Codex's direct-repo evidence is precedent; Gemini's forwarded summary serves as cross-check; orchestrator's targeted reads on flagged items add the third triangulation point.
+- No wiki edits performed in this reconciliation pass.
+- No repo file edits performed (read-only access to the reference repo).
+- No tests run.
+
+*End of Source 2 cross-model reconciliation — ECAN cluster pilot.*

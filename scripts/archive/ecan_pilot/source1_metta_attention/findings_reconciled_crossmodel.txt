@@ -1,0 +1,288 @@
+# Source 1 — metta-attention/ — Cross-Model Reconciliation
+
+**Cluster:** ECAN / Attention pilot, Source 1 of N
+**Source target:** `iCog-Labs-Dev/metta-attention` (local clone at `E:\GitHub\hyperon reference\metta-attention\`)
+**Audited HEAD:** `67cd52564ff42ec3c208184860409c60f16a74bf` (short `67cd525`, "Merge PR #207 from iCog-Labs-Dev/dev2", 2026-03-22, Birhane)
+**Reconciliation date:** 2026-04-26
+**Orchestrator:** Claude Opus 4.7 (1M context)
+**Models reconciled:**
+- Claude single-pass — `findings_claude.txt` (105 numbered claims, 67 KB; WebFetch-only — local sandbox blocked Read/Glob/Grep/Bash/PowerShell on the reference repo this session)
+- Codex single-pass — `findings_codex.txt` (24 KB; direct repo `rg` + `git shortlog -sne --all` + module reads with line numbers)
+- Gemini single-pass — forwarded inline by user; `findings_gemini.txt` save **pending** (one-writer-rule: orchestrator persists Gemini's verbatim text to disk only from a clean transcript handoff, not from a compressed summary). All Gemini citations below are tagged "[Gemini, forwarded]".
+
+**Brief:** `scripts/archive/ecan_pilot/source1_metta_attention_brief.txt`
+
+---
+
+## Headline answer (cluster-pilot question)
+
+**Q: Has the ECAN attention-currency mechanism (rent / wages / Hebbian update / diffusion stochastic from the 2009 ECAN paper) actually been rebuilt in MeTTa, or is `metta-attention/` a structural scaffold that mirrors OpenCog Classic ECAN at the directory level without realizing the equations? And does it close the PLN cluster's "missing control layer" gap?**
+
+**A (three-model consensus):** metta-attention is a **real partial ECAN runtime, not scaffolding** — working STI/LTI currency bookkeeping, attention-value store, attentional-focus maintenance, Hebbian creation/updating, AF/WA rent, AF/WA diffusion, and a runnable "Shifting and Drifting" experiment. It is **not** a verbatim port of the 2009 paper math: under strict literal-formula matching, **0 of 4 brief equations are implemented exactly**; under "functional analog with the right sign," **1 of 4** is materially close (wages, via clamped fund-buffer surrogate). The remaining three are engineered surrogates (rent uses target-funds/buffer; Hebbian uses normalized-STI conjunction with PLN-book revision merge) or absent (the focus-boundary `tanh` sigmoid).
+
+**The PLN-cluster "missing control layer" gap is NOT closed by this source.** All three models confirm zero ECAN-PLN runtime integration in the import graph: no `PLN.Query`, no `lib_pln`, no `chaining`, no `CeTTa` references in active `.metta` source. metta-attention is organizationally distinct (iCog-Labs-Dev / SingularityNET Ethiopia cohort) from the trueagi-io PLN line and the zariuq ai-agents/CeTTa line, which supports the structural-isolation hypothesis from the brief.
+
+---
+
+## Source-of-truth checks (cross-model dissent)
+
+Following the standing rule `feedback_attribution_verify_against_git.md`: any "Verified" claim asserted by a model must be cross-checked against the source. Where models disagree, the orchestrator picks the model with direct repo access OR cites the file:line evidence directly.
+
+### V0-1 — Wages equation status (3-way dissent)
+
+**Dissent:**
+- **Claude:** "Wages: implemented as the paper's clamped-fund-difference formula, closely faithful." → counted as **1/4 literal**.
+- **Codex:** Wages are "FUNCTIONAL / closest, not strict literal." `calculateSTIWage` and `calculateLTIWage` at `attention-bank.metta:11-37`, `:49-63`; `stimulate` multiplies by stimulus at `:76-87`. Code is `STI_ATOM_WAGE * (1 + clamp((FUNDS_STI - TARGET_STI) / STI_FUNDS_BUFFER, -1, 1)) * stimulus`. No source term matching the brief's `WageStimulus * (sum(pi) / n)` was found. → counted as **0/4 strictly literal, 1/4 functionally closest**.
+- **Gemini [forwarded]:** Wage = **ABSENT**. `STI_ATOM_WAGE` parameter exists but zero usage; **no `WageAgent` module exists**.
+
+**Resolution (orchestrator):** Codex has direct repo access and cites `attention-bank.metta:11-37, 49-63, 76-87` with the actual formula. Gemini's "ABSENT — no WageAgent" claim is **incorrect as an existence claim** but **points at a real fact**: there is no top-level `WageAgent` directory under `attention/` (unlike `RentCollectionAgent/`, `ImportanceDiffusionAgent/`, `HebbianCreationAgent/`, `HebbianUpdatingAgent/`, `ForgettingAgent/`). The wage logic is co-located inside `attention-bank/bank/attention-bank.metta` rather than as a peer agent under `attention/`. Both Claude's "literal" framing and Gemini's "ABSENT" framing are partial — the precise statement is:
+
+> Wages mechanism: **IMPLEMENTED inside attention-bank, not as a peer agent.** Functional analog of the paper's wage equation but **NOT a literal match**: code uses a fund-buffer central-bank adjustment `STI_ATOM_WAGE * (1 + clamp((FUNDS_STI - TARGET_STI) / STI_FUNDS_BUFFER, -1, 1)) * stimulus`, not `WageStimulus * (sum(pi) / n)`. No periodic `WageAgent` is registered in `runner-Def.metta`; wages are paid only on stimulation calls (`stimulate`) into the bank.
+
+This is the closest of the four equation targets, but **not literal** in the sense the brief asks. The reconciled count is **0/4 literal, 1/4 functional analog (wages, on-stimulation), 2/4 engineered surrogates (rent, Hebbian), 1/4 absent (stochastic sigmoid)**.
+
+### V0-2 — `PLN_BOOK_REVISION` at HebbianUpdatingAgent.metta:92 (Gemini's new observation)
+
+**Claim [Gemini, forwarded]:** `HebbianUpdatingAgent.metta:92` implements the PLN book revision count formula `count_new = (c1 + c2) - 0.2 · min(c1, c2)` — a direct PLN-book equation reference inside the ECAN repo.
+
+**Cross-check:**
+- **Codex:** `HebbianUpdatingAgent.metta:53-60` uses `TC_DECAY_RATE`, computes `targetConjunction`, exponentially blends with old truth value, **merges via `PLN_BOOK_REVISION`**, and writes with `setStv`. `HebbianUpdatingAgent.metta:106-130` implements `mergeCalculation`, including the `PLN_BOOK_REVISION` path. Codex flags this as "a merge-formula tag inside the ECAN repo, not an integration with PLN runtime code."
+- **Claude:** Confirmed `PLN_BOOK_REVISION` reference inside HebbianUpdatingAgent.
+
+**Resolution:** Gemini's specific line citation (line 92 vs. Codex's range 77-92 / 106-130) and the specific formula (`count_new = (c1+c2) - 0.2·min(c1,c2)`) is a **valuable detail-level addition** — it identifies which PLN-book equation is being borrowed (the standard PLN truth-value revision count formula from the 2008 PLN book Chapter 4). The framing matters: this is **conceptual borrowing of a PLN merge formula inline**, NOT a runtime integration with `PLN/`, `PLN3`, or `CeTTa`. The repo does not import or invoke any external PLN engine; it copies the revision count math into a local `mergeCalculation`. Gemini and Codex are both correct; the formal status is:
+
+> ECAN-internal use of a PLN-book equation; **not** an ECAN-PLN integration. The PLN-cluster missing control layer remains open.
+
+### V0-3 — Contributor count and identity (cross-model number drift)
+
+**Dissent:**
+- **Claude:** Could not query GitHub contributor graph (auth required); deferred to Codex/Gemini.
+- **Codex:** `git shortlog -sne --all` (direct, on local clone). Top: 354 `BlightG <birhane.gulilat@gmail.com>`; 26 `Birhane <106989325+BlightG@users.noreply.github.com>`. Total Birhane = 354+26 = 380 commits.
+- **Gemini [forwarded]:** "BlightG (Birhane Gulilat) 319 commits + samwondim, YeabsiraNigusse, tarikuamisganaw, BaslaelWorkineh."
+
+**Resolution:** Codex's direct `git shortlog -sne --all` output is authoritative. The 319 vs 354 discrepancy is likely a Gemini transcription/citation drift. **Trust Codex's contributor table:**
+
+| Rank | Commits | Author | Email |
+|---|---|---|---|
+| 1 | 354 | BlightG | birhane.gulilat@gmail.com |
+| 2 | 133 | YeabsiraNigusse | nigusseyeabsira@gmail.com |
+| 3 | 132 | samwondim | samwondim@gmail.com |
+| 4 | 88 | tarikuamisganaw | tarikua.misganaw@aastustudent.edu.et |
+| 5 | 86 | Yeabsira Nigusse | (GitHub noreply alias of #2) |
+| 6 | 70 | unknown | ephremeamanu@gmail.com |
+| 7 | 57 | BaslaelWorkineh | baslaworku@gmail.com |
+| 8 | 46 | Bisrat Berhanu | bisratbnegus@gmail.com |
+| 9 | 45 | Samuel Wondimagegnehu | (GitHub noreply alias of #3) |
+| 10 | 42 | tarikuamisganaw | tarikmisgana@gmail.com (alias of #4) |
+| 11 | 26 | Birhane | (GitHub noreply alias of #1) |
+| 12 | 24 | ephrame | ephremeamanu@gmail.com (alias of #6) |
+
+Deduplicating GitHub-noreply aliases:
+- **Birhane Gulilat (BlightG):** 354+26 = **380 commits** (lead author)
+- **Yeabsira Nigusse:** 133+86 = 219
+- **samwondim / Samuel Wondimagegnehu:** 132+45 = 177
+- **tarikuamisganaw:** 88+42 = 130
+- **ephrame (unknown):** 70+24 = 94
+- **BaslaelWorkineh:** 57
+- **Bisrat Berhanu:** 46
+
+**Reconciled cohort claim:** iCog-Labs-Dev / SingularityNET Ethiopia team. Lead author **Birhane Gulilat** with substantial contributions from a 6-person team. Distinct from `trueagi-io` PLN production line (Hammer / Isaev / Geisweiller / Wunsche) and from `zariuq` ai-agents/CeTTa line (Zarathustra Goertzel + AI-collaboration "Oruži"). **Different contributor ecosystem** — supports the brief's organizational-isolation hypothesis for why the PLN cluster did not surface ECAN integration here.
+
+### V0-4 — Equation count summary table dissent
+
+**Dissent:**
+- **Claude:** "1/4 literal (wages), 3/4 surrogate-or-absent."
+- **Codex:** "Strict count: 0/4 exact literal formulas. Practical count: 1/4 materially close (wages), 2/4 engineered surrogates (rent, Hebbian), 1/4 absent (stochastic sigmoid)."
+- **Gemini [forwarded]:** "Rent: Partial/Stabilizing. Wage: ABSENT. Hebbian: Replaced. Diffusion: Replaced (linear + deterministic decay)."
+
+**Resolution:** Adopt Codex's two-axis framing (strict-literal vs functional-analog) — it captures both Claude's "the wages math has the right shape" intuition and Gemini's "no `WageAgent` module" structural observation. Reconciled equation realization table is below.
+
+---
+
+## Universal agreement (3-of-3 consensus)
+
+All three models converge on the following findings. These should be treated as the canonical Source 1 result.
+
+1. **metta-attention is a real partial ECAN runtime, not scaffolding.** Working currency-economy with STI/LTI fund accounting, attention-value store, attentional-focus maintenance, AF/WA rent, AF/WA diffusion, Hebbian creation/updating, and a "Shifting and Drifting" experiment.
+
+2. **Zero ECAN-PLN runtime integration.** No `PLN.Query`, `lib_pln`, `\bpln\b` (active code), `\bure\b`, `chaining`, or `CeTTa` references in active `.metta` source. The only PLN reference is `PLN_BOOK_REVISION` as a **local merge-formula tag** inside `HebbianUpdatingAgent.metta` — conceptual borrowing of a PLN-book truth-value revision equation, not a runtime invocation. The PLN-cluster missing control layer **remains open**; this source does not close it.
+
+3. **`stochastic-importance-diffusion` is misnamed.** The active code at `stochastic-importance-diffusion.metta:22-46, 71-85, 109-118` implements **deterministic** elapsed-time decay `STI × (1 - decayRate)^averageElapsedTime`, not the paper's `0.5 * (1 + tanh(shape * (si - FocusBoundary)))` stochastic focus-boundary probability. The "stochastic" name is inherited concept naming from the paper; the runtime mechanism is deterministic.
+
+4. **`WARentCollectionAgent` has a probable compounding-state bug at lines 30-31.** It reads `StartingAtomStiRent` and `StartingAtomLtiRent` from globals, scales by elapsed time, then **writes the scaled values back into the global parameters**. Subsequent `collectRent` invocations therefore compound the elapsed-time scaling. `AFRentCollectionAgent` does not have this issue — it reads at lines 71-75 and computes locally.
+
+5. **Parameter shadowing: `LOCAL_FAR_LINK_RATIO` (10.0 in `AttentionParam.metta:15`) is shadowed by hardcoded `localToFarLinks = 1000.0` in `HebbianCreationAgent.metta:17`.** The active value is 100× larger than the declared parameter, suppressing far-link creation for smaller AF sizes.
+
+6. **`ForgettingAgent` is excluded from the canonical agent loop and from the bulk test runner.** `runner-Def.metta:10` comments out `(forgettingAgent-Run (atomBin))`. `scripts/run-tests.py:78-91` excludes ForgettingAgent tests from the test suite. The implementation itself is non-trivial (`ForgettingAgent.metta:6-25, 32-50, 58-74, 172-183, 210-214`) — this is **dead working code**, not absent code.
+
+7. **Dead infrastructure pattern.** `recentVal.metta:22-67` has both `updateMin` and `updateMax` implementations **commented out**. `getMaxSTI`/`getMinSTI` in `importance-index.metta:201-212` actively read `MAX_STI`/`MIN_STI` from `AttentionParam`, while the commented variants at `:165-189` would have used `recent_max`/`recent_min`. This matters because **the paper formulas the brief asks about depend on `recentMaxSTI`** — the active runtime cannot literally implement those formulas because the `recentMaxSTI` infrastructure is dormant. `DIFFUSION_TOURNAMENT_SIZE` and `RENT_TOURNAMENT_SIZE` are similarly defined parameters with **no active reader** in source.
+
+8. **Both AF and WA variants of rent and diffusion are real, not stubs** — but they implement a hard categorical AF-vs-WA split rather than the paper's smooth focus-boundary probability.
+
+9. **Author cohort is iCog-Labs-Dev / SingularityNET Ethiopia.** Birhane Gulilat (BlightG) is the dominant contributor; the team is organizationally distinct from `trueagi-io` (PLN production line) and `zariuq` (ai-agents/CeTTa line).
+
+10. **Tests not run.** Repo expects sibling `PeTTa` checkout and invokes `sh run.sh` from PeTTa (`scripts/run-tests.py:63-70, 106-113`; README `:21-50`). Per brief, models did not run tests.
+
+---
+
+## Differentiated insights (1-of-3 or 2-of-3 model contributions)
+
+### Claude only
+- **Cluster narrative framing** ("ECAN at 'real but engineered' level, not 'stub' level — substantially more complete than chaining was relative to URE"). Useful for the cluster wiki anchor but not source-evidence.
+- **Single-pass via WebFetch only** — every cited file:line was retrieved verbatim from `raw.githubusercontent.com`. This means Claude's negative-grep was over a closed import graph (12 modules read end-to-end), not a repo-wide search. Codex/Gemini direct-repo passes confirmed and **extended** Claude's negative-grep to repo-wide coverage.
+
+### Codex only
+- **Strict-literal-vs-functional-analog two-axis framing** for the equation count. Adopted in the reconciled equation table below.
+- **Direct `git shortlog -sne --all`** producing the canonical contributor table (V0-3).
+- **Conservation-law audit precision:** `setAv` at `getter-and-setter.metta:36-45` does fund bookkeeping (raising STI reduces `FUNDS_STI`; lowering STI returns funds), but **no total-mass invariant assertion** exists in source or tests. The runner uses `hyperpose`, several agents use `bach-p`, and parameter updates use `remove-atom` + `add-atom` — making ordering/concurrency behavior non-obvious.
+- **AF vs WA branch quality assessment:** AF rent is clean (no global mutation). WA rent has the compounding bug. AF diffusion uses top-k AF selection. WA diffusion selects one random non-AF atom and computes decay-delta over incident/Hebbian paths. **Both variants are real, but WA rent is suspicious.**
+
+### Gemini only [all forwarded; verbatim file save pending]
+- **Specific PLN-book equation identified at HebbianUpdatingAgent.metta:92** as `count_new = (c1+c2) - 0.2·min(c1,c2)` — the standard PLN-book revision count formula. Codex confirmed the `PLN_BOOK_REVISION` tag at the same module but did not pin the specific arithmetic. Gemini's specificity here is the most valuable detail-level addition of any model in this Source 1 pass.
+- **Diffusion math compactly characterized** as "linear `MAX_SPREAD_PERCENTAGE` + deterministic exponential decay `STI × (1 - decay)^t`." Confirmed by Codex's `ImportanceDiffusionBase.metta:167-170, 177-190` and `stochastic-importance-diffusion.metta:109-118`.
+- **Rent characterization** as "`STI × (1 ± FundBalance)` scaling." Matches Codex's `RentCollectionBaseAgent.metta:7-28, 36-57` (target-funds/buffer adjustment).
+
+---
+
+## Reconciled equation-realization table
+
+Two-axis framing (strict-literal vs functional-analog), per V0-4 resolution. File:line citations are Codex's (direct-repo) where available, Claude's (WebFetch) elsewhere; no conflict between them was found on cited lines.
+
+| Paper equation (per brief) | Strict-literal? | Functional analog? | Implemented as | Evidence |
+|---|---|---|---|---|
+| **Rent** `Rent * max(0, log2(si / recentMaxSTI))^2` | NO | Surrogate (different shape) | Target-funds/buffer adjustment, clamped: `f(FUNDS_STI - TARGET_STI, STI_FUNDS_BUFFER)` × elapsed-time | `RentCollectionBaseAgent.metta:7-28, 36-57`; AF rent applies elapsed-time scaling at `AFRentCollectionAgent.metta:31-56, 66-95`; WA rent at `WARentCollectionAgent.metta:16-49`. **No `recentMaxSTI` runtime path** — `recentVal.metta:22-67` updates are commented out. The only `log-math 2` in active code is bin grouping (`importance-index.metta:90-91`), unrelated to rent. |
+| **Wages** `WageStimulus * (sum(pi) / n)` | NO | Closest of the four — has the right sign and central-bank intuition | `STI_ATOM_WAGE * (1 + clamp((FUNDS_STI - TARGET_STI) / STI_FUNDS_BUFFER, -1, 1)) * stimulus` | `attention-bank.metta:11-37` (`calculateSTIWage`), `:49-63` (`calculateLTIWage`), `:76-90` (`stimulate` multiplies by stimulus and persists). Tests expect `20.0` under test parameter state (`attention-bank-test.metta:12-13`). **No `WageAgent` peer module** under `attention/`; wages are paid only on stimulation calls into the bank. **No source term matching `sum(pi) / n`.** |
+| **Hebbian update** `c_ij' = ConjDecay * (si*sj/recentMaxSTI^2) + (1 - ...) * c_ij` | NO | Surrogate (different math, but "Hebbian-shaped" toward AF co-activity) | Normalized-STI conjunction `conj = norm_i * norm_j + (norm_j - norm_i) * abs(norm_j - norm_i)`, rescaled to `(conj+1)/2`; exponentially blended with old TV via `TC_DECAY_RATE`; merged with **`PLN_BOOK_REVISION`** count formula `count_new = (c1+c2) - 0.2*min(c1,c2)` | `HebbianUpdatingAgent.metta:53-60` (update path), `:77-92` (`targetConjunction`), `:92` ([Gemini, forwarded] PLN-book revision count formula), `:106-130` (`mergeCalculation`). **No `recentMaxSTI^2` or `ConjDecay` term.** PLN-book reference is **inline borrowing**, not runtime PLN integration. |
+| **Stochastic diffusion** `P(diffuse) = 0.5 * (1 + tanh(shape * (si - FocusBoundary)))` | NO | ABSENT (substituted by hard AF/WA categorical split) | Hard "are you in the AF list?" boundary + deterministic elapsed-time decay; AF diffusion uses `MAX_SPREAD_PERCENTAGE`; WA diffusion uses `STI - diffusedValue` where `diffusedValue = sti * (1 - decayRate)^averageElapsedTime` | `ImportanceDiffusionBase.metta:167-170, 177-190, 270-278, 303-320, 344-369`; `AFImportanceDiffusionAgent.metta:23-38, 41-55, 69-97`; `WAImportanceDiffusionAgent.metta:59-75`; `stochastic-importance-diffusion.metta:22-46, 71-85, 109-118`. **No `tanh`/sigmoid source hits.** |
+
+**Reconciled count:** **0/4 strict-literal**, **1/4 functional-analog (wages)**, **2/4 engineered surrogates (rent, Hebbian)**, **1/4 absent (stochastic sigmoid)**.
+
+---
+
+## Conservation-law audit (reconciled)
+
+- **STI/LTI bookkeeping is real**, not notional. `setAv` at `getter-and-setter.metta:36-45` decreases `FUNDS_STI` when atom STI rises and returns funds when atom STI falls.
+- **No proved or asserted total-mass invariant.** No tests check `sum(atom_STI) + FUNDS_STI = constant` after a full agent cycle.
+- **Concurrency complications.** Runner uses `hyperpose` (parallel agents); parameter updates use `remove-atom` + `add-atom` non-atomically; `AttentionParam` updates can race.
+- **WA rent compounding bug** (`WARentCollectionAgent.metta:30-31`) breaks any candidate invariant by mutating rent-base globals.
+
+**Reconciled position:** functional currency economy, **not a verified conservation law**. Wiki claims about ECAN as "currency-conservation engine" should be downgraded accordingly.
+
+---
+
+## ECAN-PLN integration audit (reconciled)
+
+Repo-wide grep across the audited HEAD (Codex direct, Claude closed-import-graph) for the brief's tokens:
+
+| Token | Active source hits | Doc/comment hits | Verdict |
+|---|---|---|---|
+| `PLN.Query` | 0 | 0 | No PLN runtime invocation |
+| `lib_pln` | 0 | 0 | No PLN library import |
+| `\bpln\b` (case-insensitive, word-boundary) | `PLN_BOOK_REVISION` token in `HebbianUpdatingAgent.metta:58, 102, 109` only | `DataStructure.md:95` ("Nil used the STV in the PLN") | Local merge-formula tag + one doc mention; **no integration** |
+| `\bure\b` | 0 | 0 | No URE references |
+| `chaining` | 0 | 0 | No chaining-repo references |
+| `CeTTa` | 0 | 0 | No CeTTa references |
+| `\bECAN\b` | Doc + README hits | Standard | Term used in code/docs as expected; sanity check passes |
+| `AttentionBank` | Within `attention-bank/` only | Standard | Expected internal references |
+
+**Reconciled verdict:** **No external-cluster references outside `experiments/` or doc files.** The "organizationally distinct" hypothesis from the brief is confirmed: this repo is iCog-Labs-Dev / SingularityNET Ethiopia work, developed independently of `trueagi-io/PLN`, `chaining/`, `CeTTa`, etc. The PLN cluster's "missing control layer" gap is **NOT closed by Source 1**.
+
+---
+
+## AF vs WA variant comparison (reconciled)
+
+Both branches are real, but quality differs:
+
+| Aspect | AF variant | WA variant |
+|---|---|---|
+| Rent — atom selection | All AF atoms (`AFRentCollectionAgent.metta:20-21`) | One random non-AF atom (`WARentCollectionAgent.metta:5-7`) |
+| Rent — math | Elapsed-time threshold/frequency, locally computed (`AF...:31-56, 66-95`) | Bin elapsed time scaled by global rent-base (`WA...:24, 26-31`) |
+| Rent — global mutation | None | **Mutates `StartingAtomStiRent`/`LtiRent` globals (likely bug)** |
+| Diffusion — atom selection | Top-k AF atoms (`AFImportanceDiffusionAgent.metta:69-97`) | One random non-AF atom (`WAImportanceDiffusionAgent.metta:6-25`) |
+| Diffusion — math | Source-STI × `MAX_SPREAD_PERCENTAGE`, split by incident/Hebbian (`AFImportanceDiffusionAgent.metta:23-55`) | Decay delta via `diffusedValue`, split by incident/Hebbian (`WA...:59-75`) |
+| Stochastic focus-boundary | ABSENT (hard AF list membership) | ABSENT (categorical non-AF) |
+
+**Reconciled position:** AF and WA are both implemented and functional. WA rent has a probable compounding bug. Neither implements the paper's stochastic focus-boundary sigmoid.
+
+---
+
+## runner-Def.metta agent loop audit (reconciled)
+
+- **`runner-Def.metta:1-12`** defines `test-superpose` as `hyperpose` over: Hebbian update, AF diffusion, Hebbian creation, AF rent, WA diffusion, WA rent.
+- **`runner-Def.metta:10`** comments out `(forgettingAgent-Run (atomBin))` — ForgettingAgent is excluded.
+- **`experiments/experiment.metta:12-33, 73-77`** stimulates each input atom and invokes `test-superpose` every batch.
+- **There is no `WageAgent` registered in the runner** — wages are paid only via `stimulate` calls into the bank (`attention-bank.metta:76-90`).
+- **No OpenCog-style MindAgent scheduler** — this is a compact test/experiment loop using `hyperpose`, not a priority-queued cognitive scheduler.
+
+---
+
+## Runnability check (reconciled)
+
+- **README expects sibling `PeTTa` checkout** (`README.md:21-32`).
+- **Test command** runs from PeTTa: `sh run.sh ../metta-attention/...` (`README.md:43-50`).
+- **`scripts/run-tests.py:63-70, 106-113`** expects to run from PeTTa and invokes `["sh", "run.sh", abs_test_path, "-s"]`.
+- **Forgetting tests excluded** by bulk runner (`scripts/run-tests.py:78-91`).
+- **Untracked local orientation files** (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`) exist in the local checkout at audit time — Codex flagged these per the brief's Standing Correction #4. These are **not** treated as source evidence (consistent with the wiki repo's local-CLAUDE.md pattern; see PLN cluster pilot Phase 6 advisor-overstep backlog).
+
+**No model ran tests.** Per brief, runnability is reported by inspection only.
+
+---
+
+## Discovered publications
+
+**[Codex + Claude consensus]** `experiments/README.md:8-16` cites the 2018 paper:
+
+> **"Shifting and Drifting Attention While Reading: A case study of nonlinear-dynamical attention allocation in the OpenCog cognitive architecture"** — Goertzel et al., 2018 (ResearchGate ID `326576861`).
+
+The experiment in `experiments/experiment.metta` and `experiments/Experiment.md:1-13, 99-118` is described as a MeTTa replication attempt of this paper. **Add to wiki publication backlog** as a discovered cited publication for the ECAN cluster.
+
+---
+
+## Standing-corrections candidates (reconciled)
+
+Surfacing for the cluster narrative anchor (top-level `hyperon-wiki/CLAUDE.md`):
+
+1. **"ECAN is not ported to MeTTa" — FALSE.** metta-attention is a substantial MeTTa port of ECAN-style attention agents. Lead author Birhane Gulilat (iCog-Labs-Dev). Audited HEAD `67cd525` (2026-03-22).
+2. **"ECAN closes PLN's missing control layer" — FALSE for current source state.** No ECAN-PLN runtime integration in the import graph. Organizationally isolated cohort.
+3. **"The 2009 ECAN equations are implemented verbatim" — FALSE.** 0/4 strict-literal; 1/4 functional analog (wages); 2/4 engineered surrogates (rent, Hebbian); 1/4 absent (stochastic sigmoid).
+4. **"`stochastic-importance-diffusion` is stochastic" — FALSE.** Active code is deterministic elapsed-time decay. Module name is inherited from the paper concept.
+5. **"`ForgettingAgent` participates in the runtime" — FALSE.** Commented out in `runner-Def.metta:10` and excluded from the bulk test runner.
+6. **`WARentCollectionAgent.metta:30-31` likely has a compounding-state bug** that mutates global rent-base parameters across invocations.
+7. **`LOCAL_FAR_LINK_RATIO` is shadowed** by a 100×-larger hardcoded value in `HebbianCreationAgent.metta:17`.
+8. **Author attribution:** lead = **Birhane Gulilat** (BlightG, iCog-Labs-Dev). Distinct from `trueagi-io/PLN` and `zariuq/ai-agents` cohorts. Verified via `git shortlog -sne --all` (Codex direct).
+9. **Discovered publication:** 2018 "Shifting and Drifting Attention While Reading" (Goertzel et al.; ResearchGate 326576861). Add to wiki backlog.
+
+---
+
+## Cluster-narrative impact
+
+**Carryover from PLN cluster pilot (Source 11 reconciliation): the production PLN/ has no inference-control layer, and ECAN was the documented historical control aspiration.**
+
+**ECAN cluster Source 1 verdict on that carryover:** the metta-attention repo **does** rebuild a real partial ECAN runtime in MeTTa — but **it does not wire that runtime into PLN inference control**. The PLN cluster's missing control layer is therefore **NOT closed by Source 1**. metta-attention is a self-contained attention runtime developed by an organizationally distinct team (iCog-Labs-Dev / SingularityNET Ethiopia); the PLN-cluster maintainers (trueagi-io: Hammer, Isaev, Geisweiller, Wunsche) and the World-Model PLN line (`zariuq` ai-agents/CeTTa: Zarathustra Goertzel) appear to have developed independently of this ECAN work.
+
+This is **the same shape of finding** as the PLN-cluster pilot's URE → chaining transition (richer historical control architecture, simpler MeTTa successor that does not preserve the control coupling), but the loss is **less severe**: chaining is at "toy stub" level relative to URE, whereas metta-attention is at "engineered surrogate" level relative to OpenCog Classic ECAN. The arithmetic is real; the equations diverge.
+
+**Cluster wiki anchor implication:** the five-tradition map will need a **sixth tradition** (or an extension of Tradition 2) describing **iCog-Labs-Dev / SingularityNET Ethiopia ECAN-on-MeTTa** as a separate development line. Decision deferred to ECAN cluster wrap-up.
+
+---
+
+## Open items / next-source recommendations
+
+1. **Source 2 candidate: OpenCog Classic ECAN baseline** (e.g., `attention/` in legacy `opencog/opencog`) for a faithful comparison of which 2009-paper equations were preserved vs. lost in the iCog-Labs-Dev MeTTa port. Useful for confirming the "engineered surrogate" framing.
+2. **Source 3 candidate: SingularityNET Ethiopia / iCog-Labs-Dev other ECAN-adjacent work** (any other repos by the same cohort that might integrate this attention runtime with downstream consumers — search `iCog-Labs-Dev` org).
+3. **Source 4 candidate: Verify the missing `WageAgent` and the `recentVal` revival.** If `recentVal.metta:22-67` is being revived in branches off `dev2`, the strict-literal count could change. Worth a `git log --all -p -- attention-bank/utilities/recentVal.metta` pass.
+4. **Wiki backlog: 2018 "Shifting and Drifting Attention While Reading"** publication card (Goertzel et al., ResearchGate 326576861).
+5. **Pending file save: `findings_gemini.txt`** — orchestrator should persist Gemini's verbatim Source 1 text once available from a clean transcript handoff (current session only has compressed-summary content).
+6. **Pending: Cleanup of advisor-created `AGENTS.md` / `GEMINI.md` / `AGENTS.codex.tmp.md` files** in `metta-attention/` (and PLN cluster repos) — backlog item per user deferral; one-writer-rule violation pattern documented in `reference_wiki_mcp_quirks.md`.
+
+---
+
+## Audit trail
+
+- All file:line citations come from one of the three findings files. No fresh repo reads were performed during reconciliation.
+- Cross-model dissents (V0-1 through V0-4) are documented above with explicit resolution rationale.
+- Codex's direct-repo evidence (file:line + git shortlog) is given precedence for source-of-truth claims; Claude's WebFetch evidence and Gemini's forwarded summary serve as cross-checks.
+- No wiki edits performed in this reconciliation pass.
+- No repo edits performed in this reconciliation pass (per cluster-pilot rules).
+
+*End of Source 1 cross-model reconciliation — ECAN cluster pilot.*

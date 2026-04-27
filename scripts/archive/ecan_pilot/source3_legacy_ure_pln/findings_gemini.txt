@@ -1,0 +1,27 @@
+# Source 3 — Legacy URE + Legacy C++ PLN — Gemini Findings
+
+**Cluster:** ECAN / Attention pilot, Source 3 of N
+**Source targets:**
+- **3a.** `opencog/ure` legacy URE C++ — local checkout `E:\GitHub\hyperon reference\ure\` — HEAD `cec5509762fac3c20046fff7d29284e4ef07fdde`
+- **3b.** `opencog/pln` legacy C++ PLN — local checkout `E:\GitHub\hyperon reference\pln-singnet\` — HEAD `a0983ada8295d441d459c71c467f6f16ba8778e6`
+
+**Persistence date:** 2026-04-26 (orchestrator-saved from Gemini's 2026-04-26 forwarded consolidated summary; verbatim per Gemini's "Verbatim Findings for Persistence (Sources 1–4)" delivery)
+**Brief:** `scripts/archive/ecan_pilot/source3_legacy_ure_pln_brief.txt`
+
+**Note on persistence form:** Gemini's earlier forwarded report contained more detailed claim-level content (URE inference-control architecture inventory with MixtureModel.h:88 Kolmogorov complexity formula, ThompsonSampling.h:60 exploration/exploitation framing, ControlPolicy.h:74 expansion-control rules, complexity-penalty as ECAN-STI functional analog framing, Sebastian Ruder commit citations c40990c/ab055db, etc.). At cluster-close (Source 4 review), Gemini provided a compact consolidated summary explicitly designated as "verbatim consolidated text for findings_gemini.txt". This file persists Gemini's designated text. For full claim-level Gemini findings, see also the cross-model reconciliation file at `findings_reconciled_crossmodel.txt` which integrates Gemini's earlier forwarded content with Codex and orchestrator cross-checks.
+
+**Note on V0-1 dissent:** Gemini's earlier classification was "Confirmed Dead Enum (Architected but NEVER implemented)" for `source_selection_mode::STI`. The reconciliation V0-1 settled this dissent in favor of Codex's "once implemented, then removed/unwired" reading via orchestrator-verified git-show on three commits (`0a0b09912`, `0b744dbab`, `5a5b7785d`). Gemini accepted the correction (forwarded message at cluster-close: "I accept the verified timeline (2016–2018) of active ECAN-PLN executable coupling via s->getSTI(). The discovery that integration was severed during the 2018 URE rewrite (due to dependency constraints) rather than during the Hyperon transition repositioned the 'missing control layer' as a late-OpenCog Classic regression."). The persisted text below reflects Gemini's accepted post-reconciliation position.
+
+---
+
+## Verbatim consolidated findings (per Gemini's designation, post-V0-1 acceptance)
+
+**Source 3 (ure legacy)**
+
+- **STI Pickaxe:** Confirmed active executable coupling (2016-03-09 to 2018-10-23) via `s->getSTI()` in `ForwardChainer.cc`. Deliberately removed by Nil Geisweiller.
+- **Architecture:** Formal implementation of `MixtureModel` (Kolmogorov complexity) and `ThompsonSampling`.
+- **Attribution:** Sebastian Ruder (Verified 219 commits, 2014 era).
+
+---
+
+*End of Gemini Source 3 findings.*

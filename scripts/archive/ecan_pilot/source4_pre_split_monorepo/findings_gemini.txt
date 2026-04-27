@@ -1,0 +1,33 @@
+# Source 4 — Pre-Split OpenCog Monorepo Archaeology — Gemini Findings
+
+**Cluster:** ECAN / Attention pilot, Source 4 of N (FINAL extraction-phase source)
+**Source target:** `opencog/opencog` monorepo, accessed via `singnet/opencog` fork
+**Local checkout:** `E:\GitHub\hyperon reference\opencog-singnet\`
+**Audit target commit:** `b31c7e3b9beab7a458c84117f3b654a03ca9ffe2` (last commit before AttentionBank removal `318c0b4cb` 2019-09-06)
+**Persistence date:** 2026-04-26 (orchestrator-saved from Gemini's 2026-04-26 forwarded consolidated summary; verbatim per Gemini's "Verbatim Findings for Persistence (Sources 1–4)" delivery)
+**Brief:** `scripts/archive/ecan_pilot/source4_pre_split_monorepo_brief.txt`
+
+**Note on persistence form:** Gemini's earlier forwarded report contained more detailed claim-level content (cog-bind-af AFImplicator.cc design-doubt comment, GHOST stimulation.scm perception hooks, Fuzzy.cc try_match line 304, chatbot-eva 2019 TODO comment, openpsi NO-COUPLING claim — later corrected, cluster-position summary). At cluster-close, Gemini provided a compact consolidated summary explicitly designated as "verbatim consolidated text for findings_gemini.txt". This file persists Gemini's designated text. For full claim-level Gemini findings, see also the cross-model reconciliation file at `findings_reconciled_crossmodel.txt` which integrates Gemini's earlier forwarded content with Codex and orchestrator cross-checks.
+
+**Note on V0-1 dissent:** Gemini's earlier classification was "openpsi Coupling: Status: NO-COUPLING" based on a C++-only grep token list (`AttentionBank | AttentionValue | get_sti | get_lti`). Orchestrator verification via `git grep b31c7e3 -- opencog/openpsi/` for both C++ AND Scheme tokens found `action-selector.scm:63`'s `(* (cog-confidence RULE) (cog-mean RULE) (cog-av-sti RULE))` — a real STI consumer that the C++-only token list missed. The V0-1 reconciliation settled in favor of Codex's COUPLED verdict. Gemini accepted the correction (forwarded message at cluster-close: "I accept the correction regarding OpenPsi coupling; my failure to grep Scheme-side tokens (`cog-av-sti`) led to the incorrect 'NO-COUPLING' verdict. I have noted the new mandatory rule in `feedback_ecan_audit_token_list.md`: Audits must rigorously cover both C++ and Scheme/MeTTa API layers."). The persisted text below reflects Gemini's accepted post-reconciliation position.
+
+---
+
+## Verbatim consolidated findings (per Gemini's designation, post-V0-1 acceptance)
+
+**Source 4 (opencog-singnet archaeology)**
+
+- **Consumers:** Verified active STI/AF usage in OpenPsi (Scheme `cog-av-sti`), GHOST (perception hooks), and `Fuzzy.cc` (AF-only search).
+- **Decoupling:** Confirmed that these consumers were lost in the 2019 modularization and not restored in the MeTTa rewrite.
+
+---
+
+## Final cluster position (per Gemini's cluster-close summary)
+
+1. **Narrative:** ECAN-PLN integration was a realized historical feature (2016–2018) that was deliberately shed in Late-Classic OpenCog, not a Hyperon-era regression. GHOST and OpenPsi were the primary functional consumers of ECAN currency.
+2. **Tradition Map:** Confirmed Tradition 2 extension for the iCog-Labs-Dev MeTTa port.
+3. **Math Status:** 0/4 strict-literal compliance across the board. The MeTTa port faithfully replicated the pragmatic surrogates established in the C++ baseline.
+
+---
+
+*End of Gemini Source 4 findings. ECAN cluster pilot extraction phase CLOSED.*

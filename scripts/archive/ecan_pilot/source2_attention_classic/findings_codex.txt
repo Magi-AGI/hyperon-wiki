@@ -1,0 +1,233 @@
+# Source 2 - attention/ Classic ECAN C++ - Codex Findings
+
+Codex extraction for the ECAN / Attention cluster pilot, Source 2.
+
+Source target: `E:\GitHub\hyperon reference\attention\`
+Origin remote: `https://github.com/iCog-Labs-Dev/attention.git`
+Audited HEAD: `e8162a57ca95d1d914feeedec68160154ec6264f`
+HEAD summary: `e8162a5 2026-02-17 unknown <ephremeamanu@gmail.com> modified tests`
+Codex pass date: 2026-04-26
+
+No wiki writes. No source-repo edits. No tests run.
+
+## Executive Verdict
+
+C2-01. Classic `attention/` is the direct implementation baseline needed to interpret `metta-attention/`. The current C++ code does **not** implement the 2009 ECAN paper formulas literally either. Source 1's MeTTa code is therefore mostly a port of the later Classic C++ implementation, not a regression from a fully literal C++ baseline.
+
+C2-02. Equation status in Classic C++ matches the Source 1 reconciled two-axis framing:
+
+| Paper target | Classic C++ status | Key C++ evidence | Relation to Source 1 MeTTa |
+|---|---|---|---|
+| Rent `Rent * max(0, log2(si/recentMaxSTI))^2` | DIVERGENT / engineered homeostatic surrogate | `RentCollectionBaseAgent.cc:76-103` | MeTTa surrogate is inherited from Classic |
+| Wages `WageStimulus * sum(pi) / n` | FUNCTIONAL ANALOG, not literal | `AttentionBank.cc:142-157`, `:168-187` | MeTTa attention-bank wage analog is inherited from Classic |
+| Hebbian conjunction update | DIVERGENT / engineered surrogate | `HebbianUpdatingAgent.cc:74-115` | MeTTa surrogate is inherited from Classic |
+| Stochastic diffusion sigmoid `0.5 * (1 + tanh(...))` | ABSENT | `StochasticImportanceDiffusion.cc:115-145`; no `tanh`/`sigmoid` grep hits | MeTTa deterministic decay is inherited from Classic |
+
+C2-03. Strict-literal score for Classic C++ is `0/4`. Functional-analog score is `1/4` if wages are counted as the attention-bank implementation of stimulus-to-wage conversion.
+
+C2-04. The PLN cluster "missing control layer" remains open. Classic ECAN has no executable PLN runtime integration in this repository. It has documentation and naming traces (`experiments/README.md:2` "ECAN/PLN experimentation", `ExperimentSetupModule.h` old `PLNDynamics` guard, `cog-bind-af` documented as URE-facing), but no active PLN/URE chainer coupling in the grep surface.
+
+C2-05. Important reinterpretation for Source 1: many "MeTTa deviations" are not MeTTa-specific deviations. They are faithful ports of the current Classic C++ implementation, which itself had already moved away from the strict 2009-paper formulas.
+
+## Repo Identity and History
+
+C2-06. Local repository HEAD is exactly the briefed commit: `e8162a57ca95d1d914feeedec68160154ec6264f`.
+
+C2-07. Only local remote is `origin https://github.com/iCog-Labs-Dev/attention.git`. There is no configured `upstream` remote. I did not add remotes or fetch over the network; fork/upstream sanity here is bounded to the preserved local history.
+
+C2-08. Contributor shortlog over all refs, top identities:
+
+- Linas Vepstas / Linas Vepstas aliases: `225 + 199 = 424` commits.
+- Misgana Bayetta: `149` commits.
+- Nil Geisweiller / ngeiswei aliases: `53 + 46 = 99` commits.
+- YeabsiraNigusse: `50` commits.
+- Roman Treutlein aliases: `21 + 20 = 41` commits.
+- BlightG / Birhane Gulilat: `18` commits.
+
+C2-09. Recent master history is iCog-Labs-Dev maintenance and test work, not OpenCog upstream-only history: unknown/ephremeamanu in 2026, YeabsiraNigusse in 2024-2026, BlightG in 2025.
+
+C2-10. BlightG/Birhane's 18 commits are test-focused in the local history: ForgettingAgent tests and AF/WA diffusion tests, with `90008f5` adding more STV tests and multiple April 2025 ForgettingAgent test edits.
+
+C2-11. YeabsiraNigusse recent work touches implementation files and tests, including `AttentionBank.cc`, `AttentionParamQuery.cc`, `StochasticImportanceDiffusion.cc`, `RentCollectionBaseAgent.cc`, and several test files. Source 2 is not a frozen historical archive; it is an iCog-maintained fork with preserved upstream history.
+
+## Rent
+
+C2-12. Classic C++ rent is not the 2009 paper's logarithmic rent formula. There are no `log2` hits in the active rent implementation.
+
+C2-13. `RentCollectionBaseAgent::load_params` reads starting STI/LTI rent, target funds, and buffer sizes from ECAN params at `RentCollectionBaseAgent.cc:64-74`.
+
+C2-14. STI rent is a homeostatic funds-gap rule: `diff = targetSTI - funds`, early return `0` if funds are already at/above target, `ndiff = diff / stiFundsBuffer`, clamp to `[-0.99, 1.0]`, return `STIAtomRent + STIAtomRent * ndiff` (`RentCollectionBaseAgent.cc:76-92`).
+
+C2-15. LTI rent uses the same funds-gap pattern without the STI early-return path: `diff = targetLTI - funds`, `ndiff = diff / ltiFundsBuffer`, clamp to `[-1.0, 1.0]`, return `LTIAtomRent + LTIAtomRent * ndiff` (`RentCollectionBaseAgent.cc:95-103`).
+
+C2-16. AF rent selects all atoms in attentional focus via `get_handle_set_in_attentional_focus` (`AFRentCollectionAgent.cc:53-57`), gates by update frequency (`:67-74`), scales rent by elapsed-time multiplier `w` (`:76-84`), clamps rent to current STI/LTI (`:86-87`), then writes updated STI/LTI (`:89-90`).
+
+C2-17. WA rent selects one random atom outside AF (`WARentCollectionAgent.cc:51-57`), computes elapsed time via `StochasticDiffusionAmountCalculator::elapsed_time` (`:65`), then mutates member fields `STIAtomRent = STIAtomRent * last_update_time` and `LTIAtomRent = LTIAtomRent * last_update_time` before calling the base rent calculation (`:68-74`).
+
+C2-18. The Source 1 WARentCollectionAgent compounding-state bug is inherited from Classic C++, not introduced by the MeTTa port. The C++ implementation mutates the rent parameters in place on every WA rent event.
+
+## Wages and Conservation
+
+C2-19. Classic wages are implemented in `AttentionBank`, not as a peer agent.
+
+C2-20. `AttentionBank::stimulate` computes `stiWage = calculateSTIWage() * stimulus` and `ltiWage = calculateLTIWage() * stimulus`, creates a new AV with increased STI/LTI, updates the importance index, and calls `AVChanged` (`AttentionBank.cc:142-157`).
+
+C2-21. `calculateSTIWage` is homeostatic: `diff = funds - targetSTI`, `ndiff = diff / stiFundsBuffer`, clamp to `[-1.0, 1.0]`, return `STIAtomWage + STIAtomWage * ndiff` (`AttentionBank.cc:168-177`). LTI follows the analogous rule (`:179-187`).
+
+C2-22. This is not literal `WageStimulus * sum(pi) / n`. It is a functional analog: stimulus converts to STI/LTI wages, with the conversion rate adjusted by bank funds.
+
+C2-23. AttentionBank enforces local accounting by updating funds when AVs change: it adds old STI/LTI and subtracts new STI/LTI (`AttentionBank.cc:112-127`), then updates importance index and AF (`:128-139`).
+
+C2-24. Starting funds and wage/fund defaults are hardcoded in `AttentionBank` constructor: funds `100000`, buffers `10000`, targets `10000`, wages `10`, max AF size `100` (`AttentionBank.cc:35-45`).
+
+C2-25. Classic documentation explicitly frames STI/LTI as conserved currency: the README says wages pay atoms in use, rent is collected, and AtomSpace funds are managed to remain in a homeostatic range (`opencog/attention/README:106-174`).
+
+## Hebbian Updating and Creation
+
+C2-26. Classic Hebbian updating is not the 2009 paper's literal equation. It uses a target-conjunction surrogate based on normalized STI and then merges a SimpleTruthValue.
+
+C2-27. `HebbianUpdatingAgent::run` chooses one random source atom from attentional focus and calls `updateHebbianLinks(source)` (`HebbianUpdatingAgent.cc:52-72`).
+
+C2-28. `updateHebbianLinks` uses fixed `tcDecayRate = 0.1`, computes `new_tc = targetConjunction(outgoing)`, old mean from the existing TruthValue, and `tc = tcDecayRate * new_tc + (1.0 - tcDecayRate) * old_tc` (`HebbianUpdatingAgent.cc:74-91`).
+
+C2-29. The new TruthValue is `SimpleTruthValue::createTV(tc, 0.1)` and is merged via `h->getTruthValue()->merge(newtv)` (`HebbianUpdatingAgent.cc:92-95`). This is AtomSpace TruthValue machinery, not a PLN runtime dependency.
+
+C2-30. `targetConjunction` normalizes both endpoint STIs with `getNormalisedZeroToOneSTI(..., true, true)`, computes `norm_i * norm_j + (norm_j - norm_i) * abs(norm_j - norm_i)`, then maps it through `(conj + 1.0) / 2.0` (`HebbianUpdatingAgent.cc:99-115`).
+
+C2-31. Classic Hebbian creation reads `MAX_LINKS` and `LOCAL_FAR_LINK_RATIO` from `AttentionParamQuery` (`HebbianCreationAgent.cc:71-77`), with default `LOCAL_FAR_LINK_RATIO = 10` (`default-param-values.scm:61-64`).
+
+C2-32. Source 1's hardcoded `localToFarLinks = 1000.0` is a MeTTa-port regression/shadowing issue. Classic C++ does not have that hardcoded value in `HebbianCreationAgent`; it reads the param.
+
+C2-33. Classic Hebbian creation links AF neighbors bidirectionally where needed (`HebbianCreationAgent.cc:116-134`), creates far links based on `round(count / localToFarLinks)` (`:136-147`), and initializes new links with `SimpleTruthValue(0.5, 0.1)` plus VLTI increment (`:172-177`).
+
+## Importance Diffusion and Stochastic Diffusion
+
+C2-34. Classic C++ does not contain the 2009 paper stochastic sigmoid formula `0.5 * (1 + tanh(shape * (si - FocusBoundary)))`. Repo grep over active code returned no `tanh` or `sigmoid` hits for the diffusion decision formula.
+
+C2-35. The file named `StochasticImportanceDiffusion` implements bin-based elapsed-time estimation and exponential decay, not stochastic diffusion selection by sigmoid.
+
+C2-36. `StochasticDiffusionAmountCalculator` groups atoms into importance bins, records count/update rate/last-update metadata (`StochasticImportanceDiffusion.h:49-60`), and updates bins at `StochasticImportanceDiffusion.cc:49-75`.
+
+C2-37. `elapsed_time` returns `2 / update_rate` for the bin if available, then updates the bin (`StochasticImportanceDiffusion.cc:115-130`).
+
+C2-38. `diffused_value` computes `get_sti(h) * pow((1 - decay_rate), average_elapsed_time)` (`StochasticImportanceDiffusion.cc:140-145`).
+
+C2-39. Source 1's "stochastic diffusion" misnaming is inherited from Classic C++ naming. The implementation is deterministic elapsed-time decay with stochastic source sampling in WA diffusion, not a literal sigmoid transition probability.
+
+C2-40. AF diffusion loads `MAX_SPREAD_PERCENTAGE`, `HEBBIAN_MAX_ALLOCATION_PERCENTAGE`, and `SPREAD_HEBBIAN_ONLY`, then spreads importance (`AFImportanceDiffusionAgent.cc:44-55`).
+
+C2-41. AF diffusion source vector is all AF atoms via `ImportanceDiffusionBase::diffusionSourceVector`, diffused in a loop, then the diffusion stack is processed (`AFImportanceDiffusionAgent.cc:61-72`).
+
+C2-42. AF diffusion amount is `get_sti(h) * maxSpreadPercentage` (`AFImportanceDiffusionAgent.cc:79-82`).
+
+C2-43. WA diffusion selects one random atom outside AF (`WAImportanceDiffusionAgent.cc:83-92`) and computes amount as `get_sti(h) - sdac.diffused_value(h, maxSpreadPercentage)` (`:101-107`).
+
+C2-44. Potential Classic bug: `WAImportanceDiffusionAgent::run` assigns `hebbianMaxAllocationPercentage` from `AttentionParamQuery::dif_tournament_size` (`WAImportanceDiffusionAgent.cc:48-52`). The variable name suggests it should read `HEBBIAN_MAX_ALLOCATION_PERCENTAGE`, as AF diffusion does. Reconciliation should verify whether this is intended or a bug.
+
+C2-45. `ImportanceDiffusionBase::diffuseAtom` builds incident and Hebbian-adjacent probability vectors, combines them, calculates total diffusion amount, and pushes events (`ImportanceDiffusionBase.cc:80-124`).
+
+C2-46. Actual STI transfer is conservative at event level: subtract from source and add to target (`ImportanceDiffusionBase.cc:200-204`).
+
+C2-47. Incident diffusion probability is uniform over incident atoms (`ImportanceDiffusionBase.cc:295-309`).
+
+C2-48. Hebbian-adjacent probability discounts max allocation by link strength/confidence (`ImportanceDiffusionBase.cc:319-352`, `:458-465`).
+
+C2-49. Combined diffusion allocates a configured share to Hebbian-adjacent atoms and leftover to incident atoms; debug assertions check sum near 1.0 (`ImportanceDiffusionBase.cc:369-442`).
+
+## Recent STI / Importance Index
+
+C2-50. Classic C++ has live recent min/max infrastructure, unlike Source 1 where `recentMaxSTI`/`recentMinSTI` handling was found commented out.
+
+C2-51. `ImportanceIndex.h` stores `_maxSTI` and `_minSTI` as `opencog::recent_val` (`ImportanceIndex.h:58-60`).
+
+C2-52. `ImportanceIndex::update` recomputes min/max seen from bins and writes `_minSTI`/`_maxSTI` (`ImportanceIndex.cc:110-135`).
+
+C2-53. `getMaxSTI(true)` and `getMinSTI(true)` return the `recent` smoothed values; false returns raw current values (`ImportanceIndex.cc:139-157`).
+
+C2-54. This matters because Hebbian updating calls `getNormalisedZeroToOneSTI(..., true, true)`, so Classic has smoothed normalization infrastructure available for Hebbian surrogates. It still does not realize the paper rent formula.
+
+## Agent Loop / Runtime Wiring
+
+C2-55. Classic registers and creates all canonical agents in `AttentionModule::init`: AF/WA importance diffusion, AF/WA rent collection, Forgetting, HebbianCreation, HebbianUpdating (`AttentionModule.cc:88-110`).
+
+C2-56. The canonical `do_start_ecan` starts only four agents: AFImportanceDiffusion, WAImportanceDiffusion, AFRentCollection, WARentCollection (`AttentionModule.cc:118-130`).
+
+C2-57. `do_start_ecan` has ForgettingAgent, HebbianCreationAgent, and HebbianUpdatingAgent start calls commented out (`AttentionModule.cc:132-135`).
+
+C2-58. `do_stop_ecan` stops all seven agent pointers (`AttentionModule.cc:141-154`), which confirms the non-started agents are known to the module but excluded from default startup.
+
+C2-59. Source 1's runner differs from Classic default behavior. Source 1 runs Hebbian update/creation in its canonical runner while commenting out Forgetting; Classic default starts neither Hebbian nor Forgetting, although all three are registered and tested.
+
+C2-60. Tests include ForgettingAgent, ImportanceDiffusion, HebbianCreation, HebbianUpdating, AF/WA diffusion, AF/WA rent, and RentCollectionBase (`tests/attention/CMakeLists.txt:7-18`). Classic has stronger test coverage for non-started agents than Source 1's runner behavior would imply.
+
+## ECAN-PLN / URE Integration Audit
+
+C2-61. Repo-wide grep for PLN/URE/chainer terms found no active C++ integration with PLN, BackwardChainer, ForwardChainer, MixtureModel, Thompson Sampling, or Bayesian control.
+
+C2-62. `experiments/README.md:2` labels the experiment "ECAN/PLN experimentation", but its actual stated goals are HebbianLink creation, STI propagation, and forgetting based on memory threshold (`experiments/README.md:4-13`).
+
+C2-63. `ExperimentSetupModule.h` preserves the old header filename/guard `PLNDynamicsExpSetupModule.h` / `PLNDYNAMICSEXPSETUPMODULE_H_` (`ExperimentSetupModule.h:1-9`), but includes only experiment, CogServer, Agent, and AttentionModule headers (`:11-15`), not PLN headers.
+
+C2-64. `attention-bank.scm` documents `cog-bind-af` as a special-purpose pattern matcher used by URE (`opencog/attentionbank/scm/attention-bank.scm:272-277`), and `AttentionSCM.cc` defines the primitive. This is a URE-facing utility at the AttentionBank boundary, not evidence that ECAN directly controls PLN/URE inference in this repo.
+
+C2-65. The many `TruthValue` hits are AtomSpace TruthValue usage, not PLN runtime coupling. HebbianUpdating and tests use `SimpleTruthValue`, but there is no PLN rule engine dependency.
+
+C2-66. Reconciled cluster narrative: Classic ECAN was architecturally/paper-coupled to PLN and URE, and it exposed AF-aware AtomSpace utilities that URE could use. It was not an integrated PLN inference-control runtime in this repo.
+
+## Build / Runnability
+
+C2-67. README build path is conventional CMake: create build dir, `cmake ..`, `make` (`README.md:55-64`), and `make test` from build dir (`README.md:69-75`).
+
+C2-68. Required dependencies include CogUtil, AtomSpace, and CogServer (`README.md:36-52`; `CMakeLists.txt:66-108`).
+
+C2-69. I did not run the build or tests. This repo depends on an OpenCog C++ stack that is not known to be installed in the current environment, and the Source 2 brief asked for extraction rather than build remediation.
+
+## Documentation / Publication Surface
+
+C2-70. `opencog/attention/README` is a useful implementation-design document. It describes wages, rent, currency conservation/homeostasis, importance spreading, and diffusion (`README:102-245`).
+
+C2-71. The README's diffusion description is more conceptual and matrix/Markov oriented than the current code. It discusses a Markov matrix and notes the initial GSL matrix implementation was only viable for small AtomSpaces (`README:190-213`), then describes a `SimpleImportanceDiffusionAgent` (`:214-245`). Current source uses AF/WA importance diffusion classes and the stochastic amount calculator.
+
+C2-72. `experiments/README.md` is an experiment guide, not a paper. It points to a wiki idea page for simple ECAN tests, but does not identify the 2018 "Shifting and Drifting Attention While Reading" paper discovered in Source 1.
+
+## Crosswalk Against Source 1 MeTTa
+
+C2-73. Rent: Source 1's funds-gap rent code and WA compounding bug should be classified as a Classic-port behavior, not a MeTTa-only invention.
+
+C2-74. Wages: Source 1's attention-bank wage implementation should be classified as a Classic-port functional analog. There is no separate WageAgent in either implementation.
+
+C2-75. Hebbian update: Source 1's normalized-STI / `PLN_BOOK_REVISION` behavior should be split. The target-conjunction surrogate is Classic-derived; the specific `PLN_BOOK_REVISION` formula name/string and arithmetic detail in MeTTa is a Source 1 artifact, but it does not create runtime PLN integration.
+
+C2-76. Hebbian creation: Source 1 introduced or exposed a parameter-shadowing regression by hardcoding local/far link ratio to `1000.0`. Classic reads the configured `LOCAL_FAR_LINK_RATIO = 10`.
+
+C2-77. Stochastic diffusion: Source 1's deterministic decay under a stochastic name is Classic-derived.
+
+C2-78. Recent values: Source 1 loses/comment-outs recent min/max infrastructure that Classic keeps live. This is a real port regression relevant to paper-equation comparisons.
+
+C2-79. Runner: Source 1 and Classic have different default loops. Classic starts only diffusion and rent; Source 1 appears to start Hebbian creation/update and excludes Forgetting. Reconciliation should avoid saying Source 1 is a one-to-one runtime port at the runner level.
+
+## Cluster Narrative Implications
+
+C2-80. Source 2 supports treating `metta-attention/` as a direct continuation or reimplementation of Classic ECAN under the iCog-Labs-Dev / SingularityNET Ethiopia cohort, not merely a structurally inspired unrelated rewrite.
+
+C2-81. Source 2 also shows that "faithful to Classic ECAN" does not mean "faithful to the 2009 paper equations." The Classic implementation itself uses homeostatic and engineered approximations.
+
+C2-82. The ECAN cluster should probably extend Tradition 2 ("Historical OpenCog / URE / ECAN control") rather than add a wholly separate sixth tradition, but with a sub-branch note: iCog-Labs-Dev maintained a modern MeTTa/C++ attention line isolated from the trueagi-io PLN production line.
+
+C2-83. The PLN cluster statement "production PLN has no ECAN control layer" remains true after Sources 1-2. Both Source 1 and Source 2 lack executable PLN inference integration.
+
+C2-84. Source 2 changes the severity interpretation of Source 1. The strongest critique is not "MeTTa failed to port the paper"; it is "the extant Classic code was already a pragmatic ECAN variant, and MeTTa ported that variant partially with some regressions."
+
+## Items for Reconciliation
+
+C2-85. Confirm with Claude/Gemini whether WA rent compounding should be treated as a bug or intentional elapsed-time scaling. My reading: bug-prone state mutation, because it changes the member base rent rather than using a local scaled variable.
+
+C2-86. Confirm whether `WAImportanceDiffusionAgent.cc:51-52` reading `DIFFUSION_TOURNAMENT_SIZE` into `hebbianMaxAllocationPercentage` is an implementation bug. It is suspicious because AF diffusion reads `HEBBIAN_MAX_ALLOCATION_PERCENTAGE`.
+
+C2-87. If a network-capable model can compare upstream `opencog/attention`, do the fork/upstream sanity check externally. I did not mutate the repo by adding `upstream` or fetching.
+
+C2-88. Use Source 2 as the baseline for Source 1 reconciliation, but preserve the strict paper-equation axis separately. Otherwise "real ECAN runtime" and "literal 2009 ECAN math" get conflated.
+
+## Bottom Line
+
+Classic `attention/` is a real ECAN C++ implementation with substantial agent and AttentionBank machinery. It enforces practical STI/LTI accounting, supports AF/WA rent and diffusion, tracks recent STI min/max, and includes tests for the canonical agents. It does not implement the four Source 11 paper equations literally, and it does not close the PLN inference-control integration gap. `metta-attention/` is best read as a partial MeTTa port of this pragmatic Classic ECAN variant, with a few additional regressions and runner differences, rather than a fresh implementation of the 2009 equations.

@@ -1,0 +1,169 @@
+# Source 1 — metta-attention/ — Cross-Model Extraction Brief
+
+**Pilot:** ECAN / Attention cluster (carryover from PLN cluster's "missing control layer" finding)
+**Source target:** metta-attention (modern MeTTa migration of OpenCog Classic ECAN)
+**Brief author:** Claude orchestrator; cross-model triangulation pattern (Claude single-pass + Codex + Gemini)
+**Brief date:** 2026-04-25
+**No wiki writes during extraction.**
+
+---
+
+## Source identification
+
+- **Repository:** `E:\GitHub\hyperon reference\metta-attention\` (GitHub `iCog-Labs-Dev/metta-attention`, primary contributor Birhane et al.)
+- **Audited HEAD:** `67cd52564ff42ec3c208184860409c60f16a74bf` (short: `67cd525`)
+- **Commit message:** "Merge pull request #207 from iCog-Labs-Dev/dev2"
+- **Date:** 2026-03-22
+- **Author:** Birhane
+- **Drift since scoping:** zero. Pull-before-extract performed at brief time; HEAD unchanged.
+
+## Repo map (apparent — verify functionality during extraction)
+
+```
+metta-attention/
+├── attention/                     # Modules named after canonical 2009 ECAN agents are present as .metta
+│   ├── AttentionParam.metta       # Configuration parameters
+│   ├── runner-Def.metta           # Agent runner definitions
+│   ├── Neighbors.metta
+│   ├── baching.metta              # (sic — likely "batching")
+│   ├── ForgettingAgent/           # Forgetting (low-STI atom removal)
+│   ├── HebbianCreationAgent/      # Hebbian link creation
+│   ├── HebbianUpdatingAgent/      # Hebbian probability update
+│   ├── ImportanceDiffusionAgent/  # STI diffusion (AF and WA variants)
+│   │   ├── AFImportanceDiffusionAgent/
+│   │   ├── ImportanceDiffusionBase/
+│   │   └── WAImportanceDiffusionAgent/
+│   ├── RentCollectionAgent/       # Rent collection (STI extraction from low-attention atoms)
+│   │   ├── AFRentCollectionAgent/
+│   │   ├── RentCollectionBaseAgent/
+│   │   └── WARentCollectionAgent/
+│   └── test/                      # agents-serial-test, agents-test
+├── attention-bank/                # Bank infrastructure
+│   ├── attention-value/           # AV getter/setter
+│   └── bank/
+│       ├── attention-bank.metta   # Core bank
+│       ├── attentional-focus/     # AF management
+│       ├── importance-index/      # Importance index
+│       └── stochastic-importance-diffusion/  # Stochastic diffusion
+│           └── merge-bin.metta    # Bin merging
+├── experiments/                   # Application/benchmark experiments
+│   ├── data/, output/, scripts/, utils/
+├── scripts/                       # Orchestration scripts
+└── wordnet/                       # WordNet integration (likely test data)
+```
+
+The directory layout is an **apparent structural port** of OpenCog Classic ECAN to MeTTa. Whether the modules implement the 2009 paper math or are degenerate scaffolding is exactly what the extraction must determine.
+
+**File count signals:**
+- Each agent module ships with co-located tests
+- `attention/` has ~24 .metta files; `attention-bank/` has ~14 .metta files
+- Mirrors OpenCog Classic ECAN's C++ class layout 1:1 at the directory level
+
+## §Git-history (pre-populated for agents — do not re-run git)
+
+Recent activity:
+- 2026-03-22: HEAD `67cd525` "Merge PR #207 from iCog-Labs-Dev/dev2" by Birhane
+- The repo is hosted at iCog-Labs-Dev (Ethiopian SingularityNET affiliate). Birhane appears as primary recent author.
+- Earlier commits should be enumerated by agents via `git shortlog -sne` if relevant for migration archeology.
+
+**Author lineage hint** (verify against `git log` / `git shortlog` during extraction):
+- iCog-Labs-Dev / SingularityNET Ethiopia team — distinct from the PLN-cluster maintainers (Hammer, Isaev, Geisweiller, Wunsche) and from the ai-agents/CeTTa Zarathustra Goertzel line. **Different contributor ecosystem.**
+- This may explain why the PLN cluster's "missing control layer" finding didn't surface ECAN here: organizationally distinct development.
+
+## Comparison targets (carryover from PLN cluster Source 11)
+
+The PLN cluster pilot established that production PLN/ has no inference-control layer and that ECAN was the documented historical control aspiration. This Source 1 must answer:
+
+1. **Are STI/LTI conservation laws enforced in MeTTa code, or just notional?** Look for: rent + wages balance, central-bank inflation/deflation, total-mass conservation invariants.
+2. **Is the Hebbian Conjunction equation realized?** From the paper: `c_ij' = ConjDecay * (si * sj / recentMaxSTI^2) + (1 - (si * sj / recentMaxSTI^2)) * c_ij`. Verify literally in code.
+3. **Is rent-extraction the paper formula?** From paper: `rent = Rent * max(0, log2(si / recentMaxSTI))^2`.
+4. **Is diffusion stochastic per the paper?** From paper: `P(diffuse) = 0.5 * (1 + tanh(shape * (si - FocusBoundary)))`.
+5. **Is there ECAN-PLN integration?** Cross-reference: does any code in `experiments/` or elsewhere couple this attention runtime to a PLN inference engine? If so, with which PLN repo (PLN/, PLN3, CeTTa lib_pln*)? See **integration-audit grep targets** below.
+6. **Is AttentionalFocus a real data structure or a placeholder?** `attention-bank/bank/attentional-focus/attentional-focus.metta` — what does it actually do?
+7. **Are the AF (Attentional Focus) vs WA (Whole AtomSpace) variants for diffusion/rent both implemented, or is one a stub?** Both directories exist; do both have non-trivial bodies?
+
+## Integration-audit grep targets
+
+Run a negative-grep across the repo for cross-cluster references. Report counts per token + file paths if non-zero. Tokens to grep:
+
+- `PLN.Query` — explicit PLN runtime invocation
+- `lib_pln` — PLN/ library import
+- `\bpln\b` (case-insensitive, word-boundary) — generic PLN references in code/comments
+- `\bure\b` — URE references
+- `chaining` — chaining repo references
+- `CeTTa` — CeTTa references
+- `\bECAN\b` — repo-internal ECAN references (sanity check that the term is used in code, not just docs)
+- `AttentionBank` (case-sensitive) — explicit bank references; expected within `attention-bank/` modules
+
+Outcome interpretation: external-cluster references outside `experiments/` or doc files signal real integration; their absence confirms the "organizationally distinct" hypothesis above.
+
+## Required output format
+
+For each major component, structured fields per cluster-pilot convention:
+
+```
+### <Module name>
+
+**Path:** <relative path in metta-attention>/X.metta
+**LOC:** approx
+**Imports:** what other modules it depends on
+**Implements (from 2009 paper):** which equations/concepts; cite paper section if applicable
+**Code-implementation status (one of):**
+- IMPLEMENTED — full functional implementation
+- PARTIAL — present but stub-level / handles only edge cases
+- ABSENT — file empty or only declarations
+- BENCHMARK-ONLY — exercises the concept but doesn't realize it
+- STRUCTURAL-PORT — directory + filenames mirror OpenCog Classic but logic is degenerate
+
+**Code evidence:** file:line citations of key equations/structures
+
+**Cross-references:** which other modules use this; whether it's wired into the runner-Def.metta agent loop
+```
+
+After per-module extraction, produce:
+
+1. **Equation-realization table** — for each of the 4 paper equations (rent, wages, Hebbian update, diffusion stochastic), is it literally present in code? At what file:line?
+2. **Conservation-law audit** — does the code enforce STI/LTI total-mass invariants?
+3. **ECAN-PLN integration audit** — populate from the integration-audit grep targets above. If counts are all zero outside expected modules, flag explicitly.
+4. **AF vs WA variant comparison** — both branches stub or both real?
+5. **runner-Def.metta agent loop audit** — what's the actual runtime invocation pattern? Is it ECAN's "attention dynamics" loop or something simpler?
+6. **Runnability check** — Is this repo runnable from its own tests? Identify test command(s) (e.g., `metta path/to/test.metta`, scripts in `scripts/` or `run.sh`, anything in `agents-test.metta` etc.). **Do not actually run them unless separately approved.** Report only what the test infrastructure looks like.
+7. **Standing-corrections candidates** — surface any cluster-narrative findings.
+8. **Discovered publications** — track any paper references in code comments.
+9. **Author attribution** — verify against `git shortlog -sne`.
+
+## Cross-model lane assignments
+
+All three models read all key modules. Emphasis hints (not exclusions):
+- **Codex / Gemini** — math/equation extraction; verify each formula against the 2009 ECAN paper
+- **Claude** — narrative/architectural analysis; "is this a real runtime or scaffolding?" framing
+
+## Standing corrections to carry into the bundle
+
+1. **PLN cluster carryover:** production PLN/ has no inference control. ECAN is the documented historical aspiration. Verify whether this Source 1 closes that gap or merely structurally mirrors it.
+2. **One writer only** (extended to all repo-local edits per memory rule): orchestrating model writes; advisors do not modify files.
+3. **Verify model "Verified" claims** against the source — Gemini drift on identity-between-artifacts and equation-source attribution.
+4. **Local orientation docs:** if `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` files exist in `metta-attention/`, treat them as unreviewed. Do not rely on them for source claims; the Source 1 audit is independent.
+5. **Author attribution:** iCog-Labs-Dev / SingularityNET Ethiopia; verify via `git shortlog -sne` during extraction.
+
+## Output paths
+
+Write per-model findings to:
+- `E:\GitHub\Magi-AGI\hyperon-wiki\scripts\archive\ecan_pilot\source1_metta_attention\findings_<model>.txt`
+
+Create directory if missing. After all 3 model passes land, the orchestrator writes `findings_reconciled_crossmodel.txt`.
+
+## Rules
+
+- **No wiki writes.**
+- **No repo file edits.**
+- **Do not run tests** unless separately approved (see deliverable #6).
+- Read each cited .metta file verbatim — do NOT summarize from filename.
+- Cite file:line for every concrete equation/claim.
+- Pre-populated §Git-history above is authoritative for chronology — agents should not re-run git unless adding detail.
+- Follow standing rule `feedback_attribution_verify_against_git.md` for any author/contributor claim.
+- If write blocked (sub-agent .md guardrail), use .txt + inline-paste fallback.
+
+---
+
+*End of Source 1 brief — ECAN cluster pilot.*

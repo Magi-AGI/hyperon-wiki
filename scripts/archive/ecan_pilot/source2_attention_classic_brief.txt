@@ -1,0 +1,359 @@
+# Source 2 — attention/ (OpenCog Classic ECAN) — Cross-Model Extraction Brief
+
+**Pilot:** ECAN / Attention cluster — Source 2 of N
+**Source target:** `iCog-Labs-Dev/attention` (canonical OpenCog Classic ECAN C++ codebase, with iCog-Labs-Dev maintenance commits on top of upstream OpenCog history)
+**Brief author:** Claude orchestrator
+**Brief date:** 2026-04-26
+**No wiki writes during extraction. No repo edits.**
+
+---
+
+## Why this source, why now
+
+Source 1 (metta-attention) established that the MeTTa port implements **0/4 strict-literal** paper equations and **1/4 functional analog (wages), 2/4 engineered surrogates (rent, Hebbian), 1/4 absent (stochastic sigmoid)**. The reconciled Source 1 verdict depends on a comparison target: "the 2009 paper's equations." But the 2009 paper is the **specification**; the **implementation baseline** that metta-attention attempted to port is the C++ Classic ECAN codebase.
+
+Source 2's job is to ground that comparison empirically. Three open questions from Source 1 reconciliation:
+
+1. **Is metta-attention a direct continuation of Classic ECAN, or a structurally inspired reimplementation?** Specifically: did the iCog-Labs-Dev cohort port from the upstream `opencog/attention` C++ source, or from the 2009 paper, or some hybrid? File-by-file equation comparison will settle this.
+2. **Are the MeTTa "engineered surrogates" simplifications, renamed equivalents, partial ports, or regressions?** For example: does the C++ also use a fund-buffer central-bank wage adjustment, or does it implement the literal `WageStimulus * (sum(pi) / n)` formula?
+3. **Was Classic ECAN ever coupled to PLN/URE in executable code, or only in papers?** Source 1 confirmed no ECAN-PLN integration in MeTTa; the analogous question for C++ is required to decide whether the missing control layer in Hyperon's PLN is a Hyperon-era loss or was already absent in OpenCog Classic.
+
+The answer to #2 in particular determines whether the cluster wiki anchor needs a sixth tradition (iCog-Labs-Dev ECAN-on-MeTTa as a distinct line) or just a Tradition 2 extension.
+
+## Source identification
+
+- **Repository:** `E:\GitHub\hyperon reference\attention\`
+- **Origin remote:** `https://github.com/iCog-Labs-Dev/attention.git` — **the iCog-Labs-Dev fork**, not the canonical `opencog/attention` upstream. The fork contains the full upstream commit history (Linas Vepštas et al.) with iCog-Labs-Dev maintenance commits on top.
+- **Audited HEAD:** `e8162a57ca95d1d914feeedec68160154ec6264f` (short `e8162a5`)
+- **HEAD commit:** "modified tests" by `unknown` on 2026-02-17 (recent iCog-Labs-Dev maintenance commit)
+- **Drift since scoping:** orchestrator pulled before brief; if agents pull later, **report new HEAD and any divergence**.
+
+**Fork-vs-upstream sanity check (deliverable for one model — Codex preferred):** if `git remote add upstream https://github.com/opencog/attention && git fetch upstream` is feasible, run `git log e8162a5 ^upstream/master --oneline` to enumerate iCog-Labs-Dev-only commits on top of upstream. If not feasible (no network, no upstream remote), inspect `git log -- AGENTS.md GEMINI.md CLAUDE.md` and recent commits with iCog-Labs-Dev contributor emails to bound the iCog-Labs-Dev modification surface. Either way, **flag any iCog-Labs-Dev modifications to canonical agent files** (`AFImportanceDiffusionAgent.cc`, `AFRentCollectionAgent.cc`, `AttentionBank.cc`, `StochasticImportanceDiffusion.cc`, etc.) so the equation-comparison passes can use upstream-only line numbers if needed.
+
+## Repo map (verified by orchestrator)
+
+```
+attention/
+├── opencog/
+│   ├── attention/                    # The canonical agent C++ source
+│   │   ├── AFImportanceDiffusionAgent.cc / .h
+│   │   ├── AFRentCollectionAgent.cc / .h
+│   │   ├── Attention.h
+│   │   ├── AttentionModule.cc / .h
+│   │   ├── AttentionParamQuery.cc / .h    # Parameter store
+│   │   ├── AttentionStat.h
+│   │   ├── AttentionUtils.cc / .h
+│   │   ├── ForgettingAgent.cc / .h         # AAA — verify wiring vs metta-attention dead state
+│   │   ├── HebbianCreationAgent.cc / .h
+│   │   ├── HebbianUpdatingAgent.cc / .h
+│   │   ├── ImportanceDiffusionBase.cc / .h # Diffusion base class — the literal sigmoid likely lives here
+│   │   ├── Neighbors.cc / .h
+│   │   ├── RentCollectionBaseAgent.cc / .h # Rent base — the literal log2 formula likely lives here
+│   │   ├── WAImportanceDiffusionAgent.cc / .h
+│   │   ├── WARentCollectionAgent.cc / .h
+│   │   ├── attention.scm                   # Scheme integration entry point
+│   │   └── default-param-values.scm        # Scheme parameter defaults
+│   └── attentionbank/
+│       ├── avalue/
+│       │   ├── AttentionValue.cc / .h
+│       │   └── AttentionValueOfLink.cc / .h
+│       ├── bank/
+│       │   ├── AFImplicator.cc / .h
+│       │   ├── AVUtils.cc / .h
+│       │   ├── AtomBins.cc / .h
+│       │   ├── AttentionBank.cc / .h            # Central bank — wage / fund accounting
+│       │   ├── AttentionSCM.cc                  # Scheme bindings
+│       │   ├── AttentionalFocusCB.cc / .h       # AF callback infrastructure
+│       │   ├── ImportanceIndex.cc / .h
+│       │   └── StochasticImportanceDiffusion.cc / .h  # The literal `tanh` sigmoid is presumably here
+│       ├── cython/                              # Python bindings
+│       ├── scm/                                 # Scheme bindings
+│       └── types/
+├── experiments/
+│   ├── ExperimentSetupModule.cc / .h
+│   ├── SentenceGenStimulateAgent.cc / .h
+│   ├── opencog.conf
+│   └── plot.py
+├── examples/
+│   ├── c++-attentionbank/
+│   └── hopfield/                # Hopfield-net attention example (likely the 2009-paper benchmark)
+├── tests/
+├── doc/
+├── Notes/
+├── lib/                          # CMake config only (AttentionBankConfig.cmake.in)
+├── scripts/
+├── CMakeLists.txt
+├── Dockerfile
+├── README.md
+├── LICENSE
+├── AGENTS.md / CLAUDE.md / GEMINI.md  # Untracked local orientation files (do not rely on)
+```
+
+The C++ layout is a **direct mirror** of what metta-attention's directory structure attempted to port. Same agent names, same AF/WA split, same RentCollectionBase / ImportanceDiffusionBase base-class pattern, same ForgettingAgent.
+
+## §Git-history (pre-populated for agents — do not re-run except for fork-vs-upstream sanity check)
+
+**Top contributors via `git shortlog -sne --all`** (orchestrator-run, authoritative):
+
+| Rank | Commits | Author | Email | Cohort |
+|---|---|---|---|---|
+| 1 | 225 | Linas Vepštas | linasvepstas@gmail.com | OpenCog founder / Aleksei (now-defunct CogPrime line) |
+| 2 | 199 | Linas Vepstas | linasvepstas@gmail.com | (alias of #1) |
+| 3 | 149 | Misgana Bayetta | misgana.bayetta@gmail.com | OpenCog Ethiopia / iCog (early lineage) |
+| 4 | 53 | Nil Geisweiller | ngeiswei@gmail.com | trueagi-io PLN cluster contributor |
+| 5 | 50 | YeabsiraNigusse | nigusseyeabsira@gmail.com | iCog-Labs-Dev (also #2 contributor in metta-attention) |
+| 6 | 46 | ngeiswei | ngeiswei@gmail.com | (alias of #4) |
+| 7 | 38 | Amen Belayneh | AmeBel@... | OpenCog Ethiopia / iCog (early) |
+| 8 | 35 | Leung Man Hin | leungmanhin@... | hyperon-pln 0.2 MP author lineage |
+| 9 | 24 | Eddie Monroe | eddiemonroe@gmail.com | OpenCog era |
+| 10 | 21 | Roman Treutlein | roman@hansonrobotics.com | Hanson Robotics |
+| 11 | 20 | Roman Treutlein | LordMord94@gmail.com | (alias of #10) |
+| 12 | 18 | BlightG | birhange.gulilat@gmail.com | iCog-Labs-Dev (lead contributor in metta-attention) |
+| 13 | 18 | Shujing KE | rainkekekeke@gmail.com | OpenCog era |
+| 14 | 18 | Vitaly Bogdanov | vsbogd@gmail.com | trueagi-io / PLN cluster |
+| 15 | 17 | leungmanhin | leungmanhin@... | (alias of #8) |
+
+Deduplicated headline counts (top 8):
+- **Linas Vepštas:** 225+199 = **424 commits** (lead author by far; OpenCog founder)
+- **Misgana Bayetta:** 149 (OpenCog Ethiopia / iCog early lineage)
+- **Nil Geisweiller:** 53+46 = 99 (trueagi-io PLN cluster contributor — note the cross-cluster overlap)
+- **Roman Treutlein:** 21+20 = 41 (Hanson Robotics)
+- **YeabsiraNigusse:** 50 (iCog-Labs-Dev / metta-attention)
+- **Amen Belayneh:** 38 (OpenCog Ethiopia)
+- **Leung Man Hin:** 35+17 = 52 (hyperon-pln 0.2 MP lineage)
+- **BlightG (Birhane Gulilat):** 18 (iCog-Labs-Dev / metta-attention lead)
+
+**Cohort interpretation (orchestrator):** This is a **broad cross-cohort repo** spanning the OpenCog founders (Linas Vepštas), the OpenCog Ethiopia / iCog pipeline (Misgana, Amen, Yeabsira, BlightG), the trueagi-io PLN cluster (Nil Geisweiller, Vitaly Bogdanov), Hanson Robotics (Roman Treutlein), and individuals later associated with hyperon-pln (Leung Man Hin). **Distinct from Source 1's cohort: metta-attention is dominated by the iCog-Labs-Dev sub-cohort (BlightG 380 commits) without the broader OpenCog historical contributors.** This supports the Source 1 reconciliation hypothesis but does not yet answer whether metta-attention was a port of upstream Classic ECAN code or a paper-level reimplementation.
+
+## Comparison targets — equation-by-equation crosswalk to Source 1
+
+The primary deliverable of this source is a **side-by-side equation comparison** with Source 1's MeTTa modules. Use Source 1 reconciliation's reconciled equation table as the comparison frame.
+
+### 1. Rent
+
+**Paper equation (per brief):** `rent = Rent * max(0, log2(si / recentMaxSTI))^2`
+
+**MeTTa surrogate (Source 1):** target-funds/buffer adjustment `f(FUNDS_STI - TARGET_STI, STI_FUNDS_BUFFER) × elapsed-time` at `RentCollectionBaseAgent.metta:7-28, 36-57`. **No `log2`, no `recentMaxSTI`.**
+
+**C++ to verify:**
+- `opencog/attention/RentCollectionBaseAgent.cc/.h` — base class
+- `opencog/attention/AFRentCollectionAgent.cc/.h` — AF rent
+- `opencog/attention/WARentCollectionAgent.cc/.h` — WA rent
+
+**Specific questions:**
+- Does `RentCollectionBaseAgent::calculateSTIRent` (or analogous) use the literal `log2(si / recentMaxSTI)^2` formula?
+- If yes: confirm metta-attention rent is a regression (lost the literal formula). Cite C++ file:line.
+- If no (e.g., C++ also uses fund-buffer adjustment): confirm metta-attention is a direct port of an already-divergent C++ implementation. The 2009 paper would then be the divergent ancestor, not the C++.
+- Does C++ track `recentMaxSTI` as a live runtime variable? If yes: where is it updated? (Source 1's `recentVal.metta` updates are commented out.)
+- Does WA rent in C++ have the compounding-state bug from `WARentCollectionAgent.metta:30-31`, or was that introduced by the MeTTa port?
+
+### 2. Wages
+
+**Paper equation (per brief):** `wages = WageStimulus * (sum(pi) / n)`
+
+**MeTTa surrogate (Source 1):** `STI_ATOM_WAGE * (1 + clamp((FUNDS_STI - TARGET_STI) / STI_FUNDS_BUFFER, -1, 1)) * stimulus` at `attention-bank.metta:11-37, 49-63, 76-90`. Co-located inside the bank, not a peer agent.
+
+**C++ to verify:**
+- `opencog/attentionbank/bank/AttentionBank.cc/.h` — central bank
+- Look for `calculateSTIWage`, `calculateLTIWage`, `stimulate` analogues
+
+**Specific questions:**
+- Does C++ implement `WageStimulus * (sum(pi) / n)` literally, or does it use the same fund-buffer adjustment as MeTTa?
+- Is wages paid by a `WageAgent` (peer scheduled agent) or by a `stimulate()` call on the bank? (Source 1 confirmed metta-attention has no `WageAgent`; if C++ also lacks one, it's a faithful port.)
+- Where does `stimulus` come from in C++ — what code path produces stimulation? (In MeTTa: `experiment.metta:73-77` stimulates each input atom per batch.)
+
+### 3. Hebbian update
+
+**Paper equation (per brief):** `c_ij' = ConjDecay * (si * sj / recentMaxSTI^2) + (1 - (si * sj / recentMaxSTI^2)) * c_ij`
+
+**MeTTa surrogate (Source 1):** normalized-STI conjunction with PLN-book revision merge: `conj = norm_i * norm_j + (norm_j - norm_i) * abs(norm_j - norm_i)`, exponentially blended via `TC_DECAY_RATE`, merged via `count_new = (c1+c2) - 0.2*min(c1,c2)`. Located at `HebbianUpdatingAgent.metta:53-60, 77-92, 92, 106-130`. **No `recentMaxSTI^2` or `ConjDecay`.**
+
+**C++ to verify:**
+- `opencog/attention/HebbianUpdatingAgent.cc/.h`
+- `opencog/attention/HebbianCreationAgent.cc/.h`
+
+**Specific questions:**
+- Does C++ implement the literal `ConjDecay * (si*sj/recentMaxSTI^2) + (1 - ...) * c_ij` formula?
+- Does C++ borrow PLN-book revision count formula (`(c1+c2) - 0.2*min(c1,c2)`) inline, or is that a metta-attention-specific addition?
+- Hebbian creation in C++: same `localToFarLinks 1000.0` hardcoded shadowing pattern, or different?
+- Does C++ Hebbian update reference any PLN runtime API (TruthValue revision, `URELink`, etc.) — i.e., is the PLN-book reference code-level integration or just numerical formula borrowing?
+
+### 4. Stochastic diffusion (the most-likely-divergent equation)
+
+**Paper equation (per brief):** `P(diffuse) = 0.5 * (1 + tanh(shape * (si - FocusBoundary)))`
+
+**MeTTa surrogate (Source 1):** ABSENT. The active "stochastic-importance-diffusion" module computes deterministic elapsed-time decay `STI × (1 - decayRate)^averageElapsedTime` at `stochastic-importance-diffusion.metta:22-46, 71-85, 109-118`. The hard AF/WA categorical split substitutes for the smooth focus-boundary probability.
+
+**C++ to verify:**
+- `opencog/attentionbank/bank/StochasticImportanceDiffusion.cc/.h` — name suggests literal sigmoid
+- `opencog/attention/ImportanceDiffusionBase.cc/.h`
+- `opencog/attention/AFImportanceDiffusionAgent.cc/.h`
+- `opencog/attention/WAImportanceDiffusionAgent.cc/.h`
+
+**Specific questions (highest priority):**
+- Does `StochasticImportanceDiffusion.cc` implement the literal `0.5 * (1 + tanh(shape * (si - FocusBoundary)))` sigmoid?
+- If yes: this is the **most important regression** from MeTTa. It means metta-attention dropped the actual stochastic mechanism while keeping the module name. Cite C++ file:line for the `tanh` call.
+- If no (e.g., C++ also uses categorical AF/WA split + deterministic decay): the sigmoid was already lost upstream, and the 2009 paper is the divergent ancestor.
+- Does the C++ AF/WA split use the smooth probability for boundary crossing, or is it a hard cutoff like MeTTa?
+
+## Conservation-law audit (deliverable)
+
+The MeTTa side does fund bookkeeping but has no proved invariant. For the C++ side:
+- Does `AttentionBank.cc` enforce STI/LTI conservation invariants?
+- Are there C++ unit tests asserting `sum(atom_STI) + FUNDS_STI = constant` after agent cycles?
+- Does C++ have central-bank inflation/deflation logic (vs MeTTa's clamped fund-buffer)?
+
+## ECAN-PLN integration audit (highest-leverage deliverable for cluster narrative)
+
+This is **the question that resolves the cluster's "missing control layer" carryover.** Specifically: was Classic ECAN ever coupled to PLN/URE in executable C++ code, or only in OpenCog architecture papers?
+
+**Repo-wide grep targets** (run `rg` directly on the repo, not just file-by-file):
+
+- `\bpln\b` (case-insensitive, word-boundary) — generic PLN references in C++/headers/scm/comments
+- `PLN\.h` `pln/` `PLN/` — explicit C++ header includes from a PLN module
+- `\bure\b` (case-insensitive) — URE references
+- `BackwardChainer` `ForwardChainer` `\bChainer\b` — URE inference engine
+- `TruthValue` — does ECAN read/write PLN-style TruthValues? (Yes is expected; this is a sanity check.)
+- `mixtureModel` `MixtureModel` — Geisweiller's URE Mixture Model (PLN cluster Source 7 finding: only ~5/16 features survived in MeTTa chaining)
+- `Bayesian` `Thompson` — URE Thompson sampling / Bayesian control (PLN cluster Source 7 finding)
+- `attention.scm` `default-param-values.scm` — does the Scheme layer load any PLN modules?
+- `examples/hopfield/` — does the hopfield example couple ECAN to inference?
+
+**Outcome interpretation:**
+- **Zero PLN/URE references in active C++:** confirms ECAN was always architecturally adjacent to PLN, never executable-coupled. The Hyperon "missing control layer" was already absent in OpenCog Classic. Cluster narrative gets simpler.
+- **Some references via Scheme glue (e.g., `attention.scm` invokes URE):** ECAN had a Scheme-level integration that was lost in the MeTTa port. This is a discoverable historical control layer.
+- **C++-level PLN coupling:** the strongest case. Means ECAN-PLN was once executable and the missing control layer is a Hyperon-era regression.
+
+The cluster wiki anchor's two-paradigm framing depends on this answer.
+
+## AF vs WA, ForgettingAgent, dead-code audit (deliverables)
+
+For comparison with Source 1's findings:
+- **AF vs WA in C++:** are both branches "real" with comparable implementation depth, or is one historically dominant? Does C++ WA rent have the compounding-state pattern that MeTTa WARent shows at `WARentCollectionAgent.metta:30-31`?
+- **ForgettingAgent participation:** is `ForgettingAgent` registered in the C++ agent loop / scheduler? (Source 1: commented out in `runner-Def.metta:10` and excluded from bulk tests.) If C++ runs Forgetting actively, the MeTTa port lost a working agent.
+- **Dead-code audit:** are `recentVal`, tournament-size constants (`DIFFUSION_TOURNAMENT_SIZE`, `RENT_TOURNAMENT_SIZE`), and similar dead-in-MeTTa infrastructure **live** in C++? If yes: more evidence that metta-attention is a partial port.
+
+## runner-Def equivalent in C++ (deliverable)
+
+MeTTa's runner is `runner-Def.metta:1-12` — a flat `hyperpose` over six agents. C++ canonical runtime is presumably a `MindAgent` scheduler or `CogServer` agent loop. Locate it and characterize:
+- Which file defines the canonical agent loop?
+- What's the scheduling primitive (CogServer cycle, MindAgent priority, threading model)?
+- Are agents priority-queued or round-robin?
+- Compare to MeTTa's `hyperpose` superposition: is this an architectural simplification?
+
+## Runnability check (deliverable; no execution)
+
+- What's the build command? (`cmake` / `make` based on `CMakeLists.txt`.)
+- What test infrastructure exists? (`tests/` directory, `make test`, `ctest`.)
+- What's the expected dependency surface? (cogutil, atomspace, cogserver, opencog/atomspace.)
+- Are there self-contained tests for the canonical agents (rent, wages, diffusion, Hebbian) that would verify the equation implementations?
+- **Do not run tests** unless separately approved.
+
+## Discovered publications (deliverable)
+
+Track any paper references in C++ comments, README files, `doc/`, `Notes/`. Source 1 surfaced the 2018 "Shifting and Drifting Attention While Reading" paper from `experiments/README.md`. Look for similar in-source references — particularly anything older than 2009 (foundation papers) or post-2018 (extension/follow-up work).
+
+## Cross-cluster organizational hypothesis (deliverable)
+
+After contributor analysis: does the Linas Vepštas + Misgana Bayetta + Nil Geisweiller + Roman Treutlein cohort overlap with the metta-attention iCog-Labs-Dev cohort by individual or only by organization? Specifically:
+- BlightG appears in both repos (380 commits in metta-attention, 18 here). Did they touch the C++ code substantively, or only docs/tests?
+- YeabsiraNigusse appears in both (133 commits in metta-attention, 50 here). Same question.
+- Verify by reading commits: were any C++ → MeTTa equation changes authored by the same person across both repos? If yes: the MeTTa port was authored partly by the same individuals who maintained the C++. If no: organizationally adjacent but personally distinct.
+
+This decides whether metta-attention is a "direct continuation" or "structurally inspired reimplementation" — and therefore the sixth-tradition-vs-Tradition-2-extension question.
+
+## Required output format
+
+Per cluster-pilot convention. For each major C++ component, structured fields:
+
+```
+### <Module name>
+
+**Path:** opencog/attention/X.cc or opencog/attentionbank/bank/X.cc
+**LOC:** approx
+**Implements (from 2009 paper):** which equations/concepts
+**Code-implementation status (one of):**
+- LITERAL — implements the paper formula verbatim
+- VARIANT — implements an algorithmic equivalent with renamed/restructured math
+- SIMPLIFICATION — implements a strict subset of the paper math
+- DIVERGENT — implements something different from the paper (specify what)
+- ABSENT — file empty or only declarations
+
+**Code evidence:** file:line citations of key equations/structures
+
+**MeTTa correspondence (Source 1 crosswalk):** which Source 1 module(s) it maps to; whether the MeTTa port preserves, simplifies, regresses, or replaces the C++ logic
+```
+
+After per-module extraction, produce:
+
+1. **Equation-realization comparison table** — for each of the 4 brief equations: C++ status (LITERAL/VARIANT/SIMPLIFICATION/DIVERGENT/ABSENT) vs MeTTa status (from Source 1 reconciliation). Cite both file:line.
+2. **Conservation-law audit** — does C++ enforce STI/LTI invariants? Are there asserting tests?
+3. **ECAN-PLN integration audit** — populate from grep targets above.
+4. **AF vs WA variant comparison** — both real, one dominant, or one stub? WA-rent compounding-state pattern present in C++?
+5. **ForgettingAgent wiring audit** — registered or commented out?
+6. **Runner / agent loop audit** — what's the canonical scheduler? How does it differ from MeTTa's `hyperpose`?
+7. **Runnability check** — build + test infrastructure. Do not run.
+8. **Discovered publications** — track paper references in source.
+9. **Author attribution** — verify against `git shortlog -sne --all`. Particular interest: BlightG and YeabsiraNigusse commits in this repo — are they C++ contributions or doc/test only?
+10. **Cluster-tradition decision** — based on equation-by-equation comparison + cohort overlap, recommend: **direct continuation** (Tradition 2 extension) vs **structurally inspired reimplementation by distinct cohort** (sixth tradition).
+
+## Cross-model lane assignments
+
+All three models read all key C++ files. Emphasis hints (not exclusions):
+- **Codex / Gemini** — strict-literal C++ formula extraction; verify each formula against the 2009 paper AND against Source 1's MeTTa surrogates. Math axis.
+- **Claude** — narrative synthesis, cluster-tradition decision, ECAN-PLN integration interpretation. Architecture axis.
+- All three: ECAN-PLN integration grep is mandatory and authoritative-cited.
+
+## Standing corrections to carry into the bundle
+
+1. **Source 1 carryover:** metta-attention is **0/4 strict-literal** vs 2009 paper. Source 2 must determine whether C++ is also divergent from the 2009 paper or is the literal implementation that metta-attention diverged from.
+2. **One writer only** (extended to all repo-local edits per memory rule): orchestrating model writes; advisors do not modify files.
+3. **Verify model "Verified" claims** against the source — Gemini drift on identity-between-artifacts and equation-source attribution (V0-3 in Source 1 had a 354 vs 319 commit-count drift).
+4. **Local orientation docs:** `CLAUDE.md` / `AGENTS.md` / `GEMINI.md` exist in `attention/` (untracked in this fork). Treat as unreviewed; do not rely on for source claims.
+5. **Author attribution:** lead author **Linas Vepštas** (424 commits, OpenCog founder); cohort is broad cross-org (OpenCog Ethiopia / iCog / trueagi-io / Hanson Robotics) — distinct from Source 1's iCog-Labs-Dev-only cohort.
+6. **Fork relationship:** local checkout is `iCog-Labs-Dev/attention` fork, not canonical `opencog/attention` upstream. Sanity-check against upstream if possible.
+
+## Output paths
+
+Write per-model findings to:
+- `E:\GitHub\Magi-AGI\hyperon-wiki\scripts\archive\ecan_pilot\source2_attention_classic\findings_<model>.txt`
+
+Create directory if missing. After all 3 model passes land, the orchestrator writes `findings_reconciled_crossmodel.txt`.
+
+## Rules
+
+- **No wiki writes.**
+- **No repo file edits.**
+- **Do not run tests** unless separately approved (see deliverable #7).
+- Read each cited C++ file verbatim — do NOT summarize from filename.
+- Cite file:line for every concrete equation/claim.
+- Pre-populated §Git-history above is authoritative for chronology and cohort — agents should not re-run `git shortlog` unless adding detail (e.g., per-file `git blame` on a specific equation line).
+- Follow standing rule `feedback_attribution_verify_against_git.md` for any author/contributor claim.
+- If write blocked (sub-agent .md guardrail), use .txt + inline-paste fallback.
+
+## Source 1 → Source 2 crosswalk reference card (for agent convenience)
+
+| Source 1 MeTTa module | Source 2 C++ counterpart |
+|---|---|
+| `attention/AttentionParam.metta` | `opencog/attention/AttentionParamQuery.cc/.h` + `default-param-values.scm` |
+| `attention-bank/attention-value/getter-and-setter.metta` | `opencog/attentionbank/avalue/AttentionValue.cc/.h` + `opencog/attentionbank/bank/AVUtils.cc/.h` |
+| `attention-bank/bank/attention-bank.metta` | `opencog/attentionbank/bank/AttentionBank.cc/.h` |
+| `attention-bank/bank/attentional-focus/attentional-focus.metta` | `opencog/attentionbank/bank/AttentionalFocusCB.cc/.h` |
+| `attention-bank/bank/importance-index/importance-index.metta` | `opencog/attentionbank/bank/ImportanceIndex.cc/.h` |
+| `attention-bank/bank/stochastic-importance-diffusion/stochastic-importance-diffusion.metta` | `opencog/attentionbank/bank/StochasticImportanceDiffusion.cc/.h` |
+| `attention/HebbianCreationAgent/HebbianCreationAgent.metta` | `opencog/attention/HebbianCreationAgent.cc/.h` |
+| `attention/HebbianUpdatingAgent/HebbianUpdatingAgent.metta` | `opencog/attention/HebbianUpdatingAgent.cc/.h` |
+| `attention/RentCollectionAgent/RentCollectionBaseAgent/RentCollectionBaseAgent.metta` | `opencog/attention/RentCollectionBaseAgent.cc/.h` |
+| `attention/RentCollectionAgent/AFRentCollectionAgent/AFRentCollectionAgent.metta` | `opencog/attention/AFRentCollectionAgent.cc/.h` |
+| `attention/RentCollectionAgent/WARentCollectionAgent/WARentCollectionAgent.metta` | `opencog/attention/WARentCollectionAgent.cc/.h` |
+| `attention/ImportanceDiffusionAgent/ImportanceDiffusionBase/ImportanceDiffusionBase.metta` | `opencog/attention/ImportanceDiffusionBase.cc/.h` |
+| `attention/ImportanceDiffusionAgent/AFImportanceDiffusionAgent/AFImportanceDiffusionAgent.metta` | `opencog/attention/AFImportanceDiffusionAgent.cc/.h` |
+| `attention/ImportanceDiffusionAgent/WAImportanceDiffusionAgent/WAImportanceDiffusionAgent.metta` | `opencog/attention/WAImportanceDiffusionAgent.cc/.h` |
+| `attention/ForgettingAgent/ForgettingAgent.metta` | `opencog/attention/ForgettingAgent.cc/.h` |
+| `attention/runner-Def.metta` | C++ `MindAgent` registration in `AttentionModule.cc` (verify) |
+| `experiments/experiment.metta` | `experiments/ExperimentSetupModule.cc` + `experiments/SentenceGenStimulateAgent.cc` |
+| (no MeTTa equivalent) | `examples/hopfield/` — Hopfield-net 2009-paper benchmark |
+
+---
+
+*End of Source 2 brief — ECAN cluster pilot.*
