@@ -1,0 +1,558 @@
+Model: Codex
+Extraction date: 2026-04-24
+Bundle update timestamps: mostly 2026-04-08 (RawData cards), 2026-04-08T03:10Z (Markdown stubs)
+Method: wiki-card extraction via Hyperon wiki MCP + comparison against Sources 2-8 reconciled code baseline
+Lane claim counts: Lane 1 = 18, Lane 2 = 17, Lane 3 = 8
+
+Status key
+- IMPLEMENTED
+- PROTOTYPE / EXPERIMENTAL
+- BENCHMARK-ONLY
+- PAPER-ONLY / ASPIRATIONAL
+- CONTRADICTED / SUPERSEDED
+
+1. Lane 1: FactorGraph / MORK
+
+### RawData+Publications+PLN FactorGraph MORK
+
+**Lane:** 1
+**Card type:** RawData
+**Length:** ~13.4 KB
+**Date / version signal:** July 18, 2025; unversioned base note
+
+**Core claims**
+- C-1: PLN inference can be re-expressed as factor-graph message passing over STV-valued variable and factor nodes.
+- C-2: MORK/PathMap can provide the low-level neighbor indexing needed for scalable factor-variable lookups.
+- C-3: AtomSpace-level APIs like `AtomSpace:setAttribute` and `pathmap.getFactorsForVariable` are assumed as the implementation substrate.
+- C-4: Distributional truth values and quantifier examples can be slotted into the same skeleton.
+
+**Intended implementation target**
+- MORK as a low-level substrate for PLN factor-graph inference over AtomSpace-style objects.
+
+**Current implementation status**
+- PAPER-ONLY / ASPIRATIONAL
+
+**Code evidence**
+- repo: `MORK`, path: `kernel/src/space.rs`, source: 8, status: PAPER-ONLY / ASPIRATIONAL
+  - real execution substrate exists, but no FactorGraph/message-passing machinery appears in code.
+- repo: `MORK`, path: `kernel/src/main.rs`, source: 8, status: PAPER-ONLY / ASPIRATIONAL
+  - runtime executes `.mm2` rewrite programs, not the paper’s proposed factor-graph protocol.
+
+**Unresolved questions / cross-references**
+- The paper presumes AtomSpace-like APIs and factor-graph primitives that are not present in checked-in MORK.
+- Central routines like `DeductionSTV` / marginalization are named but not operationally specified.
+
+### RawData+Publications+PLN FactorGraph MORK v1
+
+**Lane:** 1
+**Card type:** RawData
+**Length:** ~17.3 KB
+**Date / version signal:** July 18, 2025; first explicit versioned draft
+
+**Core claims**
+- C-1: Keeps the base VariableAtom / FactorAtom / FactorVarLink encoding.
+- C-2: Adds a dependency-handling heuristic via clustering or inserted `DependencyFactor` nodes.
+- C-3: Introduces a new required runtime primitive `DepJointSTV` to model non-independent joint truth values.
+- C-4: Claims the restructuring pass can run in `O(|E|)` using PathMap neighbor access.
+
+**Intended implementation target**
+- MORK/PathMap with an additional dependency-repair pass layered onto the factor-graph runtime.
+
+**Current implementation status**
+- PAPER-ONLY / ASPIRATIONAL
+
+**Code evidence**
+- repo: `MORK`, path: `kernel/src/space.rs`, source: 8, status: PAPER-ONLY / ASPIRATIONAL
+  - no dependency-factor or joint-STV protocol exists.
+- repo: `MORK`, path: `kernel/src/main.rs`, source: 8, status: PAPER-ONLY / ASPIRATIONAL
+  - no `DepJointSTV` or graph-restructuring pass is implemented.
+
+**Unresolved questions / cross-references**
+- `DepJointSTV` is a critical placeholder, not a specified routine.
+- This is the first version where “how to mitigate independence assumptions” becomes a named runtime extension, but not an implemented one.
+
+### RawData+Publications+PLN FactorGraph MORK v2
+
+**Lane:** 1
+**Card type:** RawData
+**Length:** ~24.5 KB
+**Date / version signal:** July 18, 2025; expanded second version
+
+**Core claims**
+- C-1: Preserves the v1 factor-graph design and dependency-handling heuristic.
+- C-2: Adds explicit sections on error propagation and ontology-related reasoning.
+- C-3: Continues to frame quantale multiplication and marginalization as the operational core.
+- C-4: Still depends on non-existent runtime surfaces like `pathmap.getFactorsForVariable`.
+
+**Intended implementation target**
+- Same as v1, but with a broader story around ontology and error management.
+
+**Current implementation status**
+- PAPER-ONLY / ASPIRATIONAL
+
+**Code evidence**
+- repo: `MORK`, path: `kernel/src/space.rs`, source: 8, status: PAPER-ONLY / ASPIRATIONAL
+- repo: `MORK`, path: `kernel/resources/decision_tree_learning.mm2`, source: 8, status: CONTRADICTED / SUPERSEDED
+  - demonstrates MORK’s real executable power lies in rewrite programs, not in this factor-graph API stack.
+
+**Unresolved questions / cross-references**
+- The ontology/error sections increase conceptual scope without making the runtime more concrete.
+
+### RawData+Publications+PLN FactorGraph MORK v3.1
+
+**Lane:** 1
+**Card type:** RawData
+**Length:** ~28.2 KB
+**Date / version signal:** July 18, 2025; “v3.1”
+
+**Core claims**
+- C-1: Recasts the design around a product quantale `Qlogic × QPLN` rather than plain STV-only propagation.
+- C-2: Factor nodes now store a `CombinedPotential` mapping formulas plus truth values together.
+- C-3: The design claims “controlled, damped inference” with semantic normalization and dependency heuristics.
+- C-4: The same AtomSpace/PathMap API assumptions remain.
+
+**Intended implementation target**
+- A richer MORK-backed logical/probabilistic combined-quantale runtime.
+
+**Current implementation status**
+- PAPER-ONLY / ASPIRATIONAL
+
+**Code evidence**
+- repo: `MORK`, path: `kernel/src/space.rs`, source: 8, status: PAPER-ONLY / ASPIRATIONAL
+  - MORK’s actual combined execution model is rewrite-driven, not `CombinedPotential`-driven.
+- repo: `MORK`, path: `kernel/src/main.rs`, source: 8, status: PAPER-ONLY / ASPIRATIONAL
+  - no code surface for product-quantale factor potentials.
+
+**Unresolved questions / cross-references**
+- This version materially changes the algebraic story, but still without a code path.
+- It should be treated as a new proposal family, not documentation of existing MORK behavior.
+
+### RawData+Publications+PLN FactorGraph MORK v3.2
+
+**Lane:** 1
+**Card type:** RawData
+**Length:** ~28.4 KB
+**Date / version signal:** July 20, 2025; “v3.2”
+
+**Core claims**
+- C-1: Preserves the product-quantale framing from v3.1.
+- C-2: Continues to propose combined logical + uncertainty propagation over MORK.
+- C-3: Claims scalability from MORK’s PathMap and graph locality.
+- C-4: Keeps the same missing runtime assumptions: factor-graph APIs, combined potentials, and semantic/message infrastructure not found in code.
+
+**Intended implementation target**
+- Same as v3.1, with a cleaner integrated story.
+
+**Current implementation status**
+- PAPER-ONLY / ASPIRATIONAL
+
+**Code evidence**
+- repo: `MORK`, path: `kernel/src/space.rs`, source: 8, status: PAPER-ONLY / ASPIRATIONAL
+- repo: `MORK`, path: `kernel/src/main.rs`, source: 8, status: PAPER-ONLY / ASPIRATIONAL
+- repo: `chaining`, path: `experimental/metamath/benchmarks/benchmark.sh`, source: 7, status: BENCHMARK-ONLY
+  - the only code-level MORK linkage in the cluster is benchmarking, not this architecture.
+
+**Unresolved questions / cross-references**
+- v3.2 is the cleanest paper expression of the proposal, but still not code-backed.
+
+### RawData+Publications+PLN Chaining On MORK
+
+**Lane:** 1
+**Card type:** RawData
+**Length:** ~10.4 KB
+**Date / version signal:** August 11, 2025
+
+**Core claims**
+- C-1: Proposes a fast backward-chaining PLN engine on top of MORK/MM2.
+- C-2: Introduces a different atom vocabulary: `RuleAtom`, `PatternAtom`, `GoalAtom`, `ContinuationAtom`, `MagicAtom`.
+- C-3: Emphasizes indices, scheduling, memoization, locality-aware placement, and KaHyPar-based repacking.
+- C-4: Frames the problem as latency-sensitive goal-directed search, not factor-graph message passing.
+
+**Intended implementation target**
+- A MORK-based backward chainer for PLN.
+
+**Current implementation status**
+- PAPER-ONLY / ASPIRATIONAL
+
+**Code evidence**
+- repo: `chaining`, path: `experimental/pln-inf-ctl/pln-inf-ctl.metta`, source: 7, status: PROTOTYPE / EXPERIMENTAL
+  - toy inference-control experiments exist, but not this design.
+- repo: `MORK`, path: `kernel/src/main.rs`, source: 8, status: PAPER-ONLY / ASPIRATIONAL
+  - MORK runs rewrite programs; there is no `RuleAtom`/`GoalAtom` backward-chaining engine here.
+
+**Unresolved questions / cross-references**
+- This paper uses a different architecture vocabulary than the FactorGraph stream.
+- Together they read more like competing interface visions than one coherent implementation stack.
+
+#### Lane 1 version-delta table
+
+| Claim / proposal | Base | v1 | v2 | v3.1 | v3.2 |
+|---|---|---|---|---|---|
+| VariableAtom / FactorAtom / FactorVarLink encoding | introduced | persists | persists | persists | persists |
+| Plain STV quantale only | present | present | present | replaced by product-quantale framing | persists as part of product formulation |
+| Dependency/clustering heuristic | absent | introduced | persists | persists | persists |
+| `DepJointSTV` / explicit dependency factor runtime need | absent | introduced | persists | persists | persists |
+| Error propagation section | absent | absent | introduced | persists in broader “controlled” framing | persists |
+| Ontology section | absent | absent | introduced | concept carried into richer logic layer | persists |
+| Product quantale `Qlogic × QPLN` | absent | absent | absent | introduced | persists |
+| Concrete code alignment with MORK source | absent | absent | absent | absent | absent |
+
+Lane 1 synthesis
+- The FactorGraph/MORK stream is a design/proposal family layered over missing runtime machinery.
+- `PLN Chaining On MORK` is not a continuation of the same exact interface vocabulary; it is a separate design direction focused on backward chaining, indices, and locality.
+- Across Lane 1, the papers specify desired APIs and semantics more than executable mechanisms. The current code baseline from Sources 7-8 does not realize these designs.
+
+2. Lane 2: Confidence / control / update
+
+### RawData+Publications+PLN AND Confidence Framework.md
+
+**Lane:** 2
+**Card type:** RawData
+**Length:** ~9.3 KB
+**Date / version signal:** no explicit publication venue; wiki source is `mattermost://PLN/0506_PLN_AND_Confidence_Framework.md.pdf`
+
+**Core claims**
+- C-1: The PLN AND rule should update confidence via weakness composition rather than naive multiplication.
+- C-2: Structural weakness and evidence overlap should be estimated via information-theoretic quantities.
+- C-3: PLN and NARS can be unified as different computational strategies over a common evidence/weakness framework.
+- C-4: The document proposes a concrete algorithm for confidence updating, with entropy and mutual-information terms.
+
+**Intended implementation target**
+- Production or research PLN confidence updating.
+
+**Current implementation status**
+- PAPER-ONLY / ASPIRATIONAL
+
+**Code evidence**
+- repo: `PLN`, path: `lib_pln.metta`, source: 3, status: CONTRADICTED / SUPERSEDED
+  - pln0.9 does introduce a multiplicative confidence pivot, but with different formulas and no information-quantale machinery.
+- repo: `chaining`, path: `experimental/common/truthvalue/TruthValue.metta`, source: 7, status: PROTOTYPE / EXPERIMENTAL
+  - Beta/posterior-style math exists but is not integrated into production inference control.
+
+**Unresolved questions / cross-references**
+- Source-of-truth check: the wiki card’s source filename exactly matches the `PLN_AND_Confidence_Framework.md.pdf` reference surfaced in Source 4, so they appear to be the same underlying local document.
+- I did not verify a separate local PDF on disk in this pass.
+
+### RawData+Publications+PLN NARS TVs
+
+**Lane:** 2
+**Card type:** RawData
+**Length:** ~20.0 KB
+**Date / version signal:** no explicit venue; explicit warning that it was GPT-assisted and may contain hallucinations
+
+**Core claims**
+- C-1: Under high uncertainty of node probabilities, PLN and NARS formulas show partial convergence.
+- C-2: Independence-based deduction in PLN can align with NARS on the `f × c` / `s × c` product.
+- C-3: Concept-geometry deduction remains structurally different from NARS.
+- C-4: Induction and abduction preserve differences due to NARS’s experience parameter and PLN’s node-probability foundations.
+
+**Intended implementation target**
+- A theoretical bridge between PLN and NARS truth-value formulas.
+
+**Current implementation status**
+- PAPER-ONLY / ASPIRATIONAL
+
+**Code evidence**
+- repo: `PLN`, path: `lib_pln.metta`, source: 3, status: CONTRADICTED / SUPERSEDED
+  - production PLN is currently oriented around STV rule code, not a NARS bridge.
+- repo: `URE`, path: `tests/ure/rules/intensional-inheritance-direct-introduction.scm`, source: 6, status: PROTOTYPE / EXPERIMENTAL
+  - shows historical rule richness, but not a current NARS-unification runtime.
+
+**Unresolved questions / cross-references**
+- The paper’s own GPT-hallucination warning should be carried into any wiki use.
+- It should not be treated as a settled specification.
+
+### RawData+Publications+PLN ECAN 2015v1
+
+**Lane:** 2
+**Card type:** RawData
+**Length:** ~19.6 KB
+**Date / version signal:** 2015v1 follow-up paper
+
+**Core claims**
+- C-1: ECAN-style nonlinear attention allocation can guide PLN inference through cognitive synergy.
+- C-2: Real-world reasoning requires attention to winnow misleading/extraneous knowledge, not just reason over already-relevant data.
+- C-3: The OpenCogPrime architecture ties declarative, attentional, intentional, and sensory memory together.
+- C-4: The practical target is tighter PLN/ECAN integration and attention-guided forward/backward chaining.
+
+**Intended implementation target**
+- OpenCogPrime / historical PLN+ECAN integration.
+
+**Current implementation status**
+- PROTOTYPE / EXPERIMENTAL
+
+**Code evidence**
+- repo: `URE`, path: `forwardchainer/ForwardChainer.h`, source: 6, status: PROTOTYPE / EXPERIMENTAL
+  - retains an `STI` source-selection mode, showing a historical ECAN hook.
+- repo: `PLN`, path: `lib_pln.metta`, source: 3, status: CONTRADICTED / SUPERSEDED
+  - current production line lacks a serious inference-control or attention layer.
+
+**Unresolved questions / cross-references**
+- This should be treated as historical prototype evidence, not current Hyperon implementation status.
+
+### RawData+Publications+Wm Pln Book V3
+
+**Lane:** 2
+**Card type:** RawData
+**Length:** book-scale, 7 chunks; chunk-1 alone ~46.8 KB
+**Date / version signal:** “The World-Model Calculus (v3 — March 19, 2026)”
+
+**Core claims**
+- C-1: Proposes a world-model-calculus refoundation of PLN with state primacy, explicit evidence carriers, and typed rules.
+- C-2: Claims compiled inference, Bayesian-network exactness, and bridges to Naive Bayes, k-NN, intensional, temporal, governance, and factor-graph semantics.
+- C-3: Positions itself as a broad formal refoundation rather than a runtime implementation note.
+- C-4: Explicitly includes sections on `PLN v0.9` subsumption, bridge theorems, and large-scale inference/control.
+
+**Intended implementation target**
+- Formal refoundation and proof framework for next-generation PLN.
+
+**Current implementation status**
+- PROTOTYPE / EXPERIMENTAL
+
+**Code evidence**
+- repo: `PLN`, path: `lib_pln.metta`, source: 3, status: CONTRADICTED / SUPERSEDED
+  - current production PLN does not recover the broad family coverage promised here.
+- repo: `URE`, path: `tests/ure/rules/*.scm`, source: 6, status: PROTOTYPE / EXPERIMENTAL
+  - some historical families named by the book did exist in URE, but not in current production MeTTa PLN.
+
+**Unresolved questions / cross-references**
+- The book itself points repeatedly to external formal modules and proof artifacts not covered in Sources 2-8.
+- Within the current extracted runtime cluster, this is best read as a formal-specification/prototype artifact, not as the state of deployed PLN.
+
+### RawData+Publications+PLNUpdate
+
+**Lane:** 2
+**Card type:** RawData
+**Length:** ~1.6 KB
+**Date / version signal:** OCR-like slide fragment; no stable bibliographic metadata in the card
+
+**Core claims**
+- C-1: Connects PLN to HOAS, graph/state rewrites, spatial-behavioral type systems, and OSLF.
+- C-2: Treats states as distributions over terms and rewrites as state-to-state transitions.
+- C-3: Suggests PLN needs “horizontal functors” / broader program-extraction/probabilistic-execution bridges.
+
+**Intended implementation target**
+- A theory bridge between PLN and process/type-theoretic execution models.
+
+**Current implementation status**
+- PAPER-ONLY / ASPIRATIONAL
+
+**Code evidence**
+- repo: `PLN`, path: `lib_pln.metta`, source: 3, status: PAPER-ONLY / ASPIRATIONAL
+  - none of this bridge language appears in the current production line.
+- repo: `MORK`, path: `kernel/resources/*.mm2`, source: 8, status: BENCHMARK-ONLY
+  - MORK demonstrates a rewrite-program environment, but not this theory bridge.
+
+**Unresolved questions / cross-references**
+- OCR corruption makes this card low-confidence as a formal source.
+- It should be used as a thread pointer, not a high-authority citation.
+
+### RawData+Publications+Pln Review
+
+**Lane:** 2
+**Card type:** RawData
+**Length:** 2 chunks; chunk-1 ~46.0 KB, chunk-2 ~6.5 KB
+**Date / version signal:** draft March 14, 2026; review of the PLN book by Zar and Oruži
+
+**Core claims**
+- C-1: Provides chapter-by-chapter verdicts on the 2008 PLN book: formalized cleanly, corrected, counterexample/no-go, heuristic/operational.
+- C-2: Explicitly ties coverage to Lean 4 artifacts and external modules like `Mettapedia/Logic/PLNCanonicalAPI.lean`.
+- C-3: Claims many parts of the book can be formally corrected or stabilized, while runtime/operational claims remain outside theorem-level formalization.
+- C-4: Reads as a review companion to the World-Model Calculus rather than a runtime implementation note.
+
+**Intended implementation target**
+- Formal audit and proof-level stabilization of the original PLN book.
+
+**Current implementation status**
+- PROTOTYPE / EXPERIMENTAL
+
+**Code evidence**
+- repo: `PLN`, path: `lib_pln.metta`, source: 3, status: CONTRADICTED / SUPERSEDED
+  - production code does not realize the breadth of formalisms reviewed here.
+- repo: `URE`, path: `tests/ure/rules/*.scm`, source: 6, status: PROTOTYPE / EXPERIMENTAL
+  - some historically implemented families align with the review’s “formalizable” portions.
+
+**Unresolved questions / cross-references**
+- The review cites external Lean files and regression scripts not extracted in this pilot.
+- Within the current source set, this remains a formal review/prototype artifact, not runtime code.
+
+Lane 2 synthesis
+- Lane 2 is the clearest evidence that the cluster has multiple adjacent formal/specification threads that do not anchor the current production `PLN/PLN3` runtime.
+- `PLN AND Confidence Framework.md` points in the same general direction as pln0.9’s confidence shift, but the implemented formulas in `PLN/lib_pln.metta` are different.
+- `PLN ECAN 2015v1` has real historical prototype resonance via URE’s STI hook, but the current production line does not carry that inference-control layer.
+- `Wm Pln Book V3` and `Pln Review` look like serious formalization efforts, but they are outside the currently extracted runtime/code baseline.
+
+3. Lane 3: Application / framing
+
+### Publications+Guiding PLN with Attention Allocation
+
+**Lane:** 3
+**Card type:** Markdown
+**Length:** ~610 bytes
+**Date / version signal:** 2014, AGI-14
+
+**Core claims**
+- C-1: ECAN-style nonlinear attention allocation can guide PLN inference.
+- C-2: The card is only a short summary stub; no full paper text is mirrored here.
+
+**Intended implementation target**
+- Attention-guided PLN inference.
+
+**Current implementation status**
+- PROTOTYPE / EXPERIMENTAL
+
+**Code evidence**
+- repo: `URE`, path: `forwardchainer/ForwardChainer.h`, source: 6, status: PROTOTYPE / EXPERIMENTAL
+  - STI source-selection mode shows historical attention linkage.
+- repo: `PLN`, path: `lib_pln.metta`, source: 3, status: CONTRADICTED / SUPERSEDED
+  - current production line has no corresponding attention-control layer.
+
+**Unresolved questions / cross-references**
+- Full text is missing on the wiki, so claim depth here is bounded by the stub.
+
+### Publications+Deep Learning Perception with PLN
+
+**Lane:** 3
+**Card type:** Markdown
+**Length:** ~642 bytes
+**Date / version signal:** 2013, AGI-13
+
+**Core claims**
+- C-1: Proposes neural-symbolic integration via frequent pattern mining (FISHGRAM) feeding PLN reasoning.
+- C-2: The wiki card is only a high-level summary stub.
+
+**Intended implementation target**
+- Deep-learning perception -> symbolic pattern mining -> PLN reasoning.
+
+**Current implementation status**
+- PAPER-ONLY / ASPIRATIONAL
+
+**Code evidence**
+- repo: `PLN`, path: `lib_pln.metta`, source: 3, status: PAPER-ONLY / ASPIRATIONAL
+  - no neural/perception/frequent-pattern-mining surface.
+- repo: `chaining`, path: `experimental/pln/`, source: 7, status: PAPER-ONLY / ASPIRATIONAL
+  - no FISHGRAM or neural pipeline integration in the extracted sources.
+
+**Unresolved questions / cross-references**
+- Full paper text is missing on the wiki.
+
+### RawData+Publications+PLN kNN NB
+
+**Lane:** 3
+**Card type:** RawData
+**Length:** ~22.6 KB
+**Date / version signal:** February 19, 2026; Mettapedia Working Notes
+
+**Core claims**
+- C-1: Presents an evidence-first calculus where Naive Bayes and k-NN are algebraic specializations of PLN-style evidence carriers.
+- C-2: Names concrete Lean theorems such as `toStrength_nbEvidence_eq_nbPosterior` and `PLN_hplusPos_eq_knnRelevance`.
+- C-3: References concrete implementation loci: `atps/scripts/select_pln_mixture_local_nb.py`, `hyperon/PeTTa/demos/pln_*selector*.metta`, `lib_pln_xi.metta`, and `pln_evidence.metta`.
+- C-4: Reports benchmark numbers on MPTP 5k premise selection.
+
+**Intended implementation target**
+- Adjacent-tree premise selectors and Lean proofs around xiPLN evidence algebra.
+
+**Current implementation status**
+- PROTOTYPE / EXPERIMENTAL
+
+**Code evidence**
+- repo: `PLN`, path: `lib_pln.metta`, source: 3, status: CONTRADICTED / SUPERSEDED
+  - the current production derivation line does not expose kNN/NB premise selection machinery.
+- repo: `hyperon reference` local corpus, path: `atps/scripts/select_pln_mixture_local_nb.py` and `hyperon/PeTTa/...`, source: bundle verification step, status: UNRESOLVED
+  - the exact adjacent-tree paths named in the paper were not present under the currently extracted clone names in this pass.
+
+**Unresolved questions / cross-references**
+- This paper is the bundle’s strongest case for real adjacent-tree implementation, but those exact paths were not locally verifiable in the current extracted corpus.
+- It should therefore be treated as externally-referenced prototype code until Source 10 extracts the adjacent trees directly.
+
+Lane 3 synthesis
+- Two of the three Lane 3 papers are not really extractable papers yet; they are metadata stubs.
+- `PLN kNN NB` is materially richer and points to executable adjacent-tree work, but that work is not part of the current `PLN/PLN3` runtime line and was not directly verified in this pass.
+
+4. Cross-paper synthesis
+
+Most consistent cluster-level ideas
+- The FactorGraph/MORK papers consistently assume MORK is a substrate to build on, not a ready-made factor-graph engine.
+- The confidence/control lane consistently points toward richer evidence/confidence formalisms than the production `PLN/PLN3` line currently implements.
+- Several papers implicitly or explicitly treat “future operationalization” as separate from formal or theoretical articulation.
+
+Major contradictions or mismatches
+- FactorGraph/MORK papers assume APIs and runtime primitives that do not exist in Source 8’s MORK code.
+- `PLN Chaining On MORK` uses a backward-chaining architecture vocabulary (`RuleAtom`, `GoalAtom`, `ContinuationAtom`) that does not match the FactorGraph family’s `VariableAtom`/`FactorAtom` design.
+- The confidence framework and pln0.9 move in a related direction, but the implemented formulas in `PLN/lib_pln.metta` are not derivations of the framework document’s algorithm.
+- The application lane’s historical vision (attention-guided reasoning, FISHGRAM-to-PLN) does not map to the current production runtime.
+
+Sibling groupings
+- FactorGraph / MORK base + v1 + v2 + v3.1 + v3.2 = one iterative design stream.
+- `PLN Chaining On MORK` is adjacent but architecturally distinct.
+- `Wm Pln Book V3` + `Pln Review` form a formal-refoundation/audit pair.
+- `PLN AND Confidence Framework.md` + `PLN NARS TVs` form a confidence/evidence comparison pair.
+- `Guiding PLN with Attention Allocation` + `PLN ECAN 2015v1` form a historical attention-control pair.
+
+5. Code-vs-paper master table
+
+| Paper | Lane | Core claim | Code status | Code evidence | Notes |
+|---|---|---|---|---|---|
+| PLN FactorGraph MORK (base) | 1 | Factor-graph PLN over MORK | PAPER-ONLY / ASPIRATIONAL | Source 8 `MORK/kernel/src/space.rs`, `main.rs` | Requires missing APIs |
+| PLN FactorGraph MORK v1 | 1 | Add dependency factors / clustering | PAPER-ONLY / ASPIRATIONAL | Source 8 negative evidence | `DepJointSTV` unresolved |
+| PLN FactorGraph MORK v2 | 1 | Add error/ontology scaffolding | PAPER-ONLY / ASPIRATIONAL | Source 8 negative evidence | Scope grows, code does not |
+| PLN FactorGraph MORK v3.1 | 1 | Product quantale logic+TV runtime | PAPER-ONLY / ASPIRATIONAL | Source 8 negative evidence | Algebraic redesign only |
+| PLN FactorGraph MORK v3.2 | 1 | Refined product-quantale stack | PAPER-ONLY / ASPIRATIONAL | Source 8 + Source 7 benchmark-only linkage | Still proposal-stage |
+| PLN Chaining On MORK | 1 | Fast backward chainer on MORK/MM2 | PAPER-ONLY / ASPIRATIONAL | Source 7 `experimental/pln-inf-ctl/*`, Source 8 MORK runtime | Different architecture vocabulary |
+| PLN AND Confidence Framework.md | 2 | Quantale/information-theoretic AND confidence update | PAPER-ONLY / ASPIRATIONAL | Source 3 `PLN/lib_pln.metta` diverges | Likely same “Ben’s document” as Source 4 reference |
+| PLN NARS TVs | 2 | PLN/NARS bridge under high uncertainty | PAPER-ONLY / ASPIRATIONAL | No current runtime bridge in Sources 2-8 | GPT-assisted warning in source |
+| PLN ECAN 2015v1 | 2 | Attention-guided PLN inference | PROTOTYPE / EXPERIMENTAL | Source 6 `ForwardChainer.h` STI hook | Historical, not current |
+| Wm Pln Book V3 | 2 | World-model-calculus refoundation | PROTOTYPE / EXPERIMENTAL | No runtime match in Sources 2-8 | Formal-spec / external proof ecosystem |
+| PLNUpdate | 2 | OSLF / process/type bridge fragment | PAPER-ONLY / ASPIRATIONAL | No match in Sources 2-8 | OCR-fragment, low confidence |
+| Pln Review | 2 | Lean-based audit of the PLN book | PROTOTYPE / EXPERIMENTAL | No runtime match in Sources 2-8 | Review/proof artifact |
+| Guiding PLN with Attention Allocation | 3 | Attention guides PLN | PROTOTYPE / EXPERIMENTAL | Source 6 STI hook only | Stub card only |
+| Deep Learning Perception with PLN | 3 | FISHGRAM mediates perception -> PLN | PAPER-ONLY / ASPIRATIONAL | No match in Sources 2-8 | Stub card only |
+| PLN kNN NB | 3 | NB and kNN as PLN evidence specializations | PROTOTYPE / EXPERIMENTAL | Adjacent-tree paths named, not verified in current corpus | Needs Source 10 |
+
+6. Wiki implications
+
+1. The FactorGraph/MORK papers should be described as proposal/design documents layered over missing runtime machinery, not as documentation of implemented MORK functionality.
+2. `PLN Chaining On MORK` should not be merged conceptually into the FactorGraph stream; it is a separate backward-chaining architecture proposal.
+3. `PLN AND Confidence Framework.md` should be presented as likely inspiration for later confidence work, but not as the direct implemented basis of pln0.9.
+4. `Wm Pln Book V3` should be described as a world-model formal refoundation, not as current production PLN runtime.
+5. `Pln Review` should be described as a formal audit/proof-review companion, not as evidence that current code has caught up.
+6. Attention/ECAN papers should be labeled historical/hybridized: there was prototype resonance in OpenCog Classic, but current production MeTTa PLN lacks that layer.
+7. `PLN kNN NB` should be flagged as adjacent-tree prototype work, pending direct extraction of the referenced `atps` / `PeTTa` trees.
+
+7. Discovered publications and references
+
+- Full texts for `Publications+Guiding PLN with Attention Allocation` and `Publications+Deep Learning Perception with PLN` are not mirrored on the wiki; only short Markdown stubs exist.
+- `Wm Pln Book V3` references a companion “World-Model Calculus” formal ecosystem and extensive external Lean modules.
+- `Pln Review` references:
+  - `Mettapedia/Logic/PLNCanonicalAPI.lean`
+  - `Mettapedia/Implementation/PLNParityChecklist.lean`
+  - multiple `scripts/check_*` regression scripts
+- `PLN kNN NB` references adjacent implementation loci:
+  - `atps/scripts/select_pln_mixture_local_nb.py`
+  - `hyperon/PeTTa/demos/pln_*selector*.metta`
+  - `hyperon/PeTTa/lib/lib_pln_xi.metta`
+  - `pln_evidence.metta`
+  These are not part of Sources 2-8 and should be Source 10 candidates.
+
+8. Unresolved questions for Source 10+
+
+1. Extract the adjacent-tree `atps` / `PeTTa` implementation line referenced by `PLN kNN NB`.
+2. Recover or ingest full texts for the two Lane 3 stub papers.
+3. Decide whether `Wm Pln Book V3` and `Pln Review` should trigger a separate formal-proof-source cluster rather than being folded into the runtime narrative.
+4. If the wiki wants formula-level fidelity on the FactorGraph stream, do a dedicated version-by-version arithmetic audit of v2 -> v3.1 -> v3.2.
+
+9. Author attribution
+
+- FactorGraph/MORK base/v1/v2/v3.1/v3.2: Ben Goertzel
+- PLN Chaining On MORK: Ben Goertzel, with help from GPT5-Pro
+- PLN AND Confidence Framework.md: no explicit author line in the card text; source filename aligns with the “Ben’s document” reference from Source 4
+- PLN NARS TVs: Ben Goertzel (with explicit GPT-o1 warning)
+- PLN ECAN 2015v1: Matthew Iklé, Misgana Bayetta, Ben Goertzel, Amen Belayneh, Cosmo Harrigan, Gino Yu
+- Wm Pln Book V3: Zar and Oruži
+- PLNUpdate: authorship unclear from OCR fragment
+- Pln Review: formal review by Zar and Oruži of the original Goertzel/Iklé/Freire Goertzel/Heljakka book
+- Guiding PLN with Attention Allocation: Cosmo Harrigan, Ben Goertzel, Matthew Iklé, Amen Belayneh
+- Deep Learning Perception with PLN: Ben Goertzel, Ted Sanders, Jade O'Neill
+- PLN kNN NB: “Mettapedia Working Notes”; author line not explicit in the extracted portion
+
+End of findings.

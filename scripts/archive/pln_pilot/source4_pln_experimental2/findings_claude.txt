@@ -1,0 +1,363 @@
+# pln-experimental2 (ngeiswei) — Source 4 Findings (Claude single pass)
+
+**Model:** Claude Opus 4.7 (1M context)
+**Extraction date:** 2026-04-24
+**Commit pinned:** 6c9525e1657c4bafac78ab6367bc10253c7e403c (2026-03-12 "Misc", per brief; verified via directory contents + README + meta-docs; `git` subshell denied by sandbox so hash not live-verified this run — caller should confirm if integrity is load-bearing)
+**Repo size:** ~5.2 MB on disk; 60 `.metta` files + 1 `.tex` (nuPLN) + 1 `.bib` (local.bib, 1445 lines, ~121 entries) + 1 `.mac` (conjunction-xp.mac, 387 lines) + 3 repo-level `.md` meta-docs + 7 subdir `README.md` + `docs/pln-random-notes.txt` (791 lines) + `docs/surprisingness/surprisingness.md` (332 lines) + `docs/use-cases/next-token-prediction/next-token-prediction.md` (222 lines).
+
+Claim counts per section:
+- §1 (architecture): 8
+- §2 (nuPLN.tex manuscript): 42
+- §3 (Bl/Pr/STV TV types): 14
+- §4 (missing-family recovery): 16
+- §5 (confidence-formula continuity with pln0.9): 7
+- §6 (Maxima derivations): 11
+- §7 (V7–V9 bug carryover): 5
+- §8 (status / TODOs): 9
+- §9 (discovered publications): 12
+- §10 (repo relationships): 6
+TOTAL: 130
+
+All citations are filepath:approximate-line relative to `E:\GitHub\hyperon reference\pln-experimental2\`.
+
+---
+
+## §1 — Architecture and repo layout
+
+- **C-1-1** Top-level: `README.md`, `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `LICENSE` (Apache 2.0, 35 KB), `Dockerfile` (164 B), `.gitignore`, two subdirs `docs/` and `experimental/`. Four `tmpclaude-*-cwd` stray files (63 B each, untracked per brief).
+- **C-1-2** `docs/` contains: `nuPLN/{nuPLN.tex, local.bib, nuPLN.pdf (binary), render.sh, ~46 PNG figures under plots/}` (per brief; I did not enumerate PNG/PDF), `pln-random-notes.txt`, `surprisingness/surprisingness.md`, `use-cases/next-token-prediction/next-token-prediction.md`. No other .tex files.
+- **C-1-3** `experimental/` splits into `early-pln/` and `truth-value-formula/`. Only one `.mac` file in the entire repo: `experimental/truth-value-formula/conjunction-introduction/conjunction-xp.mac`. `experimental/README.md:1-18` explicitly flags `early-pln` as "probably no longer relevant but still kept around just in case" — this is the author's own disavowal.
+- **C-1-4** `experimental/early-pln/` tree:
+    - `common/` — 28 files: Num, List, Maybe, Maybe-Record, OrderedSet, In, EqualityType, BelieveMe, truthvalue/{TruthValue, EvidentialTruthValue, TemporalTruthValue, MeasEq}, formula/{DeductionFormula, ModusPonensFormula, ImplicationDirectIntroductionFormula} plus tests.
+    - `pln/` — 4 subdirs implementing the **same 3 rules** in 4 encodings: `dependent-types/`, `entail/`, `equal/`, `match/`. **The 3 rules are: Deduction, ModusPonens, ImplicationDirectIntroduction** (verified: C-1-5 below).
+    - `synthesis/` — program synthesizer (`Synthesize.metta`, `Unify.metta` + experiments subdir of ~11 files).
+- **C-1-5** The 4-encoding pattern is strictly the same 3 rules per encoding; there is no rule present in one encoding that's missing from another. The `match` variant additionally contains `DeductionImplicationDirectIntroductionMatchTest.metta` as a combined-use test. Verified by filename enumeration of `experimental/early-pln/pln/*/` — no revision/inversion/induction/abduction/negation/quantifier/temporal rule file exists under any of the 4 encoding subdirs. (`revision`/`Revision`/`Inversion` string-grep across `experimental/` found matches only in 3 files in `pln/match/` as comments inside `ImplicationDirectIntroductionMatch*.metta` docstrings — not as rule definitions.)
+- **C-1-6** `common/formula/DeductionFormula.metta:39-54` contains a **hardwired-for-STV alternate** of the deduction formula named `deduction-formula` that specializes the generic `simple-deduction-strength-formula` (L24-36) to STV for speed. Both coexist.
+- **C-1-7** This is a SIBLING research branch to PLN3/PLN/, not a successor. Two arguments: (a) `experimental/README.md` disavows `early-pln` as legacy; (b) the active new work is `docs/nuPLN/nuPLN.tex` (a draft manuscript) + `experimental/truth-value-formula/conjunction-introduction/` (Maxima explorations), not rule-family implementation. AGENTS.md:4 says "Near-identical copy of `pln-experimental`" and GEMINI.md:3 says "mirror instance" — so this fork vs. upstream-pln-experimental diverges only by having `nupln-xt` branch per CLAUDE.md:7.
+- **C-1-8** **No `src/` directory**, no `build.sh`, no `PLN.py`, no `Translator.metta`, no `PLN.Init`, no `Deriver.metta`. This repo has no forward-chaining engine and no query API. It is a mix of (a) a manuscript, (b) four stale rule-encoding experiments from early MeTTa days, (c) a Maxima sandbox for conjunction-introduction. **`pln-experimental2` cannot be run end-to-end as a reasoner** (AGENTS.md:14 confirms: "There is no root test harness to run end-to-end").
+
+## §2 — `docs/nuPLN/nuPLN.tex` — theoretical manuscript (extracted with book-level rigor)
+
+**Document state (C-2-0):** 418 lines of LaTeX, explicitly titled *"Towards a Complete Formalization of PLN (DRAFT)"*, author Nil Geisweiller, renamed concept **"νPLN"** (`\nuPLN`). **It is a draft with 8 TODO markers, 2 `NEXT` placeholders mid-paragraph, 1 unpopulated conclusion section, and 1 unpopulated "Truth Value as Posterior Distribution" subsection** (§sec:truthvalue has only its label). No bibliography entries are actually cited by `\cite` — every reference is `\cite{TODO}`.
+
+### Motivation & programme
+
+- **C-2-1** (nuPLN.tex §Introduction, L55-79) **νPLN's programme: approximate a first-order (unknown, computable) distribution μ using a second-order (uncomputable, known) universal distribution ν**, analogous to Solomonoff Induction. Verbatim: *"The goal is similar to Solomonoff Universal Induction, that is we want to approach a first order (unknown but computable) distribution μ given observations, using a second order (uncomputable but known) distribution ν, called the Universal Distribution."*
+- **C-2-2** (L64-76) Key departure from Solomonoff: observations are *outcomes from an indexed boolean random variable representing the outputs of evaluating a predicate*. The predicate ("observable predicate") is *"a program drawn from a certain Probabilistic Programming Language"*. Without loss of generality, PLN's multiple observable predicates can be collapsed to one μ by adding a predicate-selector component to the domain.
+- **C-2-3** (L77-79) *"Because this reformulation of PLN departs somewhat from the definition of PLN in the PLN book, we give it a new name, νPLN."* — explicit distancing from the 2008 book.
+- **C-2-4** (L82-92) **This is the big theoretical shift vs. the PLN book**, verbatim: *"In its original form, PLN purposely avoids relying on an underlying global probability distribution. I am not against this in principle. I will simply admit that I cannot conceive a complete definition of PLN that does not rely on such global probability distribution. I would also point out that a publication released after the PLN book by the principal authors of the PLN book, Ben Goertzel and Matt Ikle, very much aligns with the idea of a global probability distribution, and was in fact a great source of inspiration for writing this very document."* The referenced Goertzel–Ikle publication is cited as `\cite{TODO}` — unidentified in the current draft (follow-up lead: it is `Goertzel2014EGI1/2/2Chapt18` or `Warrell2022` in `local.bib`, but nuPLN.tex does not actually resolve the `\cite{TODO}`).
+
+### Formal machinery (§sec:globalprob, L94-220)
+
+- **C-2-5** (L96-116) **Universe**: probability space `(Ω, F, ν)` where Ω is the sample space of possible worlds, F the σ-algebra event space, ν the universal distribution. Each world `ω̂ ∈ Ω` contains **(i)** a probabilistic predicate μ̂ ∈ L over domain D in a probabilistic programming language L, **(ii)** a complete mapping of μ̂ from D to Bool. The mapping is potentially infinite; an observer sees only a finite subset.
+- **C-2-6** (L117-124) Concept of **"true world"** ω and **"true generator/predicate"** μ. Non-determinism: μ is probabilistic so the history is *one possible history among an infinity of histories compatible with μ*.
+- **C-2-7** (L130-136) Probabilistic predicate type signature (verbatim): `μ : D → Ω → Bool` in curried fashion. *"Meaning that given its argument, it produces a boolean random variable. Therefore the observable predicate can be viewed as an indexed boolean random variable."* Multi-component domains curry uniformly: `μ : D_1 → … → D_n → Ω → Bool`.
+- **C-2-8** (L149-167) Application notation `(μ x)` / `(μ x_1 … x_n)`; parametric form `μ_{x_1}` treating x_1 as parameter. Uses traditional math notation for non-μ functions (e.g., `ν(E)`).
+- **C-2-9** (L168-193) **Two key random variables** access Ω:
+    - `M : Ω → L` with measurable space `(L, F_L)`. Takes a world to the program generating it. *"Not accessible from an observer within that world."* Critical for higher-order reasoning.
+    - `D_{x ∈ D} : Ω → Bool`. Boolean RV indexed by domain elements. Partially accessible: observer can gather data for finite subset S ⊂ D, giving a family `D_S`.
+    - Equality: `(μ̂ x ω̂) = (D_x ω̂)` where `M(ω̂) = μ̂`; curried: `(μ̂ x) = D_x`.
+- **C-2-10** (L194-220) **Bayesian inference in the universal framework** (verbatim formula):
+  ```
+  ν(M ∈ L | D_S) = ν(M ∈ L) × ν(D_S | M ∈ L) / ν(D_S)
+  ```
+  where `L ∈ F_L`, `S` is a finite subset of D. Shorthand dropping M: `ν(L | D_S) = ν(L) × ν(D_S | L) / ν(D_S)`. Author notes L must be continuous for the Bayesian approach to recover PLN (*"I will explain this in detail, but for now let us use this notation to formulate Bayes' theorem"*). **Prior over L is a parameter of νPLN**: *"given a certain prior of ν over L, one can derive a certain flavor of νPLN."*
+
+### Relation to Solomonoff
+
+- **C-2-11** (§PLN Global Distribution vs Solomonoff Induction, L222-232) *"unlike with Solomonoff Universal Induction, μ̂ represents a probabilistic predicate rather than a computable probability function calculating the probability of any event, although the latter can be derived from the former."*
+- **C-2-12** (L228-232) Terminology: **"real predicate"** (objective reality) preferred over **"true predicate"** (which could be misread as always-outputs-true).
+
+### Bridging book-PLN to νPLN (§3 PLN and the Global Distribution, L234-345)
+
+- **C-2-13** (§3.1 Concepts vs Predicates, L241-252) **νPLN drops the concept side entirely**, keeping only the predicate side. Justification: *"there is a perfect isomorphism between concepts and inheritance on one side and predicates and implication on the other side"* (referencing PLN book §2.6 *Higher-Order Logical Relationships*). The book's parallel notation is collapsed for conciseness.
+- **C-2-14** (§3.1.1, L254-293) **Major book-vs-νPLN reframing**: *"Originally, in the PLN book, the inheritance relationship is defined as an explicit mixture of extensional and intensional inheritances. We will show however that they are in fact both the same thing, the extensional inheritance is a way to approach inheritance solely via induction, and intensional inheritance is a way to approach inheritance solely via abduction."* — This is the νPLN dissolution of the ext/int split from Source 1 (V6 list: "intensional↔extensional conversion rules" marked absent).
+- **C-2-15** (L266-286) Extensional inheritance = probabilitized subset relationship. Example: `(Inheritance Bird Fly) ≞ 0.9` = 90% of birds fly. Under sample uncertainty, a second-order distribution is used, and the book's second-order Beta distribution is adopted here. *"Under this assumption only two numbers are required to determine the parameters, α and β, of the associated Beta distribution."* `STV<s,c>` example: `(Inheritance Bird Fly) ≞ ⟨0.9, 0.99⟩` where 0.9 is strength, 0.99 is confidence. **Confidence encodes sample size: higher sample ⇒ higher confidence**.
+- **C-2-16** (§3.1.2, L295-315) Isomorphism between concepts and predicates: concept→predicate via indicator function; predicate→concept via satisfying set. Same isomorphism applies to inheritance (concept side) ↔ implication (predicate side). Example: `(Implication IsBird DoesFly) ≞ ⟨0.9, 0.99⟩`.
+- **C-2-17** (§3.2 Relating Predicates to μ, L317-334) **Novelty — how multiple predicates fold into single global μ**: add a subdomain `P` (symbols representing predicates) to μ's domain. Now `μ : P → D → Ω → Bool`. Example: *"a cat is a mammal"* becomes `μ_{Cat} ⟹ μ_{Mammal}`. Evaluation of *Cat* on instance `cat_123` is `(μ_{Cat} cat_123)` instead of `(Cat cat_123)`. — This is νPLN's answer to *"how does one global predicate handle the book's diverse concept/predicate lattice?"*
+- **C-2-18** (§3.3 Truth Value as Posterior Distribution, L336-337) **Section is empty** — only labelled `sec:truthvalue`. Contents not written.
+- **C-2-19** (§3.4 Statement versus Judgement, L339-345) Inherits NAL terminology: **statement** = logical statement sans TV (e.g., `P ⟹ Q`); **judgment** = statement + TV (e.g., `P ⟹ Q ≞ ⟨0.9, 0.8⟩`). *"Like in NAL"* — explicit Pei Wang / NARS citation, adding to Source 2's open NARS citation question.
+
+### Deriving rules from ν (§4 Deriving PLN Rules, L347-411)
+
+- **C-2-20** (§4 intro, L349-354) **Programmatic goal** (verbatim): *"Our goal here is to derive every PLN rule in the PLN book from the global distribution that has been defined in Section~\ref{sec:globalprob}. By doing so we hope not only to provide a clear unambiguous definition for each rule, but also an ideal to approach as using a global distribution should give us the means to derive a convergence theorem a la Solomonoff."* — **νPLN claims to eventually provide a Solomonoff-style convergence theorem for PLN**, which would directly address Source 1's induction-universe-size limitation. Not yet proved in the draft.
+- **C-2-21** (§4.1 Predicate Direct Introduction, L356-390) Rule definition starts. Interpretation: *"Its truth value can be understood as the marginal probability of a predicate to be true, irrespective of the inputs. It is a subcase of the Implication Direct Introduction (§sec:impldirect) where the implicant is the Universal Predicate (a predicate that is always true)."*
+- **C-2-22** (L369-390) **Formal derivation setup** — assume a Bernoulli sampler in L's operators, let B be the subset of L consisting of a single `(Bernouilli p)` call with p ∈ [0,1]. Borel σ-algebra F_B on B, with F_B ⊆ F_L. *"We claim that if μ is restricted to the programs in B then the posterior of p corresponds to the truth value of μ"*:
+  ```
+  ν(L_B | D_S) = ν(L_B) × ν(D_S | L_B) / ν(D_S)       where L_B ∈ F_B
+  ```
+  **Paragraph ends with `NEXT`** — derivation is incomplete.
+- **C-2-23** (§4.2 Implication Direct Introduction, L392-411) *"This rule is not explicitly stated as such in the PLN book but can be derived from iteratively applying induction and revision, and reflects the formula of extensional inheritance/implication given in Section 2.4.1 The Semantics of Inheritance of the PLN book, at least the strength part."*
+- **C-2-24** (L396-409) For the confidence part, νPLN assumes **second-order distribution = Beta**, matching PLN book §4.2 (Imprecise → Indefinite Probabilities). Underlying Bernoulli process with parameter p, Beta prior (often Jeffreys α=β=1/2). To derive the rule: *"Given the PLN statement P ⟹ Q, let us express its truth value as the posterior probability of the parameter p of the underlying Bernoulli process. In order to map a Bernoulli process onto an implication we zoom-in to the data points where P is true."*
+- **C-2-25** (L411) **Paragraph ends with `NEXT`** — derivation is incomplete.
+- **C-2-26** (§conclusion, L413) Section is empty.
+
+### Bibliography integration
+
+- **C-2-27** nuPLN.tex cites `\cite{TODO}` at 4 points (L57 Solomonoff, L79 PLN book, L89 Goertzel-Ikle post-book publication, L213 prior example forward-ref). None are resolved to local.bib entries. **All bibliography information must be inferred**.
+
+### νPLN numbered-claim consolidation
+
+νPLN is a coherent programme consisting of **these proposed claims** (C-2-28 through C-2-42). Because the document is a draft with `NEXT` markers, these are programme-intent claims not yet proved:
+
+- **C-2-28** νPLN axiom: a single global probability space `(Ω, F, ν)` underlies the logic. [L96]
+- **C-2-29** νPLN axiom: each world ω̂ contains a probabilistic predicate μ̂ drawn from a probabilistic programming language L. [L104-108]
+- **C-2-30** νPLN axiom: ν is uncomputable but "known"; μ is computable but unknown. [L56-60]
+- **C-2-31** νPLN construction: observations are finite samples from the Boolean random variable D_{x∈D} indexed by domain elements. [L181-188]
+- **C-2-32** νPLN construction: the prior ν(L) is a **parameter** of the theory — different priors give different νPLN flavors. [L213-215]
+- **C-2-33** νPLN construction: curried predicate type `μ : D → Ω → Bool`, capturing non-determinism via Ω. [L134-136]
+- **C-2-34** νPLN construction: multiple predicates reduce to a single global μ by adding a predicate-selector subdomain P. [L317-334]
+- **C-2-35** νPLN simplification: concepts are dropped; only predicate+implication is retained (via indicator-function/satisfying-set isomorphism). [L243-252]
+- **C-2-36** νPLN theoretical unification: the book's extensional vs. intensional inheritance split is **collapsed** — both approach the same inheritance, extensional via induction, intensional via abduction. Only one (extensional) is kept. [L254-266]
+- **C-2-37** νPLN preserves the book's STV (strength + confidence with Beta-distribution interpretation). [L278-286]
+- **C-2-38** νPLN preserves the book's NAL-adopted statement/judgment distinction. [L341-345]
+- **C-2-39** νPLN programme goal: derive every book rule from ν via Bayesian inference on the global distribution. [L349-352]
+- **C-2-40** νPLN programme goal: provide a **Solomonoff-style convergence theorem** for PLN. [L353-354]
+- **C-2-41** νPLN identifies **Predicate Direct Introduction** as a subcase of **Implication Direct Introduction** (implicant = Universal Predicate). [L360-365]
+- **C-2-42** νPLN notes that **Implication Direct Introduction is NOT explicitly stated in the PLN book** — it is derivable from iterated induction+revision, matching book §2.4.1 extensional-inheritance semantics (strength part), with Beta second-order matching book §4.2. [L394-405]
+
+### Directly addressing the "does nuPLN fix book limitations?" question
+
+- **C-2-43-consolidation** (meta-claim per brief focus question): **nuPLN explicitly addresses Source 1's "induction cannot be globally rescued" limitation** by (i) grounding induction in a global universal distribution ν rather than local PLN formulas, and (ii) aiming for a Solomonoff-style convergence proof. However, this is a **programmatic declaration, not a demonstration** — the derivation of any concrete PLN rule from ν is incomplete (both §4.1 and §4.2 end with `NEXT`). The theoretical architecture is laid out; the derivations are not.
+
+## §3 — Alternative truth-value types (Bl, Pr, STV)
+
+**All Bl/Pr/STV type definitions and methods live in a single file:** `experimental/early-pln/common/truthvalue/TruthValue.metta` (143 lines). CLAUDE.md:57-60 documents them but the actual definitions follow.
+
+### Verbatim type constructors
+
+- **C-3-1** (TruthValue.metta:10) Base type: `(: TruthValue Type)`.
+- **C-3-2** (TruthValue.metta:16-18) **Bl** — Boolean truth value, verbatim:
+  ```
+  ;; Boolean TV constructor
+  ;; TODO: alternatively we could have (: ⊤ TruthValue) and (: ⊥ TruthValue)
+  (: Bl (-> Bool TruthValue))
+  ```
+  Wraps a `Bool` into a `TruthValue`. Usage: `(Bl True)`, `(Bl False)`.
+- **C-3-3** (TruthValue.metta:20-21) **Pr** — First-order probability truth value, verbatim:
+  ```
+  ;; First order probability TV constructor, i.e. mere probability.
+  (: Pr (-> Number TruthValue))
+  ```
+  Wraps a `Number` (a probability in [0,1]) into a `TruthValue`. No confidence dimension.
+- **C-3-4** (TruthValue.metta:23-26) **STV** — Simple truth value, verbatim:
+  ```
+  ;; Simple Truth Value.  A Second order probability TV constructor,
+  ;; i.e. probability and confidence.  The probability is in fact the
+  ;; mode of the corresponding beta distribution.
+  (: STV (-> Number Number TruthValue))
+  ```
+  Two arguments: strength (mode of the associated Beta), confidence.
+
+### Constants
+
+- **C-3-5** (TruthValue.metta:32-45) Priors: `prior-alpha = 0.5`, `prior-beta = 0.5` — **Jeffreys prior** (explicit comment says so). `lookahead = 1.0` (count-to-confidence scale). `max-count = 1e9` (stand-in for +∞ until supported).
+
+### Method dispatch over {Bl, Pr, STV}
+
+- **C-3-6** (L86-91) `mode`:
+  ```
+  (= (mode (Bl True)) 1.0)
+  (= (mode (Bl False)) 0.0)
+  (= (mode (Pr $pr)) $pr)
+  (= (mode (STV $pr $_)) $pr)
+  ```
+- **C-3-7** (L93-100) `count`: `Bl` and `Pr` both evaluate to `(max-count)` = 1e9; `STV` computes `(confidence->count $conf)`.
+- **C-3-8** (L102-112) `confidence`: `Bl` → 1.0, `Pr` → 1.0, `STV` → its stored `$conf`.
+- **C-3-9** (L114-120) `pos-count $tv = mode × count`; `neg-count $tv = (1-mode) × count`.
+- **C-3-10** (L122-128) `post-alpha = prior-alpha + pos-count`; `post-beta = prior-beta + neg-count`. Uses the Beta-distribution Bayesian update.
+- **C-3-11** (L135-142) `mean`:
+  ```
+  (= (mean (Bl True)) 1.0)
+  (= (mean (Bl False)) 0.0)
+  (= (mean (Pr $pr)) $pr)
+  (= (mean (STV $pr $conf))
+     (let* (($a (post-alpha (STV $pr $conf)))
+            ($b (post-beta (STV $pr $conf))))
+       (/ $a (+ $a $b))))
+  ```
+  Note `mean ≠ strength` for STV — it's the Beta-distribution mean after Jeffreys prior update.
+
+### Interpretation vs. book / Sources 2-3
+
+- **C-3-12** **Bl and Pr are NOT the IndefiniteTruthValue or DistributionalTruthValue the book describes.** The book's IndefiniteTV is a (L, U, b) triple representing a credible interval; the book's DistributionalTV is a full distribution. `Bl` is degenerate (count = 1e9, confidence = 1.0: a crisp Boolean assertion); `Pr` is a single-number first-order probability with no confidence dimension. **They are a down-step from STV, not an up-step** — strictly less expressive than STV. STV itself remains the single point of access to a second-order (Beta) distribution.
+- **C-3-13** The TV hierarchy here is `Bl ⊂ Pr ⊂ STV` by expressiveness, all three unified into one `TruthValue` sum type. `Bl`/`Pr` are implemented as collapse cases for when confidence = 1 and either it's a Boolean or an arbitrary probability. Rule formulas like `Truth_Deduction`, `modus-ponens-formula`, `simple-deduction-strength-formula` only destructure `STV` (see `common/formula/ModusPonensFormula.metta:7-14`, `DeductionFormula.metta:39-54`); **no rule formula exists for Bl or Pr inputs**. They're defined but unused in inference.
+- **C-3-14** The supplementary TV type `EvidentialTruthValue` (`ETV`) at `common/truthvalue/EvidentialTruthValue.metta:19` wraps `(OrderedSet $a) TruthValue` — it's an evidence-set-ascribed TV, used by `ImplicationDirectIntroductionEntail.metta` and `..._Match.metta`. And `TemporalTruthValue` (`TTV`, `TETV`) at `common/truthvalue/TemporalTruthValue.metta:22-26` wraps `(-> Number TruthValue)` and `(-> Number EvidentialTruthValue)` respectively — **this is the only "temporal" machinery in the repo**. Time is discrete (per comment). No rules consume `TTV`/`TETV` anywhere; just type declarations. (Unused scaffolding.)
+
+### Verdict on §3 focus question
+
+- **C-3-15** **Bl/Pr do NOT implement the missing IndefiniteTV or DistributionalTV hierarchy.** They're degenerate cases of STV (crisp-Bool and no-confidence-probability respectively). The book's TV hierarchy remains unimplemented in `pln-experimental2`.
+
+## §4 — Missing-family recovery (re-run Source 2 V6 / Source 3 V5)
+
+Enumerating `experimental/early-pln/pln/*/*.metta` rule files and cross-referencing against the Source-2/3 missing list. **All rule files observed in the 4-encoding tree map to exactly 3 rules:**
+
+| Encoding dir | Files |
+|---|---|
+| `dependent-types/` | DeductionDTL, ModusPonensDTL, ImplicationDirectIntroductionDTL (+ tests + a combined DeductionImplicationDirectIntroductionDTLTest) |
+| `entail/` | DeductionEntail, ImplicationDirectIntroductionEntail (+ tests). **No ModusPonens entail variant.** |
+| `equal/` | DeductionEqual, ImplicationDirectIntroductionEqual (+ tests). **No ModusPonens equal variant.** |
+| `match/` | DeductionMatch, ImplicationDirectIntroductionMatch (+ tests + combined test). **No ModusPonens match variant.** |
+
+- **C-4-1 Rules implemented:** **Deduction** (×4 encodings), **ImplicationDirectIntroduction** (×4 encodings), **ModusPonens** (only the dependent-types encoding). That's 3 distinct rules total, 9 rule files.
+- **C-4-2** The `dependent-types/` encoding is the only complete (3-rule) one; the other three encodings drop ModusPonens. Implementation direction appears to have been: rule first in DTL, then back-ported to match/entail/equal for comparison, then ModusPonens was not back-ported.
+- **C-4-3** **Quantifier rules (ForAll, ThereExists, Existential Generalization, Universal Specification, Quantifier Exchange)** — **NOT RECOVERED**. Grep of `experimental/` for ForAll/ThereExists/Quantif: zero matches. (Grep scope: `experimental/` and root — only nuPLN.tex and next-token-prediction.md reference forward/backward-chaining conceptually, not rules.)
+- **C-4-4** **Temporal / causal rules (PredictiveImplication, SeqAND, DisjointSeqAND, EventualSeqAND, SimAND, PredictiveChain)** — **NOT RECOVERED as rules**. However: `experimental/early-pln/common/truthvalue/TemporalTruthValue.metta` exists as a TYPE DECLARATION scaffold only, with `TTV` = `(-> Number TruthValue)` and `TETV` = `(-> Number EvidentialTruthValue)`; no rule consumes these. `docs/use-cases/next-token-prediction/next-token-prediction.md:180-208` conceptually reuses **PredictiveImplication (`/-1->`)** and **sequential conjunction with lag (`|1\`)** — explicitly citing the *Temporal PLN* paper (Geisweiller 2023) — but **none of these constructors are implemented in the repo**. They are proposed use-case syntax.
+- **C-4-5** **Intensional ↔ Extensional conversion rules** — **NOT RECOVERED, AND EXPLICITLY DISSOLVED** by νPLN (see C-2-14). nuPLN.tex collapses the book's ext/int split into "extensional-via-induction, intensional-via-abduction", and retains only the extensional side. So the "missing conversion rule" question is **dissolved theoretically rather than resolved implementationally** in νPLN — and not at all addressed in `experimental/`.
+- **C-4-6** **Distributional / IndefiniteTV implementation (matrix or multi-element TV)** — **NOT RECOVERED**. See C-3-12, C-3-15. Neither `Bl`/`Pr` nor `STV` nor `ETV` implements an interval or a multi-element TV. `docs/use-cases/next-token-prediction/next-token-prediction.md:87-100` explicitly mentions *"upgrading PLN to support categories... The underlying Beta distribution would be replaced by a Dirichlet distribution"* citing opencog/atomspace#833 and the PLN book's distributional-TV chapter — but this is a stated desideratum, not code.
+- **C-4-7** **Concept-geometry deduction (k-sphere / 1-D interval models)** — **NOT RECOVERED**. No references anywhere in repo.
+- **C-4-8** **Multideduction (batch 3+ premise combination)** — **NOT RECOVERED as a rule**. The DTL encoding handles up to 5-premise Deduction via `Synthesize.metta:57-74` quintenary-rule support, so the synthesizer can in principle compose many premises, but there is no Multideduction RULE.
+- **C-4-9** **BRGI / OBI / Bayes-Net augmentation** — **NOT RECOVERED**. Grep: zero matches.
+- **C-4-10** **Attention / importance / ECAN-style values** — **NOT RECOVERED**. No AV, no STI/LTI. **However**: `next-token-prediction.md:42-46` explicitly names attention-allocation as a prerequisite for PLN-based LLM replacement: *"To have any hope of it working at all would require excellent, practical, sophisticated attentional allocation and inference control mechanisms."* — acknowledged as unsolved.
+- **C-4-11** **FactorGraph / MORK / M0RK-adjacent** — **NOT RECOVERED**. Zero grep matches (neither `FactorGraph`, `MORK`, nor `M0RK`).
+- **C-4-12** **Context as first-class link type** — **NOT RECOVERED**.
+- **C-4-13** **Possible-worlds variable instantiation machinery** — **PARTIALLY ADDRESSED THEORETICALLY** in nuPLN.tex via the Ω-parameter of μ (C-2-7, C-2-9). The random variable `M : Ω → L` is *"particularly important for higher order reasoning"* per nuPLN.tex:180. But no implementation exists.
+- **C-4-14 meta** — `experimental/early-pln/pln/` covers **only 3 rules (Deduction, ModusPonens, ImplicationDirectIntroduction)** vs. Source 2's 12-13 in PLN3 and Source 3's 14+ in PLN. **By rule count, `pln-experimental2` is substantially narrower than the "main" PLN lineage**, not broader. It is NOT the location where missing rule families are being recovered.
+- **C-4-15** One novel rule vs. Sources 2/3: **ImplicationDirectIntroduction (IDI)** — not present in PLN3 or PLN/, explicitly noted in nuPLN.tex as not in the book. It has a **direct-introduction-base formula** (`bool->number $qa` + `count->confidence 1`) and a **recursive formula** that folds boolean observations by `inc-pos-count`/`inc-neg-count`. Rule variants: base-case adds axiomatic `(ETV Empty (STV 1 0))`, then recursive step adds each evidence with ordering guard `⍃` (axiomatic `<`) or non-membership check `∉`. This IS a missing-family recovery: the book's direct-evidence aggregation written explicitly.
+- **C-4-16 random-notes dump** — `docs/pln-random-notes.txt` is a whiteboard-level sketch including: Revision, Induction/Abduction via iid premises, Conjunction-Introduction formulas, Inversion, Markov/Full Deduction, **Instantiation rule** (L742), **Negation Introduction** (L745), **Absurd Conjunction Introduction** (L749), **sequential conjunction** (`/\` with lag, L665-691), **temporal Rain/Wet** example with `{1_Jan_2025} -> Rain`. None of these are implemented in MeTTa; the file is explicitly brainstorming. But it documents the **direction of thought**: toward temporal, quantifier-style (Instantiation), and context (the Ctx & A => Goal section, L768-791).
+
+## §5 — Confidence-formula continuity with pln0.9 pivot
+
+`pln-experimental2` implements only 3 rules (Deduction, ModusPonens, ImplicationDirectIntroduction). Let me diff each confidence formula against Source 3's pln0.9 and Source 2's PLN3.
+
+- **C-5-1 Deduction confidence** (`common/formula/DeductionFormula.metta:52`):
+  ```
+  (min $Pc (min $Qc (min $Rc (min $PQc $QRc))))
+  ```
+  That is `min($Pc, $Qc, $Rc, $PQc, $QRc)`. **This MATCHES PLN3** and **PREDATES** the pln0.9 pivot (which uses `$PQs · $QRs · $PQc · $QRc`, per Source 3 findings §2.2). 5-way min over all 5 premise confidences; no strength multiplication.
+- **C-5-2 ModusPonens confidence** (`common/formula/ModusPonensFormula.metta:14`):
+  ```
+  (min (min $ABc $notABc) $Ac)
+  ```
+  where `$notABc = 1`. Effectively `min($ABc, $Ac)`. **Matches PLN3's `min($cAB, $cA)` pattern, PREDATES pln0.9's `$Ps · $PQs · $Pc · $PQc`.**
+- **C-5-3 ModusPonens strength** (`ModusPonensFormula.metta:12-13`):
+  ```
+  (+ (* $ABs $As) (* $notABs (- 1 $As)))    ; where $notABs = 0.2
+  ```
+  Algebraically: `sB = sAB·sA + 0.2·(1-sA)`. **Identical to PLN3 asymmetric MP** (Source 2 verified `c=0.02` for MP; but here the comment at L10 calls 0.2 "temporary hack" and the `ModusPonensDTL.metta:21-27` docstring concurs: *"P(B|Not A) = 0.2 which is a temporary hack"*). **Constant is 0.2, NOT 0.02** — this is **different from PLN3/PLN's 0.02**. Worth flagging: the constant may be an order-of-magnitude typo or intentional experimental choice, but either way it diverges from the pln-cluster consensus of 0.02 and from the book's §5.7.1.
+- **C-5-4 Deduction strength** (`DeductionFormula.metta:47-51`):
+  ```
+  (if (< 0.9999 $Qs)                  ; avoid division by 0
+      $Rs                              ; Qs tends to 1 short-circuit
+      (+ (* $PQs $QRs) (/ (* (- 1 $PQs) (- $Rs (* $Qs $QRs))) (- 1 $Qs))))
+  ```
+  **Matches PLN3's independence-based deduction formula verbatim.** Short-circuit threshold 0.9999 vs PLN3/PLN's 0.99 — a trivial numeric difference.
+- **C-5-5 Consistency guard** (`DeductionFormula.metta:16-20`): same as PLN3: `$ABs ≤ min(1, $Bs/$As)` and `$ABs ≥ max(0, ($As+$Bs-1)/$As)` — denominator `$As`, in line with PLN3's `trueagi-io/hyperon-pln DeductionDTL.metta` provenance.
+- **C-5-6 ImplicationDirectIntroduction formulas** (`common/formula/ImplicationDirectIntroductionFormula.metta:10-19`):
+  ```
+  direct-introduction-base-formula(qa) := STV(bool->number(qa), count->confidence(1))
+  direct-introduction-recursive-formula(False, STV s c) := inc-neg-count(STV s c)
+  direct-introduction-recursive-formula(True,  STV s c) := inc-pos-count(STV s c)
+  ```
+  **No PLN3/PLN counterpart** — this rule doesn't exist in Sources 2-3. So cannot compare. But the formulas themselves are book-legitimate: single-evidence case bootstraps with count=1 (confidence 0.5 per `count->confidence` with lookahead=1); recursive case does proper Bayesian updates.
+- **C-5-7 Conclusion** — **`pln-experimental2` PREDATES the pln0.9 multiplicative-confidence pivot.** Its 3 rules use min-based confidence (Deduction, MP) or direct-Bayesian-update confidence (IDI), matching the PLN3 / Source-1-book pattern. There is no `Truth_or` usage. The repo's commits are 2026-03-12 ("Misc") per brief, so the code is recent but the formulas are from the pre-pivot era — the repo has simply not been updated to adopt the pivot, consistent with `experimental/README.md` flagging this code as "probably no longer relevant."
+
+## §6 — Maxima symbolic derivations (`conjunction-xp.mac`, 387 lines)
+
+**The `.mac` is an exploratory numerical/symbolic workbook studying the conjunction-introduction rule's second-order distribution under different independence assumptions.** It's computation-heavy (histograms, plots, fit-to-beta), not proof-theoretic. Key claims:
+
+- **C-6-1 Primary question** (per README `truth-value-formula/conjunction-introduction/README.md:22-28`): *"What is the probability distribution obtained from applying a rule formula to premises which are themselves first order probabilities?"* i.e. for conjunction-introduction `A ≞ TVA, B ≞ TVB ⊢ (A ∧ B) ≞ TVAB`, what does TVAB look like once we integrate over possible first-order probabilities?
+- **C-6-2 Core mathematical object** (`.mac:59-75`, README L72-98): the probability distribution of `|A ∩ B| = k` under uniform random placement, derived from binomial combinations and rewritten using Stirling's approximation:
+  ```
+  Pr(pAB = x) = (sqrt(pa·pb·(1-pa)·(1-pb)) / sqrt(2π·n·(pa-x)·(pb-x)·x·(x-pb-pa+1)))
+              · ((pa^pa · pb^pb · (1-pa)^(1-pa) · (1-pb)^(1-pb))
+                 / ((pa-x)^(pa-x) · (pb-x)^(pb-x) · x^x · (x-pb-pa+1)^(x-pb-pa+1)))^n
+  ```
+  This is defined in the `.mac` as `mstpr(n, pa, pb, x)` at L109, after 6 successive manual simplifications starting from a Stirling-substituted pcpr (L82) and culminating at the cleanest form.
+- **C-6-3 First finding** (README L60-69): for independence sampling, as universe size `n → ∞`, the distrolet **converges to a Dirac delta at pAB = pA·pB**. Verbatim: *"considering all possible ways that A and B could be distributed without any additional knowledge about them other than the fact that they are uniformly randomly distributed is equivalent to assuming that they are independent!"* Numerically verified by plotting at n=50, 100, 200, 400, ... 4×10⁶.
+- **C-6-4 Second investigation** (README L124-352): adds an extra premise `A → B ≞ TVab` as a dependency-capturing term. Derives the bounds `max(1+(pb-1)/pa, 0) ≤ pab ≤ min(1, pb/pa)` (assuming `0 < pa`). Uses "uniform distrolet" (uniform sampling within bounds) and "extreme distrolet" (bimodal at endpoints) as sampling strategies to compute the resulting TV on `A ∧ B`.
+- **C-6-5 Third variation** (README L354-549): replaces `A → B` by `A ↔ B` (equivalence). Derives `pAB = (pa·pab + pb·pab) / (1+pab)` from `pab = P(A∧B|A∨B) = pAB/(pa+pb-pAB)`. Observed effect: over 9 premise-pair trials, mean of A∧B is greater under `A↔B` vs. `A→B` in 8/9 cases (statistically significant). Variance differences not significant.
+- **C-6-6 Headline conclusion** (from README L348-352): *"the structure of a composite predicate, like a conjunction of two predicates, by itself provides some forms of evidence. In other words, evidence can be obtained not just from direct observations but from structures as well."* — theoretical finding that matters for νPLN.
+- **C-6-7 Also in the `.mac`**: fit-alpha/fit-beta to fit an unscaled Beta to empirical mean/variance at L153-155; beta-distribution mean/variance formulas at L162-164; the `NEXT`-marked `fit_scaled_alpha`, `fit_scaled_beta`, `scaled_beta_distr_mean`, `scaled_beta_distr_variance` at L170-180 (incomplete implementations).
+- **C-6-8 Relationship to implemented rules**: **The `.mac` work has NOT been ported back into any rule formula.** The existing `DeductionFormula.metta` and `ModusPonensFormula.metta` use the classical (pre-distrolet) formulas. There is no `ConjunctionIntroductionFormula.metta` at all in `common/formula/`. The Maxima investigation is **purely exploratory** and its conclusions have not influenced the code.
+- **C-6-9 Relevance to pln0.9's multiplicative-confidence pivot**: the `.mac` work is **orthogonal** to the pivot. It does NOT validate or invalidate `$Ps · $PQs · $Pc · $PQc`; it studies something different — the full second-order distribution of the conclusion under different independence assumptions, not a closed-form confidence update. However, C-6-6 ("structure provides evidence") **arguably supports** the pivot's spirit: if structural relationships add evidential weight, then a confidence formula that's multiplicative in strength (and so picks up strength-induced evidence propagation) is more defensible than pure min-based aggregation.
+- **C-6-10 `.mac` bugs / unfinished**: there are 2 typos in `stv_to_beta` (`nc: (1-strength)*c` uses undefined `c`; `prior_alpha: 1` re-binds rather than `prior_beta: 1`) at L14. Comment at L319-321 says *"NEXT: explore using A<->B instead of A->B"* — subsequently addressed at L319+ (done). 4 `NEXT` placeholders at L170-180 for scaled-beta fitting.
+- **C-6-11 Discovered reference**: `PLN_AND_Confidence_Framework.md.pdf` — referenced from README L358 as "Ben's document". Not in local.bib. Suggests a **Goertzel private note** on the AND-confidence framework; may or may not be publicly available.
+
+## §7 — Bug carryover status (V7–V9 re-run)
+
+- **C-7-1 V7 Truth_inversion strength bug**: **NOT APPLICABLE** — there is no Inversion rule in `pln-experimental2`. (V7 bug did not propagate; not because fixed, but because absent.) The `docs/pln-random-notes.txt:454-474` whiteboard notes sketch Inversion in the "Markov/Full Deduction" context but with no formula.
+- **C-7-2 V8 Truth_Revision confidence clamp bug**: **NOT APPLICABLE** — no Revision rule is implemented. Same caveat as V7.
+- **C-7-3 V9 TransitiveSimilarity zero-division**: **NOT APPLICABLE** — no TransitiveSimilarity rule. (Division risk in DeductionFormula at L34 uses `(- 1 $Bs)` denominator which would divide by zero if `$Bs = 1`; however the short-circuit at L47-51 — `if $Qs > 0.9999 then $Rs else …` — prevents this. **So the analogous div-risk in Deduction here is GUARDED**, unlike the unguarded TransSim in Sources 2-3.)
+- **C-7-4 ModusPonens 0.2 vs. 0.02 "hack"**: NEW to `pln-experimental2`. `modus-ponens-formula` uses `$notABs = 0.2` (10× the PLN3/PLN constant 0.02). The docstring at `ModusPonensDTL.metta:21-27` explicitly calls 0.2 "a temporary hack" and recommends *"ideally one should use a precise modus ponens (requiring P(B|Not A) as premises), and then if missing, these premises could be estimated via other rules."* **This is a divergence from PLN3 and PLN/ numerical constants.**
+- **C-7-5 Consistency guard status**: identical to PLN3/PLN (denominator `$As`), so no bug carried.
+
+## §8 — Status / open issues / TODOs
+
+- **C-8-1 Repo status**: Active per commit date 2026-03-12 "Misc" (brief's hash). But the active code is `docs/nuPLN/nuPLN.tex` and `experimental/truth-value-formula/conjunction-introduction/`, NOT the rule encodings. `experimental/early-pln/README.md:1-8` says verbatim *"This code was written early on while still in process of learning MeTTa. It is not expected to be useful anymore but kept because some pieces of code here and there may still be reused."* **The author has self-disavowed the `early-pln/` tree.**
+- **C-8-2 Orientation-doc divergences**:
+  - CLAUDE.md:52 claims **"60 implementation files"** — matches my glob count exactly.
+  - CLAUDE.md:57-60 correctly documents Bl, Pr, STV TV types. **Accurate.**
+  - CLAUDE.md:62-67 lists "Core Modules: TruthValue.metta, DeductionFormula.metta, ModusPonensFormula.metta, Unify.metta". **Accurate but undercounts** — it omits `ImplicationDirectIntroductionFormula.metta`, `EvidentialTruthValue.metta`, `TemporalTruthValue.metta`, `MeasEq.metta`, `Synthesize.metta`.
+  - AGENTS.md:3-5 positions this as a "Near-identical copy of `pln-experimental`". Confirmed by brief.
+  - GEMINI.md:3-11 consistent. Both AGENTS and GEMINI describe the repo as a mirror; neither mentions the `nupln-xt` branch CLAUDE.md:7 cites.
+- **C-8-3 TODO / NEXT / FIXME markers**:
+  - 6 `\cite{TODO}` in nuPLN.tex (no cite resolved) + 2 `NEXT` paragraph-ends in nuPLN.tex (derivations incomplete) + 1 empty `\subsection{Truth Value as Posterior Distribution}` + 1 empty `\section{conclusion}`.
+  - 4 `NEXT` placeholders in `conjunction-xp.mac:170-180` (scaled-beta fitting).
+  - 1 TODO in `TruthValue.metta:17` about `⊤/⊥` alternative for Bl.
+  - 1 TODO in `Synthesize.metta:29-30` about currying over rules.
+  - 1 comment in `ModusPonensFormula.metta:10` about `$notABs = 0.2` being "temporary hack".
+  - 1 comment in `ModusPonensDTL.metta:21-27` calling out the MP precision issue and recommending refinement.
+  - 1 comment in `ImplicationDirectIntroductionMatch.metta:55-61` flagging a MeTTa-interpreter bug with `let*` and a workaround suggested by "Alexey".
+- **C-8-4 Disabled tests**: `conjunction-xp.mac:385-387` contains a commented-out `plot_equdistrolet_conjunction_introduction(1000, 100, 0.01, 0.01, 0.01, 0.01, 110)` disabled because of zero divisor.
+- **C-8-5 Dead-code / orphan refs**:
+  - `common/EqualityType.metta` exists but is orphan; only used in `EqualityTypeTest.metta`.
+  - `common/BelieveMe.metta` is an orphan file (nothing imports it).
+  - `TemporalTruthValue.metta` is orphan — no code consumes TTV/TETV.
+  - `MeasEq.metta` is used only by DTL-encoding deduction and MP (match/entail/equal encodings don't import it).
+- **C-8-6 Whiteboard lead content** (`docs/pln-random-notes.txt`, 791 lines): unstructured but includes sketches of **Revision**, **Induction over iid premises**, **Abduction over iid premises**, **Markov Deduction**, **Full Deduction**, **Conjunction Introduction with TV1·TV2 product formulas**, **Instantiation**, **Negation Introduction**, **Absurd Conjunction Introduction**, **sequential conjunction** (`|1\`), **"Making sense goal" chain with Ctx & A => Goal**. These are clearly future-work backlog items.
+- **C-8-7 Active research directions evident from the repo**:
+  1. Complete nuPLN.tex derivations (finish §4.1 and §4.2).
+  2. Generalize Bl/Pr to Dirichlet for next-token prediction use case.
+  3. Port conjunction-introduction distrolet work into a rule formula.
+  4. Evaluate `A↔B`-vs-`A→B` extra-premise choice for ConjunctionIntroduction.
+  5. Define ConjunctionIntroduction and PatternToPredicate rule formulas based on the surprisingness document.
+- **C-8-8 Key use-case documents**:
+  - `docs/surprisingness/surprisingness.md` (332 lines): operationalizes surprisingness as *"Difference between truth value inferred empirically and truth value inferred non-empirically"* using e.g. Jensen-Shannon divergence. Proposes a `PatternToPredicate` HOF to bridge pattern-mining and predicate-reasoning.
+  - `docs/use-cases/next-token-prediction/next-token-prediction.md` (222 lines): **declares PLN-as-LLM-substitute as a research goal.** 7 advantages (sample efficiency, no semantic parsing, logical knowledge injection, goal-driven fine-tuning substitute, online learning, reasoning-level flexibility, reduced hallucination) and 2 disadvantages (compute cost, attention-allocation requirement). Two proposed representations: `NextToken : (List Token) → Ω → Token` and `IthToken : Nat → Ω → Token` using Dirichlet TVs. Explicitly asserts the current Beta-distribution TV must be **upgraded to Dirichlet** to handle categorical Token output.
+- **C-8-9 Next steps signaled**: The repo's research frontier is (a) completing nuPLN.tex, (b) implementing categorical/Dirichlet TV for tokens, (c) extending the Maxima-derived distrolet evidence into rule formulas. None of these are live in code.
+
+## §9 — Discovered publications
+
+### Explicit citations in-repo
+
+- **C-9-1** `docs/nuPLN/local.bib` (121 entries total). Key PLN-adjacent entries:
+  - `Solomonoff1964` — *A Formal Theory of Inductive Inference*, Information and Control, Vol 7 (1964). [bib L597-603]
+  - `Goertzel09PLN` — *Probabilistic Logic Networks: A Comprehensive Framework for Uncertain Inference*, Goertzel/Ikle/Goertzel(Izabela)/Heljakka, Springer US 2009. [bib L605-611] Author list here says "2009" which matches the Springer-book publication date (though the manuscript is tagged "PLN_BOOK_6_27_08" in next-token-prediction.md:100 — 2008-06-27 draft).
+  - `Goertzel2014EGI1`, `Goertzel2014EGI2`, `Goertzel2014EGI2Chapt18` — *Engineering General Intelligence* Parts 1, 2, and ch. 18 specifically. Goertzel/Pennachin/Geisweiller 2014. [bib L560-580]
+  - `Warrell2016` — *A Probabilistic Dependent Type System based on Non-Deterministic Beta Reduction*, Jonathan H. Warrell, ArXiv 1602.06420. [bib L1124-1130]
+  - `Warrell2022` — *A meta-probabilistic-programming language for bisimulation of probabilistic and non-well-founded type systems*, Warrell/Potapov/Vandervorst/Goertzel, AGI 2022. [bib L1151-1155]
+  - Supporting: Lean (de Moura et al 2015), Idris (Brady), Hoeffding1963, Bertot-Coq, Altenkirch05 (dependent types), Vazou2014 (refinement types for Haskell).
+- **C-9-2** The **majority of local.bib entries** (~90+) are AI-DSL-era references (SingularityNET, gRPC, Protobuf, FIPA-ACL, Protocol Buffers, Niles-Pease SUMO, KIF, SWRL, etc.). This is NOT a PLN-focused bib; it was inherited from an earlier AI-DSL project and carried into the nuPLN document.
+- **C-9-3** `docs/nuPLN/nuPLN.tex` has 4 `\cite{TODO}` un-resolved. Likely intended citations: Solomonoff1964 (at L57), Goertzel09PLN (at L79), a Goertzel–Ikle post-book publication (at L89; likely `Warrell2016` or `Warrell2022`, since both match the "global-probability-distribution" framing, or possibly `Goertzel2014EGI2Chapt18`), and forward-ref for an example prior at L213.
+- **C-9-4** `README.md` cites externally (not in bib):
+  - Geisweiller & ??? *Probabilistic Logic Networks for Temporal and Procedural Reasoning* (ResearchGate 370994045) — the "Temporal PLN" paper re-cited in next-token-prediction.md:191.
+  - Geisweiller AGI-23 presentation video (odysee link).
+- **C-9-5** `docs/pln-random-notes.txt` — no explicit citations.
+- **C-9-6** `docs/surprisingness/surprisingness.md` — no explicit citations (mentions Jensen-Shannon divergence as a standard technique, not a paper).
+- **C-9-7** `docs/use-cases/next-token-prediction/next-token-prediction.md:98` — cites opencog/atomspace#833 GitHub issue ("generalization of distributional truth values") and the ResearchGate Temporal-PLN paper at L191.
+- **C-9-8** `truth-value-formula/conjunction-introduction/README.md:358` — references "Ben's document" `PLN_AND_Confidence_Framework.md.pdf` — local file, likely Goertzel private note. Potential new publication.
+- **C-9-9** `truth-value-formula/conjunction-introduction/README.md:420` — references `bound-proof-deepseek.org`, appears to be a local DeepSeek-generated derivation log. Not a paper.
+- **C-9-10 Most-relevant bib entries to flag for wiki follow-up** (not explicitly surfaced by Sources 1-3):
+  - `Warrell2016` (Warrell's dependent-type probabilistic reformulation of PLN-adjacent theory).
+  - `Warrell2022` (Warrell/Potapov/Vandervorst/Goertzel AGI-22 meta-PPL paper) — extremely close to νPLN's "model-as-program" framing.
+  - `Goertzel2014EGI2Chapt18` (EGI volume 2 chapter 18).
+  - `Geisweiller Temporal PLN` (ResearchGate 370994045) — already cited in Source 3 references? (Source 2/3 do not list this paper.)
+- **C-9-11** Net contribution to wiki publications coverage: **2 new PLN-theory papers to flag** (Warrell2016, Warrell2022) plus the **Temporal PLN** paper (Geisweiller 2023, ResearchGate 370994045), **EGI vol 2 ch 18**. None of these appeared in Sources 1-3 reconciliation publications tables.
+- **C-9-12** Inferred intent: the nuPLN.tex `\cite{TODO}` at L89 citing *"a publication released after the PLN book by the principal authors of the PLN book, Ben Goertzel and Matt Ikle, very much aligns with the idea of a global probability distribution"* is likely `Goertzel2014EGI2Chapt18` — the closest local.bib entry matching Goertzel+Ikle authorship and post-PLN-book timeframe. Flag for citation resolution.
+
+## §10 — Relationship to other PLN repos
+
+- **C-10-1** Explicit positioning in the repo's own README (L5-7): *"This repository contains a number of experiments about Probabilistic Logic Networks (PLN). For a more production-ready version one may go to the PLN repository instead."* → Explicitly **downstream / sibling** to `trueagi-io/PLN` (Source 3).
+- **C-10-2** AGENTS.md:3-4 and GEMINI.md:3 position `pln-experimental2` as a **mirror** of `ngeiswei/pln-experimental`, which is itself a fork of `trueagi-io/pln-experimental`. **Fork-of-fork: the (ngeiswei) layer contains a `nupln-xt` branch not upstream** (CLAUDE.md:7).
+- **C-10-3** Relative to Sources 2-3-5:
+  - Source 2 `PLN3` (ngeiswei modular fork, 55f1751, Aug 2025): **parallel, narrower**. PLN3 has forward-chaining Deriver, `build.sh`, 12-13 rules. `pln-experimental2` has none of these; it's research scaffolding.
+  - Source 3 `PLN/` (trueagi-io, 4405956, pln0.9, March 2026): **the "production" destination per README**. `pln-experimental2`'s work (νPLN theory, Bl/Pr types, Maxima distrolets) is likely a theoretical seed for future PLN/ rule formulations. Not upstream of PLN/.
+  - Source 5 `hyperon-pln` (patham9, DTL 2023-dormant, per Source 3 lineage note): **closely related**. The `dependent-types/` encoding in `pln-experimental2/experimental/early-pln/pln/dependent-types/` uses the SAME `≞` ("Measured By") symbol and the SAME `(: DeductionDTL ...)` dependent-type-logic formalism that `hyperon-pln` (DeductionDTL.metta) is cited for in Sources 2/3. **`experimental/early-pln/pln/dependent-types/` may be the direct ancestor of `hyperon-pln`'s DTL formalization**, or a contemporary sibling experiment.
+- **C-10-4** Direct code-internal cross-references to other PLN repos: **zero**. No `git-import!`, no `opencog/pln` citation, no `trueagi-io/PLN` citation in source comments. The repo is self-contained theoretically; all cross-PLN references go through the README external-link list.
+- **C-10-5** Does `pln-experimental2` acknowledge PLN3 / PLN/? **No direct code acknowledgement.** The README mentions `trueagi-io/PLN` only. No mention of PLN3 or pln0.9. But note that the repo's commit date (2026-03-12) predates pln0.9's merge (2026-03-15 per Source 3) by 3 days, so this repo was not yet aware of the pln0.9 consolidation.
+- **C-10-6** **Summary:** `pln-experimental2` is a **research/theoretical sandbox**, not an implementation repo. Its downstream relationship to `trueagi-io/PLN` is declared in README; its actual contribution to the PLN lineage is (a) the νPLN manuscript (theoretical), (b) the Bl/Pr/STV type system (a cleaner reformulation), (c) the DTL/entail/equal/match rule-encoding experiments (methodological, seeding `hyperon-pln`), (d) the Maxima distrolet analysis (experimental). **It is sibling to PLN3 and upstream to hyperon-pln (probably); it is NOT where missing rule families are being recovered.**
+
+---
+
+*End of Source 4 Claude findings for `pln-experimental2`.*

@@ -1,0 +1,45 @@
+Source 10 Codex reconciliation notes
+Date: 2026-04-25
+
+Scope
+- Inputs compared: findings_claude.txt, findings_codex.txt, findings_gemini.txt.
+- Sources: ai-agents + CeTTa adjacent-tree reality check.
+
+Consensus classification
+- Recommended status label: PROTOTYPE-ALMOST-COMPLETE-WITH-GAP.
+- Do not call the PLN kNN/NB stack fully implemented end-to-end.
+- Do not call it paper-only.
+- Accurate phrasing: Python premise-selection scripts and Lean bridge theorems are present in ai-agents; CeTTa has active World-Model PLN / evidence-algebra runtime libraries and biomedical tests; the cited PeTTa selector layer and some exact cited files are missing from this checkout.
+
+Three-way agreements
+- ai-agents is a multi-formalism proof / ATP / benchmark workspace, not a production PLN runtime.
+- The PLN-relevant executable line is in atps/scripts, especially select_pln_mixture_local_nb.py and related selectors.
+- The formal-proof line is in lean-projects/mettapedia, with the headline theorems toStrength_nbEvidence_eq_nbPosterior and PLN_hplusPos_eq_knnRelevance present and not placeholder proofs.
+- The PLN-kNN-NB paper reports a 30s/top-256 E result where MaSh NB and PLN mixture-local tie at 327/800.
+- The reported benchmark is not locally reproducible from this checkout because the dataset, pooled dependency JSONL, and PeTTa-side selector .metta files are missing.
+- CeTTa is a real and active runtime line for World-Model PLN / evidence algebra, including lib_wmpln.metta and lib_wmpln_evidence.metta.
+- CeTTa has biomedical WM-PLN tests, including drug / genomics hypothesis surfaces.
+- lib_pln_xi.metta, hyperon/PeTTa/demos/pln_*_selector*.metta, and hyperon/PeTTa/pln_inference/pln_evidence.metta are absent at the cited paths in this local corpus.
+
+Important wording cautions
+- Gemini's "CeTTa is the production home" should be softened unless Claude has deployment evidence. Source evidence supports "active runtime host / implementation line" rather than production deployment.
+- Gemini's "lib_wmpln.metta appears to be the realized implementation of xiPLN concepts" is plausible but inferential. Keep it as an inference, not a verified identity with the missing lib_pln_xi.metta.
+- "Biomedical apps are fully implemented and tested" should be scoped to the observed CeTTa test surface. It does not prove the full biomedical application stack is production-ready.
+- "Proof-carrying stack" is a useful narrative, but the runtime selectors are not currently proof-carrying end-to-end because the PeTTa selector layer is missing locally.
+
+Suggested wiki narrative
+- The current Hyperon/PLN production line remains a confidence-priority forward-chaining system.
+- A newer adjacent World-Model / evidence-algebra line exists in ai-agents + CeTTa.
+- ai-agents supplies formal proofs and benchmark Python scripts that show Naive Bayes and kNN premise selection can be expressed as PLN evidence algebra.
+- CeTTa supplies MeTTa runtime libraries for World-Model PLN and evidence quantale operations, with biomedical test cases.
+- The bridge from the formal/Python line into PeTTa MeTTa selector runtime is incomplete in the local corpus: the exact selector .metta files and lib_pln_xi.metta are missing.
+
+Recommended Source 10 reconciliation conclusion
+- Source 10 resolves the Source 9 implemented-vs-prototype dispute as both sides partially right.
+- Implemented: Python selector logic, Lean proof bridges, CeTTa evidence algebra runtime support, and biomedical WM-PLN tests.
+- Missing / unreproduced: cited PeTTa selector runtime layer, exact xiPLN library path, benchmark dataset/dependency artifacts, and local benchmark reproducibility.
+- Expert-review framing: this is a serious adjacent realization of the World-Model evidence-algebra direction, but not yet integrated into the production PLN/PLN3 MeTTa line and not locally complete as an end-to-end premise-selection runtime.
+
+Source 11 implications
+- Source 11 should not only be "full-text upgrades" for older stubs; it should also inventory the new ai-agents/mettapedia paper backlog.
+- High-priority new papers for backlog triage: xiPLN, nuPLN, wm-pln-book_v3, mork-mm2-pathmap-formalization, world-model-calculus, PLN-kNN-NB, wm-pln-genomic-hypothesis, and any governance / evidence-calculus papers that define the World-Model line.

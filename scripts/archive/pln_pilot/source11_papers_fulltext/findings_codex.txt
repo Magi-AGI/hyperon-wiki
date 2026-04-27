@@ -1,0 +1,282 @@
+Model: Codex
+Extraction date: 2026-04-25
+Source: Source 11 - Full-text upgrades + late-breaking formalizations
+ai-agents commit: 32b1e97dbd0516b114798db32e11e2a5e08a4fce (2026-04-25, Zar Goertzel; "...")
+CeTTa commit: cd744d579b57750142212ed97df6e8c718991320 (2026-04-23, Zar Goertzel; "separate pathmap runtime-stats lane from normal backend tests")
+Method: source-based extraction only; no builds/tests run
+Lane A papers: 3
+Lane B papers: 4
+Lane C: inventory only
+Claim counts: A1=8, A2=7, A3=8, B1=10, B2=10, B3=9, B4=9, Lane C=17 entries
+
+Summary
+- Lane A confirms that the wiki Markdown publication cards are stub-level even where RawData/full JSON exists.
+- ECAN is the historically precise source for attention-mediated PLN inference control, but it does not close the current Hyperon-MeTTa missing-control-layer gap.
+- The local JSONs for OpenCog NS and Compositional Spatiotemporal Deep Learning are relevant neural-symbolic architecture sources, but they are not the full text of the 2013 FISHGRAM/PLN paper. That card remains a stub/full-text gap.
+- B1 partially revises Source 8: ZAM is absent from MORK Rust source, but is now explicitly formalized in the ai-agents Lean/PathMap/MORK paper.
+- B2 resolves the lib_wmpln ~= lib_pln_xi question negatively/inconclusively: xiPLN.tex does not mention lib_pln_xi.metta, and it says operational runtime closure remains pending. lib_wmpln.metta is an adjacent implementation of evidence operations, not a verified renamed xiPLN runtime.
+- B3/B4 strengthen the cluster narrative: World-Model PLN is state-first because local per-link evidence cannot recover joint correlations, and Markov/de Finetti results give a measure-theoretic justification for carrying evidence statistics.
+
+### Economic Attention Networks (Lane A1)
+
+Source: publication_texts/json/Economic_Attention_Networks.json
+Length: 28,980 bytes; word_count=4514
+Authors: Matthew Ikle, Joel Pitt, Ben Goertzel, George Sellman
+Date / version: 2009; source URL http://agi-conf.org/2009/papers/paper_63.pdf
+Wiki card check: RawData+Publications+Economic Attention Networks exists and contains full raw text. Publications+Economic Attention Networks is only a 755-character Markdown stub.
+
+Core claims:
+- A1-1. ECAN is a graph-level resource-allocation and associative-memory system. Atoms carry STI and LTI values; Hebbian/InverseHebbian links carry probability values; the update equations evolve STI, LTI, and Hebbian probabilities.
+- A1-2. STI and LTI are explicitly treated as artificial currencies. The paper emphasizes conservation of total STI/LTI except for controller-driven inflation/deflation, making ECAN different from ordinary activation-spreading networks.
+- A1-3. Attentional Focus is thresholded on high STI. Hebbian probability values represent odds that if one atom is in the focus, another also is; InverseHebbian values represent odds of exclusion.
+- A1-4. Variant 1 includes rent/wage updates, conjunction-based Hebbian probability updates, stochastic/threshold diffusion through a normalized diffusion matrix, and homeostatic tax/rent adjustment.
+- A1-5. The paper proves a convergence result for a subset of hyperbolic decision functions using a contraction-mapping argument, and separately describes a Variant 2 designed around AVDIFF as a Lyapunov-style function.
+- A1-6. ECAN's associative-memory experiments are conditional: capacity is comparable to a Hopfield net only when ECAN parameters let the imprinted memories fit into the attentional focus.
+- A1-7. The direct PLN link is explicit. ECAN is intended to guide PLN forward/backward chaining by weighting possible inference steps using STI values of involved atoms, while inference results reward atoms with STI/LTI according to utility.
+- A1-8. The paper's PLN-control mechanism is not the URE Bayesian Thompson/MixtureModel stack from Source 6. It is an older attention-currency layer that can bias a bandit-style choice among inference steps; it does not by itself supply BIT, rule posterior learning, or mixture-of-control-policy machinery.
+
+Code-implementation status:
+PAPER-ONLY for the current Hyperon-MeTTa PLN line; historically implemented in OpenCog. Source 6/7 showed the current MeTTa production line has only confidence-priority queues, and chaining preserved only toy-scale inference control. ECAN gives the missing conceptual layer but not a current implementation in PLN/, PLN3, or CeTTa.
+
+Cross-source reconciliation:
+- Agrees with Source 6 that serious inference control was a central OpenCog-era concern.
+- Does not contradict Source 6's URE finding: URE extends beyond this paper with Bayesian Thompson sampling and MixtureModel control.
+- Does not close Source 7's migration question; current chaining has only toy-scale control-rule ideas.
+
+Wiki implications:
+- Publications+Economic Attention Networks needs a full-content upgrade. It currently says only that ECAN uses economic metaphors to allocate attention.
+- Missing from the card: STI/LTI currency conservation, Attentional Focus semantics, rent/wage/tax/diffusion equations, convergence theorem, Variant 2 AVDIFF/Lyapunov framing, associative-memory caveat, and the explicit ECAN-PLN inference-control loop.
+- Hyperon AI Algorithms+PLN+PLN Full should cite ECAN as the historical attention-control proposal, not as a current production inference-control implementation.
+
+Unresolved questions / forward references:
+- The follow-up PLN_ECAN_2015v1 paper in publication_texts/mattermost_papers is a better source for actual PLN+ECAN experiments and should remain in the Source 9/Source 12 backlog if ECAN gets a focused pass.
+
+### OpenCog NS Hybrid Neural-Symbolic (Lane A2)
+
+Source: publication_texts/json/OpenCog_NS_Hybrid_Neural-Symbolic.json
+Length: 29,255 bytes; word_count=4144
+Authors: Ben Goertzel
+Date / version: 2009/2010; source URL http://goertzel.org/neurosym.pdf
+Wiki card check: RawData+Publications+OpenCog NS Hybrid Neural-Symbolic exists and contains full raw text. Publications+OpenCog NS Hybrid Neural-Symbolic is a 624-character Markdown stub.
+
+Core claims:
+- A2-1. The paper defines a deeply interactive hybrid neural-symbolic architecture as one where neural and symbolic components frequently intervene in each other's internal operations, forming one coupled dynamical system.
+- A2-2. OpenCog NS combines OpenCog Prime with a hierarchical attractor neural network (HANN), not a generic neural embedding layer.
+- A2-3. Its architectural objective is global/local memory synergy: each memory type should have globalist and localist substores that interact synergetically.
+- A2-4. The proposed HANN layout includes primary, high-level procedural, low-level procedural, and episodic HANNs, linked to OpenCog memory and process types.
+- A2-5. The grounding seam is MemberLinks between HANN attractors and AtomSpace ConceptNodes. MemberLink weights represent fuzzy attractor membership.
+- A2-6. Activation/STI conversion is explicit: activation may spread from NN nodes to ConceptNodes, STI may spread back, and a conversion rate between NN activation and STI currency must be maintained by the OCP central bank.
+- A2-7. The paper states OCNS has not yet been implemented, making its properties speculative even as an architecture specification.
+
+Code-implementation status:
+PAPER-ONLY / architectural proposal for the current cluster. No Source 2-10 repo implements HANN/AtomSpace MemberLink neural-symbolic coupling or NN-activation-to-STI conversion.
+
+Cross-source reconciliation:
+- Aligns with A1/ECAN on STI as the attention currency and with Source 9's "neural-symbolic perception" stream.
+- Does not match Gemini's Source 9 "Predicate-as-Indicator-Function" nuPLN claim except at a very high conceptual level: this paper is attractor-to-AtomSpace linking, not formal predicate-as-indicator extensional semantics.
+- It is older than, and orthogonal to, the World-Model/evidence-carrier line in B2/B3/B4.
+
+Wiki implications:
+- Publications+OpenCog NS Hybrid Neural-Symbolic needs full-content upgrade. Missing: global/local memory taxonomy, HANN decomposition, MemberLink grounding seam, NN activation <-> STI conversion-rate requirement, and the explicit "not implemented" caveat.
+- The card's current phrase "how MeTTa can interface with neural network components" is too modern unless marked as an analogy. The paper predates MeTTa and speaks in OpenCog/AtomSpace/HANN terms.
+
+Unresolved questions / forward references:
+- If current Hyperon has a neural grounding implementation, it must be located in later repos; this paper does not prove current implementation.
+
+### Compositional Spatiotemporal Deep Learning (Lane A3)
+
+Source: publication_texts/json/Compositional_Spatiotemporal_Deep_Learning.json
+Length: 38,126 bytes; word_count=5724
+Authors: Ben Goertzel
+Date / version: 2011; source URL http://goertzel.org/cognitive_systems_2011.pdf
+Wiki card check: Publications+Compositional Spatiotemporal Deep Learning exists and is a 705-character Markdown stub. No exact RawData+Publications+Compositional Spatiotemporal Deep Learning card was found by MCP name search. Publications+Deep Learning Perception with PLN is a separate 642-character Markdown stub.
+
+Core claims:
+- A3-1. This JSON is the 2011 "A Novel Strategy for Hybridizing Subsymbolic and Symbolic Learning and Representation" paper, not the 2013 "Deep Learning Perception with PLN" / FISHGRAM paper.
+- A3-2. The paper introduces CSDLNs as a category covering HTM, DeSTIN, and related systems whose hierarchies mirror spacetime structure.
+- A3-3. The core integration claim is that meaningful symbolic/subsymbolic integration requires dynamic adaptive linkage and conversion between CSDLN attractors and analogous symbolic representations.
+- A3-4. The proposed solution is a tripartite semantic CSDLN: semantic-perceptual, semantic-motoric, and semantic-goal hierarchies bridging CSDLN attractors to OpenCog AtomSpace.
+- A3-5. Semantic CSDLN nodes are not raw vectors. They contain abstract patterns and local semantic networks, potentially with spatial/temporal relationship labels.
+- A3-6. Learning includes a feedback loop: mine frequent patterns from a standard perceptual CSDLN, create semantic CSDLN subnetworks/parent nodes, update semantic clusters via CSDLN dynamics, then use semantic clusters as seeds for more mining.
+- A3-7. The paper explicitly says most ideas were not implemented as of July 2011; it is a conceptual integration strategy.
+- A3-8. No local JSON source for the 2013 FISHGRAM/PLN paper was found in publication_texts/json. A broad local search found only bibliography references, not a full-text copy.
+
+Code-implementation status:
+PAPER-ONLY. It specifies an integration pattern, but no Source 2-10 repo implements semantic CSDLN/DeSTIN/OpenCog bridging, and it is not the same as the 2013 FISHGRAM card.
+
+Cross-source reconciliation:
+- Agrees with A2 at the high level: neural/subsymbolic attractors should be linked through intermediate symbolic structures rather than piped as raw vectors.
+- Does not provide the FISHGRAM pipeline claimed by Publications+Deep Learning Perception with PLN. That card remains a full-text retrieval gap.
+- Does not connect directly to xiPLN or World-Model evidence carriers.
+
+Wiki implications:
+- Publications+Compositional Spatiotemporal Deep Learning needs a full-content upgrade and should not be collapsed into the FISHGRAM/PLN paper.
+- Publications+Deep Learning Perception with PLN should remain flagged as stub/full-text missing. The available JSONs are adjacent background, not the same source.
+- If a RawData card for Compositional Spatiotemporal Deep Learning is absent, create/import one from the existing JSON.
+
+Unresolved questions / forward references:
+- Locate the full 2013 FISHGRAM paper ("Integrating deep learning based perception with probabilistic logic via frequent pattern mining") separately.
+
+### MORK, MM2, and PathMap Formalization (Lane B1)
+
+Source: E:\GitHub\hyperon reference\ai-agents\lean-projects\mettapedia\papers\mork-mm2-pathmap-formalization.tex
+Length: 109,189 bytes
+Authors: Zar and Oruzi; source uses Oru\v{z}i and explains it as AI-assisted collaboration using Claude Code, ChatGPT, and Codex
+Date / version: March 2026
+
+Core claims:
+- B1-1. The paper is a Lean 4 formalization of MORK, MM2, and PathMap, not a FactorGraph implementation. It covers MM2 syntax, space semantics, matching, scheduler protocol, PathMap algebra, zipper execution, OSLF bridges, evidence bridges, and conformance tests (paper lines 85-112).
+- B1-2. It reports 12,373 lines across 19 MORK/MM2 Lean files with 0 sorries and 0 custom axioms, plus 7,165 lines across 27 PathMap files with 160+ theorems and 40+ instances (lines 107-112). A targeted `rg "\bsorry\b"` over the MORK/PathMap folders found no proof placeholders, only comments stating "no sorry."
+- B1-3. MM2 is treated as Minimal MeTTa 2; MORK S-expressions are a subset of MeTTa Core atoms (lines 285-303). This agrees with Source 8's correction that .mm2 is not Metamath.
+- B1-4. PathMap is formalized as a lattice/distributive-lattice/quantale hierarchy with Finset, CTrie, and FTrie instances; FTrie has a PathMapQuantale instance (lines 776-890).
+- B1-5. The paper does define ZAM formally. It mirrors the Rust pathmap zipper trait stack using a six-class Lean typeclass hierarchy and states ZAM soundness theorems such as zam_oslf_sound, zam_diamond_sound, and zam_box_sound (lines 894-991).
+- B1-6. This refines Source 8: ZAM was documentation-only in the MORK Rust source, but it is now a real Lean/PathMap formalization artifact in ai-agents. The correct wording is "not present as a MORK Rust symbol; formalized in the adjacent Mettapedia Lean stack."
+- B1-7. The PathMap evidence bridge defines finsetPathEvidence W q = (|W intersect q|, |W minus q|), proves a K&S sum rule, and proves pjoin_evidence_additive for disjoint stores (lines 1052-1091). The paper explicitly notes honest scope: Finset union is idempotent, so full additivity requires Multiset.
+- B1-8. The MORK-PathMap bridge proves MORK space transitions decompose into pjoin/psubtract lattice operations (lines 1133-1161).
+- B1-9. Concrete PLN routing witnesses exist for only six flat rules: transitivity, modus ponens, inheritance-to-similarity, abduction, guarded transitivity, and double-guarded transitivity (lines 1323-1359). This is not the Source 9 FactorGraph paper stack.
+- B1-10. The formal coverage table is explicit about gaps: Rust serialization, concrete node type selection, concurrent scheduling, Z3 subprocess lifecycle, ACT external files, named atomspaces, and some product/overlay/mutation zipper pieces remain outside the proved boundary (lines 1894-1933, 1998-2034, 2085-2183).
+
+Code-implementation status:
+PROTOTYPE / FORMALIZED-SUBSTRATE. The paper formalizes a substantial MORK/PathMap/MM2 substrate and bridge surface, but it does not implement FactorGraph PLN on MORK. PLN-on-MORK status after this paper: IMPLEMENTABLE SUBSTRATE FORMALIZED; FactorGraph reasoning remains PAPER-ONLY / not implemented.
+
+Cross-source reconciliation:
+- Confirms Source 8 that MORK is a substrate and not a probabilistic/FactorGraph engine.
+- Refines Source 8's "ZAM documentation-only" statement: true for MORK Rust source, false for the adjacent Lean formalization.
+- Supplies the formal PathMap/evidence bridge Source 8 did not extract, but this bridge is set/multiset evidence over stores, not belief propagation.
+
+Wiki implications:
+- Create a new RawData publication card for MORK/MM2/PathMap Formalization.
+- Update MORK wiki notes: ZAM should be described as a Lean-formalized PathMap zipper soundness model, not as a checked-in Rust VM symbol.
+- Do not use this paper to claim FactorGraph MORK is implemented.
+
+Unresolved questions / forward references:
+- If wiki wants runtime verification claims, distinguish Lean formalization of abstract semantics from verification of the full Rust PathMap/MORK implementation.
+
+### xiPLN: A Correct and Complete Foundation for PLN (Lane B2)
+
+Source: E:\GitHub\hyperon reference\ai-agents\lean-projects\mettapedia\papers\xiPLN.tex
+Length: 101,652 bytes
+Authors: Zar and Codex CLI (OpenAI GPT-5.2)
+Date / version: DRAFT; source file current in ai-agents commit 32b1e97
+
+Core claims:
+- B2-1. xiPLN is a theorem-level foundation intended to separate three layers that earlier PLN presentations conflated: probabilistic semantic model, evidence/weight plumbing, and operational truth-value views (lines 55-74).
+- B2-2. It treats nuPLN as the probabilistic reference layer and extends it by making posterior states the proof objects, separating evidence algebra from probability views, and connecting to tractable sublayers (lines 78-87).
+- B2-3. Layer 1 is the world-model posterior state. The Lean reference instance is JointEvidence(n) = Fin(2^n) -> nonnegative extended reals, interpreted as Dirichlet pseudo-counts over complete worlds, with revision as pointwise addition (lines 101-117).
+- B2-4. Layer 2 is Evidence = (n+, n-) with hplus/revision as coordinatewise addition, information order as coordinatewise <=, and Heyting/quantale structure (lines 118-131).
+- B2-5. Layer 3 is operational views: strength, confidence, and intervals are projections from evidence and must not be treated as complete semantic state (lines 133-144).
+- B2-6. Classic PLN rules become compiled tactics or admissible query rewrites under explicit Sigma side conditions. The BN chain exactness theorem chainBN_plnDeductionStrength_exact is cited as a local exactness result (lines 263-318). The theorem exists in PLNBayesNetFastRules.lean at line 924.
+- B2-7. xiPLN states the no-local-complete-deduction theorem: no function from five local evidence objects can compute exact A=>C evidence for all joint states (lines 320-342). The theorem exists as no_local_complete_deduction in PLNJointEvidenceNoGo.lean at line 215.
+- B2-8. xiPLN's factor-graph distinction is the strongest correction to Source 9: semantic factor graphs are world-model factorizations; operational factor graphs are inference-control graphs unless compiled from a world-model class under explicit side conditions (lines 432-488).
+- B2-9. The roadmap says exact BN query answering, general d-separation discharge, rule-pattern-to-query-plan compilation, and operational large-scale inference are next steps; Chapter 9 remains theorem-level until Lean-side MeTTa runtime integration stabilizes (lines 516-568).
+- B2-10. Critical source-of-truth check: xiPLN.tex does not mention lib_pln_xi.metta. It mentions PeTTa and canonical Lean APIs, but gives no concrete file identity or enough runtime specification to equate lib_wmpln.metta with lib_pln_xi.metta.
+
+Code-implementation status:
+PROTOTYPE / FORMALIZED-THEORY. The Lean theorem spine is real, but xiPLN.tex explicitly marks operational runtime integration as pending. It is not an implemented production PLN runtime.
+
+Cross-source reconciliation:
+- Resolves Gemini's Source 10 inference conservatively: lib_wmpln.metta is not verified as a renamed lib_pln_xi.metta.
+- CeTTa/lib/lib_wmpln_evidence.metta implements Evidence operations that match part of xiPLN's evidence layer, but CeTTa/lib/lib_wmpln.metta is still a production-like Deriver/rule surface and lacks the JointEvidence complete posterior-state calculus and Sigma-guarded query-plan layer.
+- xiPLN strongly supports Source 9's "theory and code diverged" headline: current production rules are heuristics/compiled tactics unless justified by a world-model class.
+
+Wiki implications:
+- Create a RawData publication card for xiPLN, likely promoted quickly to a Markdown synthesis card because it is now central to PLN cluster narrative.
+- Update PLN cards: "fast PLN rules" should be described as Sigma-guarded compiled tactics / query rewrites, not globally complete local evidence transformers.
+- Preserve the wording cap from Source 10: lib_wmpln is an active adjacent runtime line, not verified xiPLN runtime identity.
+
+Unresolved questions / forward references:
+- Find the actual lib_pln_xi.metta or confirm it was never committed.
+- Compare PLNCanonicalAPI.lean to CeTTa lib_wmpln only if a future source explicitly requires runtime API matching.
+
+### World-Model Calculus for PLN (Lane B3)
+
+Source: E:\GitHub\hyperon reference\ai-agents\lean-projects\mettapedia\papers\world-model-calculus.tex
+Length: 56,319 bytes
+Authors: Zar and Oruzi; source credits AI-assisted collaboration under human direction
+Date / version: DRAFT - \today
+
+Core claims:
+- B3-1. The paper states the core architecture: PLN inference is stateful posterior revision plus evidence extraction; fast PLN rules are Sigma-guarded compiled rewrites relative to a declared world-model class (lines 65-99).
+- B3-2. The WorldModel kernel has states, queries, an evidence type, revision, and evidence extraction. Its essential law is additivity of evidence extraction under revision (lines 150-179).
+- B3-3. The PathMap/Finset instance proves disjoint pjoin evidence additivity and K&S sum rule; the paper also notes that Multiset is needed for non-disjoint full additivity because Finset union is idempotent (lines 180-193).
+- B3-4. Evidence is explicitly the algebraic object (n+, n-) with lattice, hplus, tensor, and quantale structure; strength/confidence/ITV are information-losing views (lines 263-319). The underlying BinaryEvidence.lean defines BinaryEvidence at line 63, hplus at line 170, tensor at line 128, a CompleteLattice at line 271, IsQuantale at line 602, and toStrength at line 629.
+- B3-5. The No-Go Theorem is the architectural hinge: exact A=>C evidence cannot be computed from only local evidence for A, B, C, A=>B, and B=>C (lines 323-347). This is why the calculus is state-first.
+- B3-6. Tractable sublayers restrict the world-model class, e.g. Bayesian networks or factor graphs, and use side conditions such as d-separation, positivity, and approximation ledgers (lines 351-413).
+- B3-7. The semantic-vs-operational factor graph distinction is explicit. Operational factor graphs schedule queries; they become semantics only after compilation to semantic factors or proved admissible rewrites (lines 443-481).
+- B3-8. The Lean artifact map is broad and says all listed files build with zero sorries and standard Lean kernel axioms only (lines 680-806). This is a stronger artifact inventory than Source 9's wiki extraction.
+- B3-9. Related-work sections connect WM calculus to evidence logic, evidence dynamics, semiring provenance, and quantale-valued logic (lines 1160-1249), giving the formal evidence-carrier line external mathematical context.
+
+Code-implementation status:
+PROTOTYPE / FORMALIZED-THEORY. This is Lean/theory infrastructure, not a production MeTTa/PLN runtime. It should be treated as the current formal architecture target.
+
+Cross-source reconciliation:
+- Confirms Source 9's No-Go finding and makes it central rather than incidental.
+- Provides the cleanest explanation of why the production PLN3/PLN local rule surface is insufficient for expert-grade semantics.
+- Supports Source 8/9 separation of semantic factor graphs from operational MORK/FactorGraph proposals.
+
+Wiki implications:
+- Create a RawData publication card for World-Model Calculus and likely a synthesis Markdown card.
+- Correct Wm authorship as Zar/Zarathustra Goertzel + Oruzi/AI-assisted collaboration, not "Zarko Zaremba."
+- Hyperon AI Algorithms+PLN+PLN Full should use this paper to frame the "World-Model era" as a state-first formal refoundation.
+
+Unresolved questions / forward references:
+- The theorem stack is broader than what was locally build-tested in this pass. Treat zero-sorry claims as source claims plus targeted spot-checks, not a fresh full build verification.
+
+### Directing Measures and Markov Mixtures (Lane B4)
+
+Source: E:\GitHub\hyperon reference\ai-agents\lean-projects\mettapedia\papers\markov-definetti-formalization.tex
+Length: 61,882 bytes
+Authors: Mettapedia Project
+Date / version: April 2026
+
+Core claims:
+- B4-1. The paper reports a complete Lean 4 formalization of the Diaconis-Freedman 1980 Markov de Finetti theorem: every Markov-exchangeable recurrent prefix measure on a finite alphabet is a mixture of time-homogeneous Markov chains (lines 54-67, 91-110).
+- B4-2. The formalization is reported as 26,665 lines of Lean with zero sorry, building on a 43,683-line classical de Finetti formalization (lines 55-60, 135-147).
+- B4-3. Markov evidence is start state plus transition-count matrix N(i,j). Markov exchangeability means equal measure for trajectories with the same Markov evidence (lines 167-202).
+- B4-4. Recurrence is not optional. The paper gives a deterministic 0=>1=>1=>... chain as a Markov-exchangeable but non-recurrent counterexample to mixture representation (lines 216-238).
+- B4-5. The PLN relevance is evidence sufficiency: under exchangeability, binary counts are sufficient for exchangeable binary sequences; transition-count matrices are sufficient for Markov-exchangeable sequences (lines 608-637).
+- B4-6. The Solomonoff connection is structured universal mixtures: Markov de Finetti justifies a mixture over Markov parameters, and hyperpriors over Dirichlet rows give computable dominance-style guarantees (lines 580-607).
+- B4-7. The Markov Xi surface exposes markov-transition atoms whose semantics compile to row-conditioned Dirichlet posterior means. The key theorem is markovTransitionAtom_semE_eq_rowProjection in MarkovTransitionXi.lean:113 (paper lines 666-672).
+- B4-8. The paper explicitly rejects forcing standard deduction screening onto Markov chains: CarrierDeductionScreeningOff is unfillable except degenerate rowB=0 cases. The honest alternative is predictive sequential composition via markov-transition* and markovWMPosteriorChain (lines 673-692).
+- B4-9. The structural audit is unusually important: zero-sorry can still mask unproved content if definitions encode assumptions as Props. The paper documents three bugs and fixes, including evidence-preserving carrier bijections and archived Euler trail infrastructure (lines 698-776).
+
+Code-implementation status:
+FORMALIZED / THEORY-IMPLEMENTED in Lean. No production PLN runtime integration is shown. It is a foundational measure-theoretic justification for evidence carriers, especially in sequential domains.
+
+Cross-source reconciliation:
+- Provides the deepest mathematical justification so far for "evidence is what you carry."
+- Complements B3's No-Go theorem: local evidence is sufficient only under explicit exchangeability/Markov assumptions; otherwise joint state/correlation information is required.
+- Strongly supports B2's Sigma-guarded design discipline.
+
+Wiki implications:
+- Create a RawData publication card for Markov-de Finetti Formalization.
+- PLN cluster synthesis should distinguish "evidence carrier as sufficient statistic under exchangeability/Markov assumptions" from "universal local rule formula."
+- Add the structural-audit warning to methodology notes: "zero sorry" is not enough if the theorem surface encodes assumptions instead of proving them.
+
+Unresolved questions / forward references:
+- A future formalization pass should verify which Markov/de Finetti Lean modules are part of the build target, not just present in the tree.
+
+### Lane C Inventory
+
+- nuPLN.tex | exists | Nil Geisweiller draft; formal PLN reference layer underlying xiPLN.
+- nuPLN_v1.tex | exists | Nil Geisweiller + Claude extension; completed derivations/convergence theorem per title block.
+- wm-pln-book_v3.tex | exists | World-Model Calculus book source by Zar Goertzel and Oruzi.
+- wm-pln-book_v3_oruzi.tex | exists | Alternate World-Model Calculus source by Zar and Oruzi.
+- wm-pln-genomic-hypothesis.tex | exists | Formally verified WM/ProbLog genomic hypothesis paper; likely maps to CeTTa bio_wmpln tests.
+- mq-calculus-lean-formalization.tex | exists | MQ-Calculus Lean formalization.
+- cetta_roadmap.tex | exists | CeTTa project roadmap, living document started 2026-04-08.
+- MeTTaC.tex | exists | CeTTa/MeTTaC family paper.
+- MeTTaIL.tex | exists | MeTTaIL + MeTTaCore in Lean and Rust notes.
+- PureMeTTa.tex | exists | PureMeTTa paper by Zar and Oruzi.
+- ProbMeTTa.tex | exists | ProbLog in MeTTa paper.
+- CeTTa.tex | exists | CeTTa paper by Zar Goertzel and Oruzi.
+- faithful-backends-he-metta.tex | exists | Faithful backends for HE MeTTa.
+- governance-deontic-logic.tex | exists | Verified dyadic deontic logic and governance reasoning in Lean 4.
+- process-calculi.tex | exists | Process calculi formalized in Lean 4.
+- modal-bridges.tex | exists | Modal bridges formalization.
+- open-map-bisimulation-lean.tex | exists | Generalized open maps / bisimulation theories / OSLF bridge.
+
+Cluster-close implications from Codex
+- Source 11 should close extraction for the PLN pilot, but it creates two follow-up inventories: missing FISHGRAM/full 2013 paper, and missing PeTTa/lib_pln_xi runtime files.
+- The synthesis should use five-tradition language: production PLN/PLN3, historical OpenCog/URE/ECAN control, adjacent ai-agents Python/Lean, CeTTa active runtime line, and MORK/PathMap substrate/formalization.
+- The key expert-facing correction is not just "production code is incomplete"; it is "local rule PLN is formally known to be incomplete without world-model/correlation assumptions."

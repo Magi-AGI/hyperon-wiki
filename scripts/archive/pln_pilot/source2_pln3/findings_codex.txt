@@ -1,0 +1,173 @@
+# PLN3 Extraction - Codex Findings
+
+**Repo:** `PLN3`
+**Commit:** `55f1751d993f71b8a24da03e3aec94ab40789a59`
+**Model:** Codex
+**Extraction date:** 2026-04-24
+**Claim counts per section:** 1=10, 2=18, 3=10, 4=12, 5=7, 6=8, 7=8, 8=1
+
+## 1. Architecture and module map
+
+C-1-1: The repo is a modular MeTTa implementation built from `src/Utils.metta`, `Constraints.metta`, `Formulas.metta`, `Rules.metta`, `Config.metta`, and `Deriver.metta`, concatenated in that order by `build.sh` into `PLN.metta`. `Translator.metta` is present in `src/` but is not included by `build.sh`. [build.sh:1] [CLAUDE.md:17-27]
+
+C-1-2: `Utils.metta` is a small support layer for tuple handling, bounded queues, safe division, and helper math like `negate`, `invert`, `min5`, and `InsertionSort`. It is infrastructure for the derivation engine rather than rule semantics. [src/Utils.metta:12-92]
+
+C-1-3: `Constraints.metta` implements probability-consistency checks, including `smallest-intersection-probability`, `largest-intersection-probability`, and `conditional-probability-consistency`. This is the only file that explicitly enforces book-style admissibility regions for deduction inputs. [src/Constraints.metta:1-24]
+
+C-1-4: `Formulas.metta` is the truth-value core. Every implemented rule family uses the same two-field `(stv strength confidence)` representation; there are no alternate in-repo truth-value types for indefinite, distributional, or count-based TVs. [src/Formulas.metta:5-138]
+
+C-1-5: `Rules.metta` maps syntactic input patterns to output atoms by calling the truth formulas. It contains the actual inference rule schemas, including syllogistic rules, MP variants, inversion, equivalence-to-implication, evaluation implication, and member deduction. [src/Rules.metta:1-116]
+
+C-1-6: `Config.metta` exposes only three global control knobs: `PLN.Config.MaxSteps = 20`, `TaskQueueSize = 20`, and `BeliefQueueSize = 200`. There is no richer scheduler or per-rule weighting layer. [src/Config.metta:1-10]
+
+C-1-7: `Deriver.metta` is the control center. It implements `PLN.Derive` and `PLN.Query`, uses confidence as the task priority score, combines selected tasks with every belief, and guards reuse of evidence with `StampDisjoint`. [src/Deriver.metta:1-81]
+
+C-1-8: `Translator.metta` is not part of the built library; instead it is consumed by the Python integration path. Its job is to translate nested implications and negated implication forms into direct `(|-)` rules or `STV` facts during `PLN.Init`. [src/Translator.metta:1-42] [examples/PLN.py:21-55]
+
+C-1-9: The intended call path for the examples is `examples/*.metta -> import PLN -> PLN.Init -> translator-assisted compilation -> PLN.Query / PLN.Derive`. `examples/PLN.py` constructs `TRANSLATE.metta`, appends the KB via `superpose`, runs `metta` translation, and then compiles the generated blob with `metta-morph`. [examples/PLN.py:21-55] [examples/FlyingRaven.metta:1-11]
+
+C-1-10: The repo's own meta-docs correctly describe the modular layout, but `CLAUDE.md` slightly overstates it by listing `Translator.metta` as part of the normal source structure without noting that the standard build omits it. In practice there are two paths: shell build for `PLN.metta`, and Python-assisted translation/compile via `PLN.py`. [CLAUDE.md:17-44] [build.sh:1] [examples/PLN.py:21-55]
+
+## 2. Implemented inference rules and truth-value machinery
+
+C-2-1: `Truth_Deduction` is a direct STV implementation of the standard independence-based deduction formula, guarded by `conditional-probability-consistency` on both premise pairs. If constraints fail it returns `(stv 1 0)`, i.e. a vacuous high-strength / zero-confidence sentinel rather than an empty result. [src/Formulas.metta:5-20] [src/Constraints.metta:11-15]
+
+C-2-2: `Truth_Induction` and `Truth_Abduction` are present as explicit formulas, but both mark their confidence handling with `;confidence TODO check`. The strength formulas are implemented; the confidence model is acknowledged by the code itself as provisional. [src/Formulas.metta:22-43]
+
+C-2-3: `Truth_ModusPonens` uses the book-style heuristic `(* f1 f2) + (* 0.02 (- 1 f1))`, with default term probability hard-coded as `0.02`. Confidence is simply the product `c1*c2`, and the comment notes that this overestimates relative to a node-probability-aware minimum. [src/Formulas.metta:45-48]
+
+C-2-4: `Truth_SymmetricModusPonens` implements the multiplication-form variant, not the division-form variant: `sA*sAB + snotAB*(1-sA)*(1+sAB)`. However, it does not reuse the book's `c = 0.02`; it introduces a local constant `$snotAB = 0.2` and fixed `$cnotAB = 1.0`, so the rule is not a literal port of the book heuristic. [src/Formulas.metta:50-55]
+
+C-2-5: `Truth_Revision` is a simplified weighted-average revision over converted weights `w = c/(1-c)`. It has no overlap constant, no trail-sensitive merge, and no count-drift term of the form used in the book's more elaborate revisions; the result confidence is clamped upward by `max(max(c,c1),c2)`. [src/Formulas.metta:57-73]
+
+C-2-6: `Truth_Negation` is implemented as plain `1-s` with unchanged confidence. There is no separate uncertainty model for negation beyond that direct complement. [src/Formulas.metta:75-78]
+
+C-2-7: `Truth_inversion` is highly simplified: it preserves strength and applies a `0.6` confidence penalty multiplied by the target-node confidence `Bc` and the original link confidence `ABc`. The comments explicitly say this is weaker than classic OpenCog PLN. [src/Formulas.metta:80-83]
+
+C-2-8: `Truth_equivalenceToImplication` contains an explicit "Hack to work around the lack of distributional TV." If `ABs*ABc` is high enough it short-circuits to `ABs`; otherwise it uses a `sim2inh`-style formula. This is a modernized / simplified implementation rather than a full higher-order equivalence treatment. [src/Formulas.metta:85-92]
+
+C-2-9: `Truth_transitiveSimilarity` is implemented with helper `TransitiveSimilarityStrength`, using the expected `T1..T4` conversions and the inverse-combination form from the old OpenCog rule. This is one of the few places where the repo keeps a relatively rich nontrivial formula instead of collapsing to a heuristic. [src/Formulas.metta:94-111]
+
+C-2-10: `Truth_evaluationImplication` reduces evaluation implication to `simpleDeductionStrength` and multiplies confidence by two fixed `0.9` penalties plus a `min5(...)` term. It is a compressed engineering rule, not a direct restatement of the book's broader higher-order machinery. [src/Formulas.metta:113-135]
+
+C-2-11: The rule schemas in `Rules.metta` cover more than the headline list in `CLAUDE.md`. Counting concrete schemas, the repo has revision, MP, symmetric MP, deduction, induction, abduction, three predicate/inheritance bridge rules, negation elimination, inheritance inversion, implication inversion, two equivalence-to-implication directions, transitive similarity, evaluation implication, and member deduction. [src/Rules.metta:3-116] [CLAUDE.md:58-63]
+
+C-2-12: The three predicate/inheritance bridge rules in `Rules.metta` are not named in the meta-docs, but they are real rule schemas: unary predicate inheritance, binary argument-1 substitution, and binary argument-2 substitution. All three use `Truth_ModusPonens` rather than a dedicated evaluation calculus. [src/Rules.metta:54-74]
+
+C-2-13: Negation introduction is not a rule in `Rules.metta`; the file comment states that it is "now handled by Translator". So the repo splits negation handling between compiled translation and runtime rule application. [src/Rules.metta:76-77] [src/Translator.metta:11-36]
+
+C-2-14: The repo has no implementation of indefinite truth-values, distributional truth-values, quantifier rules (`ForAll`, `ThereExists`), temporal links like `PredictiveImplication` / `SeqAND`, concept-geometry deduction, multideduction, BRGI, or OBI. Those names do not appear in the source tree. [repo-wide search: no hits for `ForAll|ThereExists|PredictiveImplication|SeqAND|Distributional|ConceptGeometry|multideduction|OBI|BRGI`]
+
+C-2-15: The `CLAUDE.md` rule list is directionally right but incomplete. It omits the predicate bridge rules, member deduction, separate inheritance vs implication inversion, and the fact that negation introduction is translator-generated rather than part of the normal rule set. [CLAUDE.md:58-63] [src/Rules.metta:54-116] [src/Translator.metta:11-36]
+
+C-2-16: Relative to the 2008 book's rule inventory, PLN3 is a compact STV syllogistic subset. It preserves a few first-order and similarity formulas, but not the book's larger families for higher-order extensional inference, quantifiers, intensional inheritance, temporal/causal inference, or richer truth-value propagation. [src/Formulas.metta:5-138] [src/Rules.metta:3-116]
+
+C-2-17: The truth-value representation is uniform and fixed as `(stv strength confidence)` throughout formulas, rules, tests, and examples. No file defines or consumes anything like `<[L,U],b,k>` or matrix-valued TVs. [src/Formulas.metta:5-138] [src/Deriver.metta:19-24] [examples/FlyingRaven.metta:4-36]
+
+C-2-18: V5 verification result: the rule families named in `CLAUDE.md` are all present in code, but "Negation Elimination" is only half the story because translator-based negation introduction is also required for nested implication handling. The repo therefore implements the claimed list plus several undocumented glue rules. [CLAUDE.md:58-63] [src/Rules.metta:76-116] [src/Translator.metta:11-36]
+
+## 3. Inference control strategy
+
+C-3-1: `PLN.Derive` is not a backward-chaining BIT implementation. It is a bounded agenda-style derivation loop that repeatedly selects the highest-confidence task from a task tuple, combines it with every belief, and adds derived sentences back into both task and belief buffers. [src/Deriver.metta:33-52]
+
+C-3-2: Task priority is just confidence. `PriorityRank` returns the `c` field from `Sentence ($x (stv $f $c))`, and `BestCandidate` selects the max-ranked task. There is no cost/effort utility, bandit score, or interestingness metric. [src/Deriver.metta:7-24]
+
+C-3-3: The controller is effectively forward saturation with symmetric pairing, not backward search. At each step it tries both `(|- x y)` and `(|- y x)` between the selected task and every belief, and it also tries any unary `(|- x)` rule. [src/Deriver.metta:37-45]
+
+C-3-4: The system does maintain evidence traces, but as stamps rather than bounded inference trails. Stamps are tuples of evidence IDs, merged by `TupleConcat`, sorted, and checked for overlap by `StampDisjoint`. There is no explicit 10-20 atom trail bound of the kind discussed in the book. [src/Deriver.metta:1-5] [src/Deriver.metta:39-44]
+
+C-3-5: V3 verification result: stamps exist, but they are overlap checks, not trail-length-limited reasoning histories. Circularity prevention is therefore much lighter than the book's trail-oriented discussion. [src/Deriver.metta:1-5] [src/Deriver.metta:39-44]
+
+C-3-6: Termination is simple and hard-bounded. Derivation stops if `steps > maxsteps` or if the task list is empty. The default max is `20`, with task queue size `20` and belief queue size `200`. [src/Deriver.metta:34-36] [src/Config.metta:3-10]
+
+C-3-7: `PLN.Query` does not synthesize premise goals or run backward inference. It calls `PLN.Derive` on the KB, then filters the returned beliefs for the requested term and selects the highest-confidence match. [src/Deriver.metta:63-81]
+
+C-3-8: The queue bounding strategy is destructive pruning by confidence. `LimitSize` repeatedly removes the lowest-priority item once the tuple exceeds the configured size. There is no distinction between epistemic value and scheduling cost. [src/Deriver.metta:26-31]
+
+C-3-9: Compared to the book's forward/backward chaining plus Rule-of-Choice and bandit heuristics, PLN3 is much narrower: no BITs, no expansion pool, no output-based-input search, no multi-path fitness aggregation, and no explicit Rule of Choice implementation. [src/Deriver.metta:33-81]
+
+C-3-10: `fd9e83b` / `3c81828` ("also return task in derive so reasoning can later easily continue") match the current API shape, where `PLN.Derive` returns both tasks and beliefs as `($Tasks $Beliefs)`. That is a post-book engineering affordance for iterative use of the derivation state. [git:fd9e83b] [src/Deriver.metta:34-36]
+
+## 4. Deviations from the 2008 book
+
+C-4-1: Faithfully implemented: the repo preserves the core first-order deduction, induction, abduction, MP, symmetric MP, transitive similarity, and consistency-region logic at the level of scalar-strength formulas. These are the strongest book-to-code continuities in the repo. [src/Formulas.metta:5-55] [src/Constraints.metta:1-24]
+
+C-4-2: Simplified: all truth values are reduced to `(stv strength confidence)`. The book's indefinite probabilities, distributional TVs, count/weight semantics, and quantifier-level higher-order constructions are absent from the executable code. [src/Formulas.metta:5-138] [repo-wide search: no hits for `<[L,U]`, `Distributional`, `ForAll`, `ThereExists`]
+
+C-4-3: Simplified: revision is a generic weighted average without an explicit overlap constant or trail-sensitive merge logic. This means V4 resolves negatively: the repo does not implement the book's drift-inducing nonzero-overlap revision constant. [src/Formulas.metta:57-73]
+
+C-4-4: Simplified: inversion, equivalence-to-implication, and evaluation implication each introduce custom confidence heuristics (`0.6`, `0.99` short-circuit, repeated `0.9` penalties) rather than attempting to preserve the book's more principled or richer higher-order semantics. [src/Formulas.metta:80-92] [src/Formulas.metta:126-135]
+
+C-4-5: Modernized: nested implication handling is compiled away into direct runtime rules via `Translator.metta` and `PLN.py`. This replaces the book's explicit control-structure discussion with a compile-time MeTTa transformation pass. [src/Translator.metta:1-42] [examples/PLN.py:21-55]
+
+C-4-6: Modernized: inference control is no longer described in terms of theorem-proving strategy or cognitive control theory. Instead the repo exposes a small bounded agenda engine with queue sizes and confidence ranking, which is idiomatic for a compact MeTTa library but much less expressive than the book's controller discussion. [src/Deriver.metta:33-81] [src/Config.metta:3-10]
+
+C-4-7: Omitted: there is no implementation of the book's larger-scale inference alternatives such as BRGI, multideduction, Bayes-net augmentation, or OBI, even though the code comments still cite some old OpenCog rule sources. [repo-wide search: no hits for `BRGI|multideduction|OBI|Bayes-Net|FactorGraph`]
+
+C-4-8: Omitted: there is no code for intensional inheritance, mixed inheritance, association/pattern-set reasoning, or the temporal/causal relationship families from later book chapters. The repo is focused on extensional-style STV reasoning plus a few evaluation/predicate bridges. [repo-wide search: no hits for `Intensional|PredictiveImplication|SeqAND|Eventual`]
+
+C-4-9: New relative to the book's presentation: `Operation` terms in `examples/Toothbrush.metta` are used as ordinary concepts inside nested implications to model action chains. That is an application pattern, not a dedicated temporal/causal calculus. [examples/Toothbrush.metta:22-80]
+
+C-4-10: New relative to the book's presentation: `PLN.Init` is a Python-registered operation that builds and compiles a translated rule blob on the fly. The book discusses integration with Novamente; this repo implements a concrete Hyperon / metta-morph pipeline instead. [examples/PLN.py:1-62]
+
+C-4-11: V1 verification result: the repo agrees with the Source 1 resolution that symmetric MP should use the multiplication form, but it changes the constant semantics by using `$snotAB = 0.2` instead of the book's `c = 0.02`. [src/Formulas.metta:50-55]
+
+C-4-12: V2 verification result: standard Modus Ponens does retain `c = 0.02` exactly, and it is not configurable in `Config.metta`; it is hard-coded in the formula itself. [src/Formulas.metta:45-48] [src/Config.metta:1-10]
+
+## 5. Experimental extensions and recent work
+
+C-5-1: The current head commit is `55f1751`, a merge of `trueagi-io/Negation`. The diff touches `examples/PLN.py`, `examples/Smokes.metta`, `src/Deriver.metta`, `src/Formulas.metta`, `src/Rules.metta`, and `src/Translator.metta`, which matches the repo's increased emphasis on negation handling and translator-based implication expansion. [git:55f1751]
+
+C-5-2: The immediately preceding commits `ef7df99` and `7135ece` are also negation-related ("upper case for negation", "updated translator supporting negation"). So the most visible recent experimental line is not new syllogistic math but translator/runtime support for negated implication structures. [git:ef7df99] [git:7135ece]
+
+C-5-3: `11da989` / `fd9e83b` are the TaskReturn line, and `14880b3` / `ed2322a` / `e9be4fd` are the Modularity line. Those changes are visible in the current split between `Config.metta`, reusable `PLN.Derive`, and the pair-return API from the derivation engine. [git:11da989] [git:fd9e83b] [git:14880b3] [src/Config.metta:1-10] [src/Deriver.metta:34-61]
+
+C-5-4: There is no FactorGraph or MORK implementation signal in the repo. A repo-wide search finds no `FactorGraph` or `MORK` strings in source, tests, examples, or meta-docs, so the wiki's active MORK / FactorGraph publication stream does not appear to be embodied in this codebase. [repo-wide search: no hits for `FactorGraph|MORK`]
+
+C-5-5: The repo also shows no sign of the book's temporal/causal extensions or quantifier machinery being under current implementation. The recent work is structural / translator-oriented, not toward recovering the missing higher-order families. [repo-wide search: no hits for `SeqAND|PredictiveImplication|ForAll|ThereExists`]
+
+C-5-6: The README points only to the upstream PLN wiki and contains no additional architecture or research context. So the meaningful "recent work" evidence comes from the git log and changed files, not from maintained prose documentation in the repo itself. [README.md:1-6] [git:55f1751]
+
+C-5-7: The modular branch preserves older shell and Python integration artifacts (`build.sh`, `test.sh`, `examples/PLN.py`) that the brief says were removed upstream. That makes PLN3 useful as a forensic / transitional implementation snapshot, not just as a mirror of current upstream `lib_pln.metta`. [build.sh:1] [test.sh:1-4] [examples/PLN.py:21-62]
+
+## 6. Tests, examples, worked inferences
+
+C-6-1: The top-level `test.sh` runs both `ruletests/test.sh` and `examples/test.sh`. The ruletest harness copies `examples/PLN.py` into the test directory, then runs seven named `.metta` scripts via `metta ... | grep "Passed:"`. [test.sh:1-4] [ruletests/test.sh:1-24]
+
+C-6-2: `ruletests/equivalenceToImplication.metta` is a focused unit test for one-direction implication extraction from an `Equivalence` link, expecting `(stv 0.98989898989899 0.87)`. [ruletests/equivalenceToImplication.metta:9-13]
+
+C-6-3: `ruletests/evaluationImplicationRuleA.metta` tests the evaluation-implication rule on a unary predicate chain: "Tom is really fat", "really fat implies fat", and "Tom is a cat" together yield `Evaluation IsFat(Tom)` with confidence `0.729`. [ruletests/evaluationImplicationRuleA.metta:11-24]
+
+C-6-4: `ruletests/evaluationWithNegationAndInheritanceInversion.metta` is a composed regression for negation elimination plus inheritance inversion feeding the predicate bridge rules. It starts from `Not(Inheritance X D)` and asks for `Evaluation IsFat(D)`. [ruletests/evaluationWithNegationAndInheritanceInversion.metta:9-19]
+
+C-6-5: `ruletests/inversion.metta`, `transitiveSimilarity.metta`, and `memberDeductionA.metta` are narrow formula checks for inversion confidence penalty, similarity chaining, and extensional member deduction. `RuleTester.metta` then bundles negation elimination, inversion, and equivalence-to-implication into a small smoke regression. [ruletests/inversion.metta:13-17] [ruletests/transitiveSimilarity.metta:12-17] [ruletests/memberDeductionA.metta:14-28] [ruletests/RuleTester.metta:30-45]
+
+C-6-6: `examples/FlyingRaven.metta` is the clearest worked inference chain in the repo: static concept initialization via `PLN.Init`, dynamic inheritance and evaluation facts, then queries for whether `Sam` and `Pingu` fly. It also demonstrates one-step `PLN.Derive` to inspect what can be inferred from a single premise. [examples/FlyingRaven.metta:3-55]
+
+C-6-7: `examples/Smokes.metta` is a social-influence toy domain: friendship implies smoking transfer, smoking implies cancerousness, and the query asks whether Edward is cancerous based on Anna/Edward/Friend/Smokes facts. [examples/Smokes.metta:3-62]
+
+C-6-8: `examples/Robot.metta` and `examples/Toothbrush.metta` are application-style demos. `Robot` uses PLN to categorize perceived objects for "bring" behavior, while `Toothbrush` uses nested implications and `Operation` concepts to model a procedural chain ending in `removed`. [examples/Robot.metta:5-61] [examples/Toothbrush.metta:20-86]
+
+## 7. Status, open issues, TODOs
+
+C-7-1: Two explicit TODOs remain in the core math: induction confidence and abduction confidence are both marked `;confidence TODO check`. Those rules are implemented, but their confidence models are knowingly unfinished. [src/Formulas.metta:22-43]
+
+C-7-2: `Truth_equivalenceToImplication` contains an explicit hack for the lack of distributional TVs. That is a direct acknowledgement that the current STV-only implementation is an approximation layer over a richer intended semantics. [src/Formulas.metta:85-92]
+
+C-7-3: `Utils.metta` contains a TODO to replace the current `Unique` implementation with more efficient native handling once available. So even the tuple/set substrate is still in a provisional performance state. [src/Utils.metta:84-92]
+
+C-7-4: The repo root contains `tmpclaude-*` artifacts. The brief correctly says to ignore them; they are leftover local-helper files, not part of the implementation. [repo root listing: `tmpclaude-8760-cwd`, `tmpclaude-92b9-cwd`, `tmpclaude-9745-cwd`]
+
+C-7-5: `AGENTS.md` and `GEMINI.md` both describe the repo as a near-identical mirror of `PLN2`. That is plausible structurally, but neither document proves behavior; the executable differences that matter here are in the actual Negation / Translator / Deriver changes visible in git history and source. [AGENTS.md:3-16] [GEMINI.md:3-24] [git:55f1751]
+
+C-7-6: `CLAUDE.md` undercounts the implemented rule surface and does not mention that translator-generated rules are essential for nested implication support. So it is useful orientation, but not a complete authoritative inventory. [CLAUDE.md:58-68] [src/Rules.metta:54-116] [src/Translator.metta:11-36]
+
+C-7-7: I did not execute `build.sh` or the shell test suites in this run. Both `metta.exe` and `sh.exe` are available locally, but the repo clone lives outside the writable sandbox roots and `build.sh` writes generated artifacts into that clone. [build.sh:1] [test.sh:1-4]
+
+C-7-8: Overall status: active but narrow. The repo is maintained through mid-2025, but it is a compact, engineering-oriented STV subset of PLN rather than a broad implementation of the book's full theory. [git:55f1751] [src/Formulas.metta:5-138] [src/Deriver.metta:33-81]
+
+## 8. Discovered publications
+
+C-8-1: The only explicit publication citation found inside the repo is the 2008 PLN book itself: `Probabilistic Logic Networks - A New Conceptual, Mathematical and Computational Framework for Uncertain Inference | Goertzel, Ikle, Goertzel, Heljakka | 2008 | cited in comments for deduction, induction, abduction, MP, revision, and consistency conditions`. [src/Constraints.metta:1-2] [src/Formulas.metta:3,22,33,45,57]
+
+*End of Codex findings.*

@@ -1,0 +1,277 @@
+# hyperon-pln (patham9) — Cross-Model Reconciled Findings (Source 5, FINAL)
+
+**Source:** `E:\GitHub\hyperon reference\hyperon-pln\` → `patham9/hyperon-pln` at commit `0d017c4d154de05fa8234bcf2717c268cf82d791` (HEAD = "Merge pull request #23 from leungmanhin/modus-ponens", 2023-08-01; **dormant since**).
+
+**Reconciled on:** 2026-04-24
+
+**Inputs:**
+- **Claude** (Opus 4.7 single pass, 93 cited claims, 51 KB) → `findings_claude.txt`
+- **Codex** (41 claims, 18 KB) → `findings_codex.txt`
+- **Gemini** (concise, ~10 points, 3 KB) → `findings_gemini.txt`
+
+Confidence legend:
+- **[X3]** all three models confirmed
+- **[X2]** two models confirmed
+- **[X1]** one model caught it
+- **[VERIFIED]** spot-checked against actual source files in this reconciliation
+
+---
+
+## 1. Headline finding: the MP 0.2-hack genealogy is more interesting than we thought
+
+**[X1 Claude → VERIFIED in this reconciliation]** The 2023 seed contains **one** Modus Ponens rule, in `metta/common/formula/ModusPonensFormula.metta`:
+
+```
+(= (modus-ponens-formula (STV $As $Ac) (STV $ABs $ABc))
+   (let* (($notABs 0.2) ; temporary hack
+          ($notABc 1))
+       (STV (+ (* $ABs $As) (* $notABs (- 1 $As)))
+            (min (min $ABc $notABc) $Ac))))
+```
+
+Strength: `s_AB · s_A + 0.2 · (1 − s_A)` (with the symmetric MP shape — `$notABs` plays the role of an assumed `s(¬A → B)`).
+Confidence: `min(min($ABc, $notABc), $Ac)`.
+
+**Downstream structurally diverges into TWO rules**:
+1. **`Truth_ModusPonens`** in PLN3 / PLN/ uses `c = 0.02` (book §5.7.1 default term probability) — this is a **NEW rule added downstream**, faithful to the 2008 PLN book. **It did not exist in the 2023 seed.**
+2. **`Truth_SymmetricModusPonens`** in PLN3 / PLN/ uses `$snotAB = 0.2` — this **inherits the 2023 seed's MP behavior**, just renamed and slotted under a different rule schema (gated by `SymmetricModusPonensRuleGuard` for `Similarity`/`IntentionalSimilarity`/`ExtensionalSimilarity` link types).
+
+This **recontextualizes Source 3's reconciliation §1.2** — that doc framed `c = 0.02` (asymmetric MP) as inherited from the book and `0.2` (Symmetric MP) as a downstream-specific datum. The truer story:
+- The `0.2` is **inherited from the 2023 hyperon-pln seed**, written by Manhin Leung (leungmanhin) in PR #23 (drafted 2023-07-13 as *"Draft the Modus Ponens formula and DTL"*; comments added 2023-07-31 explicitly labeling it *"temporary hack"*).
+- The `c = 0.02` is **a later book-faithful rule introduced separately** in the production line.
+- So the 2023 MP became downstream's *Symmetric* MP, while a fresh book-faithful asymmetric MP was added next to it.
+
+**Wiki implication:** when documenting PLN's Modus Ponens, distinguish the "0.2 symmetric heuristic" (provenance: leungmanhin 2023, hyperon-pln) from the "0.02 asymmetric heuristic" (provenance: book-faithful, introduced post-2023 in production line, exact author TBD). They have different lineages and different stated rationales.
+
+---
+
+## 2. Cross-model consensus
+
+### 2.1 [X3 + VERIFIED] hyperon-pln IS the frozen formalization seed of the MeTTa PLN line
+
+The earliest MeTTa formalization of PLN in the cluster, dormant 2023-08-01. README + CLAUDE.md describe the four-encoding pattern (dependent-types / match / entail / equal); same pattern reappears in Source 4 (`pln-experimental2/experimental/early-pln/`).
+
+**Lineage map confirmed:**
+```
+patham9/hyperon-pln (Source 5, frozen 2023-08-01)
+       ⇡ rename of upstream remote
+trueagi-io/hyperon-pln  →  trueagi-io/pln-experimental
+                                ⇣ fork
+                          ngeiswei/pln-experimental = Source 4
+                                ↘ author forks (separate line)
+                          ngeiswei/PLN = Source 2 (PLN3)
+                                ⇣
+                          trueagi-io/PLN = Source 3 (PLN/, pln0.9)
+```
+
+### 2.2 [X3] PrCnt is real but redundant with STV (Claude's bijection clarification)
+
+`TruthValue.metta:L23-L32` defines four constructors: `Bl (Bool)`, `Pr (Number)`, **`PrCnt (Number Number)`**, `STV (Number Number)`.
+
+- **Both Codex and Gemini** flagged PrCnt as a "real transitional TV type."
+- **Claude refined this**: PrCnt and STV are **isomorphic via `count ↔ confidence` with lookahead=1** (`count->confidence` and `confidence->count` defined in `TruthValue.metta:L60-L69`). Same beta-distribution semantics; different storage. The `mean` is computed identically through the Beta-posterior.
+- **Resolution**: PrCnt is *more substantive than `Bl`/`Pr`* (which are degenerate count=1e9 wrappers) but *redundant with STV* (bijective). Both views compatible.
+- Codex's C-2-4: PrCnt is **actively used** in this seed's generic `ded_formula` and equality/entailment test premises — not dead. Source 4's `equal/` and `match/` tree still uses `ETV Empty (PrCnt 1 0)` while production PLN3/PLN/ simplifies to `STV` only.
+
+**Wiki implication**: PrCnt is *historical, not a missing implementation that was abandoned for capability reasons*. It was correctly dropped downstream as redundant. No information was lost.
+
+### 2.3 [X3] The synthesis engine is central here, did NOT survive into production
+
+`metta/synthesis/Synthesize.metta` implements depth-limited proof search over an axiom supplier and a rule supplier. Supports backward chaining, forward chaining, mixed chaining, type checking, and type inference. Used by the dependent-types tests directly (`!(import! &self ../synthesis/Synthesize.metta)`).
+
+**Status checks (X3):**
+- `unify`/`unify*` are buggy — README acknowledges. Synthesizer falls back to `let*`.
+- Synthesis engine **survives experimentally into Source 4's `experimental/early-pln/`** but is not central there.
+- **Production PLN3/PLN/ replaced it entirely** with the bounded-priority-queue forward-chaining `Deriver` — fundamentally different control regime.
+
+This makes Source 5 the **surviving local archive of the original "PLN as program synthesis over typed proof constructors" architecture**.
+
+### 2.4 [X3] Consistency conditions: stubbed in seed, activated downstream
+
+**[X2 Codex + Claude, VERIFIED]** Two divergent paths within `DeductionFormula.metta`:
+- Generic `ded_formula` (consumes any `TruthValue`): `conditional-probability-consistency` is **stubbed to `True`** with the actual inequality checks **commented out**.
+- STV-specialized `deduction-formula`: uses the **real consistency checks**.
+
+**Downstream behavior:** PLN3/PLN/'s `lib_pln.metta` **uncommented and reactivated** the consistency-condition checks. This is a downstream stabilization choice, not seed behavior. The production code we documented in Sources 2 and 3 inherited the *idea* (constraint enforcement) but had to *re-enable* it from the inert seed code.
+
+**Wiki implication**: when Source 1's V1 "consistency condition" was confirmed at the code level in Sources 2-3, the actual code path used by production was the STV-specialized version, not the generic one. The generic "type-polymorphic deduction" never enforced book-page-74 constraints.
+
+### 2.5 [X3] 0.2 MP-hack provenance is leungmanhin (Manhin Leung) in 2023
+
+Authoritative: the brief's §Git-history block (and direct git log inspection):
+- **2023-07-13**: leungmanhin commits *"Draft the Modus Ponens formula and DTL"* — first introduction of `$notABs 0.2`.
+- **2023-07-31**: leungmanhin commits *"Add comments about the temporary hack in the modus ponens formula"* — explicit "temporary hack" label.
+- **2023-08-01**: Nil Geisweiller merges PR #23.
+- **Peter Isaev has zero commits in `hyperon-pln`** — he authored the unrelated *"Truth Functions and Confidences are better fit"* commit in `PLN/` (Source 3, pln0.9), not anything here.
+
+**Note on prior model errors** (recorded in `feedback_attribution_verify_against_git.md`):
+- Gemini's pre-correction summary attributed the hack to Isaev. Self-corrected in this turn — but in the same self-audit, hallucinated a non-existent "Truth Functions and Confidences are better fit" commit in `pln-experimental2`. Corrected here against direct git data.
+- Standing rule applied: model attribution claims are never accepted without git-evidence verification.
+
+### 2.6 [X3] Idris prototyping was design-pattern source, code abandoned
+
+`idris/StrictlySorted.idr` is **a 105-line 2-implementation Idris2 prototype** of strictly-sorted-list dependent type with type-level `<`-proofs (Codex C-5-1; Claude verified). The README explicitly frames Idris as *"more mature than MeTTa"* for prototyping dependent-type concepts.
+
+**[X1 Gemini, X1 Claude]**: This Idris work is **the formal origin of the sorted-evidence-ID double-counting prevention** later seen in MeTTa code (Source 4's IDIRecursive uses sorted-ID checks; production code uses `StampDisjoint` + sorted union). The pattern survived; the Idris code didn't.
+
+**[X1 Claude]**: MeTTa's 2023 type checker couldn't supply the sorted-list proof, so `Set.metta` uses `believe_me` as an anti-pattern workaround. The Idris file documents what the MeTTa code *should* have been able to prove if the type checker were stronger.
+
+**Downstream**: Idris was carried into Source 4's `experimental/early-pln/`, then **explicitly deleted on 2025-12-18** in PR #49 ("Remove Idris experiments"). Code dead; design lives on.
+
+### 2.7 [X3] What did NOT survive downstream
+
+| Element | Source 5 status | Downstream fate |
+|---|---|---|
+| `metta/synthesis/` engine | Central architecture | Source 4 keeps experimentally; PLN3/PLN/ replace with PQ-Deriver |
+| `idris/` prototyping | Active | Carried to Source 4, deleted 2025-12-18 |
+| **PrCnt** TV type | Generic + tests use it | Dropped downstream (redundant with STV) |
+| **`Bl`** and **`Pr`** | Defined as constructors | Survive in Source 4 as degenerate wrappers; not in PLN3/PLN/ |
+| 4-encoding matrix | Main development pattern | Source 4's `early-pln/` preserves the structure but author calls it legacy |
+| `≞` (measured-by) relation | Used in DTL constructors | Not in production downstream |
+| `believe_me` anti-pattern | In `Set.metta` | Removed as part of Set/sorted-list cleanup |
+| ETV (Evidential TV?) wrapper | Used in IDI base case | Source 4 keeps with `STV` substitution |
+| `≘` record operator | Defined in `Record.metta` | Source 4 keeps; not in PLN3/PLN/ |
+
+### 2.8 [X3] Rule inventory was already small in the seed
+
+Only 3 core rule families: **Deduction, ModusPonens, ImplicationDirectIntroduction (IDI)**.
+
+**[Codex C-3-7 framing]**: *"Later repos do not 'trim down' a once-large rule inventory. The seed itself is a focused formalization of a few canonical rules plus a synthesis engine."* The narrowness of the cluster's executable PLN surface is **inherited**, not earned through pruning.
+
+The 2008 PLN book's full rule taxonomy (60+ rules per Source 1) was **never** broadly implemented — no point in this lineage attempted concept-geometry deduction, quantifier rules, temporal/causal rules, distributional TV, multideduction, BRGI, OBI, FactorGraph, MORK, Context-as-link, possible-worlds variable instantiation, etc. **All these gaps trace to the seed.**
+
+---
+
+## 3. Model-unique contributions
+
+### Claude-unique (in addition to the headline)
+- **Citation typo in PLN/'s `lib_pln.metta:L40`** — cites *"metta/pln/dependent-types/DeductionDTL.metta"*, but the actual provenance file is `metta/common/formula/DeductionFormula.metta` (extra "pln/", wrong filename, wrong directory). The DTL file at the cited path also exists, but it's the constructor-level wrapper, not the formula source. Worth fixing in the upstream comment.
+- `believe_me` anti-pattern documented as an explicit type-checker limitation workaround in 2023.
+- Detailed bijection proof for PrCnt ↔ STV.
+- Idris file's exact content: 105 lines, 2-implementation, Michael Messer commented suggestions.
+- "ETV" specifically called out as a non-trivial wrapper that survives differently downstream.
+
+### Codex-unique
+- Generic-vs-STV deduction split with consistency-checks-stubbed observation (now [X2] after Claude verification).
+- Multiple file-paths cited for cross-encoding tests (entail/equal/match/dependent-types).
+- Clear framing of the "small rule inventory inherited not earned" insight.
+- PrCnt usage in `ded_formula` confirmed actively used at runtime.
+
+### Gemini-unique
+- Compact "frozen Aug 2023, transition to pln-experimental line" handoff observation.
+- Idris-prototype-as-formal-origin-of-sorted-evidence-stamps clean framing.
+- PrCnt-as-"raw-count-sibling-of-STV" framing, simpler than Codex's beta-machinery framing.
+
+### Gemini errors (corrected in reconciliation, see §2.5)
+- Pre-correction: 0.2 MP hack attributed to Peter Isaev. Self-corrected.
+- Self-audit hallucinated a non-existent "Truth Functions and Confidences are better fit" commit in `pln-experimental2`. Corrected against git data.
+
+---
+
+## 4. Discovered publications
+
+**No new publications in `hyperon-pln`** — all three models agree. The repo cites:
+- The PLN 2008 book (already in wiki coverage).
+- Hyperon project itself (not a publication).
+- Old canonical `trueagi-io/hyperon-pln` URL (now redirects to `pln-experimental`).
+- README mentions Idris2; not a publication citation.
+
+**Net add to wiki publications**: zero from this source.
+
+---
+
+## 5. Updated provenance map (specific file → file lineage, verbatim chains)
+
+After Sources 1-5, the verbatim provenance traces are:
+
+```
+Source 5: hyperon-pln/metta/common/formula/DeductionFormula.metta:L60-L75 (STV-specialized strength)
+   ⇣ verbatim
+Source 2: PLN3/src/Formulas.metta (Truth_Deduction strength)
+   ⇣ verbatim strength + min-based confidence
+Source 3: PLN/lib_pln.metta:L84-L99
+   ⇣ confidence formula CHANGED at pln0.9 (Isaev, 2026-03-12)
+   final: multiplicative (with strengths)
+
+Source 5: hyperon-pln/metta/common/formula/DeductionFormula.metta:L8-L21 (consistency conditions, COMMENTED OUT in generic path)
+   ⇣ uncommented and reactivated downstream
+Source 2/3: PLN3/src/Constraints.metta + PLN/lib_pln.metta:L42-L54
+   final: actively enforces book-page-74 constraints
+
+Source 5: hyperon-pln/metta/common/formula/ModusPonensFormula.metta:L7-L14 (with $notABs = 0.2 "temporary hack")
+   ⇣ becomes Truth_SymmetricModusPonens downstream (gated by link-type whitelist)
+Source 2/3: Truth_SymmetricModusPonens with $snotAB = 0.2 retained
+   ⇣ confidence formula CHANGED at pln0.9
+   final: multiplicative + Truth_or
+
+(Truth_ModusPonens with c = 0.02: NEW DOWNSTREAM, NOT IN SEED — book-faithful asymmetric form)
+
+Source 5: hyperon-pln/metta/common/formula/ImplicationDirectIntroductionFormula.metta:L6-L37
+   ⇣ verbatim (and the DTL/equal/match wrappers)
+Source 4: pln-experimental2/experimental/early-pln/.../ImplicationDirectIntroduction*Formula.metta
+   ⇣ NOT carried further
+PLN3/PLN/: NO ImplicationDirectIntroduction implementation
+
+Source 5: hyperon-pln/metta/synthesis/Synthesize.metta + Unify.metta
+   ⇣ kept experimentally
+Source 4: pln-experimental2/experimental/early-pln/.../synthesis/
+   ⇣ NOT carried further
+PLN3/PLN/: NO synthesis-engine path; replaced by PQ-Deriver
+
+Source 5: hyperon-pln/idris/StrictlySorted.idr
+   ⇣ design pattern (sorted-id / strict-ordering proofs) survives conceptually
+   ⇣ Idris code carried to Source 4, then DELETED 2025-12-18
+PLN3/PLN/: design pattern surfaces in StampDisjoint + sorted union, not as code
+```
+
+---
+
+## 6. Actionable items for wiki card edits
+
+### 6.1 Update existing draft content (cluster synthesis)
+1. **MP rule documentation** — distinguish the asymmetric (`c=0.02`, book-faithful, post-2023) and symmetric (`0.2`, hyperon-pln 2023 inheritance, leungmanhin) variants explicitly. Don't conflate.
+2. **Provenance attribution** — the "0.2 temporary hack" commentary in PLN3/PLN/ source dates to leungmanhin's 2023-07 PR #23, not to a downstream invention. Wiki PLN-rule cards should cite this lineage when explaining the constant.
+3. **Consistency-condition lineage** — the book-page-74 constraints exist in production PLN/ as **uncommented descendants** of the 2023 generic deduction's commented-out checks. The STV-specialized deduction-formula here was the path that kept them live and got carried forward.
+4. **PrCnt as historical** — when explaining PLN's TV hierarchy, note that `PrCnt` (probability + raw count) and `STV` (probability + confidence) are bijective. Drop in production was simplification, not capability loss.
+5. **Synthesis-engine architecture lost** — the cluster's original "PLN as program synthesis over typed proof constructors" vision is preserved in Source 5's synthesis engine but **does not survive into production**. Worth flagging for any expert reader who expects a synthesizer.
+
+### 6.2 Provenance citations to add
+- `Hyperon AI Algorithms+PLN+PLN Full` Draft: attribute MP-hack lineage to leungmanhin 2023 (PR #23 merge `0d017c4`).
+- New `+AI` proposal for PLN3 / PLN/ Published cards: reference the typo in `lib_pln.metta:L40` (`metta/pln/dependent-types/DeductionDTL.metta` → should be `metta/common/formula/DeductionFormula.metta`).
+- Note Idris formal-origin of the sorted-ID double-counting pattern.
+
+### 6.3 Per-repo orientation doc refresh (deferred to post-reconciliation step)
+- `hyperon-pln/CLAUDE.md`: surgical update — add cluster-lineage paragraph, note dormancy, distinguish PrCnt-redundancy from PrCnt-as-meaningful-type, flag the `believe_me` anti-pattern reason, mention synthesis-engine abandonment downstream.
+- `hyperon-pln/AGENTS.md`: Codex-side surgical update with the inert-consistency-conditions finding.
+- `hyperon-pln/GEMINI.md`: minor note about the lineage handoff date.
+
+---
+
+## 7. Workflow assessment
+
+**Intra-cluster cross-checking earned its cost again** at Source 5:
+- Claude's MP-hack lineage reinterpretation reframes Source 3's reconciliation. Without re-extraction here, this would have stayed buried.
+- Codex's generic-vs-STV consistency-stubbed observation was independent confirmation of an early-seed difference.
+- Gemini's recurring attribution drift was caught and the standing rule applied.
+
+**Cost vs. value at Source 5**: ~70 KB of model output, reconciliation produced a major reinterpretation of Source 3's findings (MP genealogy) and a precise provenance map. Strong return.
+
+**Source 5 declared complete.** Per the orientation-doc workflow, per-repo doc refresh for `hyperon-pln/CLAUDE.md` (and AGENTS.md, GEMINI.md) is the next step before moving to Source 6.
+
+---
+
+## 8. Proposed Source 6
+
+The cluster's main candidates remaining:
+- **`ure2`** (ngeiswei) — legacy URE (Unified Rule Engine), C++ heritage. Conceptually foundational for "rule engine" aspect of PLN-cluster control flow but a different tradition (C++/Atomese, not MeTTa).
+- **`pln-experimental` (trueagi-io)** — the upstream of `pln-experimental2`. Likely tracks Source 4 closely; lower additional leverage.
+- **`PLN2`** (patham9/PLN) — patham9's mirror of the same `55f1751` commit as Source 2; almost certainly redundant.
+- **Publications cluster** — `Publications+Guiding PLN with Attention Allocation`, `Publications+Deep Learning Perception with PLN`, `RawData+Publications+PLN FactorGraph MORK v3.2`, etc. (Map theory claims to the implementation realities now established.)
+
+**Recommend Source 6 = `ure2`** — different code lineage (C++ Atomese), highest information density relative to what we already know. Will reveal whether the 60+ rules absent from the MeTTa cluster ever lived in legacy URE, which would be a major wiki finding.
+
+**Alternative** = jump to publications (specifically `PLN FactorGraph MORK v3.2` paper series) — would close the "wiki has FactorGraph papers but no FactorGraph code" gap by extracting the theoretical content directly.
+
+---
+
+*End of cross-model reconciled findings for Source 5.*

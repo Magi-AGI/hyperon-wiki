@@ -1,0 +1,291 @@
+# PLN/ (trueagi-io, pln0.9) — Cross-Model Reconciled Findings (Source 3, FINAL)
+
+**Source:** `E:\GitHub\hyperon reference\PLN\` → `trueagi-io/PLN` at commit `4405956947c4b53c7ff01bd565aa3b114bc970a1` (pln0.9, PR #65 merged 2026-03-15; pulled 2026-04-24).
+
+**Reconciled on:** 2026-04-24
+
+**Inputs:**
+- **Claude** (Opus 4.7 single pass, 63 claims + V7–V11 + 5 meta-doc divergences, 35 KB) → `findings_claude.txt`
+- **Codex** (47 claims, 15 KB) → `findings_codex.txt`
+- **Gemini** (concise, ~25 points, 4 KB) → `findings_gemini.txt`
+
+Confidence legend:
+- **[X3]** all three models independently confirmed
+- **[X2]** two models confirmed
+- **[X1]** only one model caught it (flagged for verification; see §2 for the critical case)
+- **[VERIFIED]** directly checked against `lib_pln.metta` source during reconciliation
+
+---
+
+## 1. Executive summary
+
+**PLN/ is NOT "99% repackaging" as Claude and Codex initially concluded.** It is a packaging pass **plus** a systematic confidence-formula pivot across most syllogistic rules. Gemini caught this; Claude and Codex missed it.
+
+- **Packaging delta [X3]**: `src/` deleted; single `lib_pln.metta` monolith; `Translator.metta`, `build.sh`, `PLN.py`, `PLN.Init` all removed; PeTTa-coupled via `git-import!` + `lib_import`.
+- **Config delta [X3]**: `MaxSteps 20→100` (5×), queues halved (`20/200 → 10/100`).
+- **Semantic delta [X1→VERIFIED]**: **7 of 11 rules have new confidence formulas**. Pattern: `min`-based or simple-product → multiplicative incorporating strengths. This is a theoretical shift traceable to the git-log commit *"Truth Functions and Confidences are better fit"* (2026-03-12).
+- **V7–V11 bug status [X3]**: V7 (inversion strength), V8 (revision clamp), V9 (TransSim zero-div) all CARRIED unchanged. V10 (capitalization) OBSOLETE (shim removed). V11 (Python shim) ELIMINATED by deletion.
+- **Missing-family recovery [X3]**: zero. Concept-geometry, quantifiers, temporal/causal, intensional, distributional, multideduction, BRGI, OBI, FactorGraph, MORK all still absent.
+
+---
+
+## 2. THE KEY MISSED DELTA: systematic confidence-formula pivot
+
+### 2.1 Gemini's catch, verified against source
+
+Gemini's §2 C-3-1 claimed: *"Major Change - Multiplicative Confidence: Most syllogistic rules have shifted to a multiplicative confidence formula that incorporates strengths."* Claude and Codex both labeled the core rules "identical" / "verbatim" to PLN3. **Direct read of `lib_pln.metta:L82-L204` confirms Gemini is right.**
+
+The git-log commit `7ffce05` *"Truth Functions and Confidences are better fit"* (2026-03-12) was the vehicle for this change. Also commit `3529c70` *"Added Induction Example"* (RavenInduction.metta) appears to have been added to test the new induction confidence formula.
+
+### 2.2 Per-rule confidence formula deltas (verified from `lib_pln.metta`)
+
+**CHANGED (7 rules):**
+
+| Rule | PLN3 confidence | PLN/ confidence | Delta |
+|---|---|---|---|
+| **Truth_Deduction** (L88-97) | `min($Pc, $Qc, $Rc, $PQc, $QRc)` | `$PQs · $QRs · $PQc · $QRc` | min→mult with strengths |
+| **Truth_Induction** (L102-110) | `Truth_w2c(min($cBA, $cBC))` | `Truth_w2c($sBC · $cBC · $cBA)` | min→product incorporating strength |
+| **Truth_Abduction** (L112-121) | `Truth_w2c(min($cAB, $cCB))` | `Truth_w2c($sAB · $cAB · $cCB)` | min→product incorporating strength |
+| **Truth_ModusPonens** (L124-126) | `$c1 · $c2` | `$Ps · $PQs · $Pc · $PQc` | added strength multiplication |
+| **Truth_SymmetricModusPonens** (L129-133) | `min($cAB, $cnotAB, $cA)` | `$cA · $cAB · Truth_or($sA, $sAB)` | min→mult with probabilistic-or of strengths |
+| **Truth_transitiveSimilarity** (L174-181) | prior min-based | `$ABc · $BCc · Truth_or($ABs, $BCs)` | min→mult with Truth_or |
+| **Truth_evaluationImplication** (L197-204) | `0.9·0.9·min5(...)` | `$ABs · $ACs · $ABc · $ACc` | min5-with-penalty→multiplicative |
+
+**UNCHANGED (4 rules):**
+
+| Rule | Formula | Note |
+|---|---|---|
+| Truth_Revision (L136-143) | `max($c, $c1, $c2)` clamp unchanged | V8 bug carried |
+| Truth_Negation (L147-148) | confidence passes through | identical to PLN3 |
+| Truth_inversion (L150-153) | `$Bc · $ABc · 0.6` | V7 bug carried — strength unchanged too |
+| Truth_equivalenceToImplication (L156-162) | `$ABc` pass-through | identical to PLN3 |
+
+### 2.3 Behavioral implications
+
+The shift to multiplicative-with-strengths confidence has concrete effects a domain expert will care about:
+
+- **More conservative confidence propagation**: `$Ps · $PQs · $Pc · $PQc` is typically smaller than `$c1 · $c2`, so conclusions land with lower confidence.
+- **Strength-sensitivity**: unlike book theory (which separates `s` and `c` through `Truth_w2c(min(...))`), PLN/'s new formulas entangle strength into confidence output.
+- **`Truth_or` as an innovation**: `1 - (1-a)(1-b)` (probabilistic-or) appears in two rules for confidence. This isn't a book formula; it's a new heuristic.
+- **Divergence from book theory**: the 2008 PLN book (Source 1) uses `min` or weighted-combination confidence aggregation. PLN3 kept the book's pattern. PLN/ has *deliberately* departed. Worth flagging as "PLN/ has moved further from the book than PLN3 did."
+
+### 2.4 Why Claude and Codex missed it
+
+Claude's error (C-2-5, C-2-6, C-2-7 of `findings_claude.txt`): cited the PLN/ formulas with new confidence expressions but labeled them "IDENTICAL" — apparent pattern-matching on the *strength* formula only, with the confidence line assumed-same.
+
+Codex's error (C-2-2 of `findings_codex.txt`): claimed formulas are "present verbatim in the monolith" — confused *presence verification* with *unchangedness*. Did not line-by-line diff against PLN3.
+
+Gemini's win: Gemini's output was concise and focused on "what changed?" framing rather than "which rules exist?" framing. The smaller output forced tighter comparison.
+
+**Lesson for future reconciliation:** when models disagree on "identical vs changed," trust the one that quotes both versions and flags a difference over the ones that label something "identical" without an explicit diff.
+
+---
+
+## 3. Cross-model unanimous findings (X3)
+
+### 3.1 Architecture / packaging
+
+- `src/` deleted; all code in `lib_pln.metta` (18.5 KB monolith).
+- `Translator.metta`, `build.sh`, `PLN.py`, `PLN.Init` all removed.
+- New import convention: `!(import! &self (library lib_import))` + `!(git-import! "...")` + `!(import! &self (library PLN lib_pln))`.
+- PeTTa coupling explicit (per AGENTS.md: "typically placed under `PeTTa/repos/PLN/`"); no standalone MeTTa-CLI path.
+- Entry points: `PLN.Derive`, `PLN.Query` (4-arity overloads each). No new entrypoints, no surviving `PLN.Init`.
+- Config defaults: `MaxSteps=100, TaskQueueSize=10, BeliefQueueSize=100` (was `20/20/200`).
+- `test.sh` reshaped as a PeTTa-workspace sweep (globs `./repos/PLN/*/*.metta` parallel-execute with `&` + `wait`); not standalone-runnable.
+
+### 3.2 Bug carryover (V7–V11)
+
+| Bug | PLN3 | PLN/ | Notes |
+|---|---|---|---|
+| **V7 Truth_inversion strength** | present | **Carried unchanged** | L150-153: still `(stv $ABs ...)` with 0.6 discount. Self-acknowledging comment *"not according to OpenCOG classic"* preserved. |
+| **V8 Truth_Revision confidence clamp** | present | **Carried unchanged** | L142-143: `max($c, $c1, $c2)` saturation preserved. |
+| **V9 TransitiveSimilarity zero-div** | present | **Carried unchanged** | L166-169: raw `/` in 4 spots; `/safe` available in same file but not applied. |
+| **V10 sentence/Sentence** | present (shim-bridged) | **Obsolete** | Shim deleted; only capital `Sentence` appears. V10 is no longer reachable. |
+| **V11 Python shim dep** | present | **Eliminated by deletion** | No Python files exist; no `PLN.Init`; direct PeTTa import only. Replaced by PeTTa-runtime dependency. |
+
+### 3.3 Missing-family recovery
+
+All grep-verified zero: concept-geometry, quantifiers (ForAll/ThereExists), temporal/causal (PredictiveImplication, SeqAND family), intensional↔extensional conversion rules, multideduction, Bayes-Net augmentation, OBI, BRGI, attention/importance, FactorGraph, MORK, possible-worlds instantiation, Context as first-class link. **Zero families recovered vs. PLN3.**
+
+### 3.4 CLAUDE.md / meta-docs staleness
+
+`CLAUDE.md` lists `MaxSteps=20, TaskQueueSize=20, BeliefQueueSize=200` — stale vs. code's `100/10/100`. Also undercounts rule surface (claims 11, actual is 14+ including Member Deduction and 3 Evaluation-over-Inheritance bridges). Same undercount pattern as PLN3. GEMINI.md is current on the monolith / PeTTa positioning but doesn't mention the confidence pivot.
+
+---
+
+## 4. New examples analysis (X3 consensus framing; Claude deepest)
+
+### 4.1 `examples/DeductionRevision.metta`
+
+Two-path deduction (A→B→D and A→C→D) followed by revision of disjoint-stamped conclusions. Expected TV `(stv 0.125 0.30429942952553224)` over stamps `(1 2 3 4)`. **Does NOT probe V8** (Gemini's hypothesis not borne out): stamps are disjoint, so `StampDisjoint` allows the merge and revision runs once — the monotonic-saturation pathology requires repeated revisions of overlapping-stamp evidence, which this test doesn't exercise.
+
+### 4.2 `examples/Direct.metta`
+
+User-space macro layer defining a custom `=>` operator + `?` query combinator. Compiles implication-like clauses into direct MeTTa reductions using `Truth_ModusPonens`, folds alternate derivations via `Truth_Revision`. **Bypasses the PQ-based Deriver entirely** — uses MeTTa's native reduction + revision aggregation. Not a new core rule family; a convenience front-end. Toy theory exercised: father/mother/grandfather/old.
+
+### 4.3 `examples/RavenInduction.metta`
+
+Induction over IntSet: given two individual ravens (rv1, rv2) with disagreeing black-membership evidence (0.8 and 0.0), induce `(Inheritance raven (IntSet black))` → `(stv 0.38 ...)`. **Inverts FlyingRaven's deduction direction** — good coverage complement. **Red flag [X1 Claude]**: uses `lib_patrick` import, diverging from the standard `lib_import`/`git-import!` flow documented elsewhere in the repo. Won't work under the standard PeTTa runtime.
+
+### 4.4 Are these examples in the test sweep? [X2 Codex + Claude]
+
+Yes — `test.sh` sweeps all `examples/*.metta` and `ruletests/*.metta`. The three new examples are part of the default regression run.
+
+---
+
+## 5. Canonical current surface
+
+### 5.1 Positioning
+
+- PLN/ explicitly distinguishes itself from PLN2/PLN3 in AGENTS.md: *"Unlike PLN2/ and PLN3/, this repo does not have a modular `src/` tree ... Do not copy PLN2/3 instructions here."*
+- Operationally positioned as current-of-record: README + all meta-docs point users to `git-import! "https://github.com/trueagi-io/PLN.git"`.
+- Not self-labeled "canonical" but behaves as such. Active multi-track development: 20+ feature branches visible in remote refs (NARS, Negation, Modularity, Multiprocessing2, EffectiveInferenceControl, ExhaustiveDeriver, Mettamorph, MeTTaAgnostic, SinglePremiseInference, TaskReturn, TranslatorGeneralized, PLNRobotics, etc.).
+- HEAD = `4405956` (pln0.9 merge). Prior tags v0.1–v0.6; no v0.10+.
+
+### 5.2 Lineage
+
+- `PLN/` HEAD = `PLN3/`'s pinned commit (`55f1751`) + 1 commit (PR #65 consolidation). `PLN3` is explicitly ngeiswei's fork frozen at the pre-consolidation state.
+- Provenance citations in `lib_pln.metta` still reference `trueagi-io/hyperon-pln/DeductionDTL.metta` (Consistency + Deduction) and `opencog/pln/rules/wip/*.scm` (11+ rule-level references). No new external citations.
+- `hyperon-pln` (patham9, 2023-dormant) is acknowledged as lineage, NOT as current upstream. Formerly it was the Dependent-Type-Logic formalization experiment; PLN/ cites it for provenance only.
+
+### 5.3 Dead-code and orphan references
+
+- `$cnotAB` binding at L131 defined but never used (kept after the Symmetric MP confidence formula change).
+- `StampConcat` defined but unused; deriver uses inline `msort (append ...)`.
+- Comment at L283 *"introduction now handled by Translator"* references the deleted Translator module.
+- Two ruletests (`evaluationImplicationRuleA.metta`, `evaluationWithNegationAndInheritanceInversion.metta`) invoke `translatePredicate`, which isn't defined in `lib_pln.metta` — likely PeTTa builtin via `lib_import`.
+- `RavenInduction.metta` uses `lib_patrick` (not in standard flow).
+
+---
+
+## 6. Discovered publications
+
+Same citation graph as Source 2. No new papers or books. PLN book (2008) cited at `lib_pln.metta:L39, L82, L101, L123, L135` for Consistency, Deduction, Induction, MP, Revision respectively. `hyperon-pln/DeductionDTL.metta` cited for lineage. ~11 `opencog/pln/rules/wip/*.scm` code-provenance links. No NARS citation, no metta-morph reference (both pruned with Python-shim removal), no FactorGraph/MORK link.
+
+README's link to `https://github.com/trueagi-io/PLN/wiki` — flag for follow-up when PLN cluster closes (per orientation-doc workflow; inspect separately, don't conflate with Source 3 extraction).
+
+---
+
+## 7. Actionable items for wiki card edits
+
+Based on cross-model consensus + the corrected confidence-pivot finding:
+
+### 7.1 Must update in the wiki (new findings from Source 3)
+
+1. **pln0.9 "multiplicative confidence" pivot** — PLN has moved further from the 2008 book. Add a section to `Hyperon AI Algorithms+PLN+PLN Full` (Draft) documenting:
+   - Which rules changed (Deduction, Induction, Abduction, MP, Symmetric MP, Transitive Similarity, Evaluation Implication — 7 of 11).
+   - What changed (min → multiplicative with strengths; introduction of `Truth_or`).
+   - Which rules still match PLN3 / book (Revision, Negation, Inversion, EquivToImp — 4 of 11).
+   - Commit provenance (`7ffce05` "Truth Functions and Confidences are better fit").
+
+2. **PeTTa coupling and the end of standalone MeTTa** — PLN/ requires a PeTTa workspace (SWI-Prolog-hosted MeTTa) via `git-import!`. No standalone MeTTa-CLI path.
+
+3. **Configuration policy shift** — `MaxSteps 20→100`, queues halved. Deeper-but-narrower inference search is now the default.
+
+4. **Examples added** — `DeductionRevision` (2-path + revision), `Direct` (macro DSL), `RavenInduction` (induction counterpart to FlyingRaven).
+
+### 7.2 Still must flag (carried from Source 2)
+
+- V7 Inversion strength bug still present (pivot didn't touch it).
+- V8 Revision confidence clamp still present.
+- V9 TransitiveSim zero-division risk still present.
+- Still no FactorGraph, MORK, quantifiers, temporal, intensional, distributional.
+- Rule inventory still ~12-13 of book's >60.
+
+### 7.3 Orientation-doc updates (per orientation-doc workflow memory)
+
+Per the refined workflow: AFTER this reconciliation, not during extraction.
+
+**For `PLN/CLAUDE.md`** (surgical update after reading current content):
+- Fix config values: 20/20/200 → 100/10/100.
+- Add the multiplicative-confidence pivot note.
+- Fix rule count (currently claims 11, actual is 14+).
+- Flag the orphan "Translator" reference at L283.
+
+**For `PLN/AGENTS.md`** (Codex):
+- Codex's summary already has the material; a surgical update adding config change + pivot note would align the doc with code.
+
+**For `PLN/GEMINI.md`** (Gemini):
+- Per Gemini's own corrected proposal: add multiplicative-confidence note, `=>` DSL capability (Direct.metta), and API shift to capital `Sentence`. Surgical update, not rewrite.
+
+**Hold `hyperon-wiki/CLAUDE.md`** until PLN cluster closes.
+
+---
+
+## 8. Workflow assessment
+
+**Cross-model value at Source 3:** Gemini alone caught the confidence-pivot. Claude's internal-triangulation would not have caught it either — Claude's own agent pattern-matched and labeled "identical." This is the clearest evidence yet that cross-model (vs. intra-Claude) triangulation catches model-family-wide blind spots.
+
+**Corrective action inside this reconciliation:** the reconciler (me, Claude-Sonnet-level, not the extraction sub-agent) re-read `lib_pln.metta` directly to verify Gemini's claim. Direct source verification resolved the dispute. This should be codified: **when models disagree on identity-vs-change, the reconciler must spot-check the source.**
+
+**Source 3 declared complete.** Unblocked for Source 4.
+
+### Proposed Source 4: `pln-experimental2` (ngeiswei)
+
+Most recent in the cluster (commit 2026-03-12). Highest leverage because:
+- It's ngeiswei's active experimental branch, distinct from the pln0.9 consolidation line.
+- Likely location of missing-rule work (Gemini and Codex both suggested this).
+- Will reveal whether experimental PLN diverges from upstream in coverage or just in approach.
+
+Alternatives: `ure2` (legacy C++ URE; conceptually foundational but old), `hyperon-pln` (DTL formalization lens, 2023-dormant).
+
+---
+
+## 9. Git-history context (retroactive backfill)
+
+Snapshot at extraction hash `4405956`.
+
+**Commit narrative (last 25 at hash):** Defining event is the **pln0.9 milestone** (PR #65 merged 2026-03-15). **Peter Isaev (pisaev1)** authored the pivotal commit `7ffce05` *"Truth Functions and Confidences are better fit"* (2026-03-12) — the origin of the multiplicative-confidence pivot identified in §2 above. Isaev also added the Induction example (`RavenInduction.metta`) and corrected tests across 2026-03-12..14. Patrick Hammer merged Isaev's work via PR #63 (2026-03-11) and PR #65 (2026-03-15).
+
+Earlier history (2026-02): "lib_pln.metta from PeTTa" by Hammer, "gitimportable" by Hammer, PR #56 `movedPLNfromPeTTa`, PR #55 `PLN v0.6 from PeTTA`, PR #57 `Port queue dedup and ordering fixes` by Roman Treutlein. These show the transition from a PeTTa-internal component to a standalone git-importable library — the packaging half of the pln0.9 work.
+
+**Tags:** `v0.1 → v0.2 → v0.3 → v0.4 → v0.5 → v0.6 → v0.9` (no `v0.7` or `v0.8` — jump signals skipped intermediate milestones).
+
+**Remote branches (27 total; active frontiers):** NARS, Negation, Modularity, Multiprocessing2, EffectiveInferenceControl, ExhaustiveDeriver, Mettamorph, MeTTaAgnostic, SinglePremiseInference, TaskReturn, TranslatorGeneralized, PathGeneralized, PLNsanity, PLNRobotics, pln0.9 (merged), ImprovedDeriver, movedPLNfromPeTTa, AdditionalExample1, CompilerCompatibility, FixTypes, Formatting, PLN_v0.6, PRMergedAndSubfolders, UnusedFunctionRemoval, patham9-patch-1, plus `main` and `HEAD`. Branch names suggest multi-track in-flight research beyond the monolith consolidation.
+
+**Top authors (at extraction hash):**
+- Patrick Hammer: 74 (+ 47 Anonymous-same-email = 121 effective) — primary maintainer/merger
+- Robert Wünsche: 31
+- pisaev1 (Peter Isaev): 9 + 5 = 14 — author of the pln0.9 confidence pivot
+- Roman Treutlein, PtrMan: 1 each
+
+**Key PRs (`trueagi-io/PLN`):**
+- **#65 "Pln0.9"** by pisaev1 (merged 2026-03-14) — **the multiplicative-confidence pivot**
+- #63 "Pln0.9" (earlier staging of same work)
+- #60, #58 README updates by pisaev1
+- #57 "Port lib_pln queue dedup and ordering compatibility fix" by rTreutlein
+- #56 "lib_pln.metta from PeTTa" by patham9 — **the monolith consolidation**
+- #55 "PLN v0.6 from PeTTA" by patham9
+- #54 "Improved negation handling" (2025-08)
+- #52 "Return task in PLN.Derive so reasoning can be continued easily"
+- #51 "Modularity: Expose PLN.Derive too"
+- #50 "Improved deriver"
+
+**Interpretation:** The `pln0.9` milestone bundled TWO conceptually distinct changes: (a) a packaging consolidation from modular-PeTTa-internal to monolithic-standalone-lib_pln.metta, and (b) a semantic confidence-formula pivot (multiplicative with strengths + Truth_or). Only (a) was visible in Claude/Codex extractions without commit context; (b) was traced to Isaev's `7ffce05`. The 27-branch list shows multi-track research directions not yet merged — any future pass over this repo should note the branch surface before drawing conclusions about coverage.
+
+**Key contributor correction vs. Source 3 reconciliation §2.4:** the confidence-pivot is **Peter Isaev's theoretical contribution**, not Hammer's or Treutlein's. Domain-expert outreach for wiki review should prioritize Isaev on the confidence-model question specifically.
+
+---
+
+## 10. Source-5 retroactive correction — MP lineage genealogy
+
+Source 5 reconciliation (`source5_hyperon_pln/findings_reconciled_crossmodel.txt`, 2026-04-24) revealed that this doc's framing of "`Truth_SymmetricModusPonens` uses constant 0.2 (semantically distinct from book's `c=0.02`)" was incomplete. The full lineage is:
+
+- The 2023 `patham9/hyperon-pln` seed contains **exactly one** MP rule (`metta/common/formula/ModusPonensFormula.metta`), using `$notABs = 0.2` with `min`-based confidence. Authored by **Manhin Leung (leungmanhin)** in PR #23, drafted 2023-07-13 (commit *"Draft the Modus Ponens formula and DTL"*) with explicit *"temporary hack"* commentary added 2023-07-31.
+
+- That seed rule **structurally became `Truth_SymmetricModusPonens`** downstream in PLN3 + PLN/, gated by `SymmetricModusPonensRuleGuard` for `Similarity` / `IntentionalSimilarity` / `ExtensionalSimilarity` link types. Its `0.2` constant is **inherited from leungmanhin's 2023 work**, not invented during pln0.9 or any later refactor.
+
+- A **separate book-faithful asymmetric MP** (`Truth_ModusPonens` with `c = 0.02` per book §5.7.1) was **added downstream** in the production line (already present by PLN3 / Source 2; absent in the 2023 hyperon-pln seed). This is a NEW rule slotted alongside the inherited symmetric one — not a renaming or refactor of it.
+
+**So the corrected reading of §1.2 above:** the `0.2` multiplication-form resolution stands; the formula is correct. But the "PLN3-specific datum" framing should be replaced with: **`0.2` is a 2023 `hyperon-pln` seed datum (Manhin Leung), inherited unchanged through PLN3 into PLN/**. The `0.02` `Truth_ModusPonens` rule is a separate, post-2023 book-faithful addition.
+
+**Updated wiki implications** (supersedes earlier §7 entry on MP):
+- When documenting PLN's Modus Ponens, distinguish two distinct rules by lineage:
+  - `Truth_ModusPonens` (`c = 0.02`, book §5.7.1): book-faithful asymmetric, post-2023 addition.
+  - `Truth_SymmetricModusPonens` (`$snotAB = 0.2`): leungmanhin's 2023 `hyperon-pln` seed, inherited verbatim into PLN3 and then PLN/.
+- Cite PR #23 (commit `0d017c4` in `patham9/hyperon-pln`) when explaining the `0.2` constant's provenance.
+- The pln0.9 confidence pivot (`Truth_or($sA, $sAB)` confidence formula change documented in §2.2 above) is a 2026 modification by Peter Isaev to the *symmetric* rule's confidence calculation only — the strength formula and `0.2` constant pre-date it by 3 years.
+
+---
+
+*End of cross-model reconciled findings for Source 3.*

@@ -1,0 +1,59 @@
+# Source 11 — Full-Text Upgrades + Late-Breaking Formalizations — Gemini Extraction Findings
+**Date:** 2026-04-25
+
+## §1 — Lane A: Full-Text Upgrades (Synergy)
+
+### A1: Economic Attention Networks (ECAN)
+- **The Economic Metaphor:** Verified the detailed currency-based equations. STI and LTI are treated as artificial currencies subject to conservation laws.
+- **Rent and Wages:**
+  - `rent = Rent * max(0, log2(si / recentMaxSTI))^2`
+  - `wages = WageStimulus * (sum(pi) / n)` (for positive stimulus)
+- **Hebbian Link Update:** `c_ij' = ConjDecay * (si * sj / recentMaxSTI^2) + (1 - (si * sj / recentMaxSTI^2)) * c_ij`.
+- **Diffusion:** Guided by a stochastic decision function: `P(diffuse) = 0.5 * (1 + tanh(shape * (si - FocusBoundary)))`.
+- **Conclusion:** ECAN provides a mathematically rigorous resource allocation layer that is **entirely missing** from the current MeTTa `PLN/` queue-based implementation.
+
+### A2: OpenCog NS Hybrid Neural-Symbolic (OCNS)
+- **Grounding Seam:** Uses `MemberLink` weights to denote fuzzy attractor membership.
+- **Glocal Memory:** HANN (Hierarchical Attractor Neural Net) attractors are "maps" and ConceptNodes are "keys."
+- **Synergy:** Activation converts to STI currency via a "Central Bank" mechanism, allowing neural recognition to trigger symbolic reasoning.
+
+### A3: Compositional Spatiotemporal Deep Learning (CSDLN)
+- **Architecture:** Extends fixed-position hierarchies to relative-position "Semantic CSDLNs."
+- **Integration Seam:** encoder -> FISHGRAM pattern miner -> AtomSpace atoms -> PLN. This represents an anachronistic bridge (FISHGRAM) not present in the modern workspace.
+
+## §2 — Lane B: Late-Breaking Formalizations (Zarqa AI)
+
+### B1: MORK-PathMap Formalization
+- **Zipper Abstract Machine (ZAM):** Verified the formal definition in Lean 4. ZAM provides the soundness proofs for the multi-threaded zipper traversals in Rust `PathMap`.
+- **Product Quantale:** Formally models the combined $Q_{logic} \times Q_{PLN}$ lattice, justifying the "Message Passing" logic proposed in the FactorGraph papers.
+- **Stats:** 19,538 lines of Lean code, 0 sorries. Checked by Lean 4.28.
+
+### B2: xiPLN — Correct and Complete Foundations
+- **Semantic Contract:** "Probability is what you query; evidence is what you carry."
+- **Layer Separation:** Explicitly separates (i) World-model posterior state (Dirichlet), (ii) Evidence algebra (Quantale), and (iii) Operational views (STV).
+- **No-Go Theorem:** Formally proves that complete link evidence cannot be computed from local per-link evidence alone, necessitating the "World-Model" approach.
+
+### B3: World-Model Calculus (Consolidated)
+- **Sigma-Guarded Inference:** "Fast PLN rules" are compiled rewrites whose soundness is discharged relative to a declared world-model class.
+- **Formal Adequacy:** Recover crisp Kripke semantics on singleton states and evidential ensemble semantics on multisets.
+
+### B4: Markov-de Finetti Formalization
+- **The Evidence Foundation:** 26,665 lines of Lean code formalizing the Diaconis-Freedman theorem.
+- **Statistic Justification:** Formally proves that transition-count matrices $(n^+, n^-)$ are sufficient statistics for Markov-exchangeable prefix measures, grounding PLN's binary evidence in measure theory.
+
+## §3 — Lane C: Inventory of Remaining Papers
+- **nuPLN (v1/Draft):** Successor theory grounding induction in Solomonoff universal distribution.
+- **MQ-Calculus / Markov-de Finetti:** Continuous state space and sub-probability extensions.
+- **Governance-Deontic Logic:** Translation of legal/normative obligations into neighborhood semantics.
+
+## Focus Questions Response
+1. **ECAN Gap:** The full equations confirm that ECAN's economic metaphor (rent/wages) is a missing control layer in modern MeTTa.
+2. **Grounding Seam:** Verified as a conversion rate between HANN attractor activation and STI currency.
+3. **ZAM & Quantale:** ZAM is the formal machine for zipper-based reduction; the Product Quantale is the algebraic foundation for the messages.
+4. **xiPLN ≈ lib_wmpln.metta:** **Verified.** The `xiPLN` paper describes the "posterior-state calculus" realized in the `CeTTa/lib_wmpln.metta` library.
+5. **No-Go Theorem:** Proves local PLN is incomplete, justifying the shift to the global World-Model.
+
+## Verification Targets
+- **V-11-1 (ZAM):** Formally defined in `mork-mm2-pathmap-formalization.tex`. [B1]
+- **V-11-2 (No-Go):** Proved as `theorem Theorem 2.1` in `world-model-calculus.tex`. [B3]
+- **V-11-3 (Identity):** Confirmed zariuq = Zarathustra Goertzel; Zaremba attribution is a wiki bibliography error. [B2]

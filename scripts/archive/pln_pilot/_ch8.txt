@@ -1,0 +1,176 @@
+Chapter 8: Error Magnification in Inference Formulas Abstract   In this chapter, we mathematically explore the sensitivity of PLN strength formulas to errors in their inputs. 
+8.1: Introduction One interesting question to explore, regarding the PLN strength formulas, is the sensitivity of the formulas to errors in their inputs. After all, in reality the “true” probabilities sA, sB, sC, sAB, sBC are never going to be known exactly. In prac-tical applications, one is nearly always dealing with estimates, not exactly known values. An inference formula that is wonderful when given exact information, but reacts severely to small errors in its inputs, is not going to be very useful in such applications.  This issue is dealt with to a large extent via the weight of evidence formulas presented in Chapters 4 and 5. In cases where an inference formula is applied with premises for which it has high error sensitivity, the weight of evidence of the con-clusion will generally suffer as a consequence. However, it is interesting from a theoretic standpoint to understand when this is going to occur – when error sensi-tivity is going to cause inferences to result in low-evidence conclusions. Toward that end, in this chapter we use the standard tools of multivariable calculus to study the sensitivity of the inference formulas with respect to input errors.  The main conceptual result of these calculations is that without careful infer-ence control, a series of probabilistic inferences may easily lead to chaotic trajec-tories, in which the strengths of conclusions reflect magnifications of random er-rors rather than meaningful information. On the other hand, careful inference control can avoid this chaotic regime and keep the system in a productive mode. The first, obvious observation to make regarding inferential error sensitivity in PLN is that if the errors in the inputs to the formulas are small enough the error in the output will also be small. That is, the inference formulas are continuous based on their premise truth values. In the case of deduction, for example, this conclu-sion is summarized by the following theorem:  Theorem (PLN Deduction Formula Sensitivity) Let U denote a set with |U| elements. Let Sub(m) denote the set of subsets of U containing m elements. Let ! indicate an approximate inequality. Assume 
+! sB"1, and 
+! " s A#sA, 
+! " s B#sB, 
+! " s C#sC,
+! " s AB#sAB, 
+! " s BC#sBC, and let 
+
+Probabilisitic Logic Networks  150  
+! fx()=PPCA()=xA"SubU# s A(),B"SubU# s B(),C"SubU# s C(),PBA()=# s AB,PCB()=# s BC$ % & & ' ( ) ) * + , , - . / / . Then, where E() denotes the expected value (mean), we have  
+! Efx()[]"sAC=sABsBC+(1#sAB)(sC#sBsBC)/(1#sB)  More formally: 
+! "#>0,$%>0 so that 
+! PA()"sA<#, 
+! PB()"sB<#, 
+! PC()"sC<#, 
+! PBA()"sAB<#, and 
+! PCB()"sBC<# implies 
+! Efx()"sAC[ ]<# where sAC is defined by the above formula. The proof of this theorem is obvious and is omitted. The situation with abduction is fairly similar to that with deduction, except that there is an additional restriction: sB cannot equal 0 or 1. This is achievable by ap-propriate adjustment of the count N of the universe. On the other hand, a glance back at the induction formula will show that the situation is a little different there. For induction, to avoid sensitive dependence on input values we need sB to be bounded away from 1, and we also need sA to be bounded away from 0. If sB is near 1 or sA is near 0, induction should not be car-ried out, because the results can’t be trusted. And, unlike in the deduction case, this problem can’t always be avoided by a careful choice of universe size. The problem is that if one increases the universe size to make sB smaller, one also makes sA smaller, which may bring it too close to zero. If the term B is a lot more frequent than the term A, then there is no way to do inductive inference meaning-fully, unless one is sure that all one’s premise truth-values are known very close to exactly. One interesting consequence of this fact is that, in the case of induction, there is no way to set the universe size globally that will make all inductions in the sys-tem even minimally reliable. To get reliable inductions, one has to let the universe size vary across different inferences. So, if one wants to use the inductive infer-ence rule (a very valuable heuristic), one has to give up the idea of a single global “space of events” serving as an implicit universe for all inferences in the system. One has to consider inferences as contextual. These observations about the singularities of the inference formulas, however, are only the most simplistic way of studying the formulas’ error-sensitivity. A deeper view is obtained by looking at the partial derivatives of the inference for-mulas, which are shown below. These calculations – to be discussed in more detail below – reveal that the de-gree of error-sensitivity is highly dependent on the particular input values. For in-stance, consider the deduction formula. For the input values sBC = .5, sC=sB = .25, we have 
+
+151     Chapter 8: Error Magnification in Inference Formulas   
+! "sAC"sAB=13  which means that the deduction formula decreases rather than increases errors in its input sAB value. On the other hand, if sBC = 1, sC=.25, sB = .5, then we have  
+! "sAC"sAB=1.5 
+which means that errors in the input sAB value are increased by a factor of 1.5. To really understand error magnification in PLN, one has to look at the norm of the gradient vectors of the inference rules, as will be discussed in the following section. These analyses basically confirm what the above partial-derivative exam-ples suggest: depending on the input values, sometimes an inference rule will magnify error, and sometimes it will decrease error (and sometimes it’ll leave the error constant). If errors are magnified in the course of an inference, then we’re essentially los-ing precision in the course of the inference – we’re losing information. Let’s say we have a set of strength values that are known to 10 bits of precision apiece. If we do a series of inference steps, each one of which magnifies error by a factor of 2, then after 10 steps of inference we’ll be dealing with totally meaningless con-clusions. We will have “chaos” in the series of strengths associated with the trail of inferences, in the sense that the strength values observed will draw on later and later bits of the initial probabilities. In a practical computational context there are only a few significant bits and the rest is roundoff error, which means that in some cases, after enough inference steps have passed, the strength values could come to consist of nothing but roundoff error. Fortunately, this potentially very serious problem can be managed via careful attention to weight of evidence.  In this chapter we will focus on the SimpleTruthValue case, but the issue of er-ror magnification and inferential chaos arises equally severely in other cases. In the DistributionalTruthValue case, error magnification will often result in prob-ability distribution function (PDF) truth-values that are relatively uniformly dis-tributed across the interval.  
+8.2: Gradient Norms and Error Magnification Our assessment of the error magnification properties of PLN rules relies on computations of the norms of the gradient vectors of the rules. The concepts of er-ror magnification and chaos in a discrete dynamical systems context are covered well in Devaney’s book (Devaney, 1989.) 
+
+Probabilisitic Logic Networks  152 8.2.1  Basic Mathematics of Gradient Norms All the PLN strength formulas are of the form  
+! v=fw() where   • w lies in n-dimensional space (4-dimensional for deduction, 3-dimensional for inversion) • v lies in 1-dimensional space  Let’s ask what happens if w is perturbed by a small error e, so that we’re look-ing at  ()()ewfwfv+==''   We can write  ()()()()()()2' eOewfgradwfv+•+=  where ()nffffgrad+++=L21, and iixff!!=. 
+Since we have  ()()()()ewfgradvv•!"'   it follows that  ()()()!cos'' wwwfgradvv"#"  and on average  ()()()'2' wwwfgradvv!"!#.  As a result, if we want the amount of error to decrease from one step to the next, we’d like to have  ()()()1<wfgrad  
+
+153     Chapter 8: Error Magnification in Inference Formulas  and if we want the amount of error to decrease on average we definitely need  ()()()2!<wfgrad,  (though having only this is chancy, because one could always find that the upper bound of the inequality was realized for a long enough time to cause real trouble). 
+8.2.2  Inference Formula Gradient Norms The following section presents algebraic calculations and graphical depictions of the gradient norms for the deduction, inversion, sim2inh and inh2sim formulas. As the illustrations given here show, the gradient norms behave rather differently for the different rules. For deduction the norm of the gradient is often, but by no means always, less than 1. For some parameter values it’s usually greater than 1; for others it’s nearly always less. The algebraic formula involved is complex, but one clear fact is that when sB is close to 1, “good” gradient norms are relatively rare. A big universe size seems to push the rule toward stability. We need to be more careful with the inversion rule. As sA gets close to zero, the gradient norms increase toward infinity, due to division by sA. As sA ap-proaches 1 another problem occurs in that the region of consistent inputs becomes very small. For values of sA that are between these two extremes, on the other hand, sizable regions for sB and sAB exist for which the gradient norm is “good.” For inh2sim, the gradient norm maxes out around 1.4. The problem area occurs when both premises, sAC and sCA, are very close to 1; that is, when A and C almost entirely overlap. It would be a shame to avoid doing inh2sim in these cases, which suggests that a more subtle control strategy than “avoid all error magnification” is called for (a topic we’ll return to below). For sim2inh, the gradient norm can get quite large (20 or so). This tends to oc-cur when sB is large, and sC and simBC are both small. If we take sB very small, then the gradient norm tends to be bounded above by 1. Here, a large universe size makes this rule dampen rather than magnify error. 
+8.2.3  Visual Depiction of PLN Formula Derivatives Now we report some Maple work deriving and displaying the gradient norms of the PLN inference formulas. The partial derivatives of the PLN deduction for-mula are computed as: 
+
+Probabilisitic Logic Networks  154 diff(dedAC(sA,sB,sC,sAB,sBC),sA); 0 diff(dedAC(sA,sB,sC,sAB,sBC),sB); 
+! "1"sAB()sBC1"sB+1"sAB()sC"sBsBC( )1"sB()2  
+diff(dedAC(sA,sB,sC,sAB,sBC),sC); 
+! 1"sAB1"sB 
+diff(dedAC(sA,sB,sC,sAB,sBC),sAB); 
+! sBC"sC"sBsBC1"sB 
+diff(dedAC(sA,sB,sC,sAB,sBC),sBC); 
+! sAB"1"sAB()sB1"sB 
+8.2.3.1 Depictions of the Gradient Norm of the Deduction Formula The norm of the gradient vector of the PLN deduction formula is thus dedAC_grad_norm := (sA,sB,sC,sAB,sBC) -> ( ( -(1-sAB)*sBC/(1-sB)+(1-sAB)*(sC-sB*sBC)/(1-sB)^2)^2 +  ( (1-sAB)/(1-sB))^2 + ( sBC-(sC-sB*sBC)/(1-sB))^2 + (sAB-(1-sAB)*sB/(1-sB) )^ 2 ) ^ (1/2) *(Heaviside(sAB-max(((sA+sB-1)/sA),0))-Heaviside(sAB-min(1,(sB/sA))))*(Heaviside(sBC-max(((sB+sC-1)/sB),0))-Heaviside(sBC-min(1,(sC/sB))));  
+
+155     Chapter 8: Error Magnification in Inference Formulas  
+! 
+dedAC_grad_norm:=sA,sB,sC,sAB,sBC( )"#1#sAB()sC#sBsBC( )1#sB()2$ % & & ' ( ) ) 2$ % & & +1#sAB()21#sB()2+sBC#sC#sBsBC1#sB$ % & ' ( ) 2+sAB#1#sAB()sB1#sB$ % & ' ( ) 2' ( ) ) 1/2  
+Finally, we are ready to show graphs of the deduction formula. We display two sets of graphs: plot3d(dedAC_grad_norm(.1,.1,.1, sAB, sBC), sAB=0..1, sBC=0..1, la-bels=[sAB,sBC,ded], numpoints=800, axes=BOXED); is the graph of the norm of the gradient vector, while  dedAC_grad_norm_only01 := (sA, sB, sC, sAB, sBC) -> piecewise (dedAC_grad_norm (sA, sB, sC, sAB, sBC) < 0, 0, dedAC_grad_norm(sA, sB, sC, sAB,sBC) < 1, dedAC_grad_norm(sA, sB, sC, sAB, sBC), 0);  is a filtered version of the graph, showing only those values of the norm that are less than or equal to 1.  plot3d(dedAC_grad_norm(.1,.1,.1, sAB, sBC), sAB=0..1, sBC=0..1, la-bels=[sAB,sBC,ded], numpoints=800, resolution = 400, axes=BOXED); 
+ 
+
+Probabilisitic Logic Networks  156 plot3d(dedAC_grad_norm_only01(.1,.1,.1,sAB,sBC),sAB=0..1,sBC=0..1,labels=[sAB,sBC,ded],numpoints=800,axes=BOXED); 
+ plot3d( dedAC_grad_norm(.1,.4, .7,sAB, sBC), sAB=0 ..1, sBC=0..1, axes=BOXED); 
+  
+
+157     Chapter 8: Error Magnification in Inference Formulas  plot3d(dedAC_grad_norm_only01(.1,.4,.7,sAB,sBC),sAB=0..1,sBC=0..1,labels=[sAB,sBC,dedAC],numpoints=800,axes=BOXED); 
+ plot3d( dedAC_grad_norm(.4,.1,.9,sAB,sBC), sAB=0 ..1, sBC=0..1, axes=BOXED); 
+ 
+
+Probabilisitic Logic Networks  158 plot3d(dedAC_grad_norm_only01(.4,.1,.9,sAB,sBC),sAB=0..1,sBC=0..1,labels=[sAB,sBC,ded],numpoints=1000,axes=BOXED); 
+ 
+8.2.3.2 Depictions of the Gradient Norm of the Inversion Formula  Now we give similar figures for the inversion formula. These are simpler be-cause the inversion formula has fewer input variables. Recall that the inversion formula looks like invAB := (sA,sB, sAB) -> sAB * sB / sA*(Heaviside(sAB-max(((sA+sB-1)/sA),0))-Heaviside(sAB-min(1,(sB/sA))));  We may thus compute the partial derivatives and norm-gradient as diff(invAB(sA,sB,sAB),sA); 
+! "sABsBsA2 
+diff(invAB(sA,sB,sAB),sB); 
+! sABsA 
+
+159     Chapter 8: Error Magnification in Inference Formulas  diff(invAB(sA,sB,sAB),sAB); 
+! sBsA 
+invAB_nd := (sA,sB, sAB) -> ( ( sAB/sA)^2 + ( -sAB*sB/sA^2)^2 + ( sB/sA) ^2)^(1/2)*(Heaviside(sAB-max(((sA+sB-1)/sA),0))-Heaviside(sAB-min(1,(sB/sA)))); 
+! invAB_nd:=(sA,sB,sAB)"sAB2sA2+sAB2sB2sA4+sB2sA2HeavisidesAB#maxsA+sB#1sA,0$ % & ' ( ) $ % & ' ( ) #HeavisidesAB-min1,sBsA$ % & ' ( ) $ % & ' ( ) $ % & ' ( )  
+The following function returns the inversion derivative norm only in cases where it’s in [0,1] (where we have error decrease rather than increase), and returns 0 oth-erwise:  invAB_nd_only01:=(sA,sB,sAB)->piecewise(invAB_nd(sA,sB,sAB)<0, 0,invAB_nd(sA,sB,sAB)<1,invAB_nd(sA,sB,sAB),0);  Now we give plots of inversion over all inputs, for various values of the input variable sA. 
+
+Probabilisitic Logic Networks  160 plot3d( invAB_nd(.01,sB,sAB), sB=0 ..1, sAB=0..1, axes=BOXED, num-points=1000, resolution = 400, labels=[sB,sAB,invAB_nd]); 
+ plot3d( invAB_nd(.1,sB,sAB), sB=0 ..1, sAB=0..1, axes=BOXED, num-points=800, resolution=400, labels=[sB,sAB,invAB_nd]); 
+ 
+   
+
+161     Chapter 8: Error Magnification in Inference Formulas  plot3d( invAB_nd_only01(.1,sB,sAB), sB=0.01 ..1, sAB=0..1, axes=BOXED, numpoints=1000, resolution=400, labels=[sB,sAB,invAB_nd]); 
+ plot3d( invAB_nd(.5,sB,sAB), sB=0 ..1, sAB=0..1, axes=BOXED, num-points=800, resolution = 400, labels=[sB,sAB,invAB_nd]); 
+ 
+
+Probabilisitic Logic Networks  162 plot3d( invAB_nd_only01(.5,sB,sAB), sB=0 ..1, sAB=0..1, axes=BOXED, numpoints=1000, resolution = 400, labels=[sB,sAB,invAB_nd]);  
+ plot3d( invAB_nd(.9,sB,sAB), sB=0 ..1, sAB=0..1, axes=BOXED, num-points=1000, resolution = 400, labels=[sB,sAB,invAB_nd]); 
+ 
+
+163     Chapter 8: Error Magnification in Inference Formulas  plot3d( invAB_nd_only01(.9,sB,sAB), sB=0 ..1, sAB=0..1, axes=BOXED, numpoints=1000, resolution = 400, labels=[sB,sAB,invAB_nd]); 
+ 
+8.2.3.3 Depictions of the Gradient Norms of the Similarity-Inheritance Conversion Formulas Finally, in this subsection we give a similar treatment for the sim2inh conver-sion formula. Here we have  sim2inh := (sA,sB,simAB) -> (1 + sB/sA) * simAB / (1 + simAB) *(Heaviside(simAB-max(((sA+sB-1)),0))-Heaviside(simAB-min(sA/sB, (sB/sA))));  inh2sim := (sAC,sCA) -> 1/( 1/sAC + 1/sCA - 1); from which we calculate the derivatives diff(inh2sim(sAC,sCA),sAC); 
+! 
+11sAC+1sCA"1# $ % & ' ( 2sAC2 
+
+Probabilisitic Logic Networks  164 diff(inh2sim(sAC,sCA),sCA); 
+! 
+11sAC+1sCA"1# $ % & ' ( 2sCA2 
+inh2sim_nd := (sAC,sCA) -> ( (1/((1/sAC+1/sCA-1)^2*sAC^2))^2 + (1/((1/sAC+1/sCA-1)^2*sCA^2))^2 )^(1/2); 
+! inh2sim_nd:=sAC,sCA()"11sAC+1sCA#1$ % & ' ( ) 4sAC4+11sAC+1sCA#1$ % & ' ( ) 4sCA4 
+diff( sim2inh(sA,sB,simAB), sA);  
+! "sBsimABsA21+simAB( ) 
+diff( sim2inh(sA,sB,simAB), sB); 
+! simABsA1+simAB( ) 
+diff( sim2inh(sB,sC,simBC), simBC); 
+! 
+1+sCsB1+simBC"1+sCsB# $ % & ' ( simBC1+simBC( )2 
+sim2inh_nd := (sB,sC,simBC) -> ( (simAB/(1+simBC))^2 + (sB/sC^2*simBC/(1+simBC))^2 + ((1+sB/sC)/(1+simBC)-(1+sB/sC)*simBC/(1+simBC)^2)^2 )^(1/2) *(Heaviside(simBC-max(((sB+sC-1)),0))-Heaviside(simBC-min(sB/sC,(sC/sB))));   
+
+165     Chapter 8: Error Magnification in Inference Formulas  
+! 
+sim2inh_nd:=(sB,sC,simBC)"simBC21+simBC()2+sB2simBC2sC41+simBC()2+1+sBsC1+simBC#1+sBsC$ % & ' ( ) simBC1+simBC()2$ % & & & & ' ( ) ) ) ) 2
+HeavisidesimBC-maxsB+sC-1,0( )( )#HeavisidesimBC-minsBsC,sCsB$ % & ' ( ) $ % & ' ( ) $ % & ' ( )  
+We then produce the following diagrams: plot3d( inh2sim_nd(sAC, sCA), sAC=0..1, sCA=0..1, axes=BOXED); 
+      
+
+Probabilisitic Logic Networks  166 plot3d( sim2inh_nd(.1, sB, simAB), sB=0..1, simAB=0..1, resolution=400, axes=BOXED); 
+ plot3d(sim2inh_nd(0.01, sB, simAB), sB = 0 .. 1, simAB = 0 .. 1, resolution = 800, numpoints = 800, axes = BOXED); 
+ 
+
+167     Chapter 8: Error Magnification in Inference Formulas  plot3d( sim2inh_nd(.4, sB, simAB), sB=0..1, simAB=0..1, resolution=800, axes=BOXED); 
+ plot3d( sim2inh_nd(.9, sB, simAB), sB=0..1, simAB=0..1, axes=BOXED, resolution=800); 
+ 
+
+Probabilisitic Logic Networks  168 8.2.4  Depictions of the Gradient Norms of the Deduction Formulas Incorporating Dependency Information Now we repeat the above exercise for the deduction variants that incorporate dependency information. The deduction formula using dependency information with a known value for ()()()BA!!!=BCPintABC is:   dedAC_dep1 := (sA, sB, sC, sAB, sBC, intABC) -> intABC / sA  + (1- sAB)*(sC-sB * sBC)/(1-sB); The corresponding formula using dependency information with known ()()()''PintAnBCBABC!!!= becomes:  dedAC_dep2 := (sA,sB,sC,sAB,sBC,intAnBC) -> (sAB * sBC + intAnBC / sA); Similarly, the formula using dependency information in both arguments is dedAC_dep12 := (sA, intABC,intAnBC) -> intABC / sA  + intAnBC / sA ;  For each of these formulas there are consistency constraints similar to those given earlier. Now we need to include an additional constraint on the intABC and/or the intAnBC variables. For dependency with a known value for intABC, for example, consistency implies the following constraint:  consistency:= (sA, sB, sC, sAB, sBC,intABC) -> (Heaviside(sAB-max(((sA+sB-1)/sA),0))-Heaviside(sAB-min(1,(sB/sA))))*(Heaviside(sBC-max(((sB+sC-1)/sB),0))-Heaviside(sBC-min(1,(sC/sB))))*(Heaviside(intABC-max(sA+sB+sC-2,0))-Heaviside(intABC-min(sA,sB,sC)));  We wish to determine the behavior of the gradient norms of these formulas. As before, we first calculate the partial derivatives for each formula. The partial de-rivatives of the PLN deduction formula with dependency information in the first argument are diff(dedAC_dep1(sA,sB,sC,sAB,sBC,intABC),sA); 
+! "intABCsA2 
+diff(dedAC_dep1(sA,sB,sC,sAB,sBC,intABC),sB); 
+
+169     Chapter 8: Error Magnification in Inference Formulas  
+! "1"sAB()sBC1"sB+1"sAB()sC"sBsBC( )1"sB()2  
+diff(dedAC_dep1(sA,sB,sC,sAB,sBC,intABC),sC);  
+! 1"sAB1"sB 
+diff(dedAC_dep1(sA,sB,sC,sAB,sBC,intABC),sAB);  
+! "sC"sBsBC1"sB  diff(dedAC_dep1(sA,sB,sC,sAB,sBC,intABC),sBC);  
+! "1"sAB()sB1"sB  diff(dedAC_dep1(sA,sB,sC,sAB,sBC,intABC),intABC);  
+! 1sA 
+The norm of the gradient vector of the PLN deduction formula with depend-ency in the first argument is then: dedAC_nd_dep1 := (sA, sB,sC,sAB,sBC,intABC)->(((1-sAB)/(1-sB))^2+(1/sA)^2+(-(sC-sB*sBC)/(1-sB))^2+(-(1-sAB)*sB/(1-sB))^2+(-intABC/sA^2)^2+(-(1-sAB)*sBC/(1-sB)+(1-sAB)*(sC-sB*sBC)/(1-sB)^2)^2)^(1/2);  
+! 
+dedAC_nd_dep1:"sA,sB,sC,sAB,sBC,intABC( )#1"sAB()21"sB()2+1sA2+sC"sBsBC( )21"sB()2$ % & & +1"sAB()2sB21"sB()2+intABC2sA4+"1"sAB()sBC1"sB+1"sAB()sC"sBsBC( )1"sB()2$ % & & ' ( ) ) 2' ( ) ) 1/2 
+Similarly, the partial derivatives of the PLN deduction formulas with depend-ency information in the second argument are: 
+
+Probabilisitic Logic Networks  170 diff(dedAC_dep2(sA,sB,sC,sAB,sBC,intAnBC),sA);  
+! "intABCsA2 
+diff(dedAC_dep2(sA,sB,sC,sAB,sBC,intAnBC),sB); 0 diff(dedAC_dep2(sA,sB,sC,sAB,sBC,intAnBC),sC);  0  diff(dedAC_dep2(sA,sB,sC,sAB,sBC,intAnBC),sAB); 
+! sBC diff(dedAC_dep2(sA,sB,sC,sAB,sBC,intAnBC),sBC); 
+! sAB diff(dedAC_dep2(sA,sB,sC,sAB,sBC,intAnBC),intAnBC);  
+! 1sA 
+The norm of the gradient vector of the PLN deduction formula with depend-ency in the second argument then becomes:  dedAC_dep2_nd:=(sA,sB,sC,sAB,sBC,intAnBC) -> ((intAnBC/sA^2)^2 + (sBC)^2 +(sAB)^2+(1/sA)^2)^(1/2); 
+! dedAC_dep2_nd:=sA,sB,sC,sAB,sBC,intAnBC( )"intAnBC2sA4+sBC2+sAB2+1sA2  Last, we calculate the norm of the gradient vector for the PLN deduction for-mula knowing the values for both intABC and intAnBC. The partial derivatives for this case are found using the following calculations.  diff(dedAC_dep12(sA,sB,sC, intABC,intAnBC),sA);  
+
+171     Chapter 8: Error Magnification in Inference Formulas  
+! "intABCsA2"intAnBCsA2  diff(dedAC_dep12(sA,sB,sC,intABC,intAnBC),sB);   0  diff(dedAC_dep12(sA,sB,sC,intABC,intAnBC),sC);  0  diff(dedAC_dep12(sA,sB,sC,intABC,intAnBC),intABC);  
+! 1sA  diff(dedAC_dep12(sA,sB,sC,intABC,intAnBC),intAnBC);  
+! 1sA  Hence the norm of the gradient vector for PLN deduction when both intABC and intAnBC are known is:  dedAC_dep12_nd:=(sA,sB,sC,intABC,intAnBC)->((-intABC/sA^2-intAnBC/sA^2)^2+(1/sA)^2+(1/sA)^2)^(1/2);  
+! dedAC_dep12_nd:=sA,sB,sC,intABC,intAnBC( )"#intABCsA2#intAnBCsA2$ % & ' ( ) 2+2sA2  We now give graphical depictions of the gradient norms for the inference for-mulas that incorporate dependency. We first exhibit several representative samples when intABC is known.          
+
+Probabilisitic Logic Networks  172 plot3d(dedAC_nd_dep1(.1,.1,.5,.9,sBC,intABC)*consistency(.1,.1,.5,.9,sBC,intABC), sBC=0.. 1,intABC=0.. 1, axes=BOXED, la-bels=[sBC,intABC,dedAC_1_nd], numpoints=2000, resolution=800); 
+ plot3d(dedAC_nd_dep1(.5,.5,.1,.5,sBC,intABC)*consistency(.5,.5,.1,.5,sBC,intABC), sBC=0.. 1,intABC=0.. 1, axes=BOXED, la-bels=[sBC,intABC,dedAC_1_nd], numpoints=1000, resolution=800);  
+ 
+
+173     Chapter 8: Error Magnification in Inference Formulas  plot3d(dedAC_nd_dep1(.9,.5,.9,.5,sBC,intABC)*consistency(.9,.5,.5,.5,sBC,intABC),  sBC=0.. 1,intABC=0.. 1, axes=BOXED, la-bels=[sBC,intABC,dedAC_1_nd], numpoints=2000, resolution=800);  
+  The next few graphs are representative of the deduction rule with a known value for intAnBC.  plot3d(dedAC_dep2_nd(.1,.1,.1,.5,sBC,intAnBC)*consistency(.1,.1,.1,.5,sBC,intAnBC), sBC=0.. 1,intAnBC=0.. 1, axes=BOXED, la-bels=[sBC,intAnBC,dedAC_2_nd], numpoints=800); 
+ 
+
+Probabilisitic Logic Networks  174  plot3d(dedAC_dep2_nd(.5,.5,.9,.5,sBC,intAnBC)*consistency(.5,.5,.9,.5,sBC,intAnBC), sBC=0.. 1,intAnBC=0.. 1, axes=BOXED, la-bels=[sBC,intAnBC,dedAC_2_nd], numpoints=2000, resolution=800); 
+ plot3d(dedAC_dep2_nd(.9,.1,.9,.1,sBC,intAnBC)*consistency(.9,.1,.9,.1,sBC,intAnBC), sBC=0.. 1,intAnBC=0.. 1, axes=BOXED, la-bels=[sBC,intAnBC,dedAC_2_nd], numpoints=2000, resolution=800); 
+ 
+
+175     Chapter 8: Error Magnification in Inference Formulas  Finally we present a small sample of the graphs for deduction when both intABC and intAnBC are known. plot3d( dedAC_dep12_nd(.1,.5,.9,intABC,intAnBC)*consistency(.1,.5,.9, .5,intABC, intAnBC), intABC=0.. 1, intAnBC=0.. 1, axes=BOXED, labels = [intABC, intAnBC, dedAC_12_nd], numpoints=2000, resolution=800); 
+ plot3d( dedAC_dep12_nd(.5,.5,.9,intABC,intAnBC) * consistency(.5,.5,.9, .5,intABC, intAnBC), intABC=0.. 1, intAnBC=0.. 1, axes=BOXED, labels = [intABC, intAnBC, dedAC_12_nd], numpoints=2000, resolution=800);  
+ 
+
+Probabilisitic Logic Networks  176 8.3 Formal Chaos in PLN The above gradient norm results imply, among other things, the possibility of deterministic chaos associated with PLN. To see this, let’s begin by constructing an artificially simple PLN-based reasoning dynamic.  Suppose one has a set of J entities, divided into M categories (represented by M Concept terms). Suppose one builds the M(M-1) possible (probabilistically weighted) Subsets between these M ConceptTerms. Assume each of the Subsets maintains an arbitrarily long inference trail, and assume the Subsets are ordered overall (e.g., in an array). This ordering naturally defines an ordering on the set of pairs of Subsets as well. Let V denote the set of ConceptTerms and Subsets thus constructed.  Then one can define a deterministic dynamic on this space V, as follows:  1) Choose the first pair of Subsets that can be combined (using deduction, induction, or ab-duction) without violating the inference trail constraints.  2) Do the inference on the pair of Subsets. 3) Use the revision rule to merge the resulting new Subset in with the existing Subset that shares source and target with the newly cre-ated Subset.  The dynamics, in this scheme, depend on the ordering. But it is clear that there will be some orderings that result in a long series of error-magnifying inferences. For these orderings one will have genuinely chaotic trajectories, in the sense of exponential sensitivity to initial conditions. If the initial conditions are given to B bits of precision, it will take roughly 
+! logBlogz steps for the inferred values to lose all meaning, where z is the average factor of error magnification.  This dynamic does not meet all definitions of mathematical chaos, because eventually it stops: eventually there will be no more pairs of relationships to com-bine without violating the trail constraints. But the time it will run is hyperexpo-nential in the number of initial categories, so for all intents and purposes it be-haves chaotically. The big unknown quantity in this example deterministic inferential dynamic, however, is the percentage of chaotic trajectories for a given set of initial catego-ries. How many orderings give you chaos? Most of them? Only a rare few? Half? The mathematics of dynamical systems theory doesn’t give us any easy answers, although the question is certainly mathematically explorable with sufficient time and effort. In the inference control mechanism we use in the current implementation of PLN, we use a different method for picking which pair of relationships to combine 
+
+177     Chapter 8: Error Magnification in Inference Formulas  at a given step, but the ultimate effect is the same as in this toy deterministic infer-ential dynamic. We have a stochastic system, but we may then have stochastic chaos. The question is still how common the chaotic trajectories will be. 
+8.3.1  Staying on the Correct Side of the Edge of Chaos We can see a very real meaning to the “Edge of Chaos” concept here (Langton 1991; Packard 1988). Doing reasoning in the error-magnification domain gives rise to chaotic dynamics, which is bad in this context because it replaces our strength values with bogus random bits. But we want to get as close to the error-magnification domain as possible – and dip into it as often as possible without de-stroying the quality of our overall inferences – so that we can do reasoning in as broadly inclusive a manner as possible. Looking at the problem very directly, it would seem there are four basic approaches one might take to controlling error magnification:  Safe approach Check, at each inference step, whether it’s an error-magnifying step or not. If it’s an error-magnifying step, don’t do it.  Reckless approach Just do all inference steps regardless of their error magnification properties.  Cautious approach Check, at each inference step, whether it’s an error-magnifying step or not. If the gradient-norm is greater than some threshold T (say, T=2 or T=1.5), then don’t do it. The threshold may possibly be set differently for the different inference rules (some reasons to do this will be mentioned below).  Adaptive approach Check, at each inference step, whether it’s an error-magnifying step or not. If it’s an error-magnifying step, decide to do it based on a calculation. Each logical Atom must keep a number D defined by 
+
+Probabilisitic Logic Networks  178  Initially, D = 1 At each inference step involving premises P1,…,Pn, set  Dnew = D * (norm of the gradient of the pertinent in-ference rule evaluated at (P1 … Pn) )  In the adaptive approach, the decision of whether to do an inference step or not is guided by whether it can be done while keeping D below 1 or not.   The reckless approach is not really viable. It might work acceptably in a deduc-tion-only scenario, but it would clearly lead to very bad problems with inversion, where the derivative can be huge. We could lose three or four bits of precision in the truth-value in one inference step. The adaptive approach, on the other hand, is very simple code-wise, and in a way is simpler than the cautious approach, be-cause it involves no parameters.  In practice, in our current implementation of PLN we have not adopted any of these approaches because we have subsumed the issue of avoiding error magnifi-cation into the larger problem of weight-of-evidence estimation. The adaptive ap-proach to avoiding error magnification winds up occurring as a consequence of an adaptive approach to weight-of-evidence-based inference control. Conceptually speaking, we have reached the conclusion that speculative rea-soning, unless carefully controlled, or interwoven with larger amounts of non-speculative reasoning, can lead to significant error magnification. Sometimes a cognitive system will want to do speculative error-magnifying reasoning in spite of this fact. But in these cases it is critical to use appropriately adaptive inference control. Otherwise, iterated speculative inference may lead to nonsense conclu-sions after a long enough chain of inferences – and sometimes after very short ones, particularly where inversion is involved. 
+
+179  

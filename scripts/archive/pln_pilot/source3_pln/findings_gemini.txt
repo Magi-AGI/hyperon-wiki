@@ -1,0 +1,48 @@
+# PLN (trueagi-io) — Gemini Extraction Findings
+**Date:** 2026-04-24
+**Commit:** 4405956 (upstream head, pln0.9)
+
+## §1 — Architecture and module map
+- **Consolidation:** The repository has been fully consolidated into a single monolithic file `lib_pln.metta` (18.5 KB). The `src/` directory has been removed. [CLAUDE.md]
+- **API Shift:** The `PLN.Init` and lower-case `sentence` mechanism (previously in `Translator.metta`) has been **dropped**. The system now uses `Sentence` (capital S) for KB entries and `STV` for atom truth value definitions.
+- **Config Changes:**
+  - `PLN.Config.MaxSteps` increased from 20 to **100**.
+  - `PLN.Config.TaskQueueSize` decreased from 20 to **10**.
+  - `PLN.Config.BeliefQueueSize` decreased from 200 to **100**. [lib_pln.metta:286]
+
+## §2 — Implemented inference rules and truth-value machinery
+- **Rule Parity:** All core rules from `PLN3` are present in the monolith.
+- **C-3-1: Major Change - Multiplicative Confidence:** Most syllogistic rules have shifted to a multiplicative confidence formula that incorporates strengths.
+  - **Deduction Confidence:** `(* (* $PQs $QRs) (* $PQc $QRc))` [lib_pln.metta:101] (previously `min` of confidences).
+  - **Induction/Abduction Confidence:** Incorporates strength: `(Truth_w2c (* (* $sBC $cBC) $cBA))` [lib_pln.metta:113].
+- **C-3-2: Inversion Strength:** Verified that `Truth_inversion` **still fails to update strength**. It returns `$ABs` (the input strength) directly. [lib_pln.metta:158]
+- **C-3-3: Symmetric MP:** The formula remains the same as `PLN3` (multiplication form), but the confidence formula now uses `Truth_or` of strengths. [lib_pln.metta:130]
+
+## §3 — Inference control strategy
+- **Mechanism:** Remains a priority-queue based deriver.
+- **Evidence Handling:** `PushUnique` and `ConcatUnique` are added for incremental tuple deduplication. [lib_pln.metta:19]
+- **Stamp Sorting:** `StampConcat` now uses `msort` (MeTTa sort) to ensure canonical evidence stamps. [lib_pln.metta:305]
+- **Loop Prevention:** `StampDisjoint` remains the primary guard against circular inference.
+
+## §4 — Deviations from the 2008 book
+- **Simplified Inversion:** The implementer explicitly notes the inversion confidence penalty is "weaker in this implementation" and "not according to OpenCOG classic." [lib_pln.metta:156]
+- **Heuristic MP:** The $c=0.02$ constant is preserved. [lib_pln.metta:121]
+
+## §5 — Experimental extensions and recent work
+- **Direct.metta (Clause Compilation):** Introduces a high-level DSL `=>` for compiling logic clauses into PLN rules. This is a significant "Expert" feature that automates the creation of `Truth_ModusPonens` chains using `foldl-atom`. [examples/Direct.metta]
+- **MORK/FactorGraph:** No mention found in `lib_pln.metta` or examples.
+
+## §6 — Tests, examples, worked inferences
+- **New Example - DeductionRevision:** Demonstrates a diamond-shaped inference (A->B->D and A->C->D) where results from two deduction paths are merged via `Truth_Revision`. [examples/DeductionRevision.metta]
+- **New Example - RavenInduction:** Specifically tests the induction rule with `raven` and `black` sets. [examples/RavenInduction.metta]
+
+## §7 — Status, open issues, TODOs
+- **V7 - Inversion Strength Bug:** Carried over. No strength update logic.
+- **V8 - TransitiveSimilarity Zero-Div:** Carried over. `TransitiveSimilarityStrength` still uses `/` instead of `/safe` for `$sA`, `$sB`, `$sC` denominators. [lib_pln.metta:173]
+- **V9 - Revision Saturation:** Carried over. Confidence formula `max(max $c $c1) $c2` ensures it can never decrease.
+- **V10 - Capitalization:** `sentence` (lower case) is gone with the removal of `Translator.metta`. `Sentence` is now the standard.
+
+## Focus Questions Response
+1. **MeTTa-fication:** `lib_pln.metta` is a pure MeTTa monolith. The logic is more "hardcoded" than the modular `PLN3` but the addition of the `=>` DSL in `Direct.metta` points toward a more expressive future.
+2. **Confidence Shift:** The most significant delta is the **multiplicative confidence** model. This is a major departure from the `min`-based approach in `PLN3` and suggests a move toward more realistic (if more aggressive) uncertainty propagation.
+3. **MORK / FactorGraph:** No evidence found.

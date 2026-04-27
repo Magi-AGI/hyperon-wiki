@@ -1,0 +1,144 @@
+# PLN Book Extraction - Codex Findings
+
+**Source:** `publication_texts/json/Probabilistic_Logic_Networks.json` (`full_text`)
+**Model:** Codex
+**Extraction date:** 2026-04-24
+**Claim counts per section:** §1 = 12, §2 = 19, §3 = 11, §4 = 9, §5 = 11
+
+Notation follows the book: strength `s`, count `N`/`n`, weight of evidence `w`/`d`, indefinite truth-value `<[L,U], b, k>`, and variables like `$X`.
+
+## 1. Truth-value semantics
+
+C-1-1: The base PLN truth-value is the SimpleTruthValue `<s,w>`, where `s in [0,1]` is a probability-like strength and `w in [0,1]` is confidence / weight of evidence. `<.6,1>` means probability `.6` known with certainty; `<.6,0>` is effectively meaningless because any strength paired with zero confidence carries no usable information. [Source: Ch. 1 §1.4 ~p. 14; Ch. 2 §2.1 ~p. 23-24]
+
+C-1-2: The simple truth-value has a dual count form `<s,N>`, connected heuristically to confidence by `w = N/(N+k)` for an adjustable parameter `k`. The book treats `<s,w>` as the default representation and explicitly marks the count form when it is being used. [Source: Ch. 2 §2.1 ~p. 23-24]
+
+C-1-3: The main richer truth-value in the book is the IndefiniteTruthValue `<[L,U], b, k>`, where `[L,U]` is a probability interval, `b` is a credibility level, and `k` is an integer lookahead parameter. Its intended reading is: with probability `b`, after `k` more observations the ordinary probability of the statement will lie in `[L,U]`. [Source: Ch. 4 §4.4 ~p. 54-58]
+
+C-1-4: Indefinite probabilities are explicitly positioned as compact summaries of second-order uncertainty rather than full higher-order distributions. The book treats them as a pragmatic compromise between plain `(probability, evidence)` pairs and fully retained distributions. [Source: Ch. 4 §4.5.2 ~p. 62]
+
+C-1-5: DistributionalTruthValues represent whole distributions rather than single strengths. The book states that, once discretized, deduction becomes matrix multiplication and inversion becomes matrix inversion; the two named flavors are StepFunctionTruthValues and PolynomialTruthValues. [Source: Ch. 2 §2.1 fn. 1 ~p. 24; Ch. 7 §7.1-7.3 ~p. 141-147]
+
+C-1-6: The indefinite-probability construction is tied to Walley-style interval ideas. The cited interval form is `[m/(n+k), (m+k)/(n+k)]`, where `m` is positive observations, `n` total observations, and `k` is the learning / lookahead parameter. [Source: Ch. 4 §4.2 ~p. 50]
+
+C-1-7: The conversion theorem used for indefinite probabilities is beta-binomial: with uniform prior and `x` successes in `n` Bernoulli trials, the probability of `X` more successes in the next `k` trials is `(n+1) * C(k,X) * C(n,x) / ((k+n+1) * C(k+n, X+x))`. This is the bridge used to move between interval summaries and count-like quantities. [Source: Ch. 4 §4.5.1 ~p. 59-60]
+
+C-1-8: The approximate inverse function is explicitly given as `n = -ln(b/A) / B`, with `prob = 1 - b = 1 - A e^(-Bn)`. The source text includes two coefficient sets: a full `k`-dependent table (`A111 ... B222`) and then a simplified `k`-independent approximation. This resolves Claude's internal coefficient "dispute": both tables are present, serving different approximation levels. [Source: Ch. 4 §4.5.1.2 ~p. 61-62]
+
+C-1-9: The book says it has not yet derived an error analysis for those inverse approximations. So the inverse coefficients are presented as empirically reasonable, not as a formally bounded approximation scheme. [Source: Ch. 4 §4.5.1.2 ~p. 61-62]
+
+C-1-10: PLN truth-values are contextual. `Context C R A B <t>` is defined by the equivalence `R (A AND C) (B AND C) <t>`, so every probability claim is implicitly relative to some contextual universe rather than to a single globally fixed sample space. [Source: Ch. 2 §2.2 ~p. 25-26; Ch. 10 §10.11.3 ~p. 233-234]
+
+C-1-11: The book treats context size / universe size as an important semantic and pragmatic parameter. Smaller universes make inference more speculative; larger universes reduce error but also reduce "creativity." The book explicitly says there is no extra computational cost to taking a larger universe. [Source: Ch. 2 §2.5 ~p. 32-34; Ch. 5 §5.2.1 ~p. 68]
+
+C-1-12: Quantified statements are treated as requiring third-order probabilities. The book's semantics is that ordinary indefinite probabilities already live at a higher order, and quantifiers such as `ForAll` / `ThereExists` sit one level above that by perturbing envelopes of envelopes. [Source: Ch. 11 §11.1-11.2 ~p. 239-242]
+
+## 2. Rule taxonomy
+
+C-2-1: The core first-order deduction formula is `sAC = sAB*sBC + (1-sAB)*(sC - sB*sBC)/(1-sB)`. It is derived under conditional-independence assumptions inside `B` and `not B`, and the book treats it as the main first-order extensional deduction rule. [Source: Ch. 5 §5.2.2.2 ~p. 74-75]
+
+C-2-2: The consistency condition for the deduction premise pair is source-verifiable: the Maple form in the book uses `max(((sA+sB-1)/sA),0)` and `min(1,(sB/sA))` for the `(sA,sB,sAB)` triple. So the disputed lower-bound denominator is `sA`, not `sB`, in the deduction-side condition. [Source: Ch. 5 §5.2.2.2 ~p. 82]
+
+C-2-3: Inversion is just Bayes in PLN notation. The book derives `P(B|A)` from `P(A|B)`, `P(A)`, and `P(B)`, and repeatedly uses inversion as a substep inside induction and related rules. [Source: Ch. 5 §5.4 ~p. 89-90]
+
+C-2-4: Induction is obtained by composing inversion and deduction. The book's Maple notation gives `sAC = sBA*sBC*sB/sA + (1 - sBA*sB/sA)*(sC - sB*sBC)/(1-sB)`. [Source: Ch. 5 §5.4 ~p. 90-91]
+
+C-2-5: Abduction is likewise a composed rule. The book gives `sAC = sAB*sCB*sC/sB + sC*(1-sAB)*(1-sCB)/(1-sB)`. [Source: Ch. 5 §5.4 ~p. 92]
+
+C-2-6: Similarity reasoning is reduced to asymmetric inheritance-style reasoning. The transitive-similarity section defines `sim2inh` by `sAB = (1 + sB/sA) * simAB / (1 + simAB)` and then uses ordinary deduction on the converted quantities. [Source: Ch. 5 §5.5 ~p. 94-98]
+
+C-2-7: Standard Modus Ponens is represented heuristically as `sB = sAB*sA + c*(1-sA)`, where `c` is a default term probability standing in for `P(B|not A)`. The authors call this estimate "very bad" / highly error-prone, but still better than the obvious trivial alternatives. [Source: Ch. 5 §5.7.1 ~p. 110-111]
+
+C-2-8: The symmetric Modus Ponens dispute is source-resolved in favor of the multiplication form. The extracted text gives `sB = sA*simAB + c*(1-sA)*(1+simAB)` after the algebraic reduction, not a division by `(1+simAB)`. [Source: Ch. 5 §5.7.2 ~p. 112]
+
+C-2-9: The M2I and I2M conversion rules preserve mean strength while decreasing confidence. The book states directly that they are only approximately correct for cohesive concepts and are badly wrong for random or heterogeneous sets. [Source: Ch. 5 §5.8 ~p. 112-113]
+
+C-2-10: The explicit book example of that failure is "Things owned by Izabela." The authors use it to show why property-geometry assumptions fail on heterogeneous collections. [Source: Ch. 5 §5.8 ~p. 113]
+
+C-2-11: Term-probability inference is admitted as a distinct rule family, not just an indirect byproduct of relationship inference. The book gives `sB = sA*sAB/sBA` as a Bayes rearrangement for pushing evidence from a term into another term through an inheritance relation. [Source: Ch. 5 §5.9 ~p. 113-114]
+
+C-2-12: Revision is a first-class rule rather than a mere bookkeeping step. In simple form it averages strengths weighted by evidence and adjusts count according to estimated overlap; the book later refines this with weight-of-evidence-aware and vector-space formulations. [Source: Ch. 5 §5.10 ~p. 116-125]
+
+C-2-13: For indefinite truth-values, revision is implemented by mixing second-order distributions with weights derived from counts and then re-extracting `<[L,U], b, k>`. The worked example revising `<[0.1,0.2],0.9,20>` with `<[0.3,0.7],0.9,20>` is explicit. [Source: Ch. 6 §6.2.5 ~p. 139-140]
+
+C-2-14: Distributional deduction and inversion are presented as linear-algebra operations. In the discretized case, deduction is matrix multiplication and inversion is matrix inversion, with the caveat that singular matrices can force pseudoinverse-style handling. [Source: Ch. 7 §7.2-7.3 ~p. 145-146]
+
+C-2-15: The book includes higher-order Boolean transformation rules. One extracted line on p. 210 renders biconditional as `P ⇔ Q ≡ ¬P ∨ ¬Q`, which is classically wrong; the next rendered line also gives the familiar decomposition into two implications. This should be treated as a source-text problem rather than a valid transformation rule. [Source: Ch. 10 §10.6.2 ~p. 210-211]
+
+C-2-16: Quantifier rules are carried over into the indefinite-probability regime. The book explicitly affirms existential generalization, universal specification, and the standard exchange formulas between quantifiers and negation. [Source: Ch. 11 §11.3 ~p. 242-243]
+
+C-2-17: The crisp predicate-logic equivalence `Exists x: G AND F(x) = G AND Exists x: F(x)` fails in general under indefinite probabilities. The book gives a concrete counterexample and frames the issue as noncommutativity between a linear distortion `H` and nonlinear quantifier transform `J`. [Source: Ch. 11 §11.3 ~p. 243]
+
+C-2-18: Intensional inheritance is defined by redirecting the relation to pattern or association sets, not by inventing a separate probabilistic calculus. The book explicitly says there is no need for a special intensional deduction rule; instead, one converts to ordinary probabilistic quantities, applies extensional inference, and converts back. [Source: Ch. 12 §12.3-12.6 ~p. 255-262]
+
+C-2-19: Temporal and causal rule families are introduced by adding PredictiveImplication / EventualPredictiveImplication and sequential / simultaneous conjunction types like `SeqAND`, `DisjointSeqAND`, and `EventualSeqAND`. These are treated as logical relationship types layered on top of the probabilistic event-calculus apparatus. [Source: Ch. 14 §14.3.1 ~p. 285-291]
+
+## 3. Inference control model
+
+C-3-1: The book treats inference control as the hardest practical part of PLN. The local truth-value formulas only say what can be inferred from given premises; they do not determine what to infer next or how to allocate reasoning effort. [Source: Ch. 1 §1.5 ~p. 15-16; Ch. 13 §13.2 ~p. 265-266]
+
+C-3-2: PLN uses familiar forward and backward chaining, but with probabilistic twists. In backward chaining, the target is not just a proof path but a result whose truth-value weight exceeds a controller-set threshold. [Source: Ch. 13 §13.2 ~p. 265-266]
+
+C-3-3: The book explicitly says its pruning heuristics do not solve combinatorial explosion adequately except for fairly simple inferences. It states that more powerful AGI would require tighter integration with other processes. [Source: Ch. 13 §13.2 ~p. 266]
+
+C-3-4: The named outside supports for that control problem are evolutionary learning, stochastic pattern mining, and adaptive attention allocation inside the broader Novamente architecture. [Source: Ch. 13 §13.2 ~p. 266]
+
+C-3-5: In probabilistic theorem proving, a single proof path is often not enough because its confidence may be low. The controller therefore has to care about alternative paths, revision, and effort management rather than mere reachability of a target. [Source: Ch. 13 §13.3 ~p. 266-267]
+
+C-3-6: Rule objects are implemented with both input filters and output-based-input filters. The former support forward chaining by matching premise shapes; the latter support backward chaining by telling the engine what premise shapes are needed to obtain a desired target. [Source: Ch. 13 §13.3.2 ~p. 268-269]
+
+C-3-7: Backward chaining is organized around a BIT (BackInferenceTree) with two alternating substeps: expansion and evaluation. Expansion adds possible child nodes to an expansion pool; evaluation traverses leaves-to-root and tries consistent combinations of child solutions. [Source: Ch. 13 §13.5 ~p. 270-271]
+
+C-3-8: The BIT is described in evolutionary terms: genotype = the Atoms and Rules in the tree, fitness = the weight of evidence of the result. Multiple trees may overlap topologically yet assign different truth-values and must then be combined via the Rule of Choice. [Source: Ch. 13 §13.5 ~p. 270-271]
+
+C-3-9: The pruning heuristic is a multi-armed-bandit scheme. Utilities can be based on simple formulas such as `u = d/E` or more general `u = F^a / E^b`, and route selection is done with SoftMax using probabilities proportional to `e^(u/T)`. [Source: Ch. 13 §13.6 ~p. 271-272]
+
+C-3-10: The default a priori pruning heuristics are solution-space size and rule priority. The controller prefers more restrictive targets (fewer free variables, more structure) and also prefers direct atom lookup to purely hypothetical guessing. [Source: Ch. 13 §13.6 ~p. 271-272]
+
+C-3-11: Default inheritance is explicitly handled as an inference-control heuristic, not as a primitive nonmonotonic logic rule. The book's proposed heuristic is to reason first with immediate parents in a learned hierarchy and ascend only as needed, visiting each level once. [Source: Ch. 13 §13.9 ~p. 275-277]
+
+## 4. Implementation-relevant claims
+
+C-4-1: The book positions PLN as part of the Novamente Cognition Engine and notes OpenCog as the open-source sister project. The implementation discussion is consistently framed as "PLN inside NCE," not as a standalone theorem prover. [Source: Ch. 1 §1.1 ~p. 2-3; Ch. 13 §13.1 ~p. 265]
+
+C-4-2: PLN knowledge is represented as weighted directed hypergraphs, explicitly contrasted with the binary DAGs of Bayesian-network formalisms. This matters because the inference and control strategies are designed for a hypergraph knowledge base rather than a narrow graphical-model substrate. [Source: Ch. 1 §1.1 ~p. 3]
+
+C-4-3: The implementation uses Atom structure templates and Rule objects rather than forcing everything into a single normal form. Some simplification is done, but the book says full normalization is optional rather than foundational. [Source: Ch. 13 §13.4 ~p. 269-270]
+
+C-4-4: Equivalence links are explicitly normalized into two implication links in the implementation path before entering the knowledge base. This is an engineering simplification, not a semantic redefinition of the logic. [Source: Ch. 13 §13.4 ~p. 270]
+
+C-4-5: The retry mechanism for backward chaining is singled out as a critical engineering requirement. Each attempt to improve a target can require reconstructing a search tree, so efficient preservation and reuse of partial trees is an implementation necessity. [Source: Ch. 13 §13.5 ~p. 270]
+
+C-4-6: Large-scale inference is treated as a separate engineering mode. The chapter on large-scale inference presents BRGI, multideduction, Bayes-net augmentation, and OBI as practical alternatives when pairwise step-by-step inference would be too myopic or too error-prone. [Source: Ch. 9 §9.1-9.5 ~p. 179-200]
+
+C-4-7: Bayes-net augmentation is presented as a concrete bridge from a PLN rule base to a learned probabilistic model. The procedure converts rules into a data table, applies standard Bayes-net structure learning, and then uses belief propagation to accelerate inference over static rule bases. [Source: Ch. 9 §9.4 ~p. 195-196]
+
+C-4-8: OBI (optimization-based inference) is proposed as a way to avoid compounding revision/deduction errors by searching directly for an approximately consistent atom set. The book calls out stochastic local search and overlapping subset optimization as practical variants. [Source: Ch. 9 §9.5 ~p. 199-200]
+
+C-4-9: The temporal / event-calculus implementation avoids crisp circumscription and instead uses probabilistic persistence plus contextual default reasoning. The book treats the hard part as identifying relevant context and persistence categories, not as deriving a closed-form temporal logic. [Source: Ch. 14 §14.2.2 ~p. 283-285]
+
+## 5. Open questions, gaps, and contradictions
+
+C-5-1: URE is not mentioned in the book, and ECAN is not mentioned either. The integrative architecture is Novamente / NCE, with "importance" and attention-allocation language only at that level. Any wiki claim tying the 2008 book directly to URE or ECAN is therefore a post-book attribution. [Source: Ch. 1 §1.1 ~p. 2-3; Ch. 13 §13.2 ~p. 266; Ch. 14 §14.5 ~p. 302-306]
+
+C-5-2: The authors themselves frame Modus Ponens as a poor heuristic. The book's exact language is that the estimate is "very bad" / highly error-prone, and it exists only because the necessary complement probability is missing. [Source: Ch. 5 §5.7.1 ~p. 110-111]
+
+C-5-3: The book explicitly states that its inference-control heuristics do not adequately solve combinatorial explosion except in fairly simple cases. This is one of the clearest "we have not solved this" admissions in the text. [Source: Ch. 13 §13.2 ~p. 266]
+
+C-5-4: Error magnification is not treated as a minor nuisance but as a route to chaotic trajectories. Chapter 8 says that, without careful inference control, long probabilistic inference chains can replace meaningful signal with magnified random error and effectively consume the available precision bits. [Source: Ch. 8 §8.1, §8.3 ~p. 149-177]
+
+C-5-5: The book says induction cannot be made globally safe by a single universe-size choice. To get reliable inductions, universe size must vary across inferences, which forces abandonment of a single global "space of events." [Source: Ch. 8 §8.1 ~p. 152-153]
+
+C-5-6: The approximate inverse-function coefficients in Chapter 4 are admitted to lack a formal error analysis. This is not just an OCR problem; it is a stated theoretical gap. [Source: Ch. 4 §4.5.1.2 ~p. 61-62]
+
+C-5-7: The quantifier chapter explicitly defers the noncommutativity question for constant extraction from existential quantifiers to a future paper. The unresolved question is when the operators "almost" commute under different premise values and parameter settings. [Source: Ch. 11 §11.3 ~p. 243]
+
+C-5-8: The causal chapter says it will "merely scratch the surface" of causality. It then admits that distinctions such as cause vs. enabling condition require notions from Novamente that are not part of PLN proper, especially importance values. [Source: Ch. 14 §14.1, §14.5 ~p. 279, 302-306]
+
+C-5-9: The frame problem is not solved by crisp logical machinery in this presentation. The book argues that persistence assumptions must be contextual and probabilistic, and that the real hard problem is context identification by ordinary AI inference. [Source: Ch. 14 §14.2.2 ~p. 283-285]
+
+C-5-10: The biconditional rule rendering on p. 210 is internally suspect in the extracted source. The text shows both an apparently wrong `P ⇔ Q ≡ ¬P ∨ ¬Q` line and a second implication-based equivalence line; this should be treated as an audit item and not quoted uncritically into the wiki. [Source: Ch. 10 §10.6.2 ~p. 210-211]
+
+C-5-11: The book repeatedly warns that some heuristics are cognitively motivated or pragmatically acceptable rather than mathematically necessary. This is especially explicit for mixed extensional/intensional inheritance, default reasoning, and several inference-control choices. [Source: Ch. 12 §12.3-12.6 ~p. 255-262; Ch. 13 §13.9 ~p. 275-277]
+
+*End of Codex findings.*

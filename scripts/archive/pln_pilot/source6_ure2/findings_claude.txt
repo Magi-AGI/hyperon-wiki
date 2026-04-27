@@ -1,0 +1,463 @@
+# Source 6 (ure2 — Unified Rule Engine, legacy C++ OpenCog Classic) — Claude findings
+
+Model: Claude Opus 4.7 (1M context)
+Extraction date: 2026-04-24
+Repo: ngeiswei/ure (fork of opencog/ure)
+Local path: E:\GitHub\hyperon reference\ure2\
+Commit hash: 6f4c6eeba34cf6f17c534abf67cf1274a7ba32b4 (HEAD = master)
+Cluster role: Source 6 — distinct C++ tradition, NOT MeTTa lineage. Pre-MeTTa OpenCog Classic.
+
+Claim counts per section:
+  §1: 18  §2: 17  §3: 14  §4: 16  §5: 9  §6: 13  §7: 7  §8: 4  §9: 8  §10: 11
+  Total: 117 claims
+
+Citation format: C-<section>-<n>, file:line or file:symbol
+
+Frame: provenance + abandonment analysis vs MeTTa-era PLN line (Sources 2-5).
+
+---
+
+## §1 — Architecture map and core C++ surface
+
+C-1-1. Top-level layout under `opencog/ure/` (cite: opencog/ure/ ls):
+  - 9 .cc + 9 .h files at the top level: `Rule`, `UREConfig`, `URELogger`, `URESCM`, `Utils`, `ActionSelection`, `BetaDistribution`, `MixtureModel`, `ThompsonSampling`.
+  - Two subdirectories: `forwardchainer/` (5 .cc + 5 .h) and `backwardchainer/` (5 .cc + 5 .h).
+  - One subdirectory `types/` containing `atom_types.script` + `atom_types_init.cc`.
+  - `version.h`, `CMakeLists.txt`, `README.md`.
+
+C-1-2. `Rule.h:157` (Rule.h:157-394): `class Rule : public boost::totally_ordered<Rule>`. A URE rule is "either represented as a `BindLink` over `<variables>` + `AndLink<premises>` + `<conclusion>`, or as a `BindLink` whose rewrite term is an `ExecutionOutputLink<formula><ListLink<conclusion><premises>>>`" (Rule.h:130-153 docstring). Internally: `BindLinkPtr _rule; Handle _rule_alias; std::string _name; Handle _rbs; TruthValuePtr _tv; bool _exhausted` (Rule.h:347-372).
+
+C-1-3. `Rule.h:55-112`: `class RuleSet : public std::vector<RulePtr>` — sorted vector (NOT std::set), with `expand_meta_rules(AtomSpace&)`, `aliases() const → HandleSet`, `insert(RulePtr) → pair<iterator,bool>`, `find()`, `get_tvs() const → TruthValueSeq`. Comment: "alpha-equivalent rule" deduplication.
+
+C-1-4. Rule lifecycle methods:
+  - `unify_source(Handle source, Handle vardecl, AtomSpace* queried_as) → RuleTypedSubstitutionMap` — used by ForwardChainer (Rule.h:294-296).
+  - `unify_target(Handle target, ...) → RuleTypedSubstitutionMap` — used by BackwardChainer (Rule.h:309-311).
+  - `apply(AtomSpace&) → Handle` (forward application, Rule.h:322).
+  - `is_meta() const` — does this rule produce a rule? (Rule.h:236) — meta-rule support.
+  - `has_cycle() const` — premise equals conclusion? (Rule.h:237).
+
+C-1-5. `UREConfig.h:46`: `class UREConfig` reads configuration from AtomSpace (per `wiki.opencog.org/w/URE_Configuration_Format`). Holds three nested structs:
+  - `CommonParameters{rules, max_iter, complexity_penalty, jobs, expansion_pool_size}` (UREConfig.h:141-163).
+  - `FCParameters{retry_exhausted_sources, full_rule_application}` (UREConfig.h:167-174).
+  - `BCParameters{max_bit_size, mm_complexity_penalty, mm_compressiveness}` (UREConfig.h:178-194).
+  Configuration parameters are atoms in the AtomSpace (PredicateNode/SchemaNode + Number outputs); fetched by `fetch_*_parameters()` (UREConfig.h:198-247).
+
+C-1-6. `URELogger.h:33`: `Logger& ure_logger();` — Meyer-singleton wrapper around `opencog/util/Logger`. Macros: `LAZY_URE_LOG_{ERROR,WARN,INFO,DEBUG,FINE}` to avoid stream-eval if disabled (URELogger.h:36-40).
+
+C-1-7. `URESCM.cc:31`: `class URESCM : public ModuleWrap` exports four scheme primitives via `define_scheme_primitive()` in `init()` (URESCM.cc:109-119): `cog-mandatory-args-fc`, `cog-mandatory-args-bc`, `cog-ure-logger`. Bridge from C++ to Guile module `(opencog ure)`.
+
+C-1-8. `Utils.h:50`: only one helper exposed publicly: `bool remove_hypergraph(AtomSpace&, const Handle&)` — recursively remove a Handle and its descendants (used by `BIT::erase` to clean up FCS atoms; BIT.h:524-528).
+
+C-1-9. `ActionSelection.h:50`: `class ActionSelection { const HandleTVMap& action2tv; ActionSelection(const HandleTVMap&); HandleCounter distribution(); Handle operator()(); ... TruthValueSeq _tvs; ThompsonSampling _tsmp; };` — wraps ThompsonSampling on a map from Handle (action) to TruthValuePtr (estimate of objective fulfillment).
+
+C-1-10. `ThompsonSampling.h:41`: `class ThompsonSampling { ThompsonSampling(const TruthValueSeq& tvs, unsigned bins=100); std::vector<double> distribution() const; size_t operator()(RandGen&) const; ... const TruthValueSeq& _tvs; unsigned _bins; };` — bandit-arm selector on TVs of size N, discretized into `bins=100` (default).
+
+C-1-11. `BetaDistribution.h:40`: `class BetaDistribution { BetaDistribution(const TruthValuePtr& tv, double prior_alpha=1.0, double prior_beta=1.0); double operator()(RandGen&); double alpha()/beta()/mean()/variance(); std::vector<double> cdf(int bins) const; std::vector<double> pdf(int bins) const; ... boost::math::beta_distribution<double> _beta_distribution; };` — wraps Boost beta distribution, with cdf/pdf vector helpers and CSV-export for gnuplot debugging.
+
+C-1-12. `MixtureModel.h:39`: `class MixtureModel { HandleSet models; double cpx_penalty; double compressiveness; double data_set_size; MixtureModel(const HandleSet&, double cpx_penalty=1.0, double compressiveness=0.0); TruthValuePtr operator()() const; TruthValuePtr weighted_average(...); double beta_factor(const Handle&); double prior_estimate(const Handle&); double kolmogorov_estimate(double remain_data_size); double prior(double length); };` — combines partial-models with complexity penalty and Kolmogorov-style data-completion heuristic. Doc reference: "Subsection Combining Inference Control Rules of <OPENCOG_ROOT>/examples/pln/inference-control-learning/README.md" (MixtureModel.h:84).
+
+C-1-13. `forwardchainer/ForwardChainer.h:51`: `class ForwardChainer { ... RuleSet _rules; SourceSet _sources; SourceRuleSet _source_rule_set; FCStat _fcstat; ... };`. Has 3 entry-point modes: `do_steps_singlethread()`, `do_steps_multithread()`, `do_steps_srpi()` (Source-Rule Producer Implementation, ForwardChainer.h:107-118). Source selection enum: `enum class source_selection_mode {TV_FITNESS, STI, UNIFORM};` (ForwardChainer.h:40-42) — STI = ECAN attention "Short-Term Importance".
+
+C-1-14. `forwardchainer/SourceSet.h:56`: `class Source` with body, vardecl, `complexity`, `complexity_factor`, `weight`, `exhausted`, `RuleSet rules` (rules already tried). `SourceSet` (SourceSet.h:167) holds population of sources to expand forward, with `get_weights()` for weighted sampling.
+
+C-1-15. `forwardchainer/SourceRuleSet.h:83`: `class SourceRuleSet` aka "Expansion Pool" — pairs of (Source*, Rule*) weighted by 2nd-order TV. Selector: `std::pair<SourceRule, TruthValuePtr> thompson_select();` (SourceRuleSet.h:100). Holds `ThompsonSampling _thompson_smp;` (line 134).
+
+C-1-16. `backwardchainer/BIT.h:48`: `class BITNode { Handle body; BITNodeFitness fitness; RuleTypedSubstitutionMap rules; double complexity; bool exhausted; double operator()() const; ... };` — node of the And-Or backward inference tree (or-children = rule choices). And-children are within each rule (premises must all hold).
+
+C-1-17. `backwardchainer/BIT.h:81`: `class AndBIT` — a Forward-Chaining-Strategy proof candidate. Has `Handle fcs;` (forward-chaining-strategy hypergraph), `HandleBITNodeMap leaf2bitnode;`, `double complexity;`, `bool exhausted;`. `AndBIT expand(leaf, rule, prob)` produces a child AndBIT; `BITNode* select_leaf()` does fitness-weighted leaf selection (BIT.h:139-145). Includes elaborate `fcs_to_ascii_art(...)` for inference-tree visualization (BIT.h:181-251).
+
+C-1-18. `backwardchainer/BIT.h:435`: `class BIT { AtomSpace bit_as; AndBITs andbits; AndBIT* init(); AndBIT* expand(...); AndBIT* insert(AndBIT&); ... };` — collection of AndBITs over a queried atomspace.
+
+---
+
+## §2 — Inference control: MAB / ControlPolicy / ActionSelection (PRIORITY OUTPUT)
+
+C-2-1. **YES — URE actually implements a Bayesian Thompson-Sampling MAB control system.** This is fundamentally absent from MeTTa-era PLN3/PLN/.
+
+C-2-2. The architecture:
+  - `BetaDistribution` (per-rule): converts a `TruthValuePtr` (mean/confidence pair) into a Beta posterior over success-probability.
+  - `ThompsonSampling`: takes a `TruthValueSeq` and produces `distribution()` (probability that each arm is the best) or samples directly via `operator()()`.
+  - `ActionSelection`: maps Handle→TV via `HandleTVMap`, wraps `ThompsonSampling`, returns `HandleCounter distribution()` or single `Handle operator()()`.
+  - `ControlPolicy` (BC-side): orchestrates rule selection given an AndBIT + BITNode + control rules.
+  - `MixtureModel`: combines multiple control rules into one TV when several apply.
+
+C-2-3. `ThompsonSampling.h:62-67` (verbatim): "Pi = I_0^1 pdfi(x) Prod_j!=i cdfj(x) dx / nt" — the Bayesian "probability arm i is best" formula. Doc reference: "See Section Inference Rule Selection in the README.md of the pln inference-control-learning". This is **not** SoftMax; it's the proper Thompson posterior.
+
+C-2-4. `ThompsonSampling.cc:65-86` (sampling implementation): for size N>1, sample one Beta first-order probability per arm, take argmax (with random tie-break among maxima) — this is textbook Thompson sampling.
+
+C-2-5. `ThompsonSampling.cc:40-63` (distribution implementation): computes per-arm cdf with `_bins=100`, then for each arm i computes `Pi = sum over bins of pdf_i(x) * Prod_{j!=i} cdf_j(x)` (right-end Riemann), then normalizes.
+
+C-2-6. `BetaDistribution.h:47-50` constructors: `BetaDistribution(const TruthValuePtr& tv, double prior_alpha=1.0, double prior_beta=1.0);` and `BetaDistribution(double pos_count, double count, double prior_alpha=1.0, double prior_beta=1.0);` — uses Bayes-Laplace prior by default.
+
+C-2-7. `BetaDistribution.cc:33` comment: `"// TODO should be replaced by tv->get_mode() once implemented"` — confirms the alpha/beta is derived from TV mean/count via the standard pos_count = mean*count formula.
+
+C-2-8. `ActionSelection.h:60-76`: doc says "The distribution attempts to reflect the optimal balance between exploration and exploitation (Thompson sampling)". ActionSelection itself is essentially a Handle-keyed wrapper around ThompsonSampling.
+
+C-2-9. `MixtureModel.h:39-107`: combines multiple "active partial models" (control rules whose preconditions match) into one TV via "Sum_i Pi * pdf_i * Beta(alpha_i, beta_i)" up to normalization (MixtureModel.h:80). Pi = `prior(length + K(D))` where `K(D) = |D|^(1-c)` (Kolmogorov heuristic, MixtureModel.h:88-95). `prior(length) = exp(-cpx_penalty * length)` (MixtureModel.h:148-160). This is **Universal Operator Induction** style mixture (term used verbatim, MixtureModel.h:78). The compressiveness parameter c ∈ [0,1] interpolates between "no compression" and "perfect compression" (MixtureModel.h:138-144).
+
+C-2-10. `backwardchainer/ControlPolicy.h:48`: `class ControlPolicy` is the orchestrator. CTor: `ControlPolicy(const UREConfig& ure_config, const BIT& bit, const Handle& target, AtomSpace* control_as=nullptr);`. Public surface:
+  - `RuleSet rules;` (the inference rule pool)
+  - `RuleSelection select_rule(AndBIT& andbit, BITNode& bitleaf);` (where `RuleSelection = pair<RuleTypedSubstitutionPair, double>` — selected rule + 2nd-order TV mean for AndBIT complexity calc; ControlPolicy.h:46).
+
+C-2-11. `ControlPolicy.h:97`: `HandleTVMap _default_tvs;` — fallback per-rule TV used when no control-rule applies. `ControlPolicy.h:108`: `AtomSpace* _control_as;` — atomspace holding **inference control rules** (a meta-level: rules about which rules to use). `ControlPolicy.h:116`: `std::map<Handle, HandleSet> _expansion_control_rules;`.
+
+C-2-12. `ControlPolicy.h:122-148`: control flow:
+  - `get_valid_rules(andbit, bitleaf)` → `RuleTypedSubstitutionMap` (which rules can possibly infer the target).
+  - `expansion_success_tvs(andbit, bitleaf, rules)` → `HandleTVMap` (per-rule probability that expanding succeeds, derived from control rules in `_control_as`).
+  - `rule_weights(success_tvs, rules)` → `vector<double>` for weighted random selection.
+  - `default_alias_weights(rules)` → fallback when no control rule applies.
+
+C-2-13. `ControlPolicy.h:208-228` (verbatim doc snippet): control rules have the schema
+```
+ImplicationScope <TV>
+  <vardecl>
+  And
+    Evaluation Predicate "URE:BC:preproof-of" List <A> <T>
+    Execution Schema "URE:BC:expand" List <A> <L> <inf_rule> <B>
+    <pattern-1> ... <pattern-n>
+  Evaluation Predicate "preproof-of" List <B> <T>
+```
+This is the **ControlPolicy.h:255-296** mechanism: control rules predict whether expanding andbit A by inference rule `inf_rule` yields a successor andbit B that is still a "preproof" of target T. Predicate name `"URE:BC:preproof-of"` (ControlPolicy.h:56).
+
+C-2-14. `BackwardChainer::expand_bit(AndBIT& andbit)` (BackwardChainer.cc:183-238): uses `_control.select_rule(andbit, *bitleaf)` to pick a rule, then expands. AndBIT expansion includes a probability `prob` flowing into the AndBIT complexity (BackwardChainer.cc:227-230).
+
+C-2-15. AndBIT selection for expansion (BackwardChainer.cc:297-323): `expansion_andbit_weights()` builds weights from `_andbit_fitness(andbit) * complexity_factor(andbit)` where `complexity_factor = exp(-complexity_penalty * andbit.complexity)` (BackwardChainer.cc:387-397). Then `std::discrete_distribution<size_t>` sampling. **This is BIT-level priority sampling** (not the per-rule Thompson sampling — that is at the rule-selection step inside ControlPolicy).
+
+C-2-16. AndBIT pruning when BIT exceeds `max_bit_size` (BackwardChainer.cc:330-385): `remove_unlikely_expandable_andbit()` computes `nep = (1-p)^(remaining_iterations)` per AndBIT and removes via `discrete_distribution` weighted by nep — i.e. it preferentially drops AndBITs that have low chance of being picked in any of the remaining iterations. **This is a probabilistic survival mechanism specific to URE.**
+
+C-2-17. ForwardChainer rule selection (ForwardChainer.cc:43-44 includes; ForwardChainer.h:202-207): `select_rule()` overloads. The forward-chainer uses `SourceRuleSet::thompson_select()` (SourceRuleSet.h:100, .h:134 holds `ThompsonSampling _thompson_smp;`) for Source-Rule pair selection in the `srpi` (Source-Rule-Producer-Implementation) pathway. Source selection mode is configurable: `TV_FITNESS / STI / UNIFORM` (ForwardChainer.h:40-42). The STI option suggests originally-planned ECAN attention integration.
+
+**Delta vs MeTTa-era PLN line (Sources 2-5):**
+  - PLN3/PLN/'s Deriver.metta uses a simple **confidence-priority queue** (`TaskQueueSize=20→10`, `BeliefQueueSize=200→100` from Source 3 reconciliation). No Beta posteriors. No Thompson sampling. No control-rule meta-layer. No Mixture Model. No complexity-weighted survival. → **The full Bayesian inference-control machinery is unique to URE; the MeTTa line abandoned it entirely.**
+
+---
+
+## §3 — Rule representation and rule families
+
+C-3-1. URE rule format (Rule.h:120-153): `BindLink<vars><AndLink<premises>><conclusion>` OR `BindLink<vars><AndLink<clauses>><ExecutionOutputLink<formula><ListLink<conclusion><premises...>>>>`. The 2nd form is for rules with associated truth-value-formula bodies (PLN style).
+
+C-3-2. Rule registration: a rule is referenced by a `MemberLink TV (DefinedSchemaNode <alias>) (ConceptNode <rbs>)` where the alias is `DefineLink`-bound to the actual BindLink (Rule.h:160-178). The TV is the probability of the rule participating in a successful inference (Rule.h:362-368): "It is best to have this TV with a confidence lower than 1, otherwise, if given the choice between several valid rules, the URE will always choose the one with the highest confidence."
+
+C-3-3. `types/atom_types.script` (entire file, 21 lines):
+```
+IMPLICATION_SCOPE_LINK <- RULE_LINK
+ATTRACTION_LINK <- ORDERED_LINK
+INTENSIONAL_INHERITANCE_LINK <- INHERITANCE_LINK
+```
+With comment "It is used by PLN to do more or less the same thing as RuleLink. Except that BackwardChainerUTest hangs when it inherits from RuleLink, because RuleLink::execute() does something that URE isn't expecting. XXX FIXME." — direct evidence of bit-rot/API-churn. ATTRACTION_LINK is "mystery link used by URE in unit tests. It is not documented anywhere that I know of."
+
+C-3-4. URE's atom types are minimal: just 3 link types. The vast majority of "rule semantics" lives in the **Atomese rule definitions** held in scheme files (rules/, meta-rules/), NOT in dedicated C++ types.
+
+C-3-5. PLN-style rule examples (`tests/ure/rules/`, 16 .scm files): `bc-deduction-rule`, `crisp-deduction-rule`, `crisp-modus-ponens-rule`, `fc-deduction-rule`, `fuzzy-conjunction-introduction-rule`, `implication-and-lambda-factorization-rule`, `pln-implication-and-lambda-factorization-rule`, `implication-instantiation-rule`, `implication-introduction-rule`, `implication-scope-direct-evaluation-rule`, `implication-scope-to-implication-rule`, `closed-lambda-introduction-rule`, `unary-specialization-rule`, **`conditional-direct-evaluation`**, **`evidence-based-conditional-direct-evaluation`**, **`intensional-inheritance-direct-introduction`**.
+
+C-3-6. **Intensional rule present**: `tests/ure/rules/intensional-inheritance-direct-introduction.scm:1-49` — full rule for IntensionalInheritance(A,B) ← SubsetLink(patterns-of(B), patterns-of(A)) where pattern-of(X,A) = s(X) × (P(X|A) − P(X|¬A))+. This is **the exact intensional inheritance machinery from the 2008 PLN book** — it requires `AttractionLink` (declared in atom_types.script as ATTRACTION_LINK).
+
+C-3-7. **Evidence-tracking rule (incomplete)**: `tests/ure/rules/evidence-based-conditional-direct-evaluation.scm:33-37` is **stubbed out** — comments only:
+```
+;; TODO: resume once GlobNode is supported
+(define evidence-based-conditional-direct-evaluation-implication-scope-rule
+  ;; (let* ((X (Variable "$X"))
+  ;;        (PX (
+  ;; (Bind
+)
+```
+→ Abandoned because GlobNode (variadic match) was never finished in AtomSpace.
+
+C-3-8. Meta-rules: 2 in `tests/ure/meta-rules/`: `conditional-full-instantiation-meta-rule.scm`, `conditional-partial-instantiation-meta-rule.scm`. Plus 1 in `examples/ure/meta-rules/conditional-instantiation-meta-rule.scm`. Meta-rules are **rules that produce rules** (Rule.h:236; RuleSet::expand_meta_rules in Rule.cc:56-79). Source 5 / hyperon-pln does not have an analog.
+
+C-3-9. ImplicationScope quantification: `conditional-full-instantiation-meta-rule.scm:30-50` — meta-rule operates on `Quote (ImplicationScope (Unquote $TyVs) (Unquote $P) (Unquote $Q))`, generating per-target instantiations. **This is the universal-quantifier instantiation pattern absent from MeTTa-era PLN3/PLN/.**
+
+C-3-10. Rule families present in URE (per .scm files):
+  - **Crisp (Boolean)**: `crisp-deduction`, `crisp-modus-ponens`.
+  - **Probabilistic deduction**: `bc-deduction`, `fc-deduction`, `pln-implication-and-lambda-factorization`.
+  - **Fuzzy conjunction**: `fuzzy-conjunction-introduction`.
+  - **Implication scope**: `implication-scope-direct-evaluation`, `implication-scope-to-implication`, `implication-introduction`.
+  - **Quantifier (instantiation)**: `implication-instantiation`, `conditional-full-instantiation` (meta), `conditional-partial-instantiation` (meta).
+  - **Higher-order/lambda**: `closed-lambda-introduction`, `unary-specialization`, `implication-and-lambda-factorization`.
+  - **Direct evaluation (TV from data)**: `conditional-direct-evaluation`, `evidence-based-conditional-direct-evaluation` (stubbed), `intensional-inheritance-direct-introduction`.
+
+C-3-11. Backward-chainer test scenarios (`tests/ure/backwardchainer/scm/`): `bc-criminal-config.scm`, `bc-induction-config.scm`, `bc-modus-ponens-config.scm`, `bc-transitive-closure.scm`, `conditional-instantiation-config.scm`, `conditional-partial-instantiation-config.scm`, `criminal.scm`, `friends.scm`, `green-balls-{kb,rb,targets}.scm`, `modus-ponens-example.scm`, `no-exec-output.scm`, `simple-conjunction.scm`. Includes **induction** (knowledge-base-style) and **transitive closure** — abandoned in MeTTa line.
+
+C-3-12. **Absent in URE** (search results, §6 grep above):
+  - **Temporal/causal links (PredictiveImplication, BeforeLink, AfterLink)**: zero matches. → Not in URE C++ either, despite book Ch. 14 coverage.
+  - **Quantifier symbols ForAll/Exists explicit**: zero matches. URE relies on ImplicationScope+meta-rules instead — equivalent power but different surface.
+  - **Distributional TV (continuous distributions over [0,1] beyond Beta)**: only Beta in BetaDistribution.h. No DistributionalTV class.
+  - **FactorGraph, MORK, BRGI, OBI**: zero matches anywhere.
+
+C-3-13. Attention/importance integration (ECAN coupling): only one trace — `ForwardChainer.h:42` `enum class source_selection_mode { TV_FITNESS, STI, UNIFORM };`. STI = Short-Term Importance from ECAN. Search in `ure-utils.scm:26`: `ure-set-attention-allocation -- Set the URE:attention-allocation parameter`. → Hooks to ECAN exist but are minimal; the actual attention math lives elsewhere (in opencog/attention, not in this repo).
+
+C-3-14. Multi-deduction / batch-rule application in ForwardChainer: `apply_all_rules()` (ForwardChainer.cc:127, ForwardChainer.h:143) — exists when source is empty; "Relex2Logic uses this. TODO make a separate class to handle this robustly." (ForwardChainer.cc:125). → A legacy NLP integration path.
+
+---
+
+## §4 — `forwardchainer/` and `backwardchainer/` deep dive
+
+C-4-1. `backwardchainer/` files: `BIT.{h,cc}`, `BackwardChainer.{h,cc}`, `ControlPolicy.{h,cc}`, `Fitness.{h,cc}`, `TraceRecorder.{h,cc}`. 5 .h + 5 .cc + 1 CMakeLists.
+
+C-4-2. **YES — the Backward Inference Tree (BIT) is fully implemented** (BIT.h:435 `class BIT { AtomSpace bit_as; AndBITs andbits; ... }`). And-Or-tree structure: `BITNode` (BIT.h:48) with `RuleTypedSubstitutionMap rules` (or-children = which rule), `AndBIT` (BIT.h:81) holds `Handle fcs` (a forward-chaining-strategy hypergraph) + `HandleBITNodeMap leaf2bitnode` (and-children = unproven sub-targets).
+
+C-4-3. The BIT data structure in URE corresponds **directly** to the 2008 PLN book §4.2 description. The And-Or-tree-with-FCS (forward-chaining-strategy) representation is the URE implementation of book-style backward inference.
+
+C-4-4. `BackwardChainer::do_step()` (BackwardChainer.cc:102-112):
+```
+expand_bit();   // grow BIT by one rule application
+fulfill_bit();  // try to actually run the FCS over the AtomSpace
+reduce_bit();   // prune oversized BIT
+```
+
+C-4-5. `BackwardChainer::expand_bit()` (BackwardChainer.cc:162-181):
+  - `expand_meta_rules()` (BackwardChainer.cc:145-160) — per iteration, runs meta-rules forward to generate new instance rules and adds them to `_rules`. **Comment** at BackwardChainer.cc:147: "This is kinda of hack before meta rules are fully supported by the Rule class."
+  - If BIT empty: `_bit.init()`. Else: `select_expansion_andbit()` (BackwardChainer.cc:305-323) → weighted random andbit pick → `expand_bit(andbit)`.
+
+C-4-6. `BackwardChainer::expand_bit(AndBIT& andbit)` (BackwardChainer.cc:183-238): selects leaf via `andbit.select_leaf()` (fitness-weighted; BIT.h:139-145), selects rule via `_control.select_rule(andbit, *bitleaf)` (the ControlPolicy / Thompson Sampling path), and then `_bit.expand(andbit, *bitleaf, rtsp, prob)`. Records expansion in trace atomspace if successful.
+
+C-4-7. `BITNode::operator()()` (BIT.cc:59-68) — the "probability of usefulness of expanding this node":
+```c++
+return (exhausted ? 0.0 : 1.0) *
+    (fitness.upper - fitness(*this)) / (fitness.upper - fitness.lower);
+```
+Anti-proportional to fitness (higher fitness → less to gain by expanding). This is **the rule-input-filter / output-based-input-filter analog** from book §4.2 — implemented as a single fitness-driven weight.
+
+C-4-8. `BITNodeFitness` (Fitness.h:38-57): only one mode — `MaximizeConfidence`. Holds `std::function<double(const BITNode&)> function; double lower; double upper;`. Co-domain bounds let the BITNode formula above remap to [0,1].
+
+C-4-9. `AndBITFitness` (Fitness.h:62-94): two modes — `Uniform` (always 1.0) and `Trace` (1.0 iff FCS is in pre-recorded trace, 0.0 otherwise; "handy for running inferences without the computational cost of searching the trace"). The trace mode is for **inference replay** (used by `inference-control-learning` per the doc references).
+
+C-4-10. `forwardchainer/` files: `ForwardChainer.{h,cc}`, `FCStat.{h,cc}`, `SourceSet.{h,cc}`, `SourceRuleSet.{h,cc}`, `README.md`.
+
+C-4-11. `ForwardChainer::do_chain()` (ForwardChainer.cc:120-158) decides between three execution modes:
+  - empty-source: `apply_all_rules()` (legacy Relex2Logic path).
+  - `_srpi=true` (default; "likely temporarily" comment at ForwardChainer.h:255-256): Source-Rule Producer Implementation.
+  - `_srpi=false`: `do_steps_singlethread()` or `do_steps_multithread()` (depends on `_config.get_jobs()`).
+
+C-4-12. `ForwardChainer::do_step_srpi()` is the modern path: populate `_source_rule_set` (Expansion Pool) with weighted (Source*, Rule*) pairs, then `thompson_select()` from it.
+
+C-4-13. **Bit-rot of unit tests — VERIFIED:**
+  - `tests/ure/CMakeLists.txt:13-16`: `# ADD_CXXTEST(UREConfigUTest)`, `# ADD_CXXTEST(RuleUTest)` — UREConfigUTest and RuleUTest are **commented out**. Only BetaDistribution, ActionSelection, Utils tests are active.
+  - `tests/ure/CMakeLists.txt:20-21`: `# Backward chainer code has bit-rotted and unit tests no longer work. # ADD_SUBDIRECTORY (backwardchainer)` — **the entire backward-chainer test directory is excluded from the build**.
+  - `tests/ure/forwardchainer/CMakeLists.txt:7-9`: `# ForwardChainerUTest runs fine and passes for me, but # it segfaults after 15 seconds when it runs in circleci. # ADD_CXXTEST(ForwardChainerUTest)` → ForwardChainerUTest is **disabled**.
+  - `tests/ure/backwardchainer/CMakeLists.txt:7-15` (inside the disabled subdir, explanatory): "Disable BackwardChainerUTest for now. It passes for me, but it times out in CircleCI testing. This is probably due to a very old bug, where the backwards chainer sometimes hangs forever, depending on the initial random seed. Picking a different random see usually unsticks it; however, I'm tired of playing this game, as the URE appears to be no longer supported, anyway. Foo." → Explicitly resigned author comment.
+
+C-4-14. Currently-built tests (active): `BetaDistributionUTest`, `ActionSelectionUTest`, `UtilsUTest`. Three tests remain.
+
+C-4-15. Disabled tests (in tests/ure/backwardchainer/CMakeLists.txt): `BackwardChainerUTest`, `ControlPolicyUTest`, `BITUTest`, `GradientUTest`. Source files for these still exist on disk (ls listing shows .cxxtest files) — code preserved, just not compiled.
+
+C-4-16. `BackwardChainerUTest.cxxtest:696` shows a long-standing TODO: `"// TODO: fixme, for that we need to support BIT expansion over meta rule"` — corresponds to the README §opencog/ure/README.md:106-113 known limitation: "the backward chainer needs to better support meta-rule. For now meta-rules in the backward chainer as run forwardly at each iteration and all new produced rules are added to the rule sets. Instead if should build an inference tree that directly call meta-rules. Because of this limitation some reasonings, like induction of conditionals are not possible in a purely backward way."
+
+---
+
+## §5 — Scheme and Python bindings
+
+C-5-1. Scheme bindings: `opencog/scm/` contains `rule-engine.scm`, `ure.scm`, `ure/ure-utils.scm`. C++ glue is `URESCM.cc` exporting 3 primitives via `define_scheme_primitive`: `cog-mandatory-args-fc`, `cog-mandatory-args-bc`, `cog-ure-logger` (URESCM.cc:111-118).
+
+C-5-2. The user-facing scheme API is `cog-fc` and `cog-bc` (defined in `ure-utils.scm:88+`), wrappers around the mandatory-args primitives that take many `#:keyword` options.
+
+C-5-3. `cog-fc` keyword args (ure-utils.scm:88-99): `vardecl`, `trace-as`, `focus-set`, `attention-allocation`, `maximum-iterations`, `complexity-penalty`, `jobs`, `expansion-pool-size`, `fc-retry-exhausted-sources`, `fc-full-rule-application`. → Comprehensive parameter surface.
+
+C-5-4. Scheme utility set (ure-utils.scm:9-72): rule management (`ure-add-rule-alias/name/symbol(s)`, `ure-rm-rule(s)`), parameter setters (`ure-set-num-parameter`, `ure-set-fuzzy-bool-parameter`), logger control, TV conversion (`bool->tv`, `confidence->count`), variable generation, manual chain helpers (`simple-forward-step`, `simple-forward-chain`, `meta-bind`).
+
+C-5-5. Python bindings: `opencog/cython/opencog/` contains `ure.pyx` (composite include), `forwardchainer.pyx`, `backwardchainer.pyx`, `logger.pyx`, `ure.pxd`, `CMakeLists.txt`.
+
+C-5-6. `forwardchainer.pyx`: `class ForwardChainer:` with `__cinit__(_as, rbs, source, vardecl=None, trace_as=None, focus_set=[])`, `do_chain()`, `get_results()`. (forwardchainer.pyx:11-53.) → Lean Python surface — **only basic chain start/stop/results**. None of the Bayesian/MAB/control-rule machinery exposed.
+
+C-5-7. `backwardchainer.pyx`: `class BackwardChainer:` with `__cinit__(_as, rbs, target, vardecl=None, trace_as=None, control_as=None, focus_set=None)`, `do_chain()`, `get_results()`. (backwardchainer.pyx:12-58.) → Same shallowness; only the `control_as` argument hints at control-rule machinery but no Python-side interface to manipulate it.
+
+C-5-8. Python tests under `tests/cython/{forwardchainer,backwardchainer}/` — `test_bc.py:6` imports `from opencog.ure import BackwardChainer`; .py:65 instantiates and calls `do_chain()` etc.
+
+C-5-9. **Historical role**: per README, "URE is used for PLN, the Pattern Miner, and Relex2Logic" — the scheme/Python bindings were the primary integration interface. In the MeTTa era, this layer is replaced by importing `lib_pln.metta` directly into MeTTa code (per Source 3 reconciliation). → **The scheme `cog-fc`/`cog-bc` interface is the historical analog of `import lib_pln`.**
+
+---
+
+## §6 — Bit-rot diagnostic
+
+C-6-1. README is unambiguous (README.md:21-24, verbatim): "The weaknesses of the URE are: # IT IS NO LONGER MAINTAINED. The lead developer walked away. Some unit tests pass. It's slowly bit-rotting."
+
+C-6-2. **Disabled tests inventory** (compile-time exclusions only, not file deletions):
+  | Test | Status | Source |
+  |---|---|---|
+  | `UREConfigUTest` | commented out | tests/ure/CMakeLists.txt:13 |
+  | `RuleUTest` | commented out | tests/ure/CMakeLists.txt:15 |
+  | `ForwardChainerUTest` | commented out (segfaults in circleci) | tests/ure/forwardchainer/CMakeLists.txt:9 |
+  | `BackwardChainerUTest` | inside excluded subdir; "times out / hangs forever" | tests/ure/backwardchainer/CMakeLists.txt:14 |
+  | `ControlPolicyUTest` | inside excluded subdir | tests/ure/backwardchainer/CMakeLists.txt:15 |
+  | `BITUTest` | inside excluded subdir | tests/ure/backwardchainer/CMakeLists.txt:16 |
+  | `GradientUTest` | inside excluded subdir | tests/ure/backwardchainer/CMakeLists.txt:17 |
+  | (entire backwardchainer/) | excluded at parent | tests/ure/CMakeLists.txt:21 |
+
+C-6-3. Active tests (post bit-rot): `BetaDistributionUTest`, `ActionSelectionUTest`, `UtilsUTest` — only the **mathematical sub-modules** still pass. The actual chainers don't run reliably.
+
+C-6-4. The author of CMakeLists.txt:7-15 in tests/ure/backwardchainer (Linas Vepstas, per brief git history) wrote the verbatim message: "I'm tired of playing this game, as the URE appears to be no longer supported, anyway. Foo." — emotional resignation signal.
+
+C-6-5. Atom-types script comment (`opencog/ure/types/atom_types.script:9-13`):
+```
+// ImplicationScopeLink is a synonym for RuleLink, as far as I can tell.
+// It is used by PLN to do more or less the same thing as RuleLink.
+// Except that BackwardChainerUTest hangs when it inherits from
+// RuleLink, because RuleLink::execute() does something that URE isn't
+// expecting. XXX FIXME.
+IMPLICATION_SCOPE_LINK <- RULE_LINK
+// IMPLICATION_SCOPE_LINK <- SCOPE_LINK
+```
+→ Type hierarchy was changed defensively to avoid runtime hang. Original line preserved in comment.
+
+C-6-6. Atom-types script comment (atom_types.script:15-17): "Mystery link used by URE in it's unit tests. It is not documented anywhere that I know of." — re ATTRACTION_LINK. Documentation lost.
+
+C-6-7. TODO/FIXME density (Grep `opencog/ure/`): 50+ TODOs across .h/.cc files. Highest concentrations:
+  - `Rule.h`: 6 TODOs about return types, vector-of-sources support, typed-substitution cleanup.
+  - `BIT.h`: 4 TODOs (give examples, support fitness function, etc.).
+  - `BackwardChainer.h/cc`: 6 TODOs.
+  - `ControlPolicy.h/cc`: 4 TODOs.
+  - `ForwardChainer.h/cc`: 7 TODOs (mutex refinement, threading, source/rule producer flag).
+  - `SourceSet.h`, `FCStat.h`: TODOs about merging duplicate code with BIT (acknowledged refactor never done).
+
+C-6-8. `Rule.cc:384` contains an `XXX` comment: `"if (not implicand)  // XXX this check is never needed !?"` → Author uncertainty about own dead-code branch.
+
+C-6-9. `Rule.cc:522,559` comments: "XXX This is only a stochastic" — sampling quirk in unify_source/unify_target. Comments suggest the algorithm is approximate but unverified.
+
+C-6-10. AtomSpace API churn impact (per brief git history): PR #131 (2024-04-02) "Move URE types from atomspace to URE" — types had to migrate INTO URE because AtomSpace no longer provides them. The `types/atom_types.script` file is the result of that migration.
+
+C-6-11. PR #117 (2021-10): "Port over to AtomSpacePtr from AtomSpace*" — the BackwardChainer/ForwardChainer constructors take `AtomSpace*` for trace/control but the code internally creates `AtomSpacePtr` (BackwardChainer.cc:268: `AtomSpacePtr tmp_as(createAtomSpace(&_kb_as));`) — partial migration with both styles still co-existing. → Continuing API-churn fragility.
+
+C-6-12. `BackwardChainer::fulfill_fcs` (BackwardChainer.cc:264-295) wraps execution in `try { ... } catch (...) {}` (BackwardChainer.cc:259-261) — silent error swallowing because pattern matcher periodically can't handle generated FCSes. → Symptomatic of the "bc sometimes hangs / fails" condition.
+
+C-6-13. `evidence-based-conditional-direct-evaluation.scm:33-37` (test rule that's a stubbed empty body, "TODO: resume once GlobNode is supported") — work-in-progress permanently paused.
+
+---
+
+## §7 — Successor handoff (PR #132)
+
+C-7-1. **CRITICAL FINDING — README handoff text is NOT in this fork**: searched README.md, GEMINI.md, AGENTS.md, CLAUDE.md, opencog/ure/README.md and found NO "Hyperon Chainer" or "trueagi-io/chaining" reference inside README.md. The `ngeiswei/ure` fork (this checkout, head 6f4c6ee) has NOT pulled in PR #132 (which targets `opencog/ure`).
+
+C-7-2. The only place in this repo's docs that mentions the successor is `GEMINI.md:7` (verbatim): "**Note**: This repository mirrors a legacy codebase. New development has shifted to the [Chaining](https://github.com/trueagi-io/chaining) repository." → **GEMINI.md was added by the orchestrator/agent context layer, not by upstream URE maintainers.**
+
+C-7-3. `CLAUDE.md:8-10` (verbatim): "Fork of: opencog/ure -- ngeiswei's personal fork. Uses older CMake requirements (2.8.12.2 vs 3.12 in upstream) and has diverged slightly. The upstream opencog/ure is more current. ure2 is a legacy mirror of the Unified Rule Engine (URE) from OpenCog. URE implements forward and backward chaining inference on AtomSpace. **No longer actively maintained** - bit-rotting." → CLAUDE.md author confirms the fork divergence.
+
+C-7-4. Implication: PR #132 (Geisweiller, 2025-03-12) was merged on **upstream `opencog/ure`** but `ngeiswei/ure` master is at HEAD 6f4c6ee from 2025-02-02 (Linas's last commit). The fork is **frozen pre-handoff-message**.
+
+C-7-5. Therefore, the explicit-handoff README text has to be retrieved from `opencog/ure` upstream (out of scope for this extraction per brief: "Do NOT consult any other source"). The brief's pre-populated git context (lines 207-208) confirms PR #132's existence and metadata; but we cannot transcribe the specific README wording from this fork.
+
+C-7-6. Indirect handoff signal in this fork: README.md:21-24's blunt "The lead developer walked away. Some unit tests pass. It's slowly bit-rotting." performs the same rhetorical function as the PR #132 wording — telling users this codebase is over.
+
+C-7-7. Successor target: per GEMINI.md and per brief: `https://github.com/trueagi-io/chaining`. NOT examined here (out of scope). The brief acknowledges it should already be in our hyperon-reference tree — verification deferred to subsequent extraction.
+
+---
+
+## §8 — Branch surface
+
+C-8-1. Branches per brief (cannot verify locally; git access blocked in this session): `master` (default, HEAD = 6f4c6ee), `rTreutlein-MetaRuleSupport` (Roman Treutlein meta-rule extension), `add-mixture-model-python-binding`, `singnet-master` (SingularityNET fork tracking), `update-readme`.
+
+C-8-2. `rTreutlein-MetaRuleSupport`: hypothesis based on §3 finding that the BackwardChainer's meta-rule support is acknowledged-incomplete (BackwardChainer.cc:147 "kinda of hack"; opencog/ure/README.md:106 "the backward chainer needs to better support meta-rule"; BackwardChainerUTest.cxxtest:696 "TODO: fixme, for that we need to support BIT expansion over meta rule"). Roman Treutlein's branch likely adds proper BIT-internal meta-rule expansion to address this. → **This is the same Roman Treutlein who, per Source 3, ported `lib_pln queue dedup` into the MeTTa-era PLN.** Cross-tradition contributor.
+
+C-8-3. `add-mixture-model-python-binding`: per current Cython surface (forwardchainer.pyx, backwardchainer.pyx) the Bayesian machinery (BetaDistribution, MixtureModel, ThompsonSampling, ActionSelection) is **not exposed to Python**. The branch would expose MixtureModel — but it never landed in master, suggesting the Python ML-like control-rule learning workflow was never finalized.
+
+C-8-4. `singnet-master`: SingularityNET fork tracking; the README header mentions singnet's CircleCI badge (README.md:4-5). Confirms SNET tracked URE separately at some point. The forwardchainer code copyrights have "Copyright (C) 2018,2020 SingularityNET Foundation" lines (e.g., ThompsonSampling.h:4, SourceRuleSet.h:4) — major architecture work was funded/done under SNET sponsorship.
+
+---
+
+## §9 — Discovered publications
+
+C-9-1. `examples/pln/inference-control-learning/README.md` — referenced in `ActionSelection.h:75`, `ThompsonSampling.h:69`, `MixtureModel.h:84`. **Out-of-tree**: lives in `opencog/opencog` (the meta-repo, not in ure/) — historical OpenCog Classic monorepo path. **Important: this is the design document for URE's Bayesian inference-control architecture.** Not in this repo; would need to be retrieved separately.
+
+C-9-2. `wiki.opencog.org/w/Probabilistic_logic_networks` — referenced README.md:9.
+
+C-9-3. `wiki.opencog.org/w/Pattern_miner` — referenced README.md:10.
+
+C-9-4. `wiki.opencog.org/w/Category:RelEx2Logic` — referenced README.md:11.
+
+C-9-5. `wiki.opencog.org/w/AtomSpace` — referenced README.md:16,32,35.
+
+C-9-6. `wiki.opencog.org/w/URE` — referenced README.md:87. Primary documentation hub.
+
+C-9-7. `wiki.opencog.org/w/URE_Configuration_Format` — referenced UREConfig.h:37, opencog/ure/README.md:22. Defines the AtomSpace-encoded config schema.
+
+C-9-8. `wiki.opencog.org/w/URE_Control_Policy` — referenced opencog/ure/README.md:23. Documents the control-rule meta-layer.
+
+C-9-9. PLN book reference (atom_types.script:5, verbatim): "See the book on PLN by Goertzel etal. to understand what these are all about." → Implicit Source 1.
+
+---
+
+## §10 — Lineage and successor map (provenance + abandonment)
+
+C-10-1. **Lineage diagram** (synthesized):
+```
+Source 1 (PLN book 2008 — Goertzel et al.)
+    ↓ Algorithm-level continuity
+URE (this repo) — C++ implementation, Atomese rule representation
+    Implemented:
+      - BIT (And-Or tree) — book §4.2 ✓
+      - Beta posterior + Thompson sampling — book §4.3 (book uses "SoftMax"
+        framing; URE uses proper Bayesian Thompson; mathematically equivalent goal)
+      - Inference control rules (meta-level) — book Chapter on controlled inference
+      - MixtureModel for combining control rules — Universal Operator Induction
+      - Meta-rules (rule-producing rules)
+      - Intensional inheritance via patterns/AttractionLink
+      - Quantifier instantiation via ImplicationScope + meta-rules
+    Not implemented:
+      - PredictiveImplication / temporal rules (book Ch. 14)
+      - Distributional TVs beyond Beta
+      - FactorGraph / MORK
+      - BRGI/OBI
+      - Causal calculus
+
+Source 6 (URE) ────[bit rot 2024-]──→ trueagi-io/chaining (successor, not examined)
+
+Source 5 (hyperon-pln) — frozen 2023-08-01 — MeTTa formalization seed
+    ↓ rename → trueagi-io/pln-experimental
+       ↓ fork → ngeiswei/pln-experimental = Source 4
+                   ↓
+               ngeiswei/PLN = Source 2 (PLN3)
+                   ↓
+               trueagi-io/PLN = Source 3 (PLN/, pln0.9)
+```
+
+C-10-2. **What URE has that the MeTTa line abandoned (the Abandonment Map):**
+
+| URE feature | MeTTa line (Sources 2-5) | Verdict |
+|---|---|---|
+| BIT (And-Or backward inference tree) | absent (priority queue only) | ABANDONED |
+| Beta-Bernoulli posterior over rule TVs | absent | ABANDONED |
+| Thompson sampling for rule selection | absent (confidence-priority queue) | ABANDONED |
+| Inference Control Rules meta-layer | absent | ABANDONED |
+| MixtureModel / Universal Operator Induction prior | absent | ABANDONED |
+| Complexity-penalty + Kolmogorov heuristic | absent | ABANDONED |
+| Meta-rules (rule-producing rules) | absent | ABANDONED |
+| AttractionLink + intensional-inheritance-direct-introduction | absent | ABANDONED |
+| ImplicationScope quantifier-instantiation meta-rules | partial (Source 5 has it, lost in Source 2/3) | ABANDONED |
+| `expansion_andbit_weights` survival-pruning | absent | ABANDONED |
+| Trace-recorder (for inference-control-learning replay) | absent | ABANDONED |
+| Multi-threaded chainer (`do_steps_multithread`) | absent | ABANDONED |
+| FCStat (forward-chaining statistics) | absent | ABANDONED |
+| ECAN/STI source-selection mode | absent | ABANDONED |
+
+→ **The MeTTa-era PLN line abandoned ~14 distinct features, especially the entire Bayesian inference-control architecture.** This is the most striking finding.
+
+C-10-3. **What the MeTTa line has that URE doesn't:**
+  - MeTTa S-expression rule representation (URE uses Atomese BindLink — different host language).
+  - MeTTa-native unification through interpreter (URE uses `opencog/unify` external library).
+  - Tighter integration with self-modifying interpreter (the "PeTTa" and "MeTTaCalculus" tracks per Source 3/4).
+  - 20+ feature branches under active development as of Source 3 (Sources 2-3 reconciled findings) — MeTTa-era PLN is alive; URE is dead.
+
+C-10-4. **What might have migrated to `trueagi-io/chaining` (successor; not examined):**
+  - Per brief: PR #132 (Geisweiller, 2025-03-12) added the explicit successor pointer.
+  - Likely: the FC/BC algorithms (since "Chaining" is in the name).
+  - Open question: did the Bayesian control architecture migrate? Or did it die with URE? **This is the highest-priority follow-up question** (cluster-level).
+
+C-10-5. **Cross-tradition continuity nodes:**
+  - **Roman Treutlein**: URE branch `rTreutlein-MetaRuleSupport` + Source 3 PR #57 "Port lib_pln queue dedup". → Single contributor active in both traditions.
+  - **Nil Geisweiller (ngeiswei)**: Author of all URE Bayesian code (ActionSelection 2017, BetaDistribution 2017, MixtureModel 2017, ThompsonSampling 2018, SourceRuleSet 2020) AND the `ngeiswei/PLN` and `ngeiswei/pln-experimental` MeTTa-era forks. → **The bridge person between traditions.** If anyone knows where the abandoned URE features went, it's him.
+  - **Linas Vepstas**: Last URE maintainer; not visible in the MeTTa-era PLN traditions per Sources 2-5.
+
+C-10-6. **AtomSpace coupling**: URE is fundamentally tied to the C++ AtomSpace (`#include <opencog/atomspace/AtomSpace.h>` is everywhere). The MeTTa interpreter uses its own atom representation. → The migration cost from URE to MeTTa equivalents was **complete reimplementation in a different host language**, not porting. This explains why so much was lost.
+
+C-10-7. **The "control-rule" abstraction is unique to URE** (ControlPolicy.h:208-296). Control rules are atoms in `_control_as` that predict expansion success. The pattern is: "if andbit A is preproof of T and we expand it with rule R from leaf L producing andbit B and these patterns hold, then B is also preproof of T with conditional probability TV." This kind of meta-reasoning machinery is **completely absent in MeTTa-era PLN**, where rule selection is fixed at config time.
+
+C-10-8. **Multi-armed bandit framing**: URE explicitly treats rule selection as a contextual MAB (BIT-leaf is context, rule is arm, success-probability TV is reward distribution). Books and PLN papers from 2008-2018 era discussed this; URE is the only known implementation. The MeTTa line dropped MAB framing entirely.
+
+C-10-9. **The complete URE control architecture, in one paragraph**: At each `do_step`, the BackwardChainer chooses an AndBIT (proof candidate) by `discrete_distribution` weighted by `andbit_fitness * exp(-cpx_penalty * andbit.complexity)`. Within that AndBIT, it picks a leaf via `BITNode::operator()()` (anti-fitness weighted: pick the unfit leaf to grow). For that leaf, ControlPolicy considers all valid rules (those whose conclusion can unify with the leaf) and weights them by `expansion_success_tvs` — which is computed by either: (a) the `_default_tvs` fallback, or (b) `MixtureModel({active_control_rules}, cpx_penalty, compressiveness)` if any control rule's pattern matches. The chosen weights become a `BetaDistribution`-typed `HandleTVMap`, fed into `ActionSelection` → `ThompsonSampling::operator()` → returns the chosen rule. The rule expands the AndBIT into a successor AndBIT (probability `prob` becomes part of the successor's `complexity`). The BIT is pruned by `discrete_distribution` over `(1-p)^remaining_iterations` to keep `|BIT| ≤ max_bit_size`. Compared to the book's BIT+SoftMax description (Source 1 §4.2-4.3), URE replaces SoftMax with Thompson Sampling (which is more principled Bayesian) and adds a complexity-penalty layer plus a control-rule meta-layer.
+
+C-10-10. **Observed wiki-outreach implication** (per brief): For URE-related cards, Linas Vepstas is the authoritative expert. For the inference-control / Bayesian / MAB material specifically, Nil Geisweiller is THE primary author (every relevant file's copyright says "Author: Nil Geisweiller").
+
+C-10-11. **Provenance-claim cross-link**: Source 1 (book 2008) says "BIT + MAB". URE (this source) says "BIT + Bayesian Thompson + MixtureModel + control rules" (more sophisticated than the book's SoftMax). MeTTa line (Sources 2-3-4-5) says "priority queue, no BIT". → **The MeTTa simplification is far more aggressive than the book itself**. URE was not just an implementation of the book — it was a research extension of it, and the abandonment lost both the extensions AND the book-level original.
+
+---
+
+## End of findings_claude.txt

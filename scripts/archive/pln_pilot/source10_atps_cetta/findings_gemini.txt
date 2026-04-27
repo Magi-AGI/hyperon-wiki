@@ -1,0 +1,70 @@
+# Source 10 — ai-agents + CeTTa — Gemini Extraction Findings
+**Date:** 2026-04-24
+**ai-agents Commit:** b7ab8fb (Zarathustra Goertzel, April 2026 snapshot)
+**CeTTa Commit:** cd744d5 (Zarathustra Goertzel, April 2026 snapshot)
+
+## §1 — ai-agents top-level architecture
+- **Multi-Formalism Workspace:** `ai-agents` is a comprehensive research environment (639 MB) integrating Lean 4 (Mettapedia), Mizar, Isabelle, Dedukti, and Prover9.
+- **Premise Selection Core:** The `atps/` directory serves as the benchmark and script hub for Automated Theorem Proving (ATP) premise selection.
+- **Paper Sources:** `lean-projects/mettapedia/papers/` contains the LaTeX sources and PDFs for the most recent PLN/World-Model research, including `xiPLN`, `nuPLN`, and `wm-pln-book_v3`.
+- **Relationship:** This repo is the "Proof-Carrying Formalization" line for the entire cluster. It hosts the 704+ Lean theorems and the high-level Python orchestration.
+
+## §2 — atps/scripts/ — Python selectors
+- **PLN Mixture-Local NB:** `select_pln_mixture_local_nb.py` implements a staged architecture:
+  - **Stage A:** Neighborhood bin-based local experts.
+  - **Stage B:** Normalized pooling via revision (hplus).
+  - **Stage C:** Tensor composition with likelihood-only NB evidence.
+- **Pure Python realization:** The logic models PLN evidence algebra ($E = (n^+, n^-)$) entirely in Python for benchmarking speed, bypassing the MeTTa interpreter during selection.
+- **Path Blocker:** Relies on `/home/zar/claude/atps/datasets/extended_mptp5k` (Hardcoded Linux path), making local reproduction difficult without the dataset.
+
+## §3 — lean-projects/mettapedia/ — Lean theorems
+- **C-10-1: NB Bridge Verified:** `theorem toStrength_nbEvidence_eq_nbPosterior` in `PLNBayesNetInference.lean:290` formally proves that PLN strength on tensor-composed evidence is equivalent to the Naive Bayes posterior.
+- **C-10-2: k-NN Bridge Verified:** `theorem PLN_hplusPos_eq_knnRelevance` in `PremiseSelectionKNN_PLNBridge.lean:125` formally proves that the positive count of revised k-NN evidence matches MaSh-style relevance scores.
+- **C-10-3: Correctness:** These theorems are verified with full proofs (no `sorry` in core bridge files).
+
+## §4 — lean-projects/mettapedia/papers/PLN-kNN-NB.tex
+- **xiPLN Specification:** Defines `xiPLN` as an API facade over the `nuPLN` evidence algebra.
+- **Benchmark Data:** Reports that in targeted 30s top-256 runs on E, MaSh NB and the "PLN mixture-local" model tie at **327/800** solves.
+- **Semantic Contract:** Explicitly rejects legacy Modus Ponens row transfer as "heuristic/error-prone," establishing evidence-level k-NN transfer as the canonical "Expert" bar.
+
+## §5 — artifacts/conformance/maple_court_*.metta
+- **Maple Court Conformance:** `maple_court_simple.metta` is a runtime validation test ensuring that the `PeTTa` implementation of `evidence-hplus` and `evidence-toStrength` correctly matches the Lean theorems (Scenario: bathroom humidity observations).
+
+## §6 — CeTTa/lib/ — MeTTa runtime libraries
+- **World-Model PLN:** `lib_wmpln.metta` implements a World-Model variant of PLN.
+- **The Evidence Quantale:** `lib_wmpln_evidence.metta` is the most significant code-side finding. It defines the `(evidence pos neg)` carrier and the $E, \oplus, \otimes$ algebra as formalized in the Lean proofs.
+- **xiPLN Alias:** `lib_pln_xi.metta` was not found by name, but `lib_wmpln.metta` appears to be the realized implementation of the xiPLN concepts.
+
+## §7 — CeTTa/tests/support/pln_portable/ and bio_wmpln_* tests
+- **Biomedical Application:** `test_bio_wmpln_checkpoint_petta_top.metta` confirms that the World-Model PLN is actively used for **Genomics/Drug Hypothesis** testing (e.g., `supported-drug-hyp`).
+- **Portability:** `tests/support/pln_portable/pln_evidence.metta` provides a standalone version of the evidence carrier for cross-runtime testing.
+
+## §8 — Cited-but-missing files
+- **Confirmed Missing:** `lib_pln_xi.metta` (likely implemented as `lib_wmpln.metta`), `pln_knn_prior_nb_selector_opt.metta`, and the entire `hyperon/PeTTa/demos/` subdirectory are absent from the workspace.
+
+## §9 — Three-way classification
+- **Production Line (PLN/):** Confidence-priority queue, no evidence-algebra ($n^+, n^-$) carrier.
+- **Adjacent Executable Line (ai-agents/atps):** Python-modeled evidence algebra, used for competitive benchmarks.
+- **Formal-Proof Line (ai-agents/lean):** Lean 4 proofs of the whole stack.
+- **Realized Application Line (CeTTa/lib):** Biomedical World-Model MeTTa implementation using the evidence-algebra carrier.
+
+## §10 — Resolution: IMPLEMENTED vs PROTOTYPE
+- **Status: HYBRID.** The evidence algebra and Lean proofs are FULLY IMPLEMENTED and verified. The MeTTa-runtime premise selectors (PeTTa-side) are PROTOTYPE/MISSING from the workspace. The Biomedical apps in `CeTTa` are FULLY IMPLEMENTED and tested.
+
+## §11 — Repository roles in cluster narrative
+- **Zarathustra Goertzel:** Primary architect of the Lean proofs and the "Evidence-First" World Model.
+- **CeTTa:** The "High-Performance" runtime target (likely "C-MeTTa" or "Compiled MeTTa" context) for World-Model apps.
+- **ai-agents:** The "Scientific Control" repo hosting the proofs and benchmarking scripts.
+
+## §12 — Discovered publications
+- **The World-Model Calculus (v3)** | Zar and Oruži | 2026-03-19 | (tex/pdf in lean-projects/mettapedia/papers/)
+- **PLN as a Common Substrate for Naive Bayes and k-NN Premise Selection** | Mettapedia | 2026 | (tex/pdf in lean-projects/mettapedia/papers/)
+- **Economic Attention Networks** | Ben Goertzel et al. | (Full text confirmed in JSON)
+- **mork-mm2-pathmap-formalization** | Remi/Zar | (tex in papers/)
+- **wm-pln-genomic-hypothesis** | (tex in papers/)
+
+## Focus Questions Response
+1. **PeTTa Demos:** Confirmed missing from workspace.
+2. **Lean Theorems:** Verified verbatim (`toStrength_nbEvidence_eq_nbPosterior` and `PLN_hplusPos_eq_knnRelevance`). No sorry.
+3. **CeTTa Role:** Host for the World-Model PLN and biomedical hypothesis generation apps.
+4. **Zarathustra:** Confirmed as the lead for the Lean-verified "World-Model" era of PLN.

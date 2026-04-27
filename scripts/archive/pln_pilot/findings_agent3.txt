@@ -1,0 +1,441 @@
+# PLN Pilot Extraction — Agent 3 Findings
+
+- **Agent ID:** 3
+- **Source file:** `E:/GitHub/Magi-AGI/hyperon-wiki/publication_texts/json/Probabilistic_Logic_Networks.json`
+- **Source book:** Goertzel, B.; Iklé, M.; Goertzel, I.F.; Heljakka, A. (2008). *Probabilistic Logic Networks: A New Conceptual, Mathematical and Computational Framework for Uncertain Inference.* Springer.
+- **Extraction date:** 2026-04-24
+- **full_text length:** 574,626 chars (word_count 87,451)
+- **Claim counts:**
+  - §1 Truth-value semantics: 38
+  - §2 Rule taxonomy: 56
+  - §3 Inference control: 22
+  - §4 Implementation-relevant: 25
+  - §5 Open questions / gaps / contradictions: 17
+  - **Total:** 158
+
+Chapter page references below correspond to the printed-page headers embedded in the JSON full_text. All quoted formulas preserve the book's notation (with ASCII approximations where LaTeX-style math was originally rendered as Unicode-damaged glyphs in the source).
+
+---
+
+## §1. Truth-value Semantics
+
+C-1-1: PLN truth-values are multi-component by design: the simplest "SimpleTruthValue" is a pair `<s, w>` where s is a probability-valued strength and w is a weight-of-evidence normalized into [0,1]. `<.6, 1>` = probability .6 known with absolute certainty; `<.6, 0>` = meaningless; `<x, 0>` is equivalent for all x. [Source: Ch.1 §1.4 ~p.14]
+
+C-1-2: A second simple form `<s, N>` uses count N (positive number = total evidence evaluated) rather than weight, with heuristic interrelation `w = N / (N + k)` where k is an adjustable parameter. [Source: Ch.2 §2.1 ~p.24]
+
+C-1-3: The default TV in current PLN is the IndefiniteTruthValue, a quadruple `<(L, U], b, k>`: interval [L, U], credibility level b, lookahead integer k. Intuitive reading: "I assign probability b to the hypothesis that after k more observations the ordinary plausibility of S will lie in [L, U]." [Source: Ch.2 §2.1 ~p.24; Ch.4 §4.4 ~p.53-54]
+
+C-1-4: k is normally held constant system-wide, reducing ITVs to triples `<[L,U], b>`. The book notes it "cancels out" during most inference provided premises and conclusion share it. [Source: Ch.4 §4.4 ~p.54, §4.4.2 ~p.58]
+
+C-1-5: IndefiniteTruthValue is explicitly presented as a hybridization of Walley's imprecise probabilities with Bayesian credible intervals. "Definite" in Walley = contained in specific boundaries; PLN's are not. [Source: Ch.1 §1.4 ~p.14; Ch.4 §4.4.2 ~p.58]
+
+C-1-6: Beyond simple and indefinite, DistributionalTruthValues are discretized approximations to entire probability distributions. Under them, PLN deduction reduces to matrix multiplication and PLN inversion reduces to matrix inversion. Two flavors given: StepFunctionTruthValues and PolynomialTruthValues. [Source: Ch.2 §2.1 fn1 ~p.24]
+
+C-1-7: Conversion from indefinite to simple (s, n) is derived under the beta-binomial assumption. Key identity used: if f(p=a) is uniform prior for binomial p with x successes in n trials, then P(X successes in k more trials) = C(n+1,k choose X)·C(n choose x)/C(k+n+1, k+n choose X+x). [Source: Ch.4 §4.5.1 ~p.59-60]
+
+C-1-8: Approximate inverse for producing n from (L, U, b, k) uses model `prob = 1 - b = 1 - A·e^{-Bn}`, inverted as `n = -ln(b/A) / B`. A and B are polynomials in L, U, k with published coefficients (A_{111}=-0.00875486, …, B_{222}=-0.071902027). Complexity of search is O(log n) via doubling then binary. [Source: Ch.4 §4.5.1.2 ~p.61-62]
+
+C-1-9: PLN distinguishes "ordinary (definite) plausibility" (degree to which already-collected evidence supports S) from "indefinite plausibility" (what the observer thinks about the full potentially-available body of evidence). [Source: Ch.4 §4.4 ~p.53]
+
+C-1-10: The indefinite probability `<[L,U], b, k>` is formally justified via a three-agent betting scenario (House / Gambler / Meta-gambler). b is Meta-gambler's subjective probability that Gambler's price after k more observations will lie in [L, U]. [Source: Ch.4 §4.4.1 ~p.54-56]
+
+C-1-11: A parallel frequentist interpretation across "possible worlds" is offered for computational convenience: "b is the frequency of possible worlds in which the observed frequency of S after k more observations lies in [L, U]." [Source: Ch.4 §4.4.2 ~p.57-58]
+
+C-1-12: IndefiniteTruthValue objects carry three additional parameters beyond <(L,U], b, k>: (i) flag for symmetric vs asymmetric credible interval; (ii) family of second-order distributions; (iii) family of first-order distributions. [Source: Ch.4 §4.4.2 ~p.58]
+
+C-1-13: First-order relationship truth-value types (strength = a conditional probability): Subset (extensional, pure P(B|A)), Inheritance (mixed = Subset OR IntensionalInheritance), IntensionalInheritance (purely intensional). [Source: Ch.2 §2.4 ~p.27-28]
+
+C-1-14: Symmetrized first-order TVs: ExtensionalSimilarity = P(x∈B ∧ x∈A | x∈A ∨ x∈B) purely extensionally; IntensionalSimilarity (intensional); Similarity (mixed). [Source: Ch.2 §2.4.1.3 ~p.31-32]
+
+C-1-15: Higher-order conditional relationships (TV semantics mirror first-order): ExtensionalImplication, Implication (mixed), IntensionalImplication; symmetrized: ExtensionalEquivalence, Equivalence (mixed), IntensionalEquivalence. "The truth-value formulas for inference on these higher-order relationships are the same as those for the corresponding first-order relationships." [Source: Ch.2 §2.4 ~p.27-28]
+
+C-1-16: PLN term truth-value A<tv> is identified with Subset(Universe, A)<tv>; thus A.tv = percentage of the "universe" in category A. The universe is not a fixed given — it is context, and the choice of |U| is a parameter. [Source: Ch.2 §2.5 ~p.32]
+
+C-1-17: Contexts: `Context C R A B <t>` has the equivalence `R (A ∧ C) (B ∧ C) <t>`. Default context is the whole universe, which is usually not useful. [Source: Ch.2 §2.2 ~p.26]
+
+C-1-18: Universal vs Local context: Universal U = everything the system has ever seen/heard-of; Local U = union of premises of a single inference only. "Local contexts tend to support more speculative inferences, whereas in the Universal context only the best supported of inferences come out with nontrivial strength." [Source: Ch.2 §2.5 ~p.33]
+
+C-1-19: An "optimal universe size formula" is promised that — given a context set of terms and known triple-intersections P(A∩B∩C) — derives the |U| minimizing PLN deduction error within that context. [Source: Ch.2 §2.5 ~p.33]
+
+C-1-20: Sub(extensional) semantics: Subset A B <s> means P(B|A) = s, equivalently P(x∈B | x∈A) = s. If membership is crisp, `P(Member x B <1> | Member x A <1>) = s`. [Source: Ch.2 §2.4.1.1 ~p.28]
+
+C-1-21: For fuzzy membership, Subset strength is `s = Σ_x f(Member x B.s, Member x A.s) / Σ_x Member x A.s`, where f is a fuzzy set intersection; two options: f(x,y)=min(x,y) or f(x,y)=x·y. "In our current practical work with PLN we're using the min function." [Source: Ch.2 §2.4.1.1 ~p.28-29]
+
+C-1-22: Intensional inheritance is defined via pattern-sets: `IntensionalInheritance whale fish <.7>` means `Subset whalePAT fishPAT <.7>`. [Source: Ch.2 §2.4.1.2 ~p.30; Ch.12 §12.3 ~p.253-255]
+
+C-1-23: Composite Inheritance is disjunctive: `Inheritance A B <tv> := OR<tv>(Subset A B, IntensionalInheritance A B)`. [Source: Ch.2 §2.4.1.2 ~p.30]
+
+C-1-24: Semantic distinction PLN enforces (that fuzzy literature often conflates): (a) Member Ben tall <.6> (fuzzy partial membership); (b) IntensionalInheritance Ben tall <.6> (Ben shares 60% of tall-things' properties); (c) IntensionalInheritance as Subset Link (.6 chance of judgment lying in set after more info); (d) Inheritance Ben tall <.6> (mixed weighted average). [Source: Ch.1 §1.6.1 ~p.18]
+
+C-1-25: Cox's theorem grounds probability-theoretic TVs: any plausibility measure satisfying the three Cox axioms is a rescaling of ordinary probability. PLN accepts this but notes Hardy's (2002) weaker replacement axioms and Youssef's (1994) extension to complex/quaternion/octonion-valued probabilities for quantum phenomena. [Source: Ch.1 §1.1.1 ~p.4-6]
+
+C-1-26: PLN distances itself from strict Bayesianism: "Bayes' rule is an important part of probability theory, but the way that the Bayesian-statistical approach applies it is not always the most useful way." PLN uses a spectrum from indefinite probabilities to non-probabilistic heuristics (Wang-inspired). [Source: Ch.1 §1.1.1 ~p.6-7]
+
+C-1-27: Pattern-intensity definition: `IN(F, G) = [c(G) - c(F)]_+ · [P(F|G) - P(F|¬G)]_+`, where [x]_+ is positive part and c() is a complexity measure. Temporal variant: `IN(F, G; T) = [c(G;T) - c(F;T)]_+ · ASSOC(F, G; T)`. [Source: Ch.12 §12.2.2 ~p.251-252]
+
+C-1-28: Association (used to build intensional structure): `ASSOC(F, G) = [P(F|G) - P(F|¬G)]_+`. Temporal: `ASSOC(F, G; T) = [P(F at S+T | G at T) - P(F at S+T | ¬G at T)]_+`. [Source: Ch.12 §12.2.1 ~p.250-251]
+
+C-1-29: Complexity c() can be instantiated probabilistically via a reference process H: `c(F; T) = ASSOC(G, H; T)`, yielding `IN[H](F, G; T) = [ASSOC(F, H; T) - ASSOC(F, G; T)]_+ · ASSOC(F, G; T)`. Authors show this reduces to algorithmic information theory in a special case. [Source: Ch.12 §12.2.2 ~p.252]
+
+C-1-30: A term that may serve dual roles (set of individuals vs pattern-set) gets composite term probability: `P_Inheritance($X) = OR(P($X), P_ASS($X), P_PAT($X))`. [Source: Ch.12 §12.3.1 ~p.257-258]
+
+C-1-31: Conversion Inheritance↔Subset is underdetermined; heuristic: for `Inheritance A B |- Subset A B`, `s = (s_inh - c) / (1 - c)` where c ≈ average strength of all IntensionalInheritance relations in memory. Reverse direction: `s_inh = c + (1 - c) s_sub`. [Source: Ch.12 §12.4 ~p.258-259]
+
+C-1-32: A "triple" `(s_A, s_B, s_AB)` is consistent iff `max(0, 1 - (1 - s_A)/s_A) ≤ s_AB ≤ min(1, s_B / s_A)`. PLN formulas require consistency; UnitStep multipliers in Maple formulas enforce it. [Source: Ch.5 §5.2.2.2 ~p.74; Appendix A ~p.310]
+
+C-1-33: Consistency condition for the deduction premise pair `(s_A, s_B, s_AB)` and `(s_B, s_C, s_BC)` (both must hold): `max(0, (s_A + s_B - 1)/s_B) ≤ s_AB` and `s_AB ≤ min(1, s_A/s_B)`, analogous for BC. [Source: Ch.5 §5.2.2.2 ~p.74]
+
+C-1-34: Context-size |U| interacts with inference adventurousness: smaller |U| → more speculative induction/abduction, larger |U| → minimizes error but also "creativity." "Using the PLN formulas, there is no additional computational cost in assuming a large Usize; the choice of a Usize value can be based purely on the desired inferential adventurousness." [Source: Ch.5 §5.2.1 ~p.68-69]
+
+C-1-35: For induction, |U| cannot be set globally to make all inductions meaningful; it must vary per inference. "If one wants to use the inductive inference rule (a very valuable heuristic), one has to give up the idea of a single global 'space of events' serving as an implicit universe for all inferences in the system." [Source: Ch.8 §8.1 ~p.150]
+
+C-1-36: Count/weight_of_evidence updates (count mechanics): "Inference can be used to modify count values as well as strength values, which covers the case where entities are inferred to exist rather than observed to exist." Semantic-mapping schemata in NLP also update counts. [Source: Ch.2 §2.5 ~p.33-34]
+
+C-1-37: For quantified TVs (ForAll, ThereExists), PLN uses third-order probabilities: "[1-e, 1]" acts as a proxy for probability 1, and PCL (proxy_confidence_level) governs "almost entirely contained." Fuzzy quantifiers are the general case, crisp quantifiers a special limit. [Source: Ch.11 §11.1-11.2 ~p.240-243]
+
+C-1-38: Fuzzy quantifier intervals: AlmostAll → [LPC, UPC] = [0.9, 0.99]; AFew → [0.05, 0.1]. A sliding-scale of fuzzy quantifiers lives on these two parameters. [Source: Ch.11 §11.4 ~p.243-244]
+
+---
+
+## §2. Rule Taxonomy
+
+### 2A. Deduction Family
+
+C-2-1: **Independence-assumption-based Deduction (canonical, ExtensionalInheritance A B + B C |- A C):**
+```
+s_AC = s_AB · s_BC  +  (1 - s_AB) · (s_C - s_B · s_BC) / (1 - s_B)
+```
+Derived by heuristic independence (A, C conditionally independent in B and in U\B) or rigorously by averaging over all consistent subset-triples (A, B, C) in finite U. Premises: s_A, s_B, s_C, s_AB=P(B|A), s_BC=P(C|B). Singularity at s_B=1. [Source: Ch.5 §5.2.2 ~p.70-74; Theorem 1 ~p.74-78]
+
+C-2-2: The independence formula is proved (Theorem 1) as an exact expectation over the finite sample space of all (A,B,C) triples satisfying given marginals and conditionals — the "independence" is not an ad-hoc assumption but emerges from averaging. [Source: Ch.5 §5.2.2.2 ~p.74-78]
+
+C-2-3: **Concept-geometry-based Deduction** is offered as an alternative when A and C are known/expected to be "cohesive" (average inner similarity > average similarity across U). For cohesive A, C: `P(A∩C) > P(A)·P(C)` on average. [Source: Ch.5 §5.6 ~p.101-103]
+
+C-2-4: **1-D concept-geometry deduction (sphere boundary model):** `s_AC = s_AB · s_BC / min(s_AB + s_BC, 1)`. Listed in Appendix A alongside NARS's `s_AB·s_BC / (s_AB + s_BC - s_AB·s_BC)`. NARS and 1-D concept-geometry differ most when both s_AB, s_BC ≈ 0.5. [Source: Ch.5 §5.6; Appendix A ~p.307-310]
+
+C-2-5: A correction factor `G(A,B,C)` — probability that P(A∩B∩C) > 0 — multiplies the independence formula in some variants. Crude default: G=1 if all pairwise strengths > 0, else 0. Refined form (A, B, C as 1-D intervals on unit circle): uses P_sym_subsume and P_int_no_subsume helpers. [Source: Ch.5 §5.6.1-5.6.2 ~p.107-109]
+
+### 2B. Inversion / Induction / Abduction
+
+C-2-6: **Inversion** (Bayes rule in PLN packaging) — given P(A), P(B), P(A|B), find P(B|A): `s_AB = s_BA · s_A / s_B`. [Source: Ch.5 §5.4 ~p.89-90]
+
+C-2-7: **Induction** = Deduction ∘ Inversion on the first premise: given P(A), P(B), P(C), P(A|B), P(C|B) find P(C|A). Formula:
+```
+s_AC = (s_BA · s_BC · s_B) / s_A  +  (1 - s_BA · s_B / s_A) · (s_C - s_B · s_BC) / (1 - s_B)
+```
+NARS analogue: simply `s_AC = s_BA`. [Source: Ch.5 §5.4 ~p.89-91; Appendix A ~p.307-308]
+
+C-2-8: **Abduction** = Deduction ∘ Inversion on the second premise: given P(A), P(B), P(C), P(B|A), P(B|C) find P(C|A). Formula:
+```
+s_AC = s_AB · s_CB · s_C / s_B  +  s_C · (1 - s_AB)·(1 - s_CB) / (1 - s_B)
+```
+NARS analogue: `s_AC = s_CB`. [Source: Ch.5 §5.4 ~p.92-93; Appendix A ~p.308]
+
+C-2-9: Induction, unlike deduction, has singularities that can't be eliminated by universe choice: s_B must be away from 1 AND s_A must be away from 0. "If the term B is a lot more frequent than A, there is no way to do inductive inference meaningfully unless premise TVs are very precise." [Source: Ch.8 §8.1 ~p.150]
+
+C-2-10: Abduction shares deduction's profile on error sensitivity except s_B ≠ 0 and s_B ≠ 1 are required. [Source: Ch.8 §8.1 ~p.150]
+
+### 2C. Similarity Family
+
+C-2-11: **Transitive Similarity:** given sim_AB, sim_BC, s_A, s_B, s_C:
+```
+sim_AC = 1 / ( 1/deduction(T1, T2) + 1/deduction(T3, T4) - 1 )
+```
+where T1 = (1 + s_B/s_A)·sim_AB/(1 + sim_AB), T2 = (1 + s_C/s_B)·sim_BC/(1 + sim_BC), T3 = (1 + s_B/s_C)·sim_BC/(1 + sim_BC), T4 = (1 + s_A/s_B)·sim_AB/(1 + sim_AB), and deduction(T1,T2) uses the independence formula with appropriate substitution. [Source: Ch.5 §5.5 ~p.93-97]
+
+C-2-12: **2inh2sim** (two inheritances → similarity): `sim_AC = 1 / ( 1/s_AC + 1/s_CA - 1 )`. [Source: Ch.5 §5.5 ~p.94]
+
+C-2-13: **inh2sim** (single inheritance + term probs → similarity): `sim_AC = 1 / ((1 + s_A/s_C)/s_AC - 1)`. [Source: Ch.5 §5.5 ~p.95]
+
+C-2-14: **sim2inh:** `s_AB = (1 + s_B/s_A)·sim_AB / (1 + sim_AB)`, with the consistency multiplier `Heaviside(sim_AB - max(s_A+s_B-1, 0)) - Heaviside(sim_AB - min(s_A/s_B, s_B/s_A))`. [Source: Ch.5 §5.5 ~p.95; §5.5.1 ~p.98]
+
+### 2D. Modus Ponens and Relatives
+
+C-2-15: **PLN Modus Ponens (heuristic):** given `Inheritance A B <s_AB>` and `A <s_A>`, infer `B <s_B>`:
+```
+s_B = s_AB · s_A + c · (1 - s_A)
+```
+where c is a "default term probability" parameter (example c = .02). This is the crudest approximation to `P(B) = P(B|A)P(A) + P(B|¬A)P(¬A)` with P(B|¬A) ≈ c. [Source: Ch.5 §5.7.1 ~p.110-111]
+
+C-2-16: **Symmetric Modus Ponens:** given `Similarity A B <sim_AB>` and `A <s_A>`, infer `B`: combine MP with sim2inh to get `s_B = (s_A · sim_AB + c · (1 - s_A)·(1 + sim_AB)) / …` (see final algebraic form):
+```
+s_B = s_A · sim_AB + c · (1 - s_A)·(1 + sim_AB)
+```
+(small algebra; caveat: c=.02 example yields sB ≈ .48 + .72c for sample numeric case.) [Source: Ch.5 §5.7.2 ~p.111-112]
+
+C-2-17: **Modus Tollens** is handled by rewriting `If P then Q; ¬Q |- ¬P` as `If ¬Q then ¬P; ¬Q |- ¬P` and applying MP. [Source: Ch.5 §5.7 ~p.109-110]
+
+C-2-18: **Disjunctive Syllogism** is handled by rewriting `(P ∨ Q); ¬P |- Q` as `If ¬P then Q; ¬P |- Q` and applying MP. [Source: Ch.5 §5.7 ~p.109-110]
+
+C-2-19: PLN's MP differs conceptually from NARS's: NARS rewrites `Implication A B; A` as `Implication A B; Implication K A` with K a "universal statement" and applies ordinary deduction. PLN's correction `c·(1 - s_A)` is not the same form as the deduction correction term. [Source: Ch.5 §5.7.1 ~p.111]
+
+### 2E. Member / Subset / Inheritance Conversion
+
+C-2-20: **Member-to-Inheritance (M2I):** `Member Ben Americans <tv1> |- Inheritance {Ben} Americans <tv2>` where {Ben} is a singleton. Rule: keep mean strength constant; decrease confidence. For indefinite TVs, widen interval by a constant multiplicative factor. [Source: Ch.5 §5.8 ~p.112-113]
+
+C-2-21: **Inheritance-to-Member (I2M):** reverse direction, same strength, decreased confidence via same-style multiplier. Multiplier is smaller for more cohesive sets (empirically computable, or inferred by analogy). [Source: Ch.5 §5.8 ~p.112-113; Ch.10 §10.7 ~p.214-215]
+
+C-2-22: M2I/I2M are approximately correct only for cohesive concepts. Badly wrong for random sets, and bad for "heterogeneous collection" concepts like "Things owned by Izabela." [Source: Ch.5 §5.8 ~p.113]
+
+### 2F. Term Probability Inference
+
+C-2-23: **Term probability from Inheritance**: given `A <s_A>` and `Inheritance A B <s_AB>`, infer `B <s_B>` via:
+```
+s_B = s_A · s_AB / s_BA
+```
+(rearrangement of Bayes). Must be placed in an inference trail, like other inferences, to avoid circularity. [Source: Ch.5 §5.9 ~p.113-114]
+
+### 2G. Revision
+
+C-2-24: **Simple (weighted-average) revision for (s, N) pairs:** with n1, n2 counts, `w_1 = n_1/(n_1+n_2)`, `w_2 = n_2/(n_1+n_2)`, `s = w_1·s_1 + w_2·s_2`. Count merge: `n = n_1 + n_2 - c·min(n_1, n_2)` with c∈[0,1] (c=1 full redundancy, c=0 total independence). [Source: Ch.5 §5.10.2 ~p.116]
+
+C-2-25: **"Extensive prior knowledge" revision (A, B, evidence sets C, D, independent inside A and A∩B):**
+```
+s_3 = ( x_1 + x_2 - x_1 x_2 / u ) / ( y_1 + y_2 - y_1 y_2 / u )
+```
+where s_i = x_i/y_i and u = |U|. Requires sAC to recover x_i, y_i, but reduces in the simplifying case y_1 = y_2 = q to:
+```
+s_3 = ( s_1 + s_2 - s_1 s_2 c ) / ( 2 - c )
+```
+where c = q/u. c=0 gives arithmetic mean; c=1 implies both premises are based on whole universe (generally implausible). [Source: Ch.5 §5.10.3-5.10.4 ~p.117-120]
+
+C-2-26: Weight-of-evidence-weighted revision: with v_1 = 2 d_1 / (d_1 + d_2) and v_2 = 2 - v_1:
+```
+s_3 = (v_1 x_1 + v_2 x_2 - x_1 x_2 / u) / (v_1 y_1 + v_2 y_2 - y_1 y_2 / u)
+```
+Heuristic version: `s_3 = (v_1 s_1 + v_2 s_2 - s_1 s_2 c) / (2 - c)`. [Source: Ch.5 §5.10.5 ~p.121-122]
+
+C-2-27: Revision formula with nonzero c causes iterated revision to drift strengths upward toward 1 over time; c must be dynamically tuned or set to 0 (averaging). [Source: Ch.5 §5.10.4 ~p.120-121]
+
+C-2-28: NARS vs PLN revision (Appendix A):
+```
+NARS:  s = (n_1 s_1 / (1 - n_1) + n_2 s_2 / (1 - n_2)) / (n_1 / (1 - n_1) + n_2 / (1 - n_2))
+PLN:   s = n_1/(n_1+n_2) · s_1 + n_2/(n_1+n_2) · s_2
+```
+[Source: Appendix A ~p.308]
+
+C-2-29: Revision assumes (by architectural delegation) that premises have already been temporally/relevance-discounted by non-inferential cognitive processes. For important/divergent cases, PLN may specifically request a temporal update before revision. [Source: Ch.5 §5.10.1 ~p.115-116]
+
+### 2H. Bayes and Inversion Variants
+
+C-2-30: **Bayes rule** is present as a core primitive, used both to derive Induction/Abduction from Deduction and for direct `P(A|B) = P(B|A)·P(A)/P(B)` computations (Ch.6 worked gerbil example). [Source: Ch.5 §5.4 ~p.89-90; Ch.6 §6.2.1 ~p.133-135]
+
+### 2I. Rule of Choice
+
+C-2-31: The **Rule of Choice** is referenced for deciding which of multiple pathways leading to the same conclusion to use (or to revise between). It is typically "greedy" and local; Chapter 9 offers batch alternatives. [Source: Ch.9 §9.1-9.2 ~p.179-181]
+
+### 2J. Similarity Inference Additional Forms
+
+C-2-32: Symmetric-relationship inference rules are derivable directly from asymmetric ones via the probability algebra: ExtensionalSimilarity, IntensionalSimilarity, and Similarity (mixed) all inherit their formulas from Subset/IntensionalInheritance/Inheritance. [Source: Ch.2 §2.4.1.3 ~p.31-32]
+
+### 2K. Higher-Order Rules (mostly parallel to first-order)
+
+C-2-33: HOI deduction on Implication parallels FOI deduction on Inheritance: same independence formula, same consistency constraints. "Implication behaves like Inheritance, Equivalence behaves like Similarity." [Source: Ch.10 §10.3 ~p.206]
+
+C-2-34: **Evaluation + Implication combination rule:** `Evaluation kiss (Ben, Ken); Implication kiss marry |- Evaluation marry (Ben, Ken)` — same formal machinery as term-level inheritance + implication. [Source: Ch.10 §10.2 ~p.202-203]
+
+C-2-35: **SatisfyingSet operator** is the mechanism that reduces HOI to FOI: `SatisfyingSet P = { x : P(x) }`. `S = SatisfyingSet P` means `(Member $X S).tv = (Evaluation P $X).tv`. Maps Evaluation→Member, Implication→Subset, Equivalence→ExtensionalSimilarity, etc. [Source: Ch.2 §2.6 ~p.35-37]
+
+C-2-36: **Variable Instantiation rule:** given `F($X) <tv>`, instantiate to `F(A)` by interpreting `s_1 = P(F($X) | Similarity $X A)`, giving:
+```
+F(A).tv = I2M( deduction( M2I(F.tv), sim2inh(Similarity A $X.tv) ) )
+```
+Valid only when SatisfyingSet F is cohesive; otherwise confidence must be heavily reduced. [Source: Ch.10 §10.7 ~p.214-215]
+
+### 2L. Quantifier Rules
+
+C-2-37: **Direct evaluation of ∀x F(x)**: given indefinite TV of F(t), produce indefinite TV of `ForAll x, F(x)` via a 7-step Monte Carlo procedure using beta-distribution third-order distributions and a proxy interval [1-e, 1] representing "essentially 1." [Source: Ch.11 §11.2 ~p.240-242]
+
+C-2-38: **ThereExists rule** is derived by the crisp-logic equivalence `ThereExists x, F(x) ≡ ¬ForAll x, ¬F(x)`. [Source: Ch.11 §11.2 ~p.242]
+
+C-2-39: **Existential Generalization:** `F(c) <[L,U],b,k> |- ∃$x F($x) <[L,U],b,k>` holds verbatim in the indefinite-probabilities framework. [Source: Ch.11 §11.3 ~p.242-243]
+
+C-2-40: **Universal Specification:** `∀$x F($x) <[L,U],b,k> |- F(c) <[L,U],b,k>`, interpreted as "use the mean of F(t) over all t as a heuristic for F(c)." [Source: Ch.11 §11.3 ~p.242]
+
+C-2-41: **Quantifier-exchange identities** all hold under indefinite probabilities: ¬(∀x)F↔(∃x)¬F, (∀x)¬F↔¬(∃x)F, ¬(∀x)¬F↔(∃x)F, (∀x)¬F↔¬(∃x)¬F. [Source: Ch.11 §11.3 ~p.243]
+
+C-2-42: **Constant-removal rule `∃x: G ∧ F(x) = G ∧ ∃x: F(x)` does NOT hold in general** under indefinite probabilities; published counterexample with G=<[.45,.46],.9,10> and F(x)=<[.71,.72],.9,10> gives <[0, .049],.9,10> vs <[.230, .289],.9,10>. [Source: Ch.11 §11.3 ~p.243]
+
+C-2-43: Commutativity of constant-removal is better when premise strengths approach 1. A thorough analysis of "when H and J approximately commute" is deferred to a future paper. [Source: Ch.11 §11.3 ~p.243]
+
+### 2M. Intensional Inference Rules
+
+C-2-44: **IntensionalInheritance** computations do NOT require a separate deduction rule; they reduce to: compute P(A|B) from IntInh(A,B) + P(A), P(B); compute P(C|B) similarly; run ordinary deduction; finally reconstruct the intensional strength. [Source: Ch.12 §12.6 ~p.260]
+
+C-2-45: **Mixed inheritance inference** decomposes into four weighted cases: ExtExt, IntInt, ExtInt, IntExt, all combined. Weighting can be a system parameter or learned inferentially from similar known cases. [Source: Ch.12 §12.6 ~p.261-262]
+
+C-2-46: **Intensional Boolean operators** AND_Int, OR_Int (taking intensional set unions/intersections) and mixed versions AND_Mix, OR_Mix are defined. `A AND_Mix B` = extensional intersection ∩ intensional union; `A OR_Mix B` = extensional union ∩ intensional intersection. [Source: Ch.12 §12.5 ~p.259-260]
+
+### 2N. Boolean / Set Operators on Terms
+
+C-2-47: **Extensional intersection** A AND_Ext B = intersection of extensions + union of intensions; **Extensional union** A OR_Ext B = union of extensions + intersection of intensions. "American Bank" example shows asymmetry: intersection of extension, union of intension. [Source: Ch.10 §10.6 ~p.212]
+
+C-2-48: **Asymmetric extensional difference:** `Subset x (A MINUS_AsymExt B) iff (Subset x A) ∧ ¬(Subset x B)`, but `Subset (A MINUS_AsymExt B) x iff Subset A x` (not B). [Source: Ch.10 §10.6 ~p.212-213]
+
+### 2O. Temporal / Causal Relationship Types
+
+C-2-49: **SeqAND (Sequential AND)**: `SeqAND A B <s, T> iff (A ∧ B) ∧ (Initiation(B) - Initiation(A) ∈ T)` — "B starts x seconds after A starts, x ∈ T." [Source: Ch.14 §14.3.1 ~p.286-287]
+
+C-2-50: **DisjointSeqAND:** `DisjointSeqAND A B <s, T> iff (A ∧ B) ∧ (Initiation(B) - Termination(A) ∈ T)` — "B starts x seconds after A finishes." [Source: Ch.14 §14.3.1 ~p.287]
+
+C-2-51: **EventualSeqAND:** A followed eventually by B, no specific interval. DisjointEventualSeqAND analogously. [Source: Ch.14 §14.3.1 ~p.287-288]
+
+C-2-52: **SimAND:** `SimAND A B <s, T> iff HoldsThroughout(A, T) ∧ HoldsThroughout(B, T)`. **SimOR:** `HoldsSometimeIn(A, T) ∨ HoldsSometimeIn(B, T)`. [Source: Ch.14 §14.3.1 ~p.288-289]
+
+C-2-53: **PredictiveImplication** = Implication whose consequent is `SeqAND(P, Q)`: `ExtensionalPredictiveImplication P Q <s, T> = ExtensionalImplication<s>(P(S), SeqAND(P,Q)<T>(S))`. Intensional and mixed versions defined analogously; mixed is most commonly useful. [Source: Ch.14 §14.3.2 ~p.289-290]
+
+C-2-54: **EventualPredictiveImplication P Q** — "if P continues long enough, Q occurs" (no specified temporal interval). Examples: EventualPredictiveImplication starve die; EventualPredictiveImplication run sweat. [Source: Ch.14 §14.3.3 ~p.290]
+
+C-2-55: **PredictiveChain** `<s,(T1,…,Tn)> A1…An` = `PredictiveImplication<s,Tn>( SeqAND<(T1,…,T_{n-1})>(A1,…,A_{n-1}), An )`. [Source: Ch.14 §14.3.4 ~p.291]
+
+C-2-56: **Temporal inference step** must calculate two things simultaneously: the static truth-value (via standard PLN rules applied to implications) AND the probability of the correct temporal precedence. For `PredictiveImplication A B; PredictiveImplication B C |- PredictiveImplication A C`, inference must verify A occurs before C. [Source: Ch.14 §14.3.5 ~p.291-292]
+
+---
+
+## §3. Inference Control Model
+
+C-3-1: PLN uses forward- and backward-chaining as the two foundational control modalities. Both inherit from classical AI theorem-proving, but the omnipresence of uncertainty forces richer pruning heuristics. [Source: Ch.13 §13.2 ~p.265-266]
+
+C-3-2: **Backward chaining target:** start from a goal Atom and work backward using Rule output filters. For each matched rule, generate required premise templates; if not known, they become new goals. Terminate when target TV weight exceeds controller-set threshold (not when target is merely producible). [Source: Ch.13 §13.2 ~p.266]
+
+C-3-3: **Forward chaining target:** explore consequences of known premises using Rule input filters. Main difficulty: too many rules/premise-combinations per step — pruning is critical. [Source: Ch.13 §13.2 ~p.266]
+
+C-3-4: **Atom Structure Templates:** predicate A^ so that `A^(X)` is true iff there is Y with `A(Y) = X`. For Q = Inheritance A $1, Q^(P) holds for P = Inheritance A B via $1=B. Templates compose via AND/OR and can be conditioned on truth-value predicates like `HasTruthValueStrengthGreaterThan $1 0.5`. [Source: Ch.13 §13.3.1 ~p.267-268]
+
+C-3-5: PLN distinguishes **Rules** (Atom→Atom objects) from **Formulas** (TV-vector→TV objects). Each Rule has an **input filter** (templates for input Atoms) and an **output-based-input filter** (templates for what's needed to produce a given output). DeductionRule's input filter: `[InheritanceLink $1 $2, InheritanceLink $2 $3]`; to produce InheritanceLink A C, need `InheritanceLink A $1` and `InheritanceLink $1 C`. [Source: Ch.13 §13.3.2 ~p.268-269]
+
+C-3-6: **Expansion / Evaluation two-step** backward chaining: Expansion uses filters to populate an "expansion pool" of next nodes; Evaluation traverses from leaves to root applying Rule objects. Children are sets of solutions; must try all consistent combinations at evaluation. [Source: Ch.13 §13.5 ~p.270]
+
+C-3-7: **BIT (Backward Inference Tree)** treated evolutionarily: genotype = (Atoms + Rules), fitness = weight-of-evidence of result truth-value. Several BITs may be constructed with topological overlap but differing TV assignments; final result combined via Rule of Choice. [Source: Ch.13 §13.5 ~p.270-271]
+
+C-3-8: **Retry mechanism** is critical: a new tree must be launched for each attempt to produce a target; efficiency of partial-tree reuse determines performance. [Source: Ch.13 §13.5 ~p.270]
+
+C-3-9: **Binding consistency** must be checked at the evaluation stage (not expansion): "we do not in general know which ones of the conflicting bindings are worse… than others." [Source: Ch.13 §13.5 ~p.271]
+
+C-3-10: **Simple BIT Pruning** via multi-armed bandit: each unexpanded/partially-expanded rule gets "expected utility" u based on a priori rule usefulness and prior exploration results. Formula forms: `u = d/E`, `u = F/E`, or generalized `u = F^a / E^b` (fitness^a / effort^b). [Source: Ch.13 §13.6 ~p.271-272]
+
+C-3-11: A priori utility heuristics: (1) **Solution space size** — prefer more restrictive proof targets (fewer free variables); (2) **Rule priority** — prefer direct Atom lookup over hypothetical guesses. [Source: Ch.13 §13.6 ~p.271-272]
+
+C-3-12: **SoftMax algorithm** used for rule selection: probability of avenue ∝ e^{u/T} with temperature T. High T = uniform exploration, T→0 = greedy. [Source: Ch.13 §13.6 ~p.272]
+
+C-3-13: **Interdependent-argument pruning (Deduction-like rules):** produce `Implication(A, $1)` first; when the result binds $1 = B, clone the parent node with $1→B bound and add it to the pool (higher a priori utility due to fewer free variables). This avoids wasteful parallel expansion. [Source: Ch.13 §13.7 ~p.273-274]
+
+C-3-14: Interdependent-argument utility: `u = (d_1 d_2)^a / E^b`, with d_1 = weight of evidence of the expansion's immediate output and d_2 = weight of evidence of the eventual Rule output using that intermediate. [Source: Ch.13 §13.7 ~p.274]
+
+C-3-15: **Forward chaining** uses the same bandit model but different utility: fitness now includes "interestingness" I. Example: `u = I^c · d^a / E^b`. Measures of interestingness: (a) deviation from probabilistic independence; (b) difference between cheap vs expensive TV estimate of the atom. [Source: Ch.13 §13.8 ~p.274-275]
+
+C-3-16: **Concept creation via shallow forward chaining:** randomly select combinations of Atoms, apply a few steps of FC inference; combinations remain in memory as candidate concepts for later inference. [Source: Ch.13 §13.8 ~p.275]
+
+C-3-17: **Default inference** lives at the inference-control level, not at the rule level. Algorithm: (1) arrange terms in a DAG by maximizing total strength·confidence within a fixed link budget; (2) when reasoning about a term, use immediate parents first, then ascend the hierarchy without revisiting already-used parents. [Source: Ch.13 §13.9 ~p.276-277]
+
+C-3-18: **Inference trails:** each Atom derived by inference carries a "trail" of progeny Atoms whose TVs it depends on. Prevents circular inference (e.g., having inferred s_animal from s_cat + s_cat,animal, you cannot then reinfer s_cat,animal from s_animal + s_cat). May be truncated to fixed depth to conserve memory. [Source: Ch.5 §5.9 ~p.114; Ch.9 §9.2.1 ~p.180-181]
+
+C-3-19: **Large-scale alternatives to step-by-step control** (Chapter 9): Batch Reasoning Graph Inference (BRGI), Multideduction, Bayes-net augmentation, Trail-free inference. Each trades some capability for scale. [Source: Ch.9 §9.1 ~p.179]
+
+C-3-20: **BRGI** constructs a DAG with S at leaves, internal nodes = inferences. For two Atoms A and B, if no directed path connects them, they are "roughly independent" and may be used together as inference premises. Search finds a DAG maximizing `c·N + (1-c)·T/N`, where N = number of inferences, T = total expectation `d·(s - 0.5)` (a crude approx to `d·p(s, L)`). [Source: Ch.9 §9.2.1-9.2.3 ~p.180-186]
+
+C-3-21: **Quantifier-involvement in BRGI:** must extend the BRG term notion with AND/OR/NOT operator nodes for HOI with predicates. [Source: Ch.9 §9.2.1 ~p.182]
+
+C-3-22: ECAN / URE are NOT named explicitly in the book (combinatorial-explosion mitigation is delegated to "integration of PLN with other AI components such as evolutionary learning, stochastic pattern mining and adaptive attention allocation"). Attention values called "importance" (short- and long-term) are mentioned as Novamente-level mechanisms for weighting Atoms during inference control. [Source: Ch.13 §13.2 ~p.266; Ch.14 §14.5.1.2 ~p.305-306]
+
+---
+
+## §4. Implementation-Relevant Claims
+
+C-4-1: PLN is implemented within the **Novamente Cognition Engine (NCE)**, and has a spinoff in the **OpenCog** open-source project (Hart and Goertzel 2008). The book's examples assume this substrate; much of PLN is independent of NCE. [Source: Ch.1 §1.1 ~p.2; Ch.13 §13.1 ~p.265]
+
+C-4-2: Primary engineering target: scalability to "inferences involving at least billions of premises" — this is stated as a requirement, not a proved achievement. [Source: Ch.1 §1.1 ~p.3]
+
+C-4-3: **Knowledge representation:** Atoms = Terms ∪ Relationships. Terms form a finite set S of "elementary terms" (in AI: atomic perceptions, actions, math structures), plus subsets (ordered/unordered) of S. Relationships are tuples of terms, possibly higher-order. [Source: Ch.2 §2.1 ~p.23]
+
+C-4-4: Network structure is a **weighted directed hypergraph** (Bollobas 1998) — considerably more general than Bayesian binary DAGs. [Source: Ch.1 §1.1 ~p.3]
+
+C-4-5: Atoms carry: (a) type label, (b) TV package, (c) type-specific data (e.g., Number terms store numbers, Word terms store strings). [Source: Ch.2 §2.1 ~p.23]
+
+C-4-6: Notation conventions: `R A B <t>`, `A <t>`, nested form for long names, object-field access: `(Inheritance A B).strength`, `.tv`. Variables prefixed with `$`. [Source: Ch.2 §2.1 ~p.24-25]
+
+C-4-7: **N-ary relations — two implementation styles:** (1) List approach — `Evaluation f (x1, …, xn)` with a List argument; good for "simple-term" relations; (2) Curried approach — `Evaluation (kick Ben) Ken` in Haskell style; good for complex predicates. Conversion relations listify/unlistify may be stored to switch between. [Source: Ch.2 §2.7.1-2.7.2 ~p.38-39]
+
+C-4-8: Combinator-based variable-free higher-order inference is supported; e.g., C combinator enables `kick_curry = C kick_curry_2` (subject↔object swap). Combinators are rendered underlined in book notation. [Source: Ch.2 §2.7.2 ~p.39; Ch.10 §10.9 ~p.219]
+
+C-4-9: **Pragmatic engineering recommendation**: even though variables are unnecessary (combinatory logic suffices), the PLN implementation uses variables where they give "more compact representation." Rules for variable manipulation exist alongside combinator-based rules. [Source: Ch.10 §10.7 ~p.213-214]
+
+C-4-10: **Simplification/normalization** is optional in PLN. A default set of "elementary normalizations" (e.g., EquivalenceLink→two ImplicationLinks, ListLink with one outgoing element identified with that element) is applied via a proxy on the knowledge-base entry path. Holman's Elegant Normal Form (1990) is flagged as a future experimental normalization. [Source: Ch.13 §13.4 ~p.269-270]
+
+C-4-11: **"Can/try/done" predicates for agent control:** PLN inference on agent goals uses `try(X)` (execute schema X), `can(X)` (X's preconditions are fulfilled), and the axiom
+```
+PredictiveImplication( SimultaneousAnd( Evaluation try X, Evaluation can X ), Evaluation done X )
+```
+In the fetch example, "can" is assumed true for all actions to simplify the mining problem; failure statistics are pushed into PredictiveImplication TVs. [Source: Ch.14 §14.4.3 ~p.294-295]
+
+C-4-12: **Predicate schematization** is the NCE mechanism that converts a proved set of Atoms (with try/can) into an "executable schema" — a concrete runnable plan. The fetch result is `try goto Ball; try lift Ball; try goto Teacher; try drop Ball`. [Source: Ch.14 §14.4.4 ~p.296-297]
+
+C-4-13: **ModusPonensRule, AndRule, SimpleANDRule, RewritingRule, CrispUnificationRule** — the implementation-level rules used in the fetch example. ModusPonensRule applies to PredictiveImplications if the proof tree maintains temporal-order discipline. SimpleANDRule embodies pure independence — faster but may lose info from partial-conjunction TVs. RewritingRule is a macro for AndRule ∘ ModusPonensRule. CrispUnificationRule produces a variable-bound version from a quantified expression; its TV equals the quantified expression's TV. [Source: Ch.14 §14.4.3 ~p.295-296]
+
+C-4-14: Fetch example trajectory TV evolution: initial `Reward <0.80, 0.0099>` (strength 0.8, weight 0.01 due to pattern-miner scaling); weight grows toward 1 as the run continues. [Source: Ch.14 §14.4.4 ~p.297]
+
+C-4-15: **Handle-based identity:** Atoms carry unique numeric handles like [9053948] in the NCE knowledge store, shown explicitly in fetch proof trace. [Source: Ch.14 §14.4.4 ~p.297-298]
+
+C-4-16: **BRGI quality metric:** `c·N + (1-c)·T/N` (inferences count vs average expectation). Crude expectation proxy `d·|s - 0.5|`. Search via evolutionary programming on DAGs or greedy-like Bayes-net-learning methods. [Source: Ch.9 §9.2.1-9.2.3 ~p.181-182]
+
+C-4-17: **Complexity notes on PLN rules:** all are O(1) in the number of Atoms involved per step; complexity emerges from chaining — the explosion is combinatorial. Indefinite-probability Monte Carlo inference uses n_1 × n_2 sampling per rule; typical values not specified in book. [Source: Ch.6 §6.1 ~p.131-133]
+
+C-4-18: **Error magnification / gradient-norm analysis:** for strength formula v = f(w), perturbation e yields `|v' - v| ≈ |grad f(w)| · |w' - w| · cos θ` and `|v' - v| ≈ (2/π)·|grad f(w)|·|w' - w|` on average. Sensible inference requires `|grad f(w)| < 1` for error to decrease, and `|grad f(w)| < π/2` on average, though this remains chancy. [Source: Ch.8 §8.2.1 ~p.152-153]
+
+C-4-19: For Deduction with s_BC=0.5, s_C=s_B=0.25: `∂s_AC/∂s_AB = 1/3` — error-attenuating. For s_BC=1, s_C=0.25, s_B=0.5: `∂s_AC/∂s_AB = 1.5` — error-magnifying. Error-magnification happens in specific input regions, not globally. [Source: Ch.8 §8.1 ~p.150-151]
+
+C-4-20: **Chaos risk in iterated inference:** 10 inference steps each with factor-2 gradient magnification erase 10 bits of precision — "totally meaningless conclusions." Weight-of-evidence discounting is the primary defense. [Source: Ch.8 §8.1 ~p.151]
+
+C-4-21: **Monte Carlo for indefinite probabilities:** three-step procedure. Step 1: given intervals [L_i, U_i] at credibility b, find second-order distributions supported on [L1_i, U1_i] ⊇ [L_i, U_i]. Step 2: sample n_1 means; for each, n_2 points from first-order distribution. Step 3: compute final credible interval. [Source: Ch.6 §6.1 ~p.131-133]
+
+C-4-22: To obtain symmetric credible intervals: find d such that `∫_{L1}^{U1} g_i(s) ds = b` where L_i = s_i - d, U_i = s_i + d. For asymmetric type, use the Walley form `[m/(n+k), (m+k)/(n+k)]`. [Source: Ch.6 §6.1.1 ~p.132]
+
+C-4-23: Beta-binomial is the default distributional family for both first-order and second-order distributions in the current PLN implementation; bimodal forms also supported. [Source: Ch.4 §4.2 ~p.50; Ch.6 §6.1 ~p.131]
+
+C-4-24: **NARS comparison summary (Appendix A.4):** for small s_A, s_B, s_C, PLN (independence) and NARS agree closely on deduction, induction, abduction; as term strengths increase, PLN's consistency constraints restrict inputs and the two diverge. [Source: Appendix A §A.4 ~p.319]
+
+C-4-25: **Gerbil worked example (Bayes):** 100 gerbils unknown + 10 known (5 blue) + 100 rats (10 blue). Under PLN indefinite-probability Bayes: P(G|B) ∈ [0.715, 0.911] at credibility 0.90 (initial b=0.90) or [0.754, 0.896] (initial b=0.95). Classical Bayesian at same level: [0.825, 0.863]. Walley IBB gives comparable-but-wider intervals. Demonstrates that indefinite-probabilities generalize both. [Source: Ch.6 §6.2.1.1-6.2.1.2 ~p.134-135]
+
+---
+
+## §5. Open Questions / Book-Acknowledged Gaps
+
+C-5-1: **PLN is explicitly called an "evolving framework."** Authors state: "it seems likely that various PLN components will be further refined and perhaps some of them replaced entirely." [Source: Ch.1 §1.1 ~p.3]
+
+C-5-2: Authors "have frequently been aware of more sophisticated alternative approaches to various sub-problems… and have avoided pursuing many of these due to a desire for initial simplicity." Simplification choices mask known-better alternatives. [Source: Ch.1 §1.1 ~p.3]
+
+C-5-3: **Context size parameter |U| has no general solution.** Every inference must assume a |U|; there are no "rigid mathematical rules for doing this." Ultimately delegated to cognitive schemata. [Source: Ch.2 §2.5 ~p.34]
+
+C-5-4: The semantics-mapping schemata that set count values are themselves learned by inference — which requires a |U|. The resolved chicken-and-egg: schema-learning uses "local context." [Source: Ch.2 §2.5 ~p.34]
+
+C-5-5: The "optimal universe size formula" works well when triple-intersections P(A∩B∩C) are available; otherwise it fails. Accuracy "can be increased by estimating more and more triples" but no guarantee. [Source: Ch.5 §5.3 ~p.89]
+
+C-5-6: **Induction cannot be rescued globally by |U| choice.** Unlike deduction, there is no single |U| making all inductions minimally reliable — "one has to give up the idea of a single global 'space of events' serving as an implicit universe for all inferences in the system." [Source: Ch.8 §8.1 ~p.150]
+
+C-5-7: **Interval-arithmetic "explosion to [0,1]"** is a known problem with Walley/Weichselberger approaches. PLN's indefinite probabilities with b<1 are explicitly designed to mitigate this, but "the utility of the indefinite probability approach may be dependent on the appropriateness of the particular distributional assumptions to the given application situation." [Source: Ch.4 §4.2-4.4 ~p.50-54]
+
+C-5-8: **Non-commutativity of constant extraction from quantifiers under indefinite probabilities** is documented but unresolved: `∃x: G ∧ F(x)` vs `G ∧ ∃x: F(x)` give different TVs except near-1. "Under what combination of premise values and parameter settings do the operators H and J 'almost' commute?… we defer a thorough study of that question to a future paper." [Source: Ch.11 §11.3 ~p.243]
+
+C-5-9: **Subtle asymmetry in default reasoning / penguin problem:** PLN does NOT have a native default-inheritance rule; it must emerge from the interaction of deduction (which fails via independence violation) and revision (which discards wildly different premises). Risks: if priors are weak, the wrong inference B may go through before revision catches it. [Source: Ch.13 §13.9 ~p.276-277]
+
+C-5-10: **Internal contradiction / tension on Revision c parameter:** with c=0 revision is simple averaging (stable but ignores universe size); with c>0 revision "gradually increases relationship strengths" → strengths drift to 1 over iterations. Authors warn: "if c is to be set greater than zero, it must be dynamically adapted in such a way as to yield 'plausible' results, a notion which is highly domain-dependent." The book does not specify such an adaptation algorithm. [Source: Ch.5 §5.10.4 ~p.120-121]
+
+C-5-11: **Temporal-discounting for revision is pushed OUT of PLN proper.** "We assume, in the PLN revision rule, that all information fed into the reasoning system has already been adapted for current relevance by other mental processes." This leaves a semantic gap. [Source: Ch.5 §5.10.1 ~p.115-116]
+
+C-5-12: **Combinatorial explosion in inference control is not adequately solved** by the described heuristics — Authors explicitly admit: "these heuristics do not solve the problem fully adequately, except for the case of fairly simple inferences… it must be solved more thoroughly than is done here if PLN is to be useful for powerful general intelligence." [Source: Ch.13 §13.2 ~p.266]
+
+C-5-13: **Causal inference is only partly addressed.** "We will merely scratch the surface of the topic, outlining how notions of causality fit into the overall PLN framework." Authors admit purely-logical analysis misses crucial human-level aspects of causality (distal vs local causes, enabling conditions). These aspects are attributed to Novamente attention/importance values, which live outside PLN proper. [Source: Ch.14 §14.1 ~p.279; §14.5-14.5.1.2 ~p.302-306]
+
+C-5-14: **Frame problem** is acknowledged as incompletely solved: "none of these mechanisms is really satisfactory. In a real-world scenario there are always various things happening; one can't simply assume that nothing else happens except a few key events." Default-reasoning at inference-control level is offered as the best partial answer. [Source: Ch.14 §14.2.2 ~p.283-285]
+
+C-5-15: **Book-acknowledged sloppy engineering of temporal links:** "the node-and-link constructs shown in the context of the fetch example won't win any prizes for elegance." SeqAND decomposition into disjointness + eventuality is explicitly called "subtle" with "additional subtlety" for predicates. [Source: Ch.14 §14.3-14.3.1 ~p.285-286; §14.5 ~p.302]
+
+C-5-16: **Revision section 5.10.3-5.10.5** (more sophisticated revision for simple TVs) is explicitly flagged as NOT CURRENTLY USED in the PLN implementation and NOT integrated with indefinite probabilities. "We feel it is conceptually valuable, and represents an important direction for future research." [Source: Ch.5 §5.10.3 ~p.116]
+
+C-5-17: **Internal tension about intensional inference with indefinite TVs:** Chapter 12 covers strength-only treatment; extension to weight-of-evidence / indefinite probabilities only begins at §12.7 ("In all, then, intensional inference in PLN emerges as a different way of organizing the same basic probabilistic information…"). The authors concede independence assumptions inside ASSOC sets are "not, in general" true across two properties, and recommend picking "approximately-orthogonal" properties as an ad hoc mitigation. [Source: Ch.12 §12.3 ~p.257; §12.7 ~p.262-263]
+
+---
+
+## End of extraction
+
+Extraction performed by Agent 3 on 2026-04-24 against full_text slice of `Probabilistic_Logic_Networks.json`. All formula transcriptions preserve the book's own notation. Page numbers are approximate (based on the page-header markers embedded in the scanned OCR text). Where OCR rendered mathematical glyphs as garbled Unicode (e.g. `!`, `#`, `$`), ASCII substitutions have been introduced — marked informally with descriptive prose where the symbol was unrecoverable.

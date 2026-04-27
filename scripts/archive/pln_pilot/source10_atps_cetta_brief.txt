@@ -1,0 +1,247 @@
+# Source 10 — ai-agents + CeTTa (Adjacent-Tree Reality Check)
+
+Neutral extraction brief for Source 10 of the PLN cluster pilot. Claude, Codex, and Gemini each run independently. **Frame: adjacent-tree reality check**, NOT a generic repo summary. Resolves the cluster's PLN kNN NB IMPLEMENTED-vs-PROTOTYPE dispute and produces Codex's three-way classification (production line / adjacent executable line / formal-proof line).
+
+---
+
+## Repo identity
+
+**Two repos in scope:**
+
+1. **`ai-agents`** — `zariuq/ai-agents` (Zarathustra Goertzel; user-confirmed identity). HEAD `b7ab8fb` (2026-04-20 "PLN ++"). 639 MB. Multi-formalism premise-selection + theorem-proving benchmark suite spanning Lean (2,431 files), Mizar (104 .miz), Isabelle, megalodon (5,795 HTML proofs), Dedukti (27 .dk), 6,666 Prover9 (.p), 157 .metta, 106 .py, 86 .tex.
+2. **`CeTTa`** — `zariuq/CeTTa` (same author). 11 MB. C implementation of MeTTa, "seeded from MeTTa-IL, Lean MeTTa Specs, and HE." Active development (commits to 2026-04-23) integrating pathmap. Contains the **MeTTa runtime support libraries** (`lib_pln.metta`, `lib_wmpln.metta`, `lib_wmpln_evidence.metta`, `mork.metta`).
+
+**Critical lineage observation**: both repos are by Zarathustra Goertzel (zariuq). The kNN NB pipeline cited in Source 9's `RawData+Publications+PLN kNN NB` is split across these two repos. **Neither contains `lib_pln_xi.metta` or `pln_knn_prior_nb_selector_opt.metta`** — these may be in a separate (un-cloned) repo, in PeTTa, or aspirational.
+
+**Local paths:**
+- `E:\GitHub\hyperon reference\ai-agents\` (HEAD `b7ab8fb`, pulled 2026-04-24)
+- `E:\GitHub\hyperon reference\CeTTa\` (HEAD verified to 2026-04-23 by orchestrator, "separate pathmap runtime-stats lane from normal backend tests")
+
+**Note**: ai-agents had **one Windows-incompatible filename** (`isabelle/4CP/a set => a` — `=>` reserved on Windows). The checkout was recovered via `git config core.longpaths true && git checkout HEAD -- .`. The single broken file is staged-as-deleted; everything else is intact.
+
+---
+
+## Cluster lineage map (post-Source 9)
+
+```
+Source 1 (PLN book 2008)
+   ↓ MeTTa formalization seed (Source 5: hyperon-pln, frozen 2023)
+        ↓
+   PLN MeTTa-era line (Geisweiller-led):
+     Source 4 (pln-experimental2, research)
+     Source 2 (PLN3, modular)
+     Source 3 (PLN/, pln0.9 production)
+   C++ tradition (Linas + Geisweiller):
+     Source 6 (URE, bit-rotting)
+     Source 7 (chaining, partial migration)
+   Hyperon performance substrate (Vandervorst-led):
+     Source 8 (MORK, hypergraph kernel — substrate only)
+   Theoretical literature (Source 9):
+     FactorGraph MORK papers (paper-only)
+     Wm Pln Book V3 (Lean 4, 704 theorems — Zarathustra Goertzel + Claude/Anthropic)
+     PLN kNN NB paper
+
+Source 10 (THIS PASS):
+   Adjacent-tree realization line (Zarathustra Goertzel):
+     ai-agents/atps/scripts/    — Python orchestration (Naive Bayes, k-NN selectors, MaSh, ...)
+     ai-agents/lean-projects/mettapedia/   — Lean 4 formalization, 9+ .lean modules at top
+     ai-agents/lean-projects/mettapedia/papers/PLN-kNN-NB.tex  — paper source
+     ai-agents/lean-projects/mettapedia/artifacts/conformance/maple_court_*.metta  — PeTTa runtime conformance tests
+     CeTTa/lib/lib_pln.metta, lib_wmpln.metta, lib_wmpln_evidence.metta — MeTTa runtime libraries
+     CeTTa/tests/support/pln_portable/pln_evidence.metta — portable PLN evidence module
+     CeTTa/tests/test_bio_wmpln_*.metta — biomedical World-Model PLN test suite (19 tests)
+```
+
+---
+
+## Goal
+
+Produce Codex's **three-way classification** with code-evidence:
+
+1. **Production PLN line** (Sources 2-3): `lib_pln.metta` Deriver, confidence-priority queue, no kNN/NB/Bayesian control.
+2. **Adjacent executable realization line** (Source 10 ai-agents/atps + CeTTa): what is actually implemented and runnable here?
+3. **Formal-proof line** (Source 10 mettapedia Lean + Wm Book V3): what's mechanically certified?
+
+Specifically resolve:
+- **Are the cited Python selectors executable**? (`select_pln_mixture_local_nb.py` etc. — verified to exist; do they run?)
+- **Are the cited Lean theorems real and connected to the selector code**? (`toStrength_nbEvidence_eq_nbPosterior`, `PLN_hplusPos_eq_knnRelevance`)
+- **Are the benchmark numbers reproducible**? (327/800 on MaSh NB at 30s/top-256 MPTP 5k)
+- **Is this integrated with production `PLN/`**? (almost certainly NO; verify)
+
+---
+
+## Required output sections
+
+Each as numbered, cited claims in `C-<section>-<n>` format. Cite file path + symbol or approximate line.
+
+### §1 — ai-agents top-level architecture
+
+13 top-level directories: `AIrxiv/` (paper archive), `atps/` (premise selection scripts), `c-projects/`, `hyperon/` (only `metamath/` + `translators/`), `isabelle/`, `lean-projects/` (mettapedia + leanPeTTa), `megalodon/` (5,795 HTML proofs), `metta-tools/`, `mizar-projects/` (4cp = Four-Color Theorem), `private-ref/`, `Ramsey36/`, `tests/`, `tools/`. Plus top-level Lean files (`TestBlock.lean`, `inspect_upper.lean`, `test_refltrans.lean`).
+
+**Document**: which subdirs are PLN-relevant, which are orthogonal (Mizar/Isabelle/Ramsey/megalodon), how the multi-formalism scope shapes the repo's role as a benchmark suite.
+
+### §2 — `atps/scripts/` — Python selectors
+
+25 Python scripts visible in `atps/scripts/`:
+- Build pipelines: `01_create_split.py`, `backfill_missing_r2_train.sh`, `build_partitioned_tables.py`, `build_pooled_train_deps.py`, `create_extended_mptp_chainy.py`, `extract_chainy_features.sh`, `extract_deps.py`, `extract_deps_extended_mptp.py`.
+- MaSh NB / kNN: `mash_knn_build_tables.py`, `mash_knn_scorer.py`, `mash_nb_build_tables.py`, `mash_nb_scorer.py`, `select_mash_knn.py`, `select_mash_nb.py`.
+- Round-2 training queues: `queue_round2_full_train.sh`, `queue_round2_model_generation.sh`, `queue_round2_train_only.sh`.
+- E-prover integration: `run_eprover.py`, `run_eprover_parallel.sh`.
+- **PLN-specific**: `select_pln_best_draft.py`, `select_pln_enhanced.py`, `select_pln_knn.py`, `select_pln_knn_opt.py`, `select_pln_knn_prior_nb_opt.py`, `select_pln_mixture_local_nb.py`.
+
+Read enough of the **PLN-specific** selectors to characterize:
+- What's the input format (atom features? predicate signatures?)
+- What's the scoring algorithm (kNN distance? NB likelihood? mixture?)
+- How do they invoke / call any MeTTa runtime?
+- Are the benchmarks (MPTP 5k, MaSh) actually run from these scripts?
+- Cite specific functions / classes / line ranges.
+
+**Do NOT read all 25 scripts** — focus on `select_pln_mixture_local_nb.py`, `select_pln_knn_prior_nb_opt.py`, `select_pln_knn.py`, plus `mash_nb_scorer.py` and `mash_knn_scorer.py` for the MaSh comparison baseline.
+
+### §3 — `lean-projects/mettapedia/` — Lean theorems
+
+Top-level Lean files: `EvidenceClass.lean`, `EvidenceKind.lean`, `EvidenceModel.lean`, `Main.lean`, `Mettapedia.lean`, `PLNWorldModelGeneric.lean`, `PainEvidenceWM.lean`, `TempCheck.lean`, `mcp_smoke.lean`. Plus subdirs: `Demos/`, `Mettapedia/`, `leanPeTTa/`, `mm2_evalMemo_help/`, `mm2_eval_review/`, `papers/` (contains `PLN-kNN-NB.tex` + `.pdf`), `artifacts/conformance/` (maple_court_*.metta — PeTTa runtime conformance).
+
+**Document**:
+- The headline theorems cited in PLN-kNN-NB.tex: `toStrength_nbEvidence_eq_nbPosterior`, `PLN_hplusPos_eq_knnRelevance`. Find them in source. Transcribe verbatim.
+- The Evidence module structure (EvidenceClass / EvidenceKind / EvidenceModel) — what does it formally model?
+- `PLNWorldModelGeneric.lean` — generic World-Model PLN module. Compare to `Wm Pln Book V3` (which had 704 theorems).
+- `PainEvidenceWM.lean` — what's the "Pain" instance?
+- The `papers/` subdir contents — list all .tex files, identify the bibliography for cross-referencing Source 9 papers.
+
+### §4 — `lean-projects/mettapedia/papers/PLN-kNN-NB.tex` — paper source
+
+Read `PLN-kNN-NB.tex` directly. Extract:
+- Authors, date, version.
+- Specific Lean theorem names cited and their statements.
+- Specific Python script paths cited.
+- Benchmark setup (MaSh, MPTP 5k).
+- Reported numbers (claimed: 327/800 at 30s/top-256).
+- Any references to cited but missing files (`lib_pln_xi.metta`, `pln_knn_prior_nb_selector_opt.metta`).
+
+This is the Lane-3 paper's actual source. Compare with the wiki RawData card (Source 9 read the wiki version).
+
+### §5 — `lean-projects/mettapedia/artifacts/conformance/maple_court_*.metta` — runtime conformance
+
+5 files: `maple_court_bn_motifs.metta`, `maple_court_full_profile.metta`, `maple_court_multicarrier.metta`, `maple_court_simple.metta`, `maple_court_sleep.metta`.
+
+**Read `maple_court_simple.metta` first** — sample shows it uses `(import! &self ../../hyperon/PeTTa/pln_inference/pln_evidence)` and verifies `evidence-hplus`, `evidence-toStrength`, commutativity. **This is the runtime executable layer that ties Lean theorems to PeTTa execution.**
+
+Document the conformance pattern: Lean theorem → MeTTa assertion → PeTTa execution. This is the "Proof-Carrying Implementation" Gemini described.
+
+### §6 — `CeTTa/lib/` — MeTTa runtime libraries
+
+20 .metta files in `CeTTa/lib/`. PLN-relevant:
+- `lib_pln.metta` — full PLN library
+- `lib_wmpln.metta` — World-Model PLN library
+- `lib_wmpln_evidence.metta` — Evidence module
+- `mork.metta` — MORK integration
+- `metamath.metta` — Metamath integration
+- `pverify-utils.metta` — proof verification utilities
+
+Read `lib_pln.metta` and `lib_wmpln.metta` (both small per directory listing). Document:
+- Rule inventory (compare to Sources 2-3's `Truth_Deduction`, `Truth_ModusPonens`, etc.)
+- How does `lib_wmpln.metta` differ from `lib_pln.metta`?
+- Is `lib_wmpln_evidence.metta` the runtime instantiation of Wm Book V3's Lean evidence types?
+- How does `mork.metta` integrate MORK with MeTTa?
+
+### §7 — `CeTTa/tests/support/pln_portable/` and `bio_wmpln_*` tests
+
+`CeTTa/tests/support/pln_portable/`:
+- `lib_pln.metta` (portable copy)
+- `pln_evidence.metta` — **the cited file from PLN kNN NB paper, verified here**
+
+19 `bio_wmpln_*` tests (per file listing). Read 2-3 representative ones (e.g., `test_bio_wmpln_checkpoint_petta_top.metta`) to characterize:
+- What biomedical-PLN scenarios are exercised
+- Connection to **rejuve-bio** (cluster's biomedical-AI org)? cross-link to Source 4's hyperon-pln/biochatter-metta
+- Performance / regression scope
+
+### §8 — Cited-but-missing files
+
+Source 9's PLN kNN NB paper references files we have NOT located:
+- `lib_pln_xi.metta` — **NOT in ai-agents, NOT in CeTTa, NOT in any local clone**. Possibly in a yet-to-be-public repo, an unlisted PeTTa subdir, or aspirational.
+- `pln_knn_prior_nb_selector_opt.metta` — **NOT found anywhere local**. Cited by name but not present.
+- `hyperon/PeTTa/demos/` — referenced as a directory; **no `demos/` subdir in any local PeTTa clone or in `ai-agents/hyperon/`**. ai-agents/hyperon has only `metamath/` and `translators/`.
+
+**Document each cited-but-missing file as an absence finding.** Do NOT guess at locations or speculate the files exist elsewhere; just note the absence with citation context. (This may be the most important deliverable for the cluster status table.)
+
+### §9 — Three-way classification (Codex framing)
+
+Map each PLN kNN NB pipeline component to one of:
+
+- **Production PLN line** (PLN3/PLN/): no kNN/NB code. ABSENT.
+- **Adjacent executable line** (atps/scripts + CeTTa runtime): Python selectors VERIFIED EXIST; CeTTa MeTTa libs VERIFIED EXIST; conformance tests VERIFIED EXIST.
+- **Formal-proof line** (mettapedia Lean): theorems VERIFIED EXIST.
+- **Aspirational / not-yet-implemented**: `lib_pln_xi.metta`, `pln_knn_prior_nb_selector_opt.metta`, `hyperon/PeTTa/demos/`.
+
+Produce a per-component table with cited file paths + status.
+
+### §10 — Resolution: PLN kNN NB IMPLEMENTED vs PROTOTYPE
+
+Source 9 dispute: Claude (Lane 3) said IMPLEMENTED; Codex said PROTOTYPE/EXPERIMENTAL.
+
+**Resolution**: most components verified present (Python orchestration, Lean theorems, paper, MeTTa support libs in CeTTa, runtime conformance tests). 2 critical files cited but absent. **Suggested label: PROTOTYPE-ALMOST-COMPLETE**, with the absent files flagged as the gap. Document evidence for each side.
+
+### §11 — Repository roles in cluster narrative
+
+Update the cluster lineage map's role assignments:
+- **ai-agents** — multi-formalism benchmark suite + Python orchestration + Lean formalization. Authored by Zarathustra Goertzel.
+- **CeTTa** — C MeTTa interpreter + MeTTa runtime libraries (lib_pln, lib_wmpln, lib_wmpln_evidence, mork, metamath). Active development through 2026-04-23.
+- Production PLN3/PLN/ remains **isolated** from this realization line — no imports between them.
+
+Document the cross-tradition architecture: Geisweiller's MeTTa-PLN production line ↔ Zarathustra's adjacent realization line ↔ Vandervorst's MORK substrate. Three parallel codebases by three (semi-)disjoint author groups.
+
+### §12 — Discovered publications and references
+
+In ai-agents/lean-projects/mettapedia/papers/, list all .tex files. Cross-reference against the Source 9 paper bundle. Are there NEW papers we haven't extracted?
+
+Particularly check:
+- Is there a Wm Pln Book V3 .tex source here (Lean Book V3 is referenced but its source location was unclear)?
+- Are there papers cited in PLN-kNN-NB.tex that we haven't seen?
+- Bibliography entries pointing at external publications.
+
+---
+
+## Out-of-scope for this pass
+
+- **`AIrxiv/`** — paper archive (large, orthogonal to PLN cluster).
+- **`isabelle/`** — Isabelle/HOL proofs (off-topic; one file is Windows-incompatible).
+- **`megalodon/`** — 5,795 HTML proof outputs (large, orthogonal).
+- **`Ramsey36/`** — Ramsey theory formalization.
+- **`mizar-projects/4cp`** — Four-Color Theorem in Mizar.
+- **`c-projects/`** — C code experiments.
+- **`private-ref/`** — likely scratch.
+- ai-agents `tools/`, `tests/`, `metta-tools/`, top-level Lean files (TestBlock, inspect_upper, test_refltrans).
+
+Fine to do one-line characterization of these from their READMEs but do NOT deep-extract.
+
+---
+
+## Output file
+
+Write findings to: `E:\GitHub\Magi-AGI\hyperon-wiki\scripts\archive\pln_pilot\source10_atps_cetta\findings_<model>.txt`
+
+Create the `source10_atps_cetta/` subdirectory if missing.
+
+Header must include: model name, extraction date (2026-04-24), commit hashes (ai-agents `b7ab8fb`, CeTTa `e0030f8` per recent log — verify), claim counts per section.
+
+If the write is blocked, paste FULL content verbatim in your response.
+
+---
+
+## Rules
+
+- Do NOT consult any other source — only files inside `E:\GitHub\hyperon reference\ai-agents\` and `E:\GitHub\hyperon reference\CeTTa\`.
+- Cite file and symbol (or approximate line) for every concrete claim.
+- Frame findings as **adjacent-tree reality check**, NOT generic walkthroughs.
+- For absent-but-cited files (`lib_pln_xi.metta`, etc.): document as absence, do NOT speculate.
+- Apply Codex's three-way classification consistently.
+- Read these prior reconciliations first for context (do not re-derive their findings):
+  - Source 8 (MORK): `scripts/archive/pln_pilot/source8_mork/findings_reconciled_crossmodel.txt` — for the substrate-vs-FactorGraph framing.
+  - Source 9 (papers): `scripts/archive/pln_pilot/source9_papers/findings_reconciled_crossmodel.txt` — for the PLN kNN NB dispute context.
+- Volume guard: ai-agents is 639 MB. Don't try to read every file. Focus on the brief's enumerated paths + use grep for verification.
+- Output target: ~30-40 KB.
+
+---
+
+*End of Source 10 brief.*

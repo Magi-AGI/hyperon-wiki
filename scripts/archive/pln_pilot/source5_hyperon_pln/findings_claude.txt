@@ -1,0 +1,472 @@
+# hyperon-pln (patham9, frozen 2023-08-01) — Source 5 Extraction
+# Model: Claude Opus 4.7 (1M ctx), single deep pass
+# Extraction date: 2026-04-24
+# Commit hash: 0d017c4d154de05fa8234bcf2717c268cf82d791
+# Local path: E:\GitHub\hyperon reference\hyperon-pln\
+# Total source files read: 4 meta-docs + 18 .metta + 1 .idr + Dockerfile + 2 READMEs + 13 synthesis-experiments READMEd (3 files read in detail) = 38 distinct files inspected
+#
+# Claim counts per section:
+#   §1 Repo structure & 4-encoding pattern: 12 claims
+#   §2 Truth-value type hierarchy (PrCnt characterization): 14 claims
+#   §3 Implemented rules and formula provenance (lineage diff): 22 claims
+#   §4 metta/synthesis/ program synthesizer: 11 claims
+#   §5 idris/StrictlySorted.idr: 6 claims
+#   §6 Preserved/abandoned MeTTa-specific design choices: 9 claims
+#   §7 What was abandoned downstream: 8 claims
+#   §8 Discovered publications: 4 claims
+#   §9 Lineage and relationship: 7 claims
+#   Total: 93 cited claims.
+#
+# Citation format: C-<section>-<n>. Each claim cites file path + symbol or line.
+# Comparison sources:
+#   - Source 4 reconciliation = pln-experimental2 (ngeiswei) at 6c9525e1
+#   - Source 3 reconciliation = PLN/ (trueagi-io, pln0.9) at 4405956 — direct re-read of lib_pln.metta L42-L143 for verbatim diff
+#   - Source 2 reconciliation = PLN3/ (ngeiswei) at 55f1751
+#
+# ============================================================
+# §1 — Repo structure and the four-encoding pattern
+# ============================================================
+#
+# C-1-1. Top-level layout (verified by directory listing, README.md, metta/README.md):
+#   metta/{common, dependent-types, entail, equal, match, synthesis}/
+#   idris/StrictlySorted.idr  (single file, 105 lines)
+#   Dockerfile (8 lines, FROM trueagi/hyperon → git clone https://github.com/trueagi-io/hyperon-pln.git)
+#   README.md, CLAUDE.md, AGENTS.md, GEMINI.md, LICENSE (MIT-style, 35 KB)
+#   No build.sh, no test.sh, no Python shim. Run mode is `metta <file>` per README.
+#
+# C-1-2. metta/README.md (file: metta/README.md L1-12) explicitly enumerates the four implementation styles:
+#   "match: rule is represented using MeTTa operator match"
+#   "entail: rule is represented with the symbol ⊢"
+#   "equal: rule is represented using MeTTa equality ="
+#   "dependent-types: rule is represented as type constructor"
+#   "common: definitions common to some or all ways"
+#   "synthesis: program synthesis experiments"
+#
+# C-1-3. ROOT-LEVEL ENCODING ROSTER (rule × encoding matrix):
+#   Encoding         | Deduction | ModusPonens | ImplDirectIntroduction
+#   dependent-types  |    YES    |    YES      |        YES
+#   entail           |    YES    |    NO       |        YES
+#   equal            |    YES    |    NO       |        YES
+#   match            |    YES    |    NO       |        YES
+#   ----------------|-----------|-------------|----------------------
+#   ModusPonens is only implemented in the dependent-types encoding (verified by file enumeration: no `ModusPonensEntail.metta`, no `ModusPonensEqual.metta`, no `ModusPonensMatch.metta` exist).
+#
+# C-1-4. Methodological/formal differences (verified across files):
+#   - dependent-types (metta/dependent-types/DeductionDTL.metta L20-29): rules are TYPE CONSTRUCTORS. The rule body is the line `(: Deduction (-> ... (≞ (→ $p $r) (deduction-formula ...))))`. A proof is a Hyperon Atom built from these constructors. Truth-value computation is embedded as the type-level expression `(deduction-formula ...)`.
+#   - entail (metta/entail/DeductionEntail.metta L23-30): rules are atoms whose head is `⊢`. Body is `(⊢ premise1 ... premiseN conclusion)`. Premises and conclusion are listed as siblings under the same `⊢` constructor; consumed via `match &self (⊢ $p1 ... $pN $res) $res`.
+#   - equal (metta/equal/DeductionEqual.metta L24-40): rules use bare MeTTa `=`. Forward direction: `(= (, prem1 ... premN) conclusion)` rewrites a tuple of premises into the conclusion. Backward direction defined symmetrically but with an explicit author comment on L31-33: "Unfortunately this won't work, the interpreter cannot unify the left hand side of the equality because it contains function calls, as opposed to just constructors." So equal is broken in BC direction by interpreter limitation, not by design.
+#   - match (metta/match/DeductionMatch.metta L32-51): rules are functions; matching is hand-written via `(match $kb (, prems...) (deduction prems...))`. The simplest, most explicit, but does not chain.
+#
+# C-1-5. README.md L19-20 explicitly identifies dependent-types as "the most advanced approach for now" — author-stated, no qualification.
+#
+# C-1-6. Verbatim from `metta/dependent-types/DeductionDTL.metta` L20-29 (rule definition):
+#   (: deduction-rule (-> Atom))
+#   (= (deduction-rule)
+#      (: Deduction
+#         (-> (≞ $p $ptv)
+#             (≞ $q $qtv)
+#             (≞ $r $rtv)
+#             (≞ (→ $p $q) $pqtv)
+#             (≞ (→ $q $r) $qrtv)
+#             (≞ (→ $p $r) (deduction-formula $ptv $qtv $rtv $pqtv $qrtv)))))
+#
+# C-1-7. The dependent-types encoding pulls its formula from `metta/common/formula/DeductionFormula.metta` and the consistency-conditions live there too (verified C-1-8 below). This formula file is the single source of truth that the {match, entail, equal, dependent-types} encodings all import.
+#
+# C-1-8. `metta/common/formula/DeductionFormula.metta` IS THE PROVENANCE FILE that PLN3 (Source 2) and PLN/ (Source 3) cite. Verified:
+#   - PLN/lib_pln.metta L40 explicit comment: ";; borrowed from https://github.com/trueagi-io/hyperon-pln/blob/main/metta/pln/dependent-types/DeductionDTL.metta"  (note: the cited path "metta/pln/dependent-types/DeductionDTL.metta" doesn't match the actual layout `metta/dependent-types/DeductionDTL.metta` — citation has a stray "pln/" subdir. **lineage-citation typo.**)
+#   - PLN3 cites the same file similarly per Source 2 reconciliation §3.1.
+#
+# C-1-9. The actual `DeductionFormula.metta` file (verified verbatim, file metta/common/formula/DeductionFormula.metta):
+#   - L8-21: defines `smallest-intersection-probability`, `largest-intersection-probability`, `conditional-probability-consistency` — but the body of `conditional-probability-consistency` returns just `True`, with the actual range-check commented out (L19-21). **Consistency check is INERT in this repo.**
+#   - L24-37: `simple-deduction-strength-formula $As $Bs $Cs $ABs $BCs` — the strength formula. Returns 0 if preconditions fail, else `if (< 0.99 $Bs) then $Cs else $ABs·$BCs + (1-$ABs)·($Cs - $Bs·$BCs)/(1 - $Bs)`. Identical algebraic shape to PLN/'s `Truth_Deduction` strength branch.
+#   - L40-57: `ded_formula` — the generic top-level deduction formula. Uses `confidence` and `mode` as accessors, computes `$PRc = (min $Pc (min $Qc (min $Rc (min $PQc $QRc))))` — **`min`-based confidence**, matches PLN3 exactly. Returns `(PrCnt $PRs $PRs)` if not zero, else `(PrCnt 1 0)`.
+#   - L60-75: `deduction-formula` — STV-specialized hardwired version. Uses `if (< 0.9999 $Qs)` (4 nines, vs `0.99` in the generic). Confidence = `(min $Pc (min $Qc (min $Rc (min $PQc $QRc))))`. Returns `(STV ...)`.
+#
+# C-1-10. The STV-hardwired `deduction-formula` (L60-75) is what `DeductionDTL.metta` actually imports/uses (per the rule body referenced in C-1-6 calling `(deduction-formula $ptv $qtv $rtv $pqtv $qrtv)`).
+#
+# C-1-11. The `ded_formula` returns `PrCnt`, the `deduction-formula` returns `STV` — they are TWO DISTINCT functions for two different TV types. So this repo has a **dual-formula, dual-TV-type** structure for deduction. Downstream (PLN3, PLN/) collapsed to STV-only and dropped `ded_formula`/`PrCnt`.
+#
+# C-1-12. The 0.9999 vs 0.99 threshold delta between the generic `ded_formula` (uses 0.99) and the STV-hardwired `deduction-formula` (uses 0.9999) — both sit in the same file. PLN3 uses 0.99 in its `Truth_Deduction`; PLN/ also uses 0.9999 (lib_pln.metta L92). **PLN/ inherited the STV-hardwired version, not the generic one.** This is a verifiable lineage detail.
+#
+# ============================================================
+# §2 — Truth-value type hierarchy (PrCnt characterization)
+# ============================================================
+#
+# C-2-1. `metta/common/truthvalue/TruthValue.metta` L10 declares: `(: TruthValue Type)`.
+#
+# C-2-2. Four constructors declared (verbatim, file metta/common/truthvalue/TruthValue.metta L17-32):
+#   L17-18:  ;; Boolean TV constructor
+#            (: Bl (-> Bool TruthValue))
+#   L20-21:  ;; First order probability TV constructor, i.e. mere probability.
+#            (: Pr (-> Number TruthValue))
+#   L23-27:  ;; Second order probability TV constructor, i.e. probability and
+#            ;; count.  The second order probability is distributed according to a
+#            ;; beta distribution.  The first argument of the constructor
+#            ;; represents the mode of the second order distribution.
+#            (: PrCnt (-> Number Number TruthValue))
+#   L29-32:  ;; Simple Truth Value.  A Second order probability TV constructor,
+#            ;; i.e. probability and confidence.  The probability is in fact the
+#            ;; mode of the corresponding beta distribution.
+#            (: STV (-> Number Number TruthValue))
+#
+# C-2-3. **PrCnt vs STV — the critical lineage finding** (TruthValue.metta L23-32 + L107-126):
+#   - PrCnt = `(probability_mode, count)` — second-order probability with **explicit raw count** of evidence.
+#   - STV   = `(probability_mode, confidence)` — second-order probability with **confidence** in [0,1).
+#   - Both reference the SAME beta-distribution semantics (Jeffreys prior α=β=0.5, file L40-43).
+#   - They are **isomorphic via `count→confidence` (L60-61)** and `confidence→count` (L66-69).
+#   - confidence = count / (count + lookahead), where lookahead = 1.0 (file L46-47).
+#   - confidence→count = (confidence·lookahead) / (1 - confidence), with a `if approxEq 1.0 1e-9 → max-count=1e9` clamp.
+#   So PrCnt and STV are **two encodings of the same evidence-count beta-distribution**, transformed by a lookahead-1 monotonic bijection. PrCnt stores raw count; STV stores normalized confidence. **PrCnt is NOT a different theory.** It is the **count-form sibling** of STV.
+#
+# C-2-4. `pos_count`, `neg_count`, `post_alpha`, `post_beta`, `mean` (file L128-161): all defined uniformly across `Bl`, `Pr`, `PrCnt`, `STV`, falling back through `count` and `mode`. The four TV types share one polymorphic interface.
+#
+# C-2-5. **Bl and Pr are degenerate fixed-certainty wrappers** (verified TruthValue.metta L96-126):
+#   - mode (Bl True) = 1.0, mode (Bl False) = 0.0
+#   - mode (Pr $pr) = $pr
+#   - count (Bl _) = max-count = 1e9 (constant, L51)
+#   - count (Pr _) = max-count = 1e9
+#   - confidence (Bl _) = 1.0
+#   - confidence (Pr _) = 1.0
+#   So `Bl b` ≅ `STV (if b 1 0) (1 - 1e-9)` and `Pr p` ≅ `STV p (1 - 1e-9)`. **Confirms Source 4's Bl/Pr-as-degenerate-STV-wrappers finding** at the seed.
+#
+# C-2-6. **PrCnt does have evidence-accumulation that Pr lacks** — its second argument is a raw count, so accumulation is via count addition (e.g., `inc-count` on L72-73 = `+1`). Pr has no count parameter, so cannot accumulate. **This makes PrCnt the only one of {Bl, Pr} that supports incremental learning.**
+#
+# C-2-7. **PrCnt is NOT the missing link between Pr and STV** — it is a parallel encoding of STV's underlying evidence count. The "missing link" framing in the §2 brief is the wrong shape; PrCnt and STV are equivalent up to a monotonic invertible transformation.
+#
+# C-2-8. The brief asks: was PrCnt carried into Source 4's `experimental/early-pln/`? Source 4 reconciliation §2.2 says only STV is destructured by rules in pln-experimental2. PrCnt as a constructor presumably exists in that repo's TruthValue.metta (since pln-experimental2 inherits this code), but is unused by the {dependent-types, entail, equal, match} encodings there.
+#
+# C-2-9. **Was PrCnt carried into PLN3 / PLN/ at all?** Per Source 2 and Source 3 reconciliations, PLN3 and PLN/ are STV-only — no PrCnt constructor. **PrCnt was DROPPED downstream in the production fork.**
+#
+# C-2-10. **PrCnt remains active inside hyperon-pln itself** — used by:
+#   - `ded_formula` (DeductionFormula.metta L40-57) returns `(PrCnt ...)`.
+#   - DeductionFormulaTest.metta L14: `!(ded_formula (PrCnt 1 10) (PrCnt 1 4) ...)`.
+#   - DeductionEntailTest.metta L4-8: all premises `(PrCnt 1 0.1)` / `(PrCnt 1 0.5)`.
+#   - DeductionEqualTest.metta L4-9: same pattern.
+#   - DeductionMatchTest.metta L4-8: same pattern.
+#   - ImplicationDirectIntroductionEntail.metta L31: `(ETV Empty (PrCnt 1 0))`.
+#   - ImplicationDirectIntroductionEqual.metta L34, L65: `(ETV Empty (PrCnt 1 0))` / `(idi_formula ...)` returns either STV or PrCnt-based.
+#   - ImplicationDirectIntroductionMatch.metta L35: `(ETV Empty (PrCnt 1 0))`.
+# So PrCnt is the **default TV in the entail/equal/match encodings' tests**. STV is favored only in dependent-types.
+#
+# C-2-11. **`EvidentialTruthValue` (ETV) is a separate type** (file metta/common/truthvalue/EvidentialTruthValue.metta L11-19): `(: ETV (-> (Set $a) TruthValue EvidentialTruthValue))`. ETV wraps a TV with a set of evidence-IDs. **The IDI formula uses ETV; the deduction formula uses raw TV.** This sorted-evidence-IDs-via-Set machinery is what later moved into pln-experimental2's IDI.
+#
+# C-2-12. `TemporalTruthValue.metta` L21-26: declares `TTV` and `TETV` (Temporal/TemporalEvidential) as TV-indexed-by-time. **Used nowhere in the rule definitions** in this repo — just declared. Pure stub.
+#
+# C-2-13. `MeasEq.metta` L9: `(: ≞ (-> $event $tv Type))` — the **measured-by relation** is a dependent type. This is the foundation symbol used in every rule definition (`(≞ X tv)` = "X is measured by tv"). **This symbol survived verbatim into Source 4's experimental/early-pln/.**
+#
+# C-2-14. The repo distinguishes `=` (definitional equality) from `≞` (measure-equality) on the rationale (file MeasEq.metta L1-7): "to not conflate event and measure which can lead to contradictions." This is **theoretical hygiene that did not propagate to PLN3/PLN/** — those use raw `(stv s c)` decorations with `Inheritance` / `Implication` carrying the truth value as a co-located atom, not as a separate `≞` relation.
+#
+# ============================================================
+# §3 — Implemented rules and formula provenance (lineage diff)
+# ============================================================
+#
+# C-3-1. **Rules implemented in this repo**: exactly THREE — Deduction, ModusPonens, ImplicationDirectIntroduction. Verified by enumerating every .metta file in metta/{dependent-types, entail, equal, match}/. **No Induction. No Abduction. No Inversion. No Revision. No SymmetricMP. No Negation. No EvaluationImplication. No Member Deduction. No TransitiveSimilarity.**
+#
+# C-3-2. **DEDUCTION FORMULA — verbatim diff (this repo vs Source 3 PLN/ vs Source 2 PLN3):**
+#
+#   THIS REPO (`metta/common/formula/DeductionFormula.metta` L60-75, STV-hardwired version):
+#       (= (deduction-formula (STV $Ps $Pc) (STV $Qs $Qc) (STV $Rs $Rc) (STV $PQs $PQc) (STV $QRs $QRc))
+#          (if (and (conditional-probability-consistency $Ps $Qs $PQs)
+#                   (conditional-probability-consistency $Qs $Rs $QRs))
+#              (STV (if (< 0.9999 $Qs) $Rs
+#                       (+ (* $PQs $QRs) (/ (* (- 1 $PQs) (- $Rs (* $Qs $QRs))) (- 1 $Qs))))
+#                   (min $Pc (min $Qc (min $Rc (min $PQc $QRc)))))
+#              (STV 1 0)))
+#
+#   PLN/ (`PLN/lib_pln.metta` L84-99, Truth_Deduction):
+#       (= (Truth_Deduction (stv $Ps $Pc) (stv $Qs $Qc) (stv $Rs $Rc) (stv $PQs $PQc) (stv $QRs $QRc))
+#          (if (and (conditional-probability-consistency $Ps $Qs $PQs)
+#                   (conditional-probability-consistency $Qs $Rs $QRs))
+#              (stv (if (< 0.9999 $Qs) $Rs
+#                       (+ (* $PQs $QRs) (/safe (* (- 1 $PQs) (- $Rs (* $Qs $QRs))) (- 1 $Qs))))
+#                   (* (* $PQs $QRs) (* $PQc $QRc)))      ;; ←——— DIFF: multiplicative, not min
+#              (stv 1 0)))
+#
+#   PLN3 (per Source 2 reconciliation §2 — Truth_Deduction): identical to this repo's STV form, including `min`-based confidence. (PLN3's confidence: `min($Pc, $Qc, $Rc, $PQc, $QRc)`.)
+#
+# C-3-3. **DIFF VERDICT, Deduction**:
+#   - **Strength formula**: identical algebraic form across all three (this-repo / PLN3 / PLN/). Verbatim ported.
+#   - **Confidence formula**: this-repo == PLN3 (`min` of 5 confidences) ≠ PLN/ (multiplicative `$PQs·$QRs·$PQc·$QRc`).
+#   - **0.9999 threshold**: identical across all three (this-repo's STV-hardwired version, not the generic `ded_formula`'s 0.99).
+#   - **Constructor casing**: this-repo uses uppercase `STV`; PLN3 and PLN/ use lowercase `stv` — minor styling drift, semantically equivalent.
+#   - **`/safe` vs `/`**: PLN3 and PLN/ use `/safe`; this repo uses raw `/`. Adds zero-div safety downstream (matches Source 4's V9 finding pattern).
+#   - **Consistency check**: this repo's `conditional-probability-consistency` is **stubbed to return True** (DeductionFormula.metta L17-21, body commented out); PLN/ and PLN3 have the active range-check (PLN/lib_pln.metta L52-54). **THE CONSISTENCY CHECK WAS REACTIVATED DOWNSTREAM.**
+#
+# C-3-4. **Implication Direct Introduction (IDI) formula — verbatim**:
+#
+#   THIS REPO (`metta/common/formula/ImplicationDirectIntroductionFormula.metta` L23-37):
+#       (= (idi_formula $patv $qatv $pqtv)
+#          (let* (($pb (mode $patv))
+#                 ($qb (mode $qatv))
+#                 ($cnt (+ (count $pqtv) $pb)))
+#            (if (< 0 $cnt)
+#                (STV (/ (+ (pos_count $pqtv) (* $pb $qb)) $cnt) (count->confidence $cnt))
+#                (STV 1 0))))
+#       ;; Plus alternate form `direct-introduction-formula` (L32-37) using `inc-count-strength` / `inc-confidence`.
+#
+# C-3-5. **IDI is the new rule that Source 4 found in experimental/early-pln/** — and it traces VERBATIM back to here. Source 4 reconciliation §2.5 lists IDIBase / IDIRecursive with `inc-pos-count`/`inc-neg-count` helpers. This repo has the exact same pattern with `inc-count-strength` (TruthValue.metta L90-92) + `inc-confidence` (TruthValue.metta L77-78). **The IDI rule is born here in 2023 and survives unchanged into pln-experimental2.**
+#
+# C-3-6. **IDI is NOT in PLN3 or PLN/.** Per Source 2 §1.3 and Source 3 §3.3, IDI is absent from the production line. **This rule was abandoned downstream.**
+#
+# C-3-7. **Modus Ponens formula — verbatim** (`metta/common/formula/ModusPonensFormula.metta` L7-14):
+#       (= (modus-ponens-formula (STV $As $Ac) (STV $ABs $ABc))
+#          (let* (($notABs 0.2)   ; temporary hack
+#                 ($notABc 1))
+#                (STV
+#                    (+ (* $ABs $As) (* $notABs (- 1 $As)))
+#                    (min (min $ABc $notABc) $Ac))))
+#
+# C-3-8. **Modus Ponens lineage diff**:
+#   - This repo: `$notABs = 0.2` constant, in-line comment "temporary hack". Strength formula `$ABs·$As + 0.2·(1-$As)`. Confidence `min($ABc, $notABc, $Ac) = min($ABc, 1, $Ac) = min($ABc, $Ac)`.
+#   - PLN3 `Truth_ModusPonens` (per Source 2): `sB = $As·$ABs + 0.02·(1-$As)`, confidence `$c1·$c2`. **PLN3 USES 0.02, NOT 0.2** — divergent. PLN3's MP is the book's c=0.02 for asymmetric MP.
+#   - PLN3 `Truth_SymmetricModusPonens` (Source 2 V1): `let $snotAB = 0.2, $cnotAB = 1.0` — **MATCHES THIS REPO's value (0.2)**.
+#   - PLN/ `Truth_ModusPonens` (lib_pln.metta L124-126): `+ (* $Ps $PQs) (* 0.02 (- 1 $Ps))`, confidence `(* $Ps $PQs) (* $Pc $PQc)`. Uses 0.02.
+#   - PLN/ `Truth_SymmetricModusPonens` (L129-133): `$snotAB = 0.2`. Matches this repo's value.
+#
+# C-3-9. **MP HACK PROVENANCE INVERTED**: this repo's MP rule is what later became **Symmetric MP** in PLN3/PLN/ (the 0.2 form), NOT the asymmetric MP (the 0.02 form). The asymmetric MP with 0.02 (book §5.7.1 p.111) was a NEW formula introduced downstream — likely by patham9 or wuensche when porting the book's chapter 5. **The 0.2 hack here is the seed of Symmetric MP, not asymmetric MP.**
+#
+# C-3-10. The MP file's L18-27 comment block (ModusPonensDTL.metta) explicitly explains: "P(B) = P(B|A)·P(A) + P(B|Not A)·P(Not A). However in this rule to avoid requiring too many premises it is assumed P(B|Not A) = 0.2 which is a temporary hack. Maybe the resulting confidence could at least be degraded to compensate for that hack." **This is leungmanhin's 2023-08 commentary** (per the brief's git-history block — PR #23 = "Add comments about the temporary hack in the modus ponens formula" by leungmanhin).
+#
+# C-3-11. **Consistency conditions**: `smallest-intersection-probability`, `largest-intersection-probability`, `conditional-probability-consistency` (DeductionFormula.metta L8-21):
+#       (= (smallest-intersection-probability $As $Bs)
+#         (clamp (/ (- (+ $As $Bs) 1) $As) 0 1))
+#       (= (largest-intersection-probability $As $Bs)
+#         (clamp (/ $Bs $As) 0 1))
+#       (= (conditional-probability-consistency $As $Bs $ABs)
+#          True)
+#       ;; (and (< 0 $As)
+#       ;;      (and (<= (smallest-intersection-probability $As $Bs) $ABs)
+#       ;;           (<= $ABs (largest-intersection-probability $As $Bs)))))
+#
+# C-3-12. **CONSISTENCY-CONDITIONS DIFF**: PLN/ (lib_pln.metta L42-54) has the **uncommented active version** of the very same code. The body that this-repo has commented out is **EXACTLY the body PLN/ uses** (modulo the `(and (< 0 $As) ...)` outer guard, which both have, and the final clamp, both have). PLN/'s active block at L51-54 is verbatim the body that this repo has commented out at L19-21. **PLN/ uncommented this code; PLN3 already had it active too (per Source 2 §3.1).**
+#
+# C-3-13. **Consistency-check identity confirmed**: PLN/lib_pln.metta L40 cites "https://github.com/trueagi-io/hyperon-pln/blob/main/metta/pln/dependent-types/DeductionDTL.metta" — which is a typoed path; the real file is `metta/common/formula/DeductionFormula.metta` (DeductionDTL.metta only contains the rule type-constructor, not the formula). **The downstream citation has a stray "pln/" subdir AND points at the wrong file (DTL not Formula).** This is an actionable wiki-quality finding: PLN/ and PLN3 both cite the wrong path.
+#
+# C-3-14. **Test files exist for every encoding**:
+#   - DeductionDTLTest.metta L46-49: synthesizer-driven tests, expected outputs in inline comments (e.g., `(: (Deduction Pm Qm Rm PQm QRm) (≞ (→ P R) (STV 0.8 0.1)))`).
+#   - DeductionDTLTest.metta L38-43: type-checker-driven tests are commented out: "The following is disabled till the type checker supports running functions inside types". So full type-level proof checking is a known-unsupported feature in 2023 MeTTa.
+#   - ModusPonensDTLTest.metta L4-17: full puzzle test (cow/dog/rabbit, 9 KB facts, two implications, 3 synthesizer queries). Expected MP-chain output `(STV 0.975859 0.99)` from a depth-2 synthesis.
+#   - ImplicationDirectIntroductionDTLTest.metta L37-40: synthesizer-driven test of inductive rule, with `NotInEmpty` placeholder.
+#   - DeductionImplicationDirectIntroductionDTLTest.metta L52-57: combined deduction+IDI test, synthesizer at depth 3.
+#
+# C-3-15. **`believe_me` placeholder** (BelieveMe.metta L4): `(: believe_me (-> $a))`. A dummy proof-filler used by Set.metta to bypass the missing `ElemLTHeadPrf` proof type. This **anti-pattern** of "type-checker bypass" is a known weakness in this repo — 2023 MeTTa was not strong enough to encode the strictly-sorted set's invariants without it.
+#
+# C-3-16. **No Revision rule anywhere.** Verified by grep across the repo. The book's revision (PLN §5.10.2 p.116) is one of the most fundamental PLN rules, and it is **completely absent from this seed**. Revision is INTRODUCED downstream in PLN3/PLN/. So PLN3's revision-related code is original, NOT borrowed from here.
+#
+# C-3-17. **No Induction or Abduction rules anywhere.** These two appear FIRST in PLN3/PLN/ (Source 2 §1.3). They were not in the 2023 seed.
+#
+# C-3-18. **No Negation, Inversion, or Equivalence-to-Implication rules.** All three are PLN3/PLN/ originals.
+#
+# C-3-19. **No SymmetricModusPonens — but the 0.2 hack lives in ModusPonens here**. As noted in C-3-9, the 0.2 hack from this repo's MP is what became PLN3/PLN/'s SymmetricMP semantics, while their asymmetric MP gets 0.02. **There has been a re-shuffling of the constants between the two MP variants downstream.**
+#
+# C-3-20. **Lineage chain — concise** (rules in {this-repo} → downstream presence):
+#   Deduction:                      strength verbatim → PLN3/PLN/.   Confidence min→{min in PLN3, multiplicative in PLN/}.
+#   ModusPonens (0.2):              kept verbatim → PLN3/PLN/'s SymmetricMP. Confidence: min in this-repo and PLN3, multiplicative in PLN/.
+#                                   → New "asymmetric MP with 0.02" introduced in PLN3/PLN/, not present here.
+#   ImplicationDirectIntroduction:  kept verbatim → pln-experimental2 (Source 4) only. **NOT in PLN3/PLN/.**
+#   Consistency conditions:         body commented in this-repo, uncommented in PLN3/PLN/.
+#
+# C-3-21. **The downstream `Truth_or` heuristic** introduced in PLN/'s confidence-pivot (Source 3 §2.3 — `1-(1-a)(1-b)`) is **NOT present in this repo.** Confirmed by grep — no `Truth_or` in any file here. It is a PLN/-era invention.
+#
+# C-3-22. **Modus-ponens confidence form**: this repo's MP confidence is `min($ABc, $Ac)` (after dropping the trivial $notABc=1). PLN3 same. PLN/ moved to `$Ps·$PQs·$Pc·$PQc` (multiplicative-with-strengths). **The pivot at PLN0.9 reorganized the confidence semantics globally**, but the strength formulas are largely untouched between 2023 and 2026.
+#
+# ============================================================
+# §4 — metta/synthesis/ — the program synthesizer
+# ============================================================
+#
+# C-4-1. `metta/synthesis/Synthesize.metta` L37-80: the `synthesize` function definition is **5 separate `=` rules** for nullary/unary/binary/trinary/quaternary/quintenary rule arities. Verbatim header comment L34-36: "TODO: recurse over curried rules instead of duplicating code over tuples." **This is a hand-written variadic dispatch via overloading, not a recursive Curry-style implementation.**
+#
+# C-4-2. Synthesizer signature (file L37): `(: synthesize (-> Atom Nat (-> Atom) (-> Atom) Atom))`. Inputs:
+#   - $query: an atom of form `(: TERM TYPE)` with optional free vars.
+#   - $depth: a Nat (Peano numeral) bounding search depth.
+#   - $axiom: nullary thunk that nondeterministically yields axioms.
+#   - $rule: nullary thunk that nondeterministically yields rules.
+#
+# C-4-3. Comment block L11-19 documents 5 query modes:
+#   1. Backward chaining: `(: $term (Inheritance $x Mammal))`
+#   2. Forward chaining: `(: ($rule $premise AXIOM) $type)`
+#   3. Mixed chaining: `(: ($rule $premise AXIOM) (Inheritance $x Mammal))`
+#   4. Type checking: `(: TERM TYPE)`
+#   5. Type inference: `(: TERM $type)`
+#   So **the synthesizer supports backward, forward, AND mixed chaining as a single primitive** — a sophisticated unifier-driven design.
+#
+# C-4-4. Implementation core (binary rule case, L48-53):
+#       (= (synthesize $query (S $k) $axiom $rule)
+#          (let* (((: $ructor (-> $premise1 $premise2 $conclusion)) ($rule))
+#                 ((: ($ructor $proof1 $proof2) $conclusion) $query)
+#                 ((: $proof1 $premise1) (synthesize (: $proof1 $premise1) $k $axiom $rule))
+#                 ((: $proof2 $premise2) (synthesize (: $proof2 $premise2) $k $axiom $rule)))
+#                $query))
+#   The recursive descent on premises is depth-first, depth-bounded by Peano `S` decrement. **Unification is via MeTTa `let*`** (variable binding); not via the custom `unify` in Unify.metta.
+#
+# C-4-5. The synthesis README.md L8-11 explicitly notes: "It is meant to be using `unify` and `unify*`, however due to some issues it still relies on `let` and `let*`." **This is the AGENTS.md-flagged "unifier-related tests are still unstable" subtopic.** The Synthesize.metta in production uses `let*` instead of `unify` because `unify` is buggy (or runtime non-supportive). **The `unify`-based synthesizer lives only in `experiments/synthesize-via-unify.metta` and remains experimental.**
+#
+# C-4-6. `Unify.metta` is 25 lines (file metta/synthesis/Unify.metta) defining `unify` and `unify*` via `case` (not `let`). The intended distinction: `case` filters out branches that haven't fully reduced; `let` keeps them. `unify`'s definition is one-liner: `(case $rterm (($lterm $rewrite)))`. `UnifyTest.metta` is 14 lines, 3 tests; the README admits these "are not working yet."
+#
+# C-4-7. **Backward chaining**: supported as one of the 5 query modes (per C-4-3). The synthesizer recursion is bidirectional: it unifies the conclusion with $query and then recursively solves premises against the same kb/rb. **Backward and forward are not separate algorithms; the same recursion handles both via free-variable placement.**
+#
+# C-4-8. **Did the synthesizer survive into Source 4 / PLN/**?
+#   - Source 4 (pln-experimental2) reconciliation §5 says experimental/early-pln/ contains 4-encoding rules covering 3 rules — does not mention a synthesizer module surviving. The brief and reconciliation list `experimental/early-pln/dependent-types/` as descendant of this repo's dependent-types tree.
+#   - PLN/ uses a forward-chaining bounded-priority-queue Deriver (Source 3 §5.1, §3.1) — **a completely different control regime**. Not derived from this synthesizer.
+#   - PLN3 uses the same Deriver as PLN/ (Source 2 §1.2). Same conclusion.
+#   **VERDICT: the synthesizer was abandoned.** PLN3/PLN/ replaced it with the priority-queue Deriver. Source 4's experimental/early-pln/ subtree may still use it — needs Source 4 file inventory cross-check, but Source 4 reconciliation does not list a Synthesize.metta module.
+#
+# C-4-9. **Why was it abandoned?** Likely speed: depth-bounded recursive synthesis with `let*` is exponential in depth × rule-count. The PLN3/PLN/ priority-queue Deriver is iterative and has explicit beam-size knobs (TaskQueueSize, BeliefQueueSize). For production, PQ-Deriver wins on scaling. **The synthesizer was a research tool, not a production engine.**
+#
+# C-4-10. The 13 files in `metta/synthesis/experiments/` (per ls output) are progressively-tried implementations: synthesize-via-{type-checking, superpose, let, case, unify, ...}. Each represents an evolutionary step toward the final `Synthesize.metta`. Most have inline notes like "It fails because the type checker is static" (per experiments/README.md L7-9). **A clear archive of failed-or-superseded approaches.**
+#
+# C-4-11. **The synthesizer is the engine that powers all `*Test.metta` files in dependent-types/**. They all import `../synthesis/Synthesize.metta` and call `(synthesize ...)` in their test bodies. **Without the synthesizer, this repo's dependent-types encoding has no way to generate proofs.** The synthesizer's abandonment downstream is what forced PLN3/PLN/ to replace dependent-types-style proof construction with PQ-Deriver-style forward-chaining beam search.
+#
+# ============================================================
+# §5 — idris/StrictlySorted.idr (single Idris file, 105 lines)
+# ============================================================
+#
+# C-5-1. The file declares **two Idris2 implementations of a `StrictlySorted` data type for sorted lists without duplicates** (idris/StrictlySorted.idr L13-19, L46-52).
+#
+# C-5-2. Implementation A (L13-19): `data StrictlySorted : (a : Type) -> Maybe a -> Type` indexed by `Maybe a` capturing the head element. Constructors: `Empty`, `Singleton`, `Prepend (with proof: x < y === True)`. The `Prepend` requires a propositional-equality proof at the type level that the new head is less than the current head.
+#
+# C-5-3. Implementation B (L46-52): `data StrictlySorted'` not Maybe-indexed. Uses an auxiliary helper `ssh : StrictlySorted' a -> Maybe a` (post-implementation L55-57) to compute the head. `Prepend' x s prf` requires `prf : ((Just x) < ssh s) === True`. Author note: "Not as elegant to define, but easier to use" (L37-39).
+#
+# C-5-4. Three test values per implementation (L22-29 + L60-67): `empty_ssl`, `singleton_ssl`, `pair_ssl`. The commented-out test `ill_ssl` (L31-33) shows a deliberately-failing case ("42 not less than 10").
+#
+# C-5-5. **Two more alternatives from "Micheal Messer" are commented out** (L73-105). Both attempt to use Idris's auto-search proofs for the strictly-sorted invariant. They are NOT implemented — just preserved comments showing community-suggested alternatives.
+#
+# C-5-6. **The Idris work is a prototype for the `Set.metta` data structure.** Compare to `metta/common/Set.metta` L13-16:
+#       (: Set (-> $a Type))
+#       (: ∅ (Set $a))
+#       (: Singleton (-> $a (Set $a)))
+#       (: Prepend (-> $a (Set $a) ElemLTHeadPrf (Set $a)))
+#   Same constructor names (Empty/∅, Singleton, Prepend), same proof-required-on-Prepend pattern. **The Idris file exists because, per README.md L70-73: "There is also some Idris code under the `idris` folder to prototype some aspect of the dependent types port. This is sometimes easier because Idris is more mature than MeTTa."**
+#   **The Idris file is a prototype of how to encode strictly-sorted sets with type-level proofs. The MeTTa port is in Set.metta, but it cheats with `believe_me` because MeTTa cannot supply the actual proof.**
+#
+# C-5-7. **Was the Idris work carried into Source 4?** Source 4 reconciliation §1 mentions "commit message: 'Remove Idris experiments' suggests it was, then explicitly deleted on 2025-12-18". So the Idris experiments WERE inherited by pln-experimental2 (which forked off this seed) but **explicitly removed on 2025-12-18**. Direction of evolution: 2023-08 (this repo: Idris file present) → pln-experimental2 inherited → 2025-12-18 deleted in pln-experimental2. **The Idris work is officially abandoned downstream.** No Idris code in PLN3 or PLN/.
+#
+# ============================================================
+# §6 — MeTTa-specific design choices preserved or abandoned
+# ============================================================
+#
+# C-6-1. **The `0.2` MP hack** (verified C-3-7): present in this repo's ModusPonensFormula.metta L10 with explicit comment "; temporary hack". leungmanhin's PR #23 added MORE comments about it (per the brief's git-history). **The 0.2 hack is BORN here, in 2023.** Inherited as 0.2-in-SymmetricMP by PLN3 and PLN/. Asymmetric MP downstream uses 0.02 — different constant for different role.
+#
+# C-6-2. **`min`-based confidence formulas**: present in this repo's deduction-formula (DeductionFormula.metta L73 — `(min $Pc (min $Qc (min $Rc (min $PQc $QRc))))`) AND in modus-ponens-formula (L13 — `(min (min $ABc $notABc) $Ac)`). **min is the PRIMARY confidence aggregator across the seed.** Inherited verbatim by PLN3, then replaced multiplicatively by PLN/ (Source 3's pivot finding §2.2). **PLN/ DEPARTED from this seed; PLN3 stayed faithful.**
+#
+# C-6-3. **Sorted-evidence-ID double-counting prevention**: born here via the `Set` data structure (Set.metta L13-43) + `∉` (In.metta L7) + the IDI inductive rule premise `(∉ $a $ev)` (ImplicationDirectIntroductionDTL.metta L82, ImplicationDirectIntroductionEntail.metta L46, ImplicationDirectIntroductionMatch.metta L52, ImplicationDirectIntroductionEqual.metta L65). **Inherited by Source 4's experimental/early-pln/.** **Not present in PLN3/PLN/** because IDI itself was abandoned in production.
+#
+# C-6-4. The `≘` (record / ExecutionLink-equivalent) operator, defined in Record.metta L3-6 and used in multiple `*Test.metta` files. This is **born here and still used in pln-experimental2 (Source 4)**, but **does not appear in PLN3/PLN/'s lib_pln.metta** — production replaced it with raw atomspace queries.
+#
+# C-6-5. The `Bl` and `Pr` types: born here as degenerate fixed-certainty wrappers (per C-2-5). Inherited by Source 4's experimental/early-pln/. **Not in PLN3/PLN/ — these only carry STV.**
+#
+# C-6-6. The `ETV` (EvidentialTruthValue) wrapping: born here. Inherited by Source 4's experimental/early-pln/. Not in PLN3/PLN/.
+#
+# C-6-7. The `≞` measured-by relation as a DEPENDENT TYPE (MeasEq.metta L9): born here. Source 4 inherited it (per reconciliation citations of `(≞ X tv)` patterns). PLN3/PLN/ DROPPED it: they merge truth-value into atom decoration like `(stv s c)` co-located with the atom, not as a separate `≞` link. **A foundational typing distinction was lost in the production translation.**
+#
+# C-6-8. **Stamps / inference trails**: NOT present in this repo. Verified by grep: no `Stamp`, no `StampDisjoint`, no `evidence-id` in any file. Stamps are a PLN3/PLN/ original (Source 2 §3.1 V3). **The provenance-tracking machinery for cross-rule double-counting was invented downstream** — this repo only handles the IDI-internal case via `Set + ∉`.
+#
+# C-6-9. **PR #23 / leungmanhin commentary**: per brief's git-history, PR #23 = "Add comments about the temporary hack in the modus ponens formula" (2023-08-01). **The block comment at ModusPonensDTL.metta L18-27 is leungmanhin's contribution.** It explains the precise theoretical reason for the hack (P(B|Not A) needs estimation) and proposes a fix path ("ideally one should use a precise modus ponens (requiring P(B|Not A) as premises), and then if missing, these premises could be estimated via other rules"). **This is the most direct historical record of the hack's known-issues status.**
+#
+# ============================================================
+# §7 — What was abandoned downstream
+# ============================================================
+#
+# C-7-1. **Idris work (idris/StrictlySorted.idr)**: explicitly removed in pln-experimental2 on 2025-12-18 (per Source 4 reconciliation §5).
+#
+# C-7-2. **Synthesis engine (metta/synthesis/)**: replaced downstream by PQ-Deriver in PLN3/PLN/. Status in pln-experimental2 unclear — Source 4 reconciliation does not list it. **Likely abandoned in pln-experimental2 too**, since experimental/early-pln/ is "legacy" per Source 4 commits.
+#
+# C-7-3. **PrCnt TV type**: dropped from PLN3/PLN/. Possibly survives in pln-experimental2's TruthValue.metta as an unused declaration. **Consciously dropped as part of the STV-only consolidation.**
+#
+# C-7-4. **Bl and Pr TV types**: dropped from PLN3/PLN/. Survive in Source 4 as unused declarations.
+#
+# C-7-5. **ImplicationDirectIntroduction (IDI) rule**: dropped from PLN3/PLN/. Survives only in Source 4's experimental/early-pln/. **The book-faithful inductive evidence-accumulation rule did not make it to production.**
+#
+# C-7-6. **The four-encoding research pattern (match/entail/equal/dependent-types)**: completely abandoned in PLN3/PLN/. Production uses a single MeTTa-native pattern-matching style. Source 4 still has the 4-encoding under experimental/early-pln/ as legacy. **The methodological-comparison phase of the research is over.**
+#
+# C-7-7. **The `≞` measured-by dependent type**: abandoned in PLN3/PLN/ in favor of co-located `(stv s c)` decorations on Inheritance/Implication atoms. Survives in Source 4's experimental/early-pln/.
+#
+# C-7-8. **The believe_me / type-checker-bypass anti-pattern**: replaced downstream by simply not encoding the strictly-sorted invariant at the type level — PLN3/PLN/ use plain MeTTa lists with no proofs.
+#
+# ============================================================
+# §8 — Discovered publications
+# ============================================================
+#
+# C-8-1. **No external publications cited in this repo's code or comments.** Verified by grep across .metta and .md files: zero `arXiv`, zero `cite`, zero `book`, zero `Goertzel`, zero `2008`, zero DOI patterns. The 2008 PLN book is NOT cited by file path or section reference anywhere in this repo.
+#
+# C-8-2. README.md cites only the trueagi-io organization and "Idris2 version 0.5.1" as a tooling dependency.
+#
+# C-8-3. CLAUDE.md, AGENTS.md, GEMINI.md cite only the repo's own URL and trueagi-io/hyperon-experimental as a runtime dependency.
+#
+# C-8-4. **Net publication discovery for wiki coverage: ZERO new entries.** The seed repo is silent on theoretical lineage in 2023; the in-code citations to "PLN book p.111" and "opencog/pln/rules/wip/*.scm" appear ONLY downstream in PLN3 and PLN/, NOT here. **The book-citation discipline started AFTER this repo's freeze.**
+#
+# ============================================================
+# §9 — Lineage and relationship
+# ============================================================
+#
+# C-9-1. **Repo identity**: `patham9/hyperon-pln`, frozen at commit `0d017c4d154de05fa8234bcf2717c268cf82d791`, HEAD = "Merge pull request #23 from leungmanhin/modus-ponens" (2023-08-01). README.md L9 + CLAUDE.md L9 both reference `https://github.com/trueagi-io/hyperon-pln` as the canonical repo URL.
+#
+# C-9-2. **Per the brief's lineage map**: `trueagi-io/hyperon-pln` → renamed → `trueagi-io/pln-experimental` → forked → `ngeiswei/pln-experimental` (= Source 4's pln-experimental2). The patham9/hyperon-pln fork is a 2023 SNAPSHOT of the pre-rename state.
+#
+# C-9-3. **Author ownership question** (Source 4 §8 raised this): the README.md cites `trueagi-io/hyperon-pln` as the canonical URL, and `patham9/hyperon-pln` as a fork. Today (2026-04) `trueagi-io/hyperon-pln` redirects to `trueagi-io/pln-experimental`. **The patham9/hyperon-pln fork is the only place the pre-rename code is preserved verbatim** — it's the archival snapshot.
+#
+# C-9-4. **Does this repo's content match what pln-experimental2 had at its 2023-08 timeline?** Per Source 4 reconciliation §5: pln-experimental2/experimental/early-pln/dependent-types/DeductionDTL.metta is cited as the same provenance source as PLN3/PLN/. **The expected match should be very close to this repo's metta/dependent-types/DeductionDTL.metta plus the evolution-since-2023.** The brief's `§Git-history` notes the pre-dormancy 2-week activity was leungmanhin's MP commentary + Geisweiller's synthesis-experiment restructuring (PR #22 "use case instead of let"). So the substantive code at 2023-08-01 = what pln-experimental2 inherited, plus the IDI-formalization extensions.
+#
+# C-9-5. **`trueagi-io/hyperon-pln` is the THEORETICAL FORMALIZATION SEED** (per brief §"Cluster lineage map"). The Consistency Conditions, the Deduction strength formula, and the IDI base/recursive structure all originate here, then propagate into Source 4 (experimental/early-pln/) and Source 3 (`PLN/lib_pln.metta`). The downstream code repeatedly cites `metta/pln/dependent-types/DeductionDTL.metta` (typo'd) as the source — see C-3-13.
+#
+# C-9-6. **Provenance map summary** (which downstream files trace VERBATIM back to which files here):
+#
+#   THIS REPO (file)                                    → PLN3/PLN_/Source4 (file + status)
+#   ----------------------------------------------------|----------------------------------------------------
+#   metta/common/formula/DeductionFormula.metta:60-75   → PLN/lib_pln.metta:84-99 (Truth_Deduction)
+#                                                          PLN3/src/Formulas.metta (Truth_Deduction)
+#                                                          ↳ confidence: PLN3 same, PLN/ changed to multiplicative
+#                                                          ↳ /safe instead of / downstream
+#                                                          ↳ stv lowercase downstream
+#   metta/common/formula/DeductionFormula.metta:8-21    → PLN/lib_pln.metta:42-54 (consistency conds)
+#                                                          PLN3/src/Constraints.metta (consistency conds)
+#                                                          ↳ this-repo body commented out; downstream uncommented
+#   metta/common/formula/ModusPonensFormula.metta:7-14  → PLN3 / PLN/ Truth_SymmetricModusPonens
+#                                                          (the 0.2 constant carries through)
+#                                                          NOT to Truth_ModusPonens (which uses 0.02)
+#   metta/common/formula/ImplicationDirectIntroduction* → pln-experimental2/experimental/early-pln/.../IDI*
+#                                                          NOT to PLN3 / PLN/ (IDI not in production)
+#   metta/dependent-types/DeductionDTL.metta            → cited typo'd by PLN/ and PLN3 as
+#                                                          "metta/pln/dependent-types/DeductionDTL.metta"
+#                                                          (stray "pln/" subdir, wrong file)
+#   metta/dependent-types/ModusPonensDTL.metta:18-27    → leungmanhin's MP-hack-explanation comment block
+#                                                          (PR #23, 2023-08-01) survives only here
+#   metta/synthesis/Synthesize.metta                    → no direct downstream descendant
+#                                                          (PLN3/PLN/ replaced with PQ-Deriver)
+#   metta/common/truthvalue/TruthValue.metta            → pln-experimental2's TruthValue.metta (full inheritance)
+#                                                          PLN3/PLN/ kept only STV constructor
+#   idris/StrictlySorted.idr                            → pln-experimental2 deleted on 2025-12-18
+#                                                          (Source 4 reconciliation §5)
+#   metta/common/Set.metta + metta/common/In.metta      → pln-experimental2 inherited
+#                                                          NOT in PLN3/PLN/
+#
+# C-9-7. **Evolution direction in 1 sentence**: this 2023-08 seed established the formalization-via-dependent-types vision with 4 parallel encodings, 3 rules (Deduction/MP/IDI), the synthesizer-as-prover engine, and the `min`-based-confidence + 0.2-MP-hack semantics — all of which were stratified downstream into (a) pln-experimental2 keeping the experimental 4-encoding under `experimental/early-pln/` plus the nuPLN successor theory, and (b) PLN3/PLN/ collapsing to a STV-only forward-chaining PQ-Deriver with reactivated consistency checks, dropped IDI, dropped 4-encoding pluralism, and dropped synthesizer.
+#
+# ============================================================
+# Summary of top-3 most-surprising findings (per orchestrator's request)
+# ============================================================
+#
+# (1) **PrCnt is NOT a meaningful 4th TV type** — it is a count-form bijection of STV, related to STV by a monotonic invertible transformation (count ↔ confidence via lookahead=1). The "missing link between Pr and STV" framing in the brief is incorrect; PrCnt ≅ STV up to that bijection. PrCnt was DROPPED from PLN3/PLN/ as a redundant alias of STV. (Verified TruthValue.metta L23-32 + L60-69.)
+#
+# (2) **The synthesis engine did NOT survive into ANY downstream production code**. PLN3 and PLN/ both replaced it with a forward-chaining bounded-priority-queue Deriver. Source 4's experimental/early-pln/ may still use it (Source 4 reconciliation does not list a Synthesize.metta, but does still reference the dependent-types encoding). The synthesizer was a research-grade depth-bounded recursive prover; its `let*`-based unification was acknowledged as a workaround in the README, not a stable foundation. The PQ-Deriver replacement is fundamentally different control: iterative + beam-width-bounded, not depth-bounded recursive. **Net: the synthesizer died.**
+#
+# (3) **The Modus Ponens 0.2-hack here became Symmetric MP downstream, not asymmetric MP**. PLN3 and PLN/ have TWO MP rules: Truth_ModusPonens with c=0.02 (book §5.7.1, asymmetric, NEW downstream invention) and Truth_SymmetricModusPonens with $snotAB=0.2 (this-repo's MP, repurposed and renamed). The pre-rename hyperon-pln did not distinguish — its single ModusPonens used 0.2. The downstream restructuring ADDED the 0.02-asymmetric version and RENAMED this repo's MP as "symmetric MP" with the 0.2 retained. **The book-faithful asymmetric MP did NOT exist in 2023.**
+#
+# Bonus finding: **The consistency-conditions in DeductionFormula.metta were INERT (commented out) in this 2023 seed**, but PLN3 and PLN/ uncommented them — so the conditional-probability range-check is a downstream RE-ACTIVATION, not a downstream addition. The code that PLN/lib_pln.metta L51-54 cites as "borrowed from hyperon-pln/.../DeductionDTL.metta" is in fact the COMMENTED-OUT body at this-repo's metta/common/formula/DeductionFormula.metta L19-21, with a citation-path typo (extra "pln/" subdir, and DTL.metta vs Formula.metta confusion).
+#
+# Idris file content one-liner: idris/StrictlySorted.idr is a 105-line 2-implementation prototype of a strictly-sorted-list dependent type with type-level less-than proofs, intended as a model for the MeTTa Set.metta data structure (whose MeTTa version cheats with a `believe_me` placeholder because MeTTa cannot supply the actual proof in 2023).
+#
+# ============================================================
+# §Git-history block (from brief, retained verbatim — see source5_hyperon_pln_brief.txt §Git-history-context)
+# ============================================================
+#
+# Per brief: HEAD = 0d017c4 ("Merge pull request #23 from leungmanhin/modus-ponens", 2023-08-01).
+# Last 25 commits cluster around the Modus Ponens DTL + comments work by leungmanhin (Manhin Leung) merged via PR #23, 2-week window before dormancy, drafting "the Modus Ponens formula and DTL" (2023-07-13) → iterating on it (test cleanup, type symbols, comments about "temporary hack") → Geisweiller merged. Earlier July work: Geisweiller restructuring synthesis experiments via unify/unify*/case/let* — culminating in PR #22 "use case instead of let." Activity span 2023-06-29 → 2023-08-01.
+# No tags. Only origin/main + origin/HEAD remote refs (flat fork).
+# Top authors: Nil Geisweiller (primary committer/merger) + leungmanhin (PR #23).
+# Pre-rename PRs visible up to PR #23. Post-rename PRs live at trueagi-io/pln-experimental.
+# Wiki-outreach: Manhin Leung is the original author of the Modus Ponens DTL formulation and the in-code "temporary hack" comments. Nil Geisweiller is the dominant author/merger here as well as in Source 4 (471 commits there).
+#
+# ============================================================
+# End of Source 5 findings (Claude single-pass extraction).
+# ============================================================

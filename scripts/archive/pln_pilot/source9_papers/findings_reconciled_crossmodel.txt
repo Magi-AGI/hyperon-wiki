@@ -1,0 +1,257 @@
+# PLN Paper Bundle — Cross-Model Reconciled Findings (Source 9, FINAL)
+
+**Source:** 13 wiki cards (5 FactorGraph MORK versions + PLN Chaining On MORK + 6 Confidence/control/update + 3 Application/framing).
+
+**Reconciled on:** 2026-04-24
+
+**Inputs:**
+- **Claude** (Opus 4.7, lane-split into 3 passes): `findings_claude_lane1.txt` (28 KB, 63 claims), `findings_claude_lane2.txt` (30 KB, 47 claims), `findings_claude_lane3.txt` (22 KB, 22 claims). **Total: 80 KB / 132 claims across 13 papers.**
+- **Codex** (single bundle pass): `findings_codex.txt`
+- **Gemini** (single bundle pass): `findings_gemini.txt`
+
+Confidence legend:
+- **[X3]** all three models confirmed
+- **[X2]** two models confirmed
+- **[X1]** one model caught it
+- **[VERIFIED]** spot-checked against actual source/files
+
+---
+
+## 1. CLUSTER HEADLINE — Theory and code have diverged
+
+**[X3 unanimous]** The PLN cluster's papers and code now describe substantially different things:
+
+- The papers describe an aspirational PLN running on MORK with FactorGraph machinery, ECAN-guided attention, neural-symbolic perception, and formally-verified evidence algebra.
+- The production code (`PLN/lib_pln.metta`) implements a confidence-priority forward-chaining queue with multiplicative-confidence rules — much narrower.
+- Multiple verification-grade formalizations exist in the cluster ecosystem **but none of them anchor the production code**.
+
+This is the cluster-level pattern that Source 9 makes explicit. Wiki cards must reflect the gap.
+
+---
+
+## 2. Lane 1 — FactorGraph / MORK paper stream
+
+### 2.1 [X3] Implementation status: PAPER-ONLY / ASPIRATIONAL
+
+All three models confirm **5 of 6 papers are PAPER-ONLY/ASPIRATIONAL**, the 6th (`PLN Chaining On MORK`) is paper-only-but-partially-resonant with chaining's confidence-priority queue (no HeadIndex/UnifyIndex/memoization/KaHyPar/magic-sets exist in code).
+
+### 2.2 [X3] Specifications are THAT, not HOW
+
+The papers specify atom types, sum-product equations, error bounds, and ontological arguments. They DO NOT specify:
+- Concrete byte-level encoding for atoms
+- Dispatch protocol for rule invocation
+- The central `DepJointSTV` / `TrueJointSTV` operational definition
+- How MORK's primitives (zippers, Triemap, parallel VM) connect to FactorGraph reasoning
+
+**[Claude L1]** Pseudocode invokes `AtomSpace:setAttribute` and `pathmap.getFactorsForVariable` — **APIs that do not exist in MORK's Rust source**. These are *proposed* interfaces, not *implemented* surfaces.
+
+### 2.3 [X1 Claude — VERIFIED] Two competing atom-type vocabularies
+
+The bundle contains **disjoint atom-type vocabularies** that are NOT reconciled:
+- **FactorGraph stream** (July 2025): `FactorAtom`, `VariableAtom`, `FactorMessage` family for background inference.
+- **Chaining-on-MORK paper** (Aug 11, 2025): `RuleAtom`, `GoalAtom`, `ContinuationAtom` family for goal-directed chaining.
+
+Two implementation visions, not a coherent stack. Codex independently confirmed: "I also marked `PLN Chaining On MORK` as a separate backward-chaining architecture proposal, not the same stack as the FactorGraph papers."
+
+**Wiki implication**: cards should NOT present the FactorGraph papers and the Chaining-on-MORK paper as a single integrated proposal. They are two parallel architectural visions.
+
+### 2.4 [X1 Claude — source-correctness flag] Quantale arithmetic break in v3.1
+
+`v3.1` replaces the "naive STV quantale" (⊗ = c1·c2) with a "Better quantale" (1−(1−c1)(1−c2)). **The same worked example `Mammal(Lassie)=(0.72, 0.72)` is reused unchanged from v2 — numerically inconsistent with the new semantics.** Internal arithmetic break across the version stream.
+
+**Wiki implication**: do not propagate the v3.1 worked example as illustration without flagging the inconsistency.
+
+### 2.5 [X3] Version-to-version drift table (combining Codex framing + Claude data)
+
+| Concept | base | v1 | v2 | v3.1 | v3.2 |
+|---|---|---|---|---|---|
+| FactorAtom + VariableAtom vocabulary | absent | introduced | persisted | persisted | persisted |
+| Sum-product algorithm sketch | absent | introduced | revised | persisted | persisted |
+| Naive STV quantale (⊗ = c1·c2) | absent | introduced | persisted | **REPLACED** | absent |
+| "Better" quantale (1−(1−c1)(1−c2)) | absent | absent | absent | **introduced** | persisted |
+| `DepJointSTV` / `TrueJointSTV` operational def | absent | absent | absent | absent | absent |
+| Concrete MORK API binding | absent | absent | absent | absent | absent |
+| Mammal(Lassie) worked example | absent | absent | introduced | reused-incorrectly | reused-incorrectly |
+
+**Pattern**: introduces ideas → polishes formulation → does NOT close to runtime. Aspirational increment-by-revision.
+
+---
+
+## 3. Lane 2 — Confidence / control / update
+
+### 3.1 [X3 RESOLVED] "Ben's document" identity
+
+`RawData+Publications+PLN AND Confidence Framework.md` IS the same document Source 4 referenced as "Ben's document" — confirmed by all three models via mattermost path PLN/0506_*, identical filename, identical info-quantale + NARS-unification content.
+
+### 3.2 [X3] Confidence Framework relationship to pln0.9
+
+**Inspired-not-derived.** All three models converge on this nuance:
+- **Same SPIRIT**: multiplicative confidence with strength-aware modulation, NARS recovery in limits.
+- **DIFFERENT specific formulas**: paper proposes `w = 1−(1−w_A)(1−w_B)(1−w_struct)` with information-theoretic MI-decay overlap; pln0.9 (Isaev `7ffce05`) uses inclusion-exclusion-style `c_1·c_2·s_1/(s_1+s_2−s_1·s_2)` and `Truth_or` heuristics.
+- The paper's information-quantale machinery does NOT appear in `lib_pln.metta`.
+
+**Wiki implication**: do not characterize pln0.9 as "implementing Ben's framework." Do characterize it as "in the spirit of, but not derived from."
+
+### 3.3 [X3] "Wm" = WORLD-MODEL, NOT WORKING MEMORY
+
+**Major correction.** All three models confirm. `Wm Pln Book V3` is **World-Model Calculus**, a typed-evidence-carrier formal refoundation of PLN authored 2026-03-19 by **"Zar and Oruži"** (likely Zarqa AI + AI-assisted collaboration). Lean 4.28.0 + Mathlib v4.28.0, **704 theorems, 0 sorry** — most rigorous formal verification of any PLN artifact in the cluster.
+
+### 3.4 [X1 Gemini — major theoretical finding] Chapter 9 No-Go Theorem
+
+[X1 Gemini, not in Claude or Codex] `Wm Pln Book V3` Chapter 9 contains a **No-Go Theorem proving that per-link evidence cannot reconstruct joint world-model state.**
+
+This is the **formal justification** for why the project shifts from "local PLN rules" toward a "global World-Model" approach. **Cluster-level architectural significance.**
+
+**Wiki implication**: this theorem should be referenced in the wiki's `Hyperon AI Algorithms+PLN+PLN Full` Draft, particularly when explaining why the production line uses simplified local rules — the formal limitation of local rules is now provable.
+
+### 3.5 [X1 Claude] PLNUpdate is OCR'd slide deck, not paper
+
+`RawData+Publications+PLNUpdate` is a 1.6 KB OCR fragment of Meredith's spatial-behavioral types / OSLF slides. Later sprouted into Wm Pln Book V3's ρ-calculus bridge (Ch 17 §17.7).
+
+**New cluster contributor thread**: **Greg Meredith** (F1R3FLY-io / Rholang ecosystem) appears via this slide content. Adds to the cluster's author network.
+
+### 3.6 [X3] Implementation status across Lane 2
+
+5/6 PAPER-ONLY for production PLN3/PLN/. Wm Pln Book V3 + Pln Review are PROTOTYPE-IMPLEMENTED in **Lean only — no MeTTa runtime code exists for them**.
+
+---
+
+## 4. Lane 3 — Application / framing
+
+### 4.1 [X3] P1 and P2 are stub Markdown cards
+
+**`Publications+Guiding PLN with Attention Allocation`** and **`Publications+Deep Learning Perception with PLN`** are abstract-only ~600-byte stubs. Full paper text NOT mirrored on the wiki.
+
+**[X1 Gemini] Paper hunt advance**: Gemini found candidate full-text JSONs in `publication_texts/json/`:
+- `Economic_Attention_Networks.json` (28.9 KB) — high-probability source for P1 (verified to exist).
+- `OpenCog_NS_Hybrid_Neural-Symbolic.json` (29.3 KB) and `Compositional_Spatiotemporal_Deep_Learning.json` (38.1 KB) — candidates for P2.
+
+These are deferred as **Source 11** (paper-text hunt).
+
+### 4.2 [DISPUTE — LOW SEVERITY] PLN kNN NB implementation status
+
+**Claude (Lane 3)**: marked **IMPLEMENTED** based on paper claims of `select_pln_mixture_local_nb.py` + Lean theorems with MaSh NB at 327/800 on MPTP 5k, in `atps/scripts/` and `hyperon/PeTTa/demos/`.
+
+**Codex (bundle)**: marked **PROTOTYPE / EXPERIMENTAL** — *"could not verify the exact atps / PeTTa paths from the current extracted corpus."*
+
+**Resolution via spot-check**: `atps/` and `Mettapedia/` are **NOT cloned locally**. PeTTa/ IS cloned but the cited path is `hyperon/PeTTa/demos/` (in some external repo, not our local `PeTTa/`). **Codex's PROTOTYPE label is more accurate** for current local-corpus state.
+
+**Action**: Source 10 should clone and extract `atps/` (and Mettapedia, if findable) to verify. If verified, upgrade to IMPLEMENTED.
+
+### 4.3 [X3] Cross-paper coherence
+
+P1 (ECAN attention) and P2 (DL perception) are **older papers** in the cluster's narrative timeline. Both predate Source 7 (chaining) and Source 8 (MORK). The cluster's modern code (post-2024) reflects neither.
+
+P3 (PLN kNN NB) is the **structural outlier** — a 2026 Mettapedia engineering paper with **Lean theorems mechanically certifying NB and k-NN as algebraic specializations of PLN's evidence carrier `E = (n+, n−)`**. This is the *inverse* of "classifier-as-TV-source": instead of treating a classifier output as a TV, it treats classifiers as constrained evidence accumulators. Significant theoretical pattern.
+
+---
+
+## 5. Cross-cluster pattern: 4 parallel formal-verification efforts
+
+Combining Sources 4, 5, 7, 8 + Source 9 reveals **four parallel formal-verification frontiers**, none integrated into production PLN3/PLN/:
+
+1. **`chaining/experimental/`** — MeTTa proof sketches (Source 7).
+2. **`MORK/experiments/unification_test_laws/`** — Prolog-vs-MORK Rust test (Source 8, PR #49).
+3. **`Wm Pln Book V3`** — Lean 4 with **704 theorems, 0 sorry**, Zar/Oruži (Source 9 Lane 2).
+4. **`PLN kNN NB`** — Lean theorems in `atps/scripts/` (Source 9 Lane 3, marked PROTOTYPE pending Source 10).
+
+**Wiki implication**: the wiki's "current state of PLN" narrative must acknowledge this. The cluster has achieved **mathematical proof at multiple frontiers** while production code remains heuristic. Suggested wiki framing (per Gemini): *"The mathematical core of the PLN cluster is formally verified across four frontiers; the production `lib_pln.metta` is a simple priority-queue chainer that does not yet anchor those proofs."*
+
+---
+
+## 6. New cluster contributor threads (Lane 2, Lane 3)
+
+The bundle adds two new author threads to the cluster narrative:
+
+1. **"Zar" (Zarqa AI org) + "Oruži" (likely AI-assisted)** — primary authors of `Wm Pln Book V3` (World-Model Calculus, 2026-03-19, Lean 4 formalization). Zarqa AI is one of the cloned cluster orgs; this is the first deep theoretical artifact attributed to that lineage.
+
+2. **Greg Meredith** (F1R3FLY-io / Rholang ecosystem) — via PLNUpdate's Meredith slides → Wm Book V3's ρ-calculus bridge (Ch 17 §17.7). The F1R3FLY-io / MeTTaIL / MORK ecosystem (Vandervorst, Clarke, Peterson) and the PLN-formalization track (Geisweiller, Hammer, Isaev) are now joined by **Meredith and Zarqa as additional cluster authors** working on theoretical foundations.
+
+---
+
+## 7. Master code-vs-paper status table
+
+| Paper | Lane | Implementation status | Code evidence |
+|---|---|---|---|
+| PLN FactorGraph MORK base | 1 | PAPER-ONLY / ASPIRATIONAL | none |
+| PLN FactorGraph MORK v1 | 1 | PAPER-ONLY / ASPIRATIONAL | none |
+| PLN FactorGraph MORK v2 | 1 | PAPER-ONLY / ASPIRATIONAL | none |
+| PLN FactorGraph MORK v3.1 | 1 | PAPER-ONLY / ASPIRATIONAL (+ internal arithmetic flag) | none |
+| PLN FactorGraph MORK v3.2 | 1 | PAPER-ONLY / ASPIRATIONAL | none |
+| PLN Chaining On MORK | 1 | PAPER-ONLY / partially-resonant with `chaining/Deriver` | `chaining` priority-queue (analog) |
+| PLN AND Confidence Framework | 2 | INSPIRED pln0.9 (not derived from) | `lib_pln.metta` confidence formulas (different) |
+| PLN NARS TVs | 2 | PAPER-ONLY (extends Source 1 Appendix A) | none in production |
+| PLN ECAN 2015v1 | 2 | PAPER-ONLY / SUPERSEDED (URE STI hook era) | URE `STI` enum (Source 6); chaining toy-scale Continue (Source 7) |
+| Wm Pln Book V3 | 2 | PROTOTYPE — Lean 4 (704 theorems), no runtime | Lean files only |
+| PLNUpdate | 2 | OCR slide fragment, not a paper | (Meredith ρ-calculus links to Wm Book Ch 17) |
+| Pln Review | 2 | PAPER-ONLY (reviews Wm Book) | none |
+| Guiding PLN with Attention Allocation | 3 | PAPER-ONLY / SUPERSEDED (stub card) | none in production |
+| Deep Learning Perception with PLN | 3 | PAPER-ONLY / ANACHRONISTIC (stub card) | none |
+| PLN kNN NB | 3 | PROTOTYPE — Lean theorems + Python selector | **deferred to Source 10**: `atps/scripts/`, `hyperon/PeTTa/demos/` not yet cloned |
+
+**Net**: of 15 paper-equivalents (counting the 5 FactorGraph versions + PLN Chaining On MORK as 6, the 6 Lane 2 papers, and the 3 Lane 3 papers): 0 IMPLEMENTED, 2 PROTOTYPE (Wm Book Lean + PLN kNN NB pending verification), 13 PAPER-ONLY/STUBBED.
+
+---
+
+## 8. Wiki implications (cluster synthesis)
+
+Based on Sources 1-9, the wiki's `Hyperon AI Algorithms+PLN+PLN Full` Draft should incorporate:
+
+### 8.1 Architectural narrative
+> *"The PLN cluster's production implementation in Hyperon-MeTTa (`PLN/lib_pln.metta`) is a confidence-priority forward-chaining queue with ~14 inference rules and pln0.9 multiplicative-confidence semantics. The cluster's theoretical literature describes substantially more — Bayesian inference control with BIT/MAB (URE-era, lost in MeTTa transition), FactorGraph reasoning on MORK (paper-only, multiple competing visions), Lean-verified evidence algebra in the World-Model Calculus (704 theorems, no runtime), and classifier-as-PLN-evidence specializations (PLN kNN NB, paper-only). The mathematical core is formally verified at multiple frontiers; the production code does not yet anchor those proofs."*
+
+### 8.2 Specific corrections to add
+1. The pln0.9 multiplicative pivot is **inspired by, not derived from**, Ben Goertzel's `PLN AND Confidence Framework` (paper proposes information-quantale formulas; pln0.9 uses inclusion-exclusion).
+2. **`Wm` = World-Model**, not Working Memory. World-Model Calculus (Zar/Oruži, 2026-03-19) is a Lean 4 formal refoundation.
+3. **`Wm Book Ch. 9 No-Go Theorem`**: per-link evidence cannot reconstruct joint world-model state. Formal justification for shifting toward global-state representations.
+4. **FactorGraph papers are proposals layered over missing runtime machinery** (per Codex framing): MORK substrate exists but `DepJointSTV/TrueJointSTV` and `pathmap.getFactorsForVariable` API are paper-side only.
+5. **PLN kNN NB**: NB and k-NN are mechanically certified (Lean) as algebraic specializations of PLN's evidence carrier — *not* classifiers-as-TV-source but constrained evidence accumulators. Code lives in `atps/scripts/` and `hyperon/PeTTa/demos/` (external repos, not yet cloned).
+6. **Greg Meredith and Zarqa AI** are now cluster contributors via Wm Book and PLNUpdate slides → ρ-calculus bridge.
+
+### 8.3 Per-paper card touch-ups
+For each `RawData+Publications+<paper>` card, propose `+AI` child suggesting:
+- "current implementation status" line (one of: PAPER-ONLY, PROTOTYPE-LEAN, ASPIRATIONAL, SUPERSEDED)
+- Cross-link to the actual production code (or "no code-side reality")
+- Authorship attribution (verified)
+
+---
+
+## 9. Workflow assessment
+
+**Cross-model triangulation at Source 9**:
+- Lane-split for Claude was the right call after the bundle-as-one attempt stalled.
+- Strong cross-model convergence on the major findings.
+- Three notable model-unique catches:
+  - **Gemini**: No-Go Theorem (Wm Book Ch. 9) — major theoretical finding.
+  - **Codex**: stricter PROTOTYPE-not-IMPLEMENTED labeling for PLN kNN NB (vindicated by spot-check; atps/ not cloned locally).
+  - **Claude**: quantale arithmetic break in v3.1, two competing atom-type vocabularies, PLNUpdate as Meredith slides.
+- No factual disputes that survived reconciliation. Standing attribution-verification rule unused this round.
+
+**Source 9 declared complete.**
+
+---
+
+## 10. Proposed Sources 10 + 11
+
+### Source 10: `atps/` + `Mettapedia/` + adjacent PeTTa work
+
+**Rationale**: P3 (PLN kNN NB) cited code in `atps/scripts/` and `hyperon/PeTTa/demos/`. Neither `atps/` nor `Mettapedia/` is cloned locally. Source 10 should:
+1. Find `atps` and `Mettapedia` GitHub orgs / repos (try `gh search repos atps`, search for "Mettapedia").
+2. Clone any missing repos.
+3. Extract the kNN/NB code path verifying claim from P3.
+4. Look at `PeTTa/` (already cloned) for any `demos/` dir matching the paper's reference.
+5. Resolve the IMPLEMENTED-vs-PROTOTYPE dispute.
+
+### Source 11: paper full-text upgrades
+
+**Rationale**: P1 and P2 are stub Markdown cards. Three pre-extracted JSONs in `publication_texts/json/` are candidates:
+- `Economic_Attention_Networks.json` (28.9 KB) — likely full text of P1.
+- `OpenCog_NS_Hybrid_Neural-Symbolic.json` (29.3 KB) and `Compositional_Spatiotemporal_Deep_Learning.json` (38.1 KB) — possible P2 sources.
+
+Source 11 reads the JSONs, verifies they're the same papers as the wiki stubs, extracts full claims, upgrades the stub-card findings.
+
+**Recommended order**: Source 10 first (resolves the implementation-status dispute, more cluster-narrative-changing). Source 11 second (paper depth upgrade, lower-priority since stubs already gave us the rough shape).
+
+---
+
+*End of cross-model reconciled findings for Source 9.*

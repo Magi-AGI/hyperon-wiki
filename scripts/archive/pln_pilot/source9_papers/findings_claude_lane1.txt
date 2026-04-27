@@ -1,0 +1,439 @@
+================================================================================
+PILOT SOURCE 9 — LANE 1 — FactorGraph / MORK paper stream EXTRACTION
+Model:        Claude Opus 4.7 (1M context)  [claude-opus-4-7[1m]]
+Extraction:   2026-04-24
+Lane:         1  (FactorGraph + Chaining-on-MORK iterative version stream)
+Papers:       6
+Author:       Ben Goertzel (all six papers; v3.x with help from GPT5-Pro on chaining paper)
+Stated dates: FactorGraph base/v1/v2/v3.1: July 18, 2025;  v3.2: July 20, 2025;  Chaining: August 11, 2025
+Claim counts:
+  base   : 8 claims
+  v1     : 9 claims (adds 1: independence-heuristic)
+  v2     : 11 claims (adds error-propagation + ontology arguments)
+  v3.1   : 13 claims (adds product-quantale Qcomb = Qlogic x QPLN)
+  v3.2   : 13 claims (revised seeding of var->fac messages; "MTM2+" typo)
+  chain  : 9 claims (different paper — backward-chaining engine)
+Total claims extracted: 63
+================================================================================
+
+STANDING CORRECTIONS APPLIED (from Sources 1-8 codebase reconciliation):
+  - MORK is a substrate only; zero FactorGraph/MessagePass/BeliefPropagation code.
+  - .mm2 is MORK's MeTTa-S-expr rewrite-program format, NOT Metamath.
+  - chaining/ has ~5 of 16 URE features; no BIT/MixtureModel/full Thompson.
+  - PLN3/PLN/ has no serious inference-control layer.
+  - MORK ecosystem (Vandervorst/Clarke/Peterson) is socially distinct from
+    PLN/Geisweiller tradition. The "PLN-on-MORK" linkage is unbuilt.
+  - Probabilistic primitives are imported across cluster but unused.
+
+================================================================================
+PAPER 1 / 6
+================================================================================
+### RawData+Publications+PLN FactorGraph MORK   (base, "Notes on Possible Implementation of PLN Factor Graphs in MM2+/MORK")
+
+**Lane:** 1
+**Card type:** RawData
+**Length:** approx 13.4 KB  (total_length 13395, source 4072_PLN_FactorGraph_MORK.pdf)
+**Date / version signal:** "Ben Goertzel, July 18, 2025" — base draft (no version suffix).
+   References "Quantale-Annotated PLN Factor Graph" approach from "Weakness Is All You Need"
+   draft as theoretical parent.
+
+**Core claims (8):**
+- C-1: PLN STVs (s,c) live in a commutative quantale V_PLN = [0,1] x [0,1] with
+       additive ⊕ = (s1+s2, c1+c2) and multiplicative ⊗ = (s1·s2, c1·c2). (Naive defn.)
+- C-2: AtomSpace encoding uses three new atom types: VariableAtom (PLN formula + STV
+       in metadata), FactorAtom (PLN inference rule + local potential phi_f), and
+       FactorVarLink (k-ary hyperedge connecting factor to its argument variables).
+       MORK's PathMap is asserted to give O(1)/O(log N) neighbor lookup.
+- C-3: Local potential phi_f : V_PLN^k -> V_PLN is stored on the FactorAtom either as
+       a lookup table OR as a pointer to "a MeTTa-IL or native routine".
+- C-4: Algorithm 1 builds the factor graph by iterating PLN atoms and inference-rule
+       instances; Algorithm 2 runs sum-product belief-propagation: var->fac is ⊕ over
+       other incoming msgs; fac->var is ∃-marginalization of (phi_f ⊗ ⨂ varToFac).
+- C-5: Distributional Truth Values (histograms over [0,1]) reduce phi_f to
+       matrix-multiply (deduction) / matrix-invert (inversion) — reuses same skeleton.
+- C-6: Toy worked example: Dog(Lassie) (0.9,0.9) + Deduction rule (0.8,0.8) yields
+       Mammal(Lassie) marginal = (0.72, 0.72). Demonstrates mechanism only — author
+       admits "way way too small to justify this sort of complexity".
+- C-7: Larger toy example: nested ∀y(∃x Parent(x,y)) over D={Anna,Bob} via Skolem
+       function and PLN primitives ExistsSTV, ForAllSTV, SkolemIdentity attached as
+       PotentialRoutine strings.
+- C-8: Scalability story: full BP sweep is O(|E|); MORK PathMap gives O(1)/O(log N)
+       neighbor lookup; "shared subformula interning" makes common expressions update
+       once. Claims natural parallelism, incremental updates, sparse high-D graphs.
+       Distinguishes factor-graph (good for "background inference") from chaining
+       (good for goal-directed); concedes chaining wins for narrow tasks.
+
+**Intended implementation target:** "MM2+/MORK" as a hypergraph-DB substrate carrying
+   PLN factor-graph atoms, with PathMap as the neighbor-lookup mechanism. PLN's
+   pre-existing TV-arithmetic routines (DeductionSTV, ExistsSTV, ForAllSTV) are
+   assumed to exist and be callable as named PotentialRoutine strings.
+
+**Current implementation status:** PAPER-ONLY / ASPIRATIONAL.
+   - No FactorAtom/VariableAtom/FactorVarLink atom types exist in MORK source
+     (Source 8 reconciliation: zero FactorGraph/MessagePass matches).
+   - MORK has no TruthValue surface, no STV pair type, no ⊕/⊗ quantale operators.
+   - "MeTTa-IL" is not a name used anywhere in MORK source. The paper assumes a
+     callable inference-rule layer that does not exist on MORK's surface.
+   - PathMap exists in MORK but is not exposed as getFactorsForVariable /
+     getVariablesForFactor — those are paper APIs, not MORK APIs.
+   - PLN3/PLN/ has DeductionSTV-style formulas but no factor-graph wiring or BP loop.
+
+**Code evidence:** none — paper-only.
+   The paper invokes "AtomSpace:setAttribute", "AtomSpace:addAtom",
+   "AtomSpace:addLink", "pathmap.getFactorsForVariable" — none of these are MORK API
+   names. They are pseudo-OpenCog AtomSpace calls projected onto MORK.
+
+**Unresolved questions / cross-references:**
+   Q1: How does the author intend PotentialRoutine strings ("DeductionSTV") to
+   resolve to executables on MORK, given MORK has no rule-evaluation runtime?
+   Q2: STV metadata storage — MORK atoms are S-expressions in a path-trie; there is
+   no `setAttribute(atom, key, value)` primitive in MORK. The encoding is undefined.
+   Q3: "Shared subformula interning" — MORK does intern via path sharing, but the
+   factor-graph layer would need to materialize O(|F|*|V|) FactorVarLink atoms,
+   which is *not* free in PathMap.
+   See: cross-ref to "Weakness Is All You Need" theoretical parent (other lane).
+
+================================================================================
+PAPER 2 / 6
+================================================================================
+### RawData+Publications+PLN FactorGraph MORK v1
+
+**Lane:** 1
+**Card type:** RawData
+**Length:** approx 17.3 KB  (total_length 17289, source 4076_PLN_FactorGraph_MORK_v1.pdf)
+**Date / version signal:** Same date "July 18, 2025" — same-day revision.
+   Adds Section 7 "A Scalable Heuristic for Minimizing the Damage from Independence
+   Assumptions". No other structural change.
+
+**Core claims (9):**  [base C-1..C-8 carried verbatim] +
+- C-9 [NEW in v1]: Independence-error heuristic. Acknowledges that ⊗ = (s1s2, c1c2)
+       silently assumes premise independence. Proposes a "periodic restructuring pass"
+       (Algorithm 3) that uses MORK's PathMap to compute Jaccard overlap between
+       variables' factor-neighborhoods; pairs above DEPENDENCE_THRESHOLD are either
+       (a) merged into a ClusterId macro-variable, or (b) joined by a new
+       DependencyFactor with a DepJointSTV potential. Claimed to run in O(|E|).
+
+**Intended implementation target:** Same as base, plus a new periodic AtomSpace pass
+   that mutates the factor graph to absorb correlation. Requires MORK to expose
+   getFactorsForVariable / getVariablesForFactor on PathMap.
+
+**Current implementation status:** PAPER-ONLY / ASPIRATIONAL.
+   Same status as base — no factor graph in MORK, no DependencyFactor type, no
+   ClusterId attribute mechanism. The Jaccard restructuring pass has no code.
+
+**Code evidence:** none — paper-only.
+
+**Unresolved questions / cross-references:**
+   Q4: DepJointSTV "encodes the true joint truth-value" — but where does the true
+   joint come from? Paper does not specify estimation. This is the deepest gap.
+   Q5: Author concedes "this will never, in real cases, totally remove error" —
+   honest, but undermines the scalability story when stacked with C-8.
+
+================================================================================
+PAPER 3 / 6
+================================================================================
+### RawData+Publications+PLN FactorGraph MORK v2
+
+**Lane:** 1
+**Card type:** RawData
+**Length:** approx 24.5 KB  (total_length 24465, source 4078_PLN_FactorGraph_MORK_v2.pdf)
+**Date / version signal:** Still "July 18, 2025". Adds Sections 11 (Estimating and
+   Managing Error Propagation) and 12 (Ontologies FTW).
+
+**Core claims (11):**  [v1 C-1..C-9 carried verbatim] +
+- C-10 [NEW in v2]: Error-propagation analysis. On trees, error after d ⊗-operations
+        bounded by (1+δ)^d; on loopy graphs, repeated ⊕-normalization dampens errors;
+        log-normal sketch gives E[ε_d] = exp(d(σ²/2 - log m)), so contraction holds
+        when log m > σ²/2. Empirical-bounding workflow proposed (gold-standard
+        subgraph, observe one BP round, extrapolate).
+- C-11 [NEW in v2]: "Ontologies FTW" — semantic normalization of knowledge into a
+        standard ontology of relatively independent concepts is the principled way
+        to satisfy the contraction condition. Cluster atoms and DependencyFactor
+        atoms become tools for ontology-driven graph restructuring.
+
+**Intended implementation target:** Same factor-graph-on-MORK target, plus a
+   higher-level ontological layer. No concrete ontology proposed; aspirational.
+
+**Current implementation status:** PAPER-ONLY / ASPIRATIONAL.
+   The error-propagation math is sound but uncoupled to any code path. No
+   "gold-standard subgraph" tooling exists. No ontology system in MORK or PLN3.
+
+**Code evidence:** none — paper-only.
+
+**Unresolved questions / cross-references:**
+   Q6: The contraction condition log m > σ²/2 is workload-dependent and assumes
+   i.i.d. log-normal local errors — not validated against real PLN graphs.
+   Q7: "Standard ontology of relatively independent concepts" — punt on the actual
+   hard problem (ontology engineering).
+
+================================================================================
+PAPER 4 / 6
+================================================================================
+### RawData+Publications+PLN FactorGraph MORK v3.1
+
+**Lane:** 1
+**Card type:** RawData
+**Length:** approx 28.2 KB  (total_length 28162, source 4083_PLN_FactorGraph_MORK_v3.1.pdf)
+**Date / version signal:** Still "July 18, 2025". Major rewrite: adds Introduction
+   section, restructures around a NEW product quantale Q_comb = Q_logic × Q_PLN.
+   The naive ⊗ = (s1s2, c1c2) of versions 1/2 is REPLACED by a "Better PLN
+   Truth-Value Quantale" using probabilistic-sum joins and refined conjunction.
+
+**Core claims (13):**  [v2 carried + significantly REVISED] +
+- C-1' [REVISED]: STV quantale operations upgraded. ⊕ now (s1+s2-s1s2, c1+c2-c1c2)
+        (probabilistic sum, not raw addition). ⊗ now (s1s2, 1-(1-c1)(1-c2))
+        (refined: confidences combine via dual probabilistic-sum, not c1c2).
+        Negation ¬(s,c) = (1-s, c). Implication via residuation. Conditionalization
+        via Bayes-style update. Citation: PLN Book Section 5.10.6.
+- C-12 [NEW in v3.1]: Logic-formula quantale Q_logic = (Φ/≡, ≤_entail, ∧, ∨) treats
+        logical formulas modulo equivalence as a commutative quantale. Pure
+        constraint-propagation falls out as message-passing on this quantale alone.
+- C-13 [NEW in v3.1]: Combined product quantale Q_comb = Q_logic × Q_PLN. Each
+        atom carries BOTH a FormulaValue (in Q_logic) AND a TruthValue (in Q_PLN).
+        Each FactorAtom stores a CombinedPotential mapping (φ_i, α_i) tuples to
+        (φ_out, α_out). Logical conjunction is exact (no numeric error); independence
+        error confined to numeric component but propagates structurally via ⊗.
+        Heuristic restructuring (Alg 3) and error-propagation analysis (§8) lifted
+        to Q_comb form.
+
+**Intended implementation target:** MORK atoms must now carry TWO metadata fields
+   per VariableAtom (FormulaValue + TruthValue) and a CombinedPotential per
+   FactorAtom that operates on tuples in Q_logic × Q_PLN.
+
+**Current implementation status:** PAPER-ONLY / ASPIRATIONAL.
+   The new product-quantale machinery doubles the surface area MORK would need to
+   expose. There is no Q_logic representation in MORK (formulas modulo equivalence
+   require a normalizer + entailment check, neither present). PLN3 has the basic
+   STV formulas but not the upgraded quantale (probabilistic-sum confidence join,
+   residuated implication).
+
+**Code evidence:** none — paper-only.
+   The "Better" PLN quantale operations are NOT what PLN3/PLN/python code uses for
+   confidence combination. Confidence combination in deployed PLN is closer to
+   the naive (c1·c2) form for AND-rules, not 1-(1-c1)(1-c2).
+
+**Unresolved questions / cross-references:**
+   Q8: Q_logic requires "Φ/≡" — equivalence-class quotient over WFFs. Decidable
+   only for restricted fragments. How is this realized on MORK?
+   Q9: Two confidence-conjunction formulas now coexist in the literature: c1·c2
+   (base/v1/v2) vs 1-(1-c1)(1-c2) (v3.x). Codebase contains neither uniformly.
+   Q10: Implication via residuation needs a chosen f_→(c_A,c_B) — left abstract.
+
+================================================================================
+PAPER 5 / 6
+================================================================================
+### RawData+Publications+PLN FactorGraph MORK v3.2
+
+**Lane:** 1
+**Card type:** RawData
+**Length:** approx 28.4 KB  (total_length 28394, source 4111_PLN_FactorGraph_MORK_v3.2.pdf)
+**Date / version signal:** "July 20, 2025" — first dated revision. Note: abstract
+   says "MTM2+" (typo for MM2+).
+
+**Core claims (13):**  [v3.1 C-1..C-13 carried; one substantive revision] +
+- C-4' [REVISED in v3.2]: Variable->Factor message no longer initialized to (⊥, (0,0))
+        when a node has no other incoming messages. Instead each variable SEEDS its
+        outgoing message with its own (FormulaValue, TruthValue) pair, joining any
+        incoming messages on top. This fixes the toy-example bug in v3.1 where
+        vMammal->fDed = (⊥,(0,0)) propagated zero, producing incorrect first-round
+        marginals. Now mvDog->fDed = (Dog(Lassie),(0.9,0.9)) directly.
+
+**Intended implementation target:** Same as v3.1.
+
+**Current implementation status:** PAPER-ONLY / ASPIRATIONAL.
+
+**Code evidence:** none — paper-only.
+
+**Unresolved questions / cross-references:**
+   Q11: The seeding-with-self change actually breaks textbook sum-product BP, where
+   var->fac messages are aggregations of OTHER incoming factor messages, not the
+   variable's own value. v3.2 conflates "evidence at variable" with "incoming
+   factor messages". This is a semantic regression dressed as a fix.
+
+================================================================================
+PAPER 6 / 6
+================================================================================
+### RawData+Publications+PLN Chaining On MORK
+
+**Lane:** 1   (placed here per bundle scope; conceptually the *complement* paper)
+**Card type:** RawData
+**Length:** approx 10.4 KB  (total_length 10366, source 4283_PLN-Chaining-On-MORK.pdf)
+**Date / version signal:** "August 11, 2025" — POST-FactorGraph stream by ~3 weeks.
+   Authored "Ben Goertzel, with help from GPT5-Pro". Different framing entirely:
+   "build a fast PLN backward-chaining loop on MM2/MORK without converting
+   everything to factor graphs."
+
+**Core claims (9):**
+- C-14: New atom types for chaining: RuleAtom, PatternAtom, GoalAtom,
+        ContinuationAtom, MagicAtom (for magic-sets). Distinct from FactorAtom et al.
+- C-15: Indices: HeadIndex (predicate+arg-mask -> rules), FactIndex, UnifyIndex
+        (preceded by argument-hash and Bloom prefilters). PathMap links connect
+        RuleAtom <-> PatternAtom <-> VariableAtom.
+- C-16: Best-first search loop with priority queue keyed on
+        (expected_gain) / (unify_cost + fetch_cost + potential_cost).
+        Continuations capture the body remainder so successful tails are not re-solved.
+- C-17: Cutoffs: depth/width bounds, confidence floor, ε-marginal pruning.
+- C-18: Memoization: subgoal memo (transposition table), head-filter cache,
+        partial-proof cache (ContinuationAtom as reusable macro).
+        Claimed 10x-100x speedup from caching alone.
+- C-19: Locality-aware placement: co-locate RuleAtom + head PatternAtom + hottest K
+        facts on same NUMA node / CCX. Use Atom attributes as placement hints.
+- C-20: Learned locality via KaHyPar hypergraph partitioning of co-activation graph.
+        Each rule application = hyperedge over touched atoms; KaHyPar minimizes cut,
+        producing ClusterIds that MORK uses for placement.
+- C-21: Magic-sets rewrite to push query bindings into rule bodies before scan.
+- C-22: Cost model with EWMA-updated estimates of unify/fetch/potential costs per
+        RuleAtom. Per-core lock-free priority queues with CCX-granularity work-stealing.
+
+**Intended implementation target:** MORK as a hypergraph KB with placement hints,
+   driving a backward-chaining engine that exploits NUMA locality. EXPLICITLY
+   bypasses factor-graph machinery — "without converting everything to factor graphs".
+
+**Current implementation status:** PAPER-ONLY / ASPIRATIONAL — but partially
+   resonant with chaining/.
+   - chaining/ has a confidence-priority forward-chaining queue (per Source 7),
+     which is a degenerate cousin of C-16's priority queue.
+   - chaining/ does NOT have HeadIndex/FactIndex/UnifyIndex with Bloom prefilters.
+   - chaining/ has NO memoization / transposition table.
+   - chaining/ has NO ContinuationAtom mechanism — it has no continuations.
+   - chaining/ has NO magic-sets rewrite.
+   - MORK has NO KaHyPar integration. NUMA placement hints are not exposed.
+   - chaining is forward, not backward; Continuation/Magic Sets are backward-only
+     ideas in this paper.
+
+**Code evidence:**
+   - chaining/ priority-queue (forward, confidence-priority) ~partially aligns with C-16.
+   - "5 of 16 URE features survive" (Source 7) — none of them are the
+     backward-chaining-specific ones this paper proposes.
+   - none for C-17 through C-22.
+
+**Unresolved questions / cross-references:**
+   Q12: This paper is the implementation-pragmatic alternative to Lane 1's factor
+   graphs. Its existence one month after v3.2 suggests Goertzel re-evaluated factor
+   graphs as too speculative for near-term use. The two streams (FG and chaining)
+   are NOT integrated — neither paper cites the other's machinery as a fallback.
+   Q13: KaHyPar is named explicitly but no integration design sketched beyond
+   "Assign ClusterId per partition and migrate atoms accordingly." MORK does not
+   currently expose a migration API.
+   Q14: The chaining paper's atom types (RuleAtom, GoalAtom, ContinuationAtom)
+   collide nominally with PLN3's existing rule/proof representations — paper does
+   not address whether they are reused or new.
+
+================================================================================
+VERSION-DELTA TABLE  (FactorGraph stream + chaining as comparison column)
+================================================================================
+Cells: introduced / persisted / revised / dropped / reintroduced / absent / replaced
+
+| Claim / proposal                                              | base    | v1      | v2      | v3.1      | v3.2      | chain   |
+|---------------------------------------------------------------|---------|---------|---------|-----------|-----------|---------|
+| Naive STV quantale ⊕=(s+s,c+c), ⊗=(s·s, c·c)                  | introd. | persist | persist | replaced  | absent    | absent  |
+| Better STV quantale ⊕=prob-sum, ⊗=(s·s, 1-(1-c)(1-c))         | absent  | absent  | absent  | introd.   | persist   | absent  |
+| VariableAtom / FactorAtom / FactorVarLink                     | introd. | persist | persist | persist   | persist   | absent  |
+| RuleAtom / GoalAtom / ContinuationAtom / MagicAtom            | absent  | absent  | absent  | absent    | absent    | introd. |
+| Logic-formula quantale Q_logic                                | absent  | absent  | absent  | introd.   | persist   | absent  |
+| Combined product quantale Q_comb = Q_logic × Q_PLN            | absent  | absent  | absent  | introd.   | persist   | absent  |
+| FactorAtom stores phi_f (single potential)                    | introd. | persist | persist | replaced  | absent    | absent  |
+| FactorAtom stores CombinedPotential (Q_comb potential)        | absent  | absent  | absent  | introd.   | persist   | absent  |
+| ExistsSTV / ForAllSTV / SkolemIdentity primitives assumed     | introd. | persist | persist | persist   | persist   | absent  |
+| O(|E|) BP sweep + O(1)/O(log N) PathMap neighbor claim        | introd. | persist | persist | persist   | persist   | absent  |
+| Sum-product algorithm (var->fac is ⊕ over OTHER msgs)         | introd. | persist | persist | persist   | revised   | absent  |
+| Var->fac SEEDED with own (φ,α) value                          | absent  | absent  | absent  | absent    | introd.   | absent  |
+| Distributional TV (matrix-multiply phi_f)                     | introd. | persist | persist | persist   | persist   | absent  |
+| Independence-Heuristic (Jaccard restructuring + DepFactor)    | absent  | introd. | persist | persist   | persist   | absent  |
+| ClusterId macro-variable mechanism                            | absent  | introd. | persist | persist   | persist   | reintr. |
+| Error-propagation analysis (tree (1+δ)^d, log m > σ²/2)       | absent  | absent  | introd. | persist   | persist   | absent  |
+| Empirical error-bounding via gold-standard subgraph           | absent  | absent  | introd. | persist   | persist   | absent  |
+| "Ontologies FTW" — semantic normalization argument            | absent  | absent  | introd. | persist   | persist   | absent  |
+| Toy ex: Mammal(Lassie) marginal = (0.72, 0.72)                | introd. | persist | persist | persist   | persist   | absent  |
+| Toy ex: ∀y(∃x Parent(x,y)) Skolem/Exists/ForAll               | introd. | persist | persist | persist   | persist   | absent  |
+| FG vs Chaining comparison (FG = background, chain = goal)     | introd. | persist | persist | persist   | persist   | revised |
+| Backward-chaining best-first PQ on MORK                       | absent  | absent  | absent  | absent    | absent    | introd. |
+| HeadIndex / FactIndex / UnifyIndex + Bloom prefilters         | absent  | absent  | absent  | absent    | absent    | introd. |
+| Subgoal memoization / continuation cache                      | absent  | absent  | absent  | absent    | absent    | introd. |
+| KaHyPar-driven NUMA locality from observed chains             | absent  | absent  | absent  | absent    | absent    | introd. |
+| Magic-sets rewrite for partially-bound queries                | absent  | absent  | absent  | absent    | absent    | introd. |
+| EWMA-updated cost model on RuleAtom                           | absent  | absent  | absent  | absent    | absent    | introd. |
+
+REFRAMING / DIFFICULTY FLAGS:
+  FLAG-A: The naive STV quantale (C-1) is *replaced*, not refined, by v3.1's
+   "Better" quantale. Confidence conjunction goes from c1·c2 to
+   1-(1-c1)(1-c2). These two formulas give substantially different numeric
+   answers. v1/v2 worked examples (Mammal=(0.72,0.72)) become INCORRECT under
+   v3.1+ semantics — yet the same numeric example is reused. Internal
+   inconsistency.
+  FLAG-B: v3.1 introduced "var->fac sends ⨁ of OTHER msgs" which IS the textbook
+   sum-product rule. v3.2 "fixed" the toy example by seeding with the variable's
+   own value. This is *not* standard sum-product. The v3.2 fix is a step away
+   from canonical BP semantics — flagged as reframing under difficulty.
+  FLAG-C: Chaining-on-MORK paper (Aug 11) is *non-overlapping* with the
+   FactorGraph stream (July 18-20). It introduces a parallel set of atom types
+   (RuleAtom et al.) that are not reconciled with the FG atom types
+   (FactorAtom et al.). These are two competing implementation visions, not a
+   coherent stack.
+  FLAG-D: The DepJointSTV / TrueJointSTV routine — central to the
+   independence-handling argument from v1 onward — is NEVER specified. Where
+   does the "true joint" come from? This is the argument's load-bearing
+   black box across v1, v2, v3.1, v3.2.
+
+================================================================================
+LANE 1 FOCUS QUESTIONS — direct answers
+================================================================================
+Q1. Do these papers specify HOW MORK should implement FactorGraphs (concrete
+    protocols), or just propose THAT it should?
+
+    THAT, not HOW. The papers propose:
+    - new atom types (FactorAtom, VariableAtom, FactorVarLink) without specifying
+      their MORK representation as S-expressions or path-trie entries;
+    - "AtomSpace:setAttribute / getAttribute" pseudocode that is OpenCog-style
+      and has NO MORK API correspondence;
+    - "PathMap.getFactorsForVariable" calls that do not exist in MORK source;
+    - "PotentialRoutine" strings (DeductionSTV, ExistsSTV, ForAllSTV) that
+      assume an unspecified rule-eval runtime;
+    - Q_logic's "formulas modulo logical equivalence" without a normalizer.
+    No concrete byte-level / path-encoding / dispatch protocol is given. The
+    papers are design notes at the algorithmic level only.
+
+Q2. What do the papers say about message passing? Factor-graph MP or
+    chaining/inference MP?
+
+    Strictly factor-graph sum-product belief propagation in v_base..v3.1 — explicit
+    Variable->Factor and Factor->Variable update equations using ⊕ aggregation
+    and ⊗-tensor-marginalization. v3.2 introduces a non-standard variant where
+    var->fac messages are SEEDED with the variable's own (FormulaValue,
+    TruthValue) before joining incoming msgs (flagged FLAG-B above as a
+    semantic regression).
+    The chaining paper does NOT use the term "message passing"; it talks about
+    best-first search with priority queues, continuations, and magic-sets —
+    classical Prolog-style backward chaining, not MP.
+
+Q3. Where is "PLN Chaining On MORK" in the version stream? Pre-, mid-, or
+    post-FactorGraph series?
+
+    POST. FG stream is dated July 18-20 2025; chaining paper is August 11 2025
+    (~3 weeks later, "with help from GPT5-Pro"). It reads as a pragmatic
+    alternative — explicitly stating "without converting everything to factor
+    graphs" — suggesting Goertzel viewed FG as longer-horizon and chaining as
+    near-term-implementable. The two streams are not technically integrated.
+
+Q4. What probabilistic primitives do the papers assume MORK provides?
+
+    Across the FG stream the papers assume MORK provides:
+    - per-atom metadata storage (setAttribute/getAttribute with arbitrary keys);
+    - per-atom STV pair (s,c) ∈ [0,1]^2 as a first-class value;
+    - PathMap exposed as getFactorsForVariable / getVariablesForFactor;
+    - hyperedge atoms (FactorVarLink) joining k > 2 atoms;
+    - shared subformula interning;
+    - cluster-id placement metadata.
+    Compared to MORK's actual surface (Source 8 reconciliation):
+    - NO TruthValue type — MORK is a path-trie of S-exprs, no STV pair primitive.
+    - NO Beta library, NO marginalization.
+    - NO setAttribute/getAttribute on atoms — MORK has no per-atom attribute layer.
+    - PathMap is real but its API is not getFactorsForVariable-style.
+    - The "distr-combinators" Cargo dep exists but is unused in source.
+    Net: the papers describe a *sister* substrate (something AtomSpace-like) and
+    project it onto MORK's name. The probabilistic primitives the papers assume
+    do not exist on the MORK surface today.
+
+================================================================================
+END findings_claude_lane1.txt
+================================================================================

@@ -1,0 +1,479 @@
+================================================================
+PLN PILOT — SOURCE 9 LANE 3 — APPLICATION / FRAMING PAPERS
+================================================================
+Model:           Claude Opus 4.7 (1M context)
+Extraction date: 2026-04-24
+Lane:            3 (3 papers)
+Pass:            Single deep pass; theory-vs-code reconciliation
+Claim counts:    P1=6, P2=6, P3=10  (total 22 claims)
+Output policy:   .txt data artifact (user-authorized)
+
+Standing corrections carried in (NOT re-verified — trusted):
+  - No ECAN integration in production PLN3/PLN/. Source 3 Deriver.metta
+    uses confidence-priority queue only.
+  - No deep-learning integration in PLN3/PLN/ codebase.
+  - No kNN/NB classifier integration in PLN production code.
+  - chaining/experimental/inference-control/ has 3 hand-written
+    Continue-typed CONTROL rules at toy scale (closest to attention
+    experimentation in cluster).
+  - 2008 PLN book Ch. 14 has URE-era attention discussion.
+
+================================================================
+
+### Publications+Guiding PLN with Attention Allocation
+
+**Lane:**            3
+**Card type:**       Markdown (stub — abstract only on wiki card)
+**Length:**          approx 0.6 KB
+**Date / version:**  2014, AGI-14 Springer; authors Harrigan,
+                     Goertzel, Iklé, Belayneh
+**Wiki updated:**    2026-04-08
+**Provenance note:** The wiki card is an abstract stub; full
+                     paper text is NOT mirrored on the wiki. All
+                     claims below are extracted from the
+                     summary/relevance prose only. Claim depth
+                     is therefore shallow by source constraint.
+
+**Core claims** (numbered):
+  C-1: ECAN ("Economic Attention Networks") provides nonlinear
+       dynamical attention allocation as a substrate for
+       cognitive resource control.
+  C-2: ECAN's attention allocation can guide PLN inference, i.e.
+       ECAN is positioned as an external controller modulating
+       which PLN inference paths get computational resources.
+  C-3: The intended effect is to focus inference on "most
+       promising" reasoning paths (truncate combinatorial
+       explosion via attention-driven pruning/prioritization).
+  C-4: This is framed as directly relevant to PLN+ECAN
+       integration in Hyperon's PRIMUS architecture
+       (forward-projection by the wiki curator, not the 2014
+       authors).
+  C-5: The attention-allocator dynamics are nonlinear —
+       implying STI/LTI diffusion / Hebbian-style updating
+       rather than a static priority queue (ECAN canonical
+       design from OpenCog Classic).
+  C-6: Attention guidance is positioned as a meta-layer above
+       PLN's truth-value math, not a modification of the rule
+       set itself.
+
+**Intended implementation target:**
+  ECAN attention allocator (STI/LTI/AV) coupled to PLN inference
+  driver, controlling per-step expansion choice and resource
+  budget allocation across alternative inference branches.
+
+**Current implementation status:**  PAPER-ONLY / ASPIRATIONAL
+  in the PLN3/PLN/ cluster.
+
+**Code evidence:**
+  - Source 3 Deriver.metta uses confidence-priority queue only
+    — no STI/LTI/AV, no diffusion, no Hebbian update.
+  - Source 6 URE had a "STI" source-selection-mode hook, but
+    that is the URE generation; the actual ECAN math lives in
+    the separate opencog/attention repo (NOT in this cluster).
+  - Closest in-cluster artifact: chaining/experimental/
+    inference-control/ — meta-rule scaffold with 3 hand-written
+    Continue-typed CONTROL rules in a months-of-year toy
+    theory. This is a structurally analogous experiment
+    (meta-control over inference choice) but is NOT ECAN: no
+    nonlinear dynamics, no attention values, no diffusion.
+  - No production code path implements the 2014 paper's
+    proposal in PLN3/PLN/.
+
+**Unresolved questions / cross-references:**
+  - Is the chaining/experimental/inference-control/ effort
+    intended as a successor/replacement for the 2014 ECAN
+    proposal (i.e. MeTTa-native meta-control replacing
+    AtomSpace-attached ECAN)? The 3 Continue rules in
+    months-of-year suggest YES — the design philosophy moved
+    from external dynamical controller to in-language
+    meta-rules. Confirmation requires reading the experimental
+    README / commit history (not done in this lane).
+  - Source 6 URE STI hook vs the 2014 paper: the URE hook
+    appears to be the same generation/integration the paper
+    describes (Harrigan was on URE-era OpenCog). So C-2 is
+    historically IMPLEMENTED in URE/OpenCog Classic, but
+    SUPERSEDED for Hyperon — the cluster does not carry that
+    code forward.
+  - Full paper text would need to be fetched separately
+    (Springer/AGI-14 proceedings) to verify protocol-level
+    integration claims; the wiki stub does not specify them.
+
+================================================================
+
+### Publications+Deep Learning Perception with PLN
+
+**Lane:**            3
+**Card type:**       Markdown (stub — abstract only on wiki card)
+**Length:**          approx 0.6 KB
+**Date / version:**  2013, AGI-13 Springer; authors Goertzel,
+                     Sanders, O'Neill
+**Wiki updated:**    2026-04-08
+**Provenance note:** Same as P1 — wiki card is abstract-only.
+                     Full paper text NOT mirrored. Claims below
+                     are from the summary/relevance prose only.
+
+**Core claims** (numbered):
+  C-1: Deep-learning perception modules produce subsymbolic
+       perceptual representations (continuous activations /
+       feature vectors).
+  C-2: A bridge to PLN's symbolic logical reasoning is achieved
+       via FREQUENT PATTERN MINING — specifically the FISHGRAM
+       algorithm.
+  C-3: FISHGRAM mines patterns over the perceptual stream and
+       converts them into PLN-ingestible symbolic predicates
+       (atoms / TruthValues) for downstream reasoning.
+  C-4: The paper positions itself as a neural-symbolic
+       integration prototype; pattern mining is the "interface
+       layer" between subsymbolic perception and symbolic
+       inference.
+  C-5: This is framed as central to Hyperon's neural-symbolic
+       integration approach (wiki curator forward-projection,
+       not 2013 authors).
+  C-6: The architecture is implicitly: encoder (DL) -> pattern
+       miner (FISHGRAM) -> PLN — i.e. DL is treated as a
+       perceptual front-end whose outputs are mined, not as a
+       differentiable continuation of inference.
+
+**Intended implementation target:**
+  Neural-symbolic perception pipeline: deep-learning encoder
+  produces feature streams → FISHGRAM mines frequent patterns
+  → patterns instantiated as Atoms with TVs in AtomSpace → PLN
+  reasons over them.
+
+**Current implementation status:**  PAPER-ONLY / ASPIRATIONAL
+  in the PLN3/PLN/ cluster.
+
+**Code evidence:**  none — paper-only.
+  - Sources 2-3 verified pure-symbolic: no neural model
+    imports, no torch/tensorflow/onnx hooks, no perception
+    interfaces, no FISHGRAM module visible in the cluster.
+  - No frequent-pattern-miner module of any kind in
+    PLN3/PLN/ (FISHGRAM was an OpenCog Classic C++ module;
+    not ported).
+  - No truth-value-from-neural-confidence shim in the
+    Deriver / rule code.
+
+**Unresolved questions / cross-references:**
+  - Is FISHGRAM (or any pattern miner) on a Hyperon roadmap?
+    Not visible in the cluster; would need to inspect
+    sister repos (e.g. hyperon-experimental, MOSES port,
+    pattern-miner) outside Sources 2-8 scope.
+  - The 2013 paper predates transformer/LLM era. Its DL
+    assumption is autoencoder/CNN-style; this is now
+    historically anachronistic for "perception." A modern
+    neural-symbolic Hyperon design would more likely use
+    LLM-derived embeddings + retrieval, NOT FISHGRAM.
+  - The wiki curator's "central to Hyperon" framing is
+    aspirational. The cluster's actual neural-symbolic
+    interface (if any) is elsewhere; PLN3/PLN/ remains pure
+    symbolic.
+
+================================================================
+
+### RawData+Publications+PLN kNN NB
+
+**Lane:**            3
+**Card type:**       RawData (full paper text, NOT a stub)
+**Length:**          approx 22.6 KB (Mettapedia working notes)
+**Date / version:**  2026-02-19 (Mettapedia Working Notes)
+**Wiki updated:**    2026-04-08
+**Source:**          mattermost://MeTTapedia/0023_PLN-kNN-NB.pdf
+**Provenance note:** This card breaks the "framing paper"
+                     mold: it is a 2026 Mettapedia engineering
+                     paper with Lean-formalized theorems, full
+                     code paths, and 4-round empirical
+                     validation on extended MPTP 5k. It is
+                     SOURCE-CODE-ADJACENT, not a 2010s vision
+                     paper. Lane 3 framing is partially wrong
+                     for this card.
+
+**Core claims** (numbered):
+  C-1: The paper presents an "evidence-primary" premise-
+       selection calculus in PLN style: revision (⊕) for
+       evidence accumulation, tensor (⊗) for sequential
+       update, and explicit normalization for evidence-budget
+       control. Rule kernel: lib/lib_pln_xi.metta (xiPLN over
+       the nuPLN evidence algebra).
+  C-2: Naive Bayes is represented as a SPECIALIZATION on the
+       same E=(n+,n-) carrier — "tensorized likelihood
+       evidence" — with a formal Lean bridge:
+       toStrength_nbEvidence_eq_nbPosterior in
+       PLNBayesNetInference.lean. NB is NOT bolted on; it
+       falls out of the algebra.
+  C-3: k-NN is represented as LOCAL EVIDENCE AGGREGATION on
+       the same carrier, with a formal Lean bridge:
+       PLN_hplusPos_eq_knnRelevance in
+       PremiseSelectionKNN_PLNBridge.lean (MaSh-style
+       relevance).
+  C-4: The mixture-local Prior⊗NB selector implements a
+       3-stage architecture (atps/scripts/select_pln_
+       mixture_local_nb.py): Stage A multi-bin local experts,
+       Stage B normalize-and-pool via ⊕, Stage C tensor-
+       compose pooled prior with NB-only likelihood via ⊗.
+  C-5: All log-odds/pooling claims hold under EXPLICIT
+       DOMAIN HYPOTHESES (finite nonzero channels for log-
+       odds theorems; nonzero finite totals for normalization /
+       convex-mixture theorems). This is a correctness-
+       discipline claim, not a folk identity.
+  C-6: hplus is unique under external Bayesianity + total-
+       additivity (poolE_eq_hplus_of_externalBayes_totalAdd);
+       max is the explicit counterexample
+       (maxPoolingOperator_ne_fuse) when total-additivity is
+       omitted.
+  C-7: power(E,w) is a regraduation/calibration operator (NOT
+       a legacy Truth_* rule); Lean theorem
+       Evidence.toLogOdds_power_mul shows
+       log_odds(power(E,w)) = w * log_odds(E), so w scales
+       evidential impact linearly in log-odds space while
+       staying inside the (⊕,⊗) algebra.
+  C-8: Empirical: extended MPTP 5k, 4200 train / 800 val. On
+       round-2 (E, 5s, no -p): MaSh NB 290/800 (best);
+       PLN mixture-local 288/800 (2 problems behind, ranking
+       saturates by top-256 for the winning model).
+  C-9: Round-4 cross-prover: PLN mixture-local Prior⊗NB
+       (EV-pooled) is best single run on E (288), best on
+       Vampire@256 (174), tied-best Vampire@512 (173). On
+       targeted 30s top-256: MaSh NB and PLN mixture-local
+       TIE on E (327/800 each); 2-problem gap on Vampire.
+  C-10: Methodological commitment: stay in the
+       Goertzel/Nil "evidence-first" discipline — evidence
+       is primary, probabilities are projections,
+       composition is governed by ALGEBRAIC LAWS rather than
+       post-hoc score blending. Legacy probabilistic-MP row
+       transfer is treated as a "legacy implementation
+       detail"; canonical kNN transfer is evidence-level
+       (used neighbors → (w,0); non-used → (0, ηw)).
+
+**Intended implementation target:**
+  Premise-selection module for ATP (E, Vampire) using PLN
+  evidence algebra as the unifying calculus, with NB and
+  k-NN classical selectors expressed as instantiations of
+  the same (⊕,⊗,Norm,power) operators. Lean-certified
+  algebraic coherence; selectors in MeTTa (PeTTa demos) and
+  one pure-Python script.
+
+**Current implementation status:**  IMPLEMENTED.
+  This is the only Lane-3 paper with concrete production
+  code. Multiple selector scripts exist, MeTTa rule kernels
+  exist, Lean proofs exist, and 4-round empirical validation
+  was executed.
+
+**Code evidence:**
+  Rule layer:
+    - hyperon/PeTTa/lib/lib_pln_xi.metta  (xiPLN wrappers
+      over nuPLN evidence algebra; calibrated aliases)
+    - hyperon/PeTTa/lib/lib_pln_nu.metta  (nuPLN; main path
+      for current discrete selectors)
+    - hyperon/PeTTa/pln_inference/pln_evidence.metta
+      (evidence-hplus, evidence-tensor, evidence-power)
+    - hyperon/PeTTa/pln_inference/pln_rules.metta  (legacy
+      MP row transfer; deprecated for canonical semantics)
+    - hyperon/PeTTa/lib/lib_pln.metta  (legacy Truth_*
+      rules with PLN-book grounding, e.g. Truth_Revision)
+  Selector layer (MeTTa):
+    - hyperon/PeTTa/demos/pln_*_selector*.metta  (incl.
+      pln_idf_nb_selector_jobs.metta,
+      pln_knn_prior_nb_selector_opt.metta)
+  Selector layer (Python):
+    - atps/scripts/select_pln_nb.py
+    - atps/scripts/select_pln_normal_nb.py
+    - atps/scripts/select_pln_enhanced.py
+    - atps/scripts/select_pln_knn_prior_nb_opt.py
+    - atps/scripts/select_pln_mixture_local_nb.py  (the
+      flagship staged model)
+  Lean contracts (Mettapedia/Logic/):
+    - EvidenceQuantale.lean  (carrier, semiring/quantale,
+      odds/log-odds/power laws)
+    - PLNCore.lean  (curated import surface)
+    - PremiseSelectionKNN.lean  (general kNN; MaSh
+      instance)
+    - PremiseSelectionKNN_PLNBridge.lean  (the kNN-PLN
+      bridge: PLN_hplusPos_eq_knnRelevance)
+    - PLNBayesNetInference.lean  (NB bridge:
+      toStrength_nbEvidence_eq_nbPosterior)
+    - PremiseSelectionFusion.lean  (revision = linear
+      pooling; normalization)
+    - PremiseSelectionExternalBayesianity.lean  (corrected
+      uniqueness; staged commutation; regrade invariance)
+    - PremiseSelectionPriorNB.lean  (priorNBPosterior_eq_
+      twoStage)
+    - PremiseSelectionLocalMixtureBridge.lean  (finite
+      local-mixture TV bound)
+    - PremiseSelectionOptimality.lean,
+      PremiseSelectionRankingStability.lean,
+      PremiseSelectionPUCalibration.lean,
+      PremiseSelectionCoverage.lean,
+      PremiseSelectionOperatorRoles.lean,
+      PremiseSelectionSelectorSpec.lean,
+      PremiseSelectionPartitionedPriorNB.lean,
+      DiaconisFreedmanFinite.lean
+    - PremiseSelectionBestPLNDraft.lean (selector-level
+      composition theorem)
+    - OSLF/Framework/PLNSelectorGSLT.lean (oslf_diamond /
+      oslf_box staged-roundtrip modal corollaries)
+  Tests:
+    - hyperon/PeTTa/tests/test_lib_pln_xi_rules.metta
+  Orchestration:
+    - atps/scripts/run_round4_val_execute_and_analyze.sh
+    - results_round4_val_5s_compact_28runs.csv
+    - greedy_cover_round4_val_all.csv,
+      greedy_cover_round4_val_no_mash.csv
+
+  Reconciliation note: Sources 2-8 verified there is no
+  kNN/NB classifier integration in PLN PRODUCTION code,
+  i.e. in the Hyperon PLN3/PLN/ inference Deriver itself.
+  That standing correction is COMPATIBLE with C-1..C-10:
+  the kNN-NB code lives in atps/scripts/ and
+  hyperon/PeTTa/demos/ — adjacent / application-layer code,
+  NOT inside the symbolic Deriver. The Deriver (Source 3)
+  remains pure-symbolic.
+
+**Unresolved questions / cross-references:**
+  - The lane-3 framing assumed this card was a "framing
+    paper" but it is an engineering paper with executable
+    Lean proofs and benchmark code. It belongs more
+    naturally with Sources 2-8 reconciliation than with the
+    aspirational 2013/2014 papers. Suggest re-binning in
+    later passes.
+  - hyperon/PeTTa/{lib,pln_inference,demos,tests} paths
+    cited here are NOT in the same tree as the
+    PLN3/PLN/Deriver.metta cluster (Source 3). They are a
+    parallel "PeTTa" tree. Cross-tree relationship needs
+    explicit confirmation: are these two PLN
+    implementations, or one tree with two roots?
+  - atps/scripts/ lives outside hyperon/ entirely
+    (separate ATPS subproject). That is consistent with
+    the standing correction "no kNN/NB in PLN production"
+    — these scripts are downstream consumers, not parts
+    of the inference engine.
+  - The Goertzel/Nil "evidence-first discipline"
+    attribution: who is "Nil"? (Likely Nil Geisweiller —
+    PLN co-author; verify in later passes.)
+  - The mixture-local Prior⊗NB result tying MaSh NB at
+    30s/top-256 (327 each) is a strong empirical
+    equivalence claim — formally certified by the staged
+    commutation theorems but not in PLN3/PLN/ proper.
+
+================================================================
+
+CROSS-PAPER COHERENCE
+================================================================
+
+The three papers do NOT form a coherent single-arc theme. They
+are three independent "PLN as integration substrate" proposals
+across three distinct eras and ambition levels:
+
+  - P1 (2014, ECAN+PLN): cognitive-architecture-scale
+    integration with a dynamical attention substrate
+    (OpenCog Classic era).
+  - P2 (2013, DL+PLN via FISHGRAM): perception-layer
+    neural-symbolic bridge via pattern mining (pre-LLM era;
+    OpenCog Classic era).
+  - P3 (2026, kNN/NB+PLN): premise-selection algebra with
+    classical ML selectors as algebraic specializations
+    (Mettapedia / Hyperon / Lean-certified era).
+
+What they share is a META-STRATEGY: in each paper, PLN is
+positioned as the COMMON SUBSTRATE / CARRIER, and the partner
+formalism (ECAN attention dynamics; DL+FISHGRAM perception;
+kNN/NB classifiers) is reduced or bridged TO the PLN evidence
+calculus. P1 and P2 propose this aspirationally; only P3
+delivers it formally (Lean) and empirically (MPTP 5k).
+
+Implementation-status one-liner across the 3 papers:
+  P1 paper-only / superseded; P2 paper-only / anachronistic;
+  P3 fully implemented in adjacent-tree code with Lean proofs
+  and 4-round benchmarks — but in atps/+PeTTa/ trees, not
+  inside the PLN3/PLN/ Deriver.
+
+================================================================
+
+FOCUS-QUESTION ANSWERS
+================================================================
+
+Q1 (Guiding PLN with Attention Allocation — ECAN integration
+   protocol; same as URE STI hook? reflected in
+   inference-control/?):
+  The wiki card is an abstract stub and does not contain the
+  paper's protocol-level detail; the paper itself proposes
+  ECAN's nonlinear dynamical attention (STI/LTI/AV) as a
+  meta-controller over PLN inference path expansion. The URE
+  STI source-selection-mode hook in Source 6 is plausibly the
+  same integration generation. chaining/experimental/
+  inference-control/ is the closest in-cluster artifact —
+  meta-control over inference choice — but it is meta-rule
+  based (3 hand-written Continue rules in months-of-year), NOT
+  the dynamical ECAN substrate the paper proposes. So:
+  conceptually-related successor at toy scale; not a port.
+
+Q2 (Deep Learning Perception with PLN — neural-PLN bridge
+   architecture; cluster fit?):
+  The paper proposes encoder → FISHGRAM frequent-pattern
+  miner → AtomSpace atoms+TVs → PLN. This is a perception-
+  front-end pattern, not a differentiable inference path. No
+  fit in the cluster: no FISHGRAM port, no neural import, no
+  TV-from-neural-confidence shim. Modern Hyperon
+  neural-symbolic work (if any) lives outside PLN3/PLN/.
+
+Q3 (PLN kNN NB — what does it combine; classifier-as-TV-source;
+   any current code?):
+  It expresses Naive Bayes as tensorized likelihood evidence
+  and k-NN as local evidence aggregation, both on the same
+  E=(n+,n-) PLN evidence carrier. NOT classifier-as-TV-source
+  — it is the inverse: classifiers are recovered as
+  algebraic specializations of the PLN calculus. Yes, there
+  is current code (atps/scripts/select_pln_*.py,
+  hyperon/PeTTa/demos/pln_*_selector*.metta,
+  hyperon/PeTTa/lib/lib_pln_xi.metta) plus Lean proofs in
+  Mettapedia/Logic/ and 4-round MPTP 5k benchmarks. But this
+  code lives in adjacent application/PeTTa trees, not inside
+  the PLN3/PLN/ Deriver.
+
+Q4 (cross-paper coherence): Three independent applications
+   sharing only the meta-strategy "PLN as common substrate."
+   See cross-paper section above.
+
+================================================================
+
+MOST-SURPRISING SINGLE FINDING
+================================================================
+
+RawData+Publications+PLN kNN NB is mis-categorized as a
+"framing paper" — it is in fact a 2026 engineering paper with
+LEAN-PROVEN equivalences (NB and k-NN as evidence-algebra
+specializations) and a working flagship selector
+(select_pln_mixture_local_nb.py) that ties MaSh NB at 327/800
+in 30s top-256 MPTP 5k validation. The paper's central claim
+("classical selectors are NB and k-NN specializations on the
+same PLN evidence carrier") is not aspirational but
+mechanically certified via theorems
+toStrength_nbEvidence_eq_nbPosterior and
+PLN_hplusPos_eq_knnRelevance. This inverts the standing
+correction's framing: kNN/NB are absent from the Deriver, but
+they are present (and Lean-bridged to PLN) in the adjacent
+PeTTa/atps trees — i.e. there IS a PLN+kNN+NB integration in
+the broader Hyperon/Mettapedia ecosystem, just not inside
+PLN3/PLN/ proper.
+
+================================================================
+
+EMPTY / UNFETCHABLE / STRUCTURALLY SURPRISING
+================================================================
+
+  - P1 (Guiding PLN with Attention Allocation) and P2 (Deep
+    Learning Perception with PLN): both are ABSTRACT-ONLY
+    Markdown stubs (~600 bytes each). Full paper PDFs are
+    NOT mirrored on the wiki. Claim depth in this lane is
+    bounded by the stub content. Full extraction would
+    require fetching the AGI-13 / AGI-14 Springer
+    proceedings separately.
+  - P3 is a structural outlier for the lane: Mettapedia 2026
+    engineering paper, 22.6 KB, with embedded Lean-proof
+    crosswalks and benchmark tables. Fetched fully (no
+    pagination needed; total_length=22631, truncated=false).
+    Suggest re-binning in later passes — it sits closer to
+    Sources 2-8 than to P1/P2.
+
+================================================================
+END OF FINDINGS — LANE 3
+================================================================

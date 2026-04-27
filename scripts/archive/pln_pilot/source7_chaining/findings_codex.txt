@@ -1,0 +1,143 @@
+Model: Codex
+Extraction date: 2026-04-24
+Repo: chaining
+Commit: f2e1b031d11890e45b41d9ecf3de96896ace01a7
+Method: source-based pass only; no build or test execution
+
+Claim counts per section:
+- Section 1 Architecture map: 6
+- Section 2 URE migration audit: 8
+- Section 3 DTL core: 6
+- Section 4 PLN integration: 6
+- Section 5 Other research tracks: 5
+- Section 6 Production vs research: 4
+- Section 7 Successor handoff status: 4
+- Section 8 Discovered references: 4
+- Section 9 Cluster-level synthesis: 5
+- Section 10 Author-attribution check: 4
+
+Section 1 - Architecture map
+
+C-1-1. `chaining` is structured as a small reusable DTL core plus a much larger research playground. The root README describes the repo as "various experiments on chaining", while `CLAUDE.md` calls it a research platform and enumerates more than twenty `experimental/` tracks. [README.md] [CLAUDE.md]
+
+C-1-2. `dtl/` is the closest thing to a reusable module surface. It contains `forward/`, `backward/`, `utils.metta`, and exactly five tests under `dtl/tests/`, which is much tighter and more library-like than the rest of the tree. [dtl/] [dtl/tests/]
+
+C-1-3. The DTL backward core is a proof synthesizer, not a BIT or queue engine. `dtl/backward/curried.metta` defines `syn` as recursive proof construction over typed premises and `isyn` as an iterative wrapper that collapses results and re-adds them to the knowledge base. [dtl/backward/curried.metta around `syn` and `isyn`]
+
+C-1-4. The uncurried backward core is even more explicit about its synthesis role. `dtl/backward/no-curry.metta` defines `synthesize` over nullary through quintenary rules by arity, which makes the repo's core search model enumerative proof/program synthesis rather than URE-style managed search objects. [dtl/backward/no-curry.metta around `synthesize`]
+
+C-1-5. The forward DTL modules are thin wrappers over the same style of proof search. `dtl/forward/curried.metta` redefines a local `bc` and uses it to unfold rules backward before iteratively adding conclusions, while `dtl/forward/no-curry.metta` is a small binary-rule forward enumerator. [dtl/forward/curried.metta around `bc`, `fcc`, `ifcc`] [dtl/forward/no-curry.metta around `fc`]
+
+C-1-6. The experimental surface is intentionally multi-track. `CLAUDE.md` lists `pln/`, `pln-inf-ctl/`, `inference-control/`, `prob-chaining/`, `synthesis/`, `metamath/`, `program-verification/`, `modal-logic/`, `evolutionary-programming/`, `sumo/`, and more, which means `chaining` is not a single successor engine but a repo collecting multiple successor attempts. [CLAUDE.md]
+
+Section 2 - URE migration audit
+
+C-2-1. URE's BIT object model does not survive here as named reusable structures. Repo-wide search found no `BIT`, `AndBIT`, `BITNode`, `ControlPolicy`, or `MixtureModel` symbols in the working code; instead, `chaining` experiments express search control directly in MeTTa terms, branch conditionals, and estimated delayed calls. [repo-wide search for `BIT|MixtureModel|ControlPolicy|_control_as` under `experimental/` and `dtl/`]
+
+C-2-2. Thompson sampling does migrate, but only in a narrowed experimental form. `experimental/pln-inf-ctl/pln-inf-ctl.metta` defines `thompson-sample`, and `pln-estimate` runs `pln-bc`, selects the result with maximum confidence, then Thompson-samples a first-order probability from that truth value. [experimental/pln-inf-ctl/pln-inf-ctl.metta around `thompson-sample` and `pln-estimate`]
+
+C-2-3. That Thompson migration is explicitly weaker than URE's `BetaDistribution`-driven sampler. The local comment says the function supports only confidence `0` or `1` and therefore can operate "without requiring a Beta distribution", using a uniform draw at confidence 0 and returning strength at confidence 1. [experimental/pln-inf-ctl/pln-inf-ctl.metta around lines 730-742]
+
+C-2-4. Beta-posterior machinery survives only as a shared truth-value utility layer, not as a control-stack module. `experimental/common/truthvalue/TruthValue.metta` defines Jeffreys-prior `prior-alpha`, `prior-beta`, `post-beta`, `mean`, and count/confidence conversions for `STV`, while `EvidentialTruthValue.metta` lifts those operations over evidence-tagged TVs. [experimental/common/truthvalue/TruthValue.metta] [experimental/common/truthvalue/EvidentialTruthValue.metta]
+
+C-2-5. URE's control-rule meta-layer partially migrates as MeTTa-level control theories. `experimental/inference-control/README.md` defines a `Control` / `MkControl` structure with context updaters and continuation predicates for base case, recursive step, and match; the README then describes a "control theory" whose rules prove `Continue` judgments to decide whether a branch should proceed. [experimental/inference-control/README.md around `Control`, `MkControl`, and the `Continue` theory]
+
+C-2-6. That control-theory migration is conceptually real but operationally lighter than URE. The README states the third experiment (`inf-ctl-month-bc-xp`) tried evaluating termination by calling a backward chainer on a control theory and failed because MeTTa lacks adequate quotation for reasoning about free-variable terms; the fourth experiment (`inf-ctl-month-bc-cont-xp`) works around this by switching from termination predicates to continuation predicates and a dedicated control structure. [experimental/inference-control/README.md around lines 38-62 and 381-516]
+
+C-2-7. Probabilistic pruning also survives, but in a simpler standalone form than URE's survival-style BIT pruning. `experimental/prob-chaining/README.md` says the probabilistic backward chainer is inspired by ProbLog and prunes branches probabilistically while reasoning over axioms and rules, effectively emulating sampling rather than maintaining explicit tree-fitness and remaining-iteration probabilities. [experimental/prob-chaining/README.md]
+
+C-2-8. The migration verdict is therefore partial. `chaining` preserves several URE ideas - probabilistic branch scoring, Thompson-style selection, and control rules about search - but it does not preserve URE's mature reusable Bayesian control stack with separate `ActionSelection`, `BetaDistribution`, `MixtureModel`, `ControlPolicy`, and BIT classes. What survives is a family of MeTTa experiments, not a one-for-one MeTTa port of the whole stack. [experimental/pln-inf-ctl/] [experimental/inference-control/] [experimental/prob-chaining/] [repo-wide symbol search]
+
+Section 3 - DTL core
+
+C-3-1. The curried backward DTL is the cleanest reusable backward chainer in the repo. It takes a knowledge base, a maximum depth, and a typed query, then recursively proves application nodes by first proving proof abstractions and arguments. [dtl/backward/curried.metta around `syn`]
+
+C-3-2. The iterative wrapper `isyn` shows the intended reusable execution pattern: collapse the superposed backward results, add them to the knowledge space with `add-atoms-nodup`, and rerun. That is closer to iterative synthesis than to URE's search-state management. [dtl/backward/curried.metta around `isyn`] [dtl/utils.metta around `add-atom-nodup` and `add-atoms-nodup`]
+
+C-3-3. The uncurried backward DTL (`synthesize`) exposes the repo's generic proof-search ambition most directly. It supports backward chaining, forward chaining, mixed chaining, type checking, and type inference by recursively instantiating rules of arity zero through five. [dtl/backward/no-curry.metta header comments and `synthesize` clauses]
+
+C-3-4. The forward DTL modules do not introduce a separate control architecture. `dtl/forward/curried.metta` uses backward search to unfold rules from a source, and `dtl/forward/no-curry.metta` grows conclusions from a source by matching rules and premises from the knowledge base. [dtl/forward/curried.metta] [dtl/forward/no-curry.metta]
+
+C-3-5. The DTL test surface is small and concrete: one test each for backward curried, backward no-curry, forward curried, forward no-curry, and utils. This confirms that DTL is maintained as a compact core, not as an exhaustive control-rich framework. [dtl/tests/]
+
+C-3-6. Relative to other cluster sources, DTL sits between Source 5 and Source 3. It is more reusable than the frozen `hyperon-pln` seed because it is separated into a small module tree, but it is far simpler than URE's managed control stack and also simpler than the production `PLN/` line's confidence-prioritized derivation surface. Within `chaining` itself, DTL is the reusable substrate, while advanced control stays experimental. [dtl/] [CLAUDE.md]
+
+Section 4 - PLN integration
+
+C-4-1. `experimental/pln/` is the direct local continuation of the four-encoding pattern from Source 5. Its README says PLN is ported to MeTTa in four ways - `match`, `entail`, `equal`, and `dependent-types` - which matches the earlier `hyperon-pln` structure rather than the later monolithic `PLN/` library. [experimental/pln/README.md]
+
+C-4-2. The dependent-types PLN files still import the same shared formula layer and TV helpers that underpin the old seed. `DeductionDTL.metta` imports `../../common/formula/DeductionFormula.metta`, `ModusPonensDTL.metta` imports `../../common/formula/ModusPonensFormula.metta`, and `ImplicationDirectIntroductionDTL.metta` imports evidential truth-value and direct-introduction formula modules. [experimental/pln/dependent-types/DeductionDTL.metta] [experimental/pln/dependent-types/ModusPonensDTL.metta] [experimental/pln/dependent-types/ImplicationDirectIntroductionDTL.metta]
+
+C-4-3. The real PLN/control integration point is `experimental/pln-inf-ctl/`, not `dtl/`. Its README says chaining queries are translated into PLN statements so PLN can estimate whether a recursive call is promising, first with a random estimator (`rnd-inf-ctl.metta`) and then with a PLN-based estimator (`pln-inf-ctl.metta`). [experimental/pln-inf-ctl/README.md]
+
+C-4-4. `pln-inf-ctl` uses PLN as a branch estimator rather than as the main global engine. `pln-estimate` converts a backward-chaining query with `toPLN (toTheory $env) $ctx $depth $query`, runs `pln-bc` inside a PLN knowledge base, selects the result with maximum confidence, extracts its TV, and only then samples an estimate for the branch. [experimental/pln-inf-ctl/pln-inf-ctl.metta around `pln-estimate`]
+
+C-4-5. The control structure in `pln-inf-ctl` is much narrower than URE's control-policy stack. `MkControl` stores only a PLN space and an estimator function, and the main `bc` chooses the best estimated delayed call with `List.maxElementWith EDCall.lt5` before executing it. There is no separate reusable control-rule object model, no active-rule mixture, and no explicit config layer analogous to `UREConfig`. [experimental/pln-inf-ctl/pln-inf-ctl.metta around `MkControl`, `bce`, and `bc`]
+
+C-4-6. `chaining` therefore keeps PLN and inference control connected, but only as an experimental side path. The repo proves that MeTTa-era work did attempt a PLN-guided control layer, yet the top-level structure still leaves that work under `experimental/pln-inf-ctl/` rather than integrating it into the reusable DTL core. [experimental/pln-inf-ctl/] [dtl/] [CLAUDE.md]
+
+Section 5 - Other research tracks
+
+C-5-1. The current active direction is Metamath, not inference control. `experimental/metamath/README.md` describes a MeTTa port of Metamath propositional calculus, conversion from `set.mm` via `mm2metta`, and points to `pc-xp.metta` as the most advanced experiment. The recent git history is dominated by Metamath benchmark commits. [experimental/metamath/README.md] [`git log --format="%h %ad %an %s" -20`]
+
+C-5-2. Metamath is also where MORK first appears concretely in this cluster's codebase. The benchmarks README is explicitly "Benchmark between PeTTa and MORK" and reports that MORK greatly outperforms PeTTa for full forward search, while PeTTa greatly outperforms MORK for low-solution-density backward chaining. [experimental/metamath/benchmarks/README.md]
+
+C-5-3. The synthesis track survives here as an active descendant of Source 5's proof-synthesis work. `experimental/synthesis/README.md` still centers the repo around `Unify.metta`, `Synthesize.metta`, and a dedicated `experiments/` folder, which shows that generic synthesis remains part of the research agenda even as production PLN moved elsewhere. [experimental/synthesis/README.md]
+
+C-5-4. The repo also continues to explore alternative control paradigms outside PLN. `experimental/prob-chaining/README.md` describes a ProbLog-inspired probabilistic backward chainer, and the pre-populated git history shows separate research pushes for modal logic, evolutionary programming, and program verification. [experimental/prob-chaining/README.md] [`git log --grep="probabilistic backward chainer" -n 1`] [CLAUDE.md]
+
+C-5-5. Roman Treutlein's argument-set chainer is present only as a submodule integration point, not as native repo logic. The root README names it, `.gitmodules` pins `experimental/ArgSetChainer`, and git history shows PR #20 added it as a submodule, but the core repo is still organized around its own MeTTa experiments. [README.md] [.gitmodules] [`git log --grep="argset" -n 1`]
+
+Section 6 - Production vs research
+
+C-6-1. The repo presents itself as experimental at every visible layer. The root README calls the contents "various experiments on chaining", and `CLAUDE.md` says it serves as a research platform for automated reasoning, synthesis, and PLN in Hyperon. [README.md] [CLAUDE.md]
+
+C-6-2. Only `dtl/` looks library-like. The rest of the tree is a collection of stand-alone or semi-stand-alone experiments with their own README files, custom data, benchmark scripts, and domain-specific assumptions. [dtl/] [experimental/]
+
+C-6-3. The current commit narrative reinforces that positioning. Recent commits are about benchmark scripts, benchmark CSVs, gnuplot plots, and Metamath experiment refinements, not about stabilizing a user-facing API or cutting releases. [`git log --format="%h %ad %an %s" -20`]
+
+C-6-4. `chaining` should therefore be documented as an active research playground and migration lab, not as the canonical production implementation of the PLN/control line. Its importance is that it preserves and recombines ideas that later production repos simplified away. [README.md] [CLAUDE.md] [experimental/pln-inf-ctl/] [experimental/inference-control/]
+
+Section 7 - Successor handoff status
+
+C-7-1. There is no explicit local URE handoff narrative in the checked-in repo text. Repo-wide search for `URE`, `Unified Rule Engine`, and `opencog/ure` found no hits in the actual source tree. [repo-wide search for `Unified Rule Engine|opencog/ure|\\bURE\\b`]
+
+C-7-2. The repo's explicit provenance story is instead the `hyperon-pln` migration. Git history shows PR #1 as `db373cb 2024-04-12 Nil Geisweiller Merge pull request #1 ... "Add experiments from hyperon-pln"`, which anchors the formalization-seed lineage directly in this repo's history. [`git log --grep="Add experiments from hyperon-pln" -n 1`]
+
+C-7-3. The DTL module is also a distinct, traceable import into this repo. Git history shows PR #6 as `05607cb 2024-09-20 Nil Geisweiller Merge pull request #6 from tanksha/dtl`, and the root README separately calls out Hedra Seid Yusuf's backward/forward chaining module with uncertainty about its maintenance state. [`git log --grep="DTL" -n 5`] [README.md]
+
+C-7-4. So the repo-local successor story is indirect: `chaining` does not say "we replaced URE", but its history shows it absorbing `hyperon-pln`, later adding DTL, then adding PLN inference-control experiments, probabilistic chaining, and finally Metamath/MORK work. The URE migration case has to be inferred from component overlap, not from an explicit README declaration. [`git log --grep="PLN inference control" -n 1`] [`git log --grep="PLN based inference control" -n 1`] [`git log --grep="probabilistic backward chainer" -n 1`]
+
+Section 8 - Discovered references
+
+C-8-1. The strongest external formal reference is Metamath. `experimental/metamath/README.md` gives explicit instructions for extracting propositional calculus theorems from `set.mm`, compiling Metamath, and converting them with `mm2metta`. [experimental/metamath/README.md]
+
+C-8-2. The benchmark work adds an explicit PeTTa/MORK code reference surface to the cluster. `experimental/metamath/benchmarks/README.md` frames the work as a direct benchmark between the two, and `benchmark.sh` invokes `${hypdir}/MORK/target/release/mork` and `${hypdir}/PeTTa/run.sh`. [experimental/metamath/benchmarks/README.md] [experimental/metamath/benchmarks/benchmark.sh]
+
+C-8-3. The probabilistic chaining track is explicitly inspired by ProbLog. `experimental/prob-chaining/README.md` says the probabilistic backward chainer was inspired by ProbLog and designed to emulate a sampling procedure in that style. [experimental/prob-chaining/README.md]
+
+C-8-4. I did not find direct paper citations for the URE-style control machinery inside the checked-in `chaining` sources. The key references here are code/protocol references - Metamath, `mm2metta`, PeTTa, MORK, ProbLog, and the repo's own imported Hyperon/PLN experiments - rather than a bibliography embedded in source comments. [README.md] [experimental/metamath/README.md] [experimental/metamath/benchmarks/README.md] [experimental/prob-chaining/README.md]
+
+Section 9 - Cluster-level synthesis
+
+C-9-1. `chaining` is the first repo in this cluster that clearly reunites both major predecessor lines in one place: the `hyperon-pln` formalization experiments (via PR #1 and `experimental/pln/`) and a set of URE-like inference-control experiments (via `experimental/inference-control/`, `experimental/prob-chaining/`, and `experimental/pln-inf-ctl/`). [`git log --grep="Add experiments from hyperon-pln" -n 1`] [experimental/pln/README.md] [experimental/inference-control/README.md] [experimental/pln-inf-ctl/README.md]
+
+C-9-2. But it does not preserve URE intact. The mature C++ architecture of BIT nodes, explicit control-policy objects, mixture-modeled active control rules, and posterior-driven selection is replaced by smaller MeTTa experiments: continuation predicates, control theories, EDCall selection, simplified Thompson sampling, and ad hoc probabilistic pruning. [experimental/inference-control/README.md] [experimental/pln-inf-ctl/pln-inf-ctl.metta] [experimental/prob-chaining/README.md]
+
+C-9-3. `chaining` also adds directions that were not central in URE or production PLN: Metamath proof search and benchmarking, MORK/PeTTa comparison, modal logic, program verification, and evolutionary-programming-as-reasoning. This makes it broader than a simple "URE rewritten in MeTTa" story. [experimental/metamath/README.md] [experimental/metamath/benchmarks/README.md] [CLAUDE.md]
+
+C-9-4. Relative to the production MeTTa PLN line, the repo reads as the research branch where hard problems were explored rather than closed. Source 3's `PLN/` line chose a small STV subset and a straightforward derivation surface; `chaining` keeps experimental control ideas, multiple representational strategies, and unresolved alternative directions under `experimental/`. [dtl/] [experimental/] [experimental/pln-inf-ctl/]
+
+C-9-5. The migration outcome is therefore "partial migration plus diversification". The URE control story did not simply die, but it also did not land here as a settled successor architecture. Instead it fragmented into promising MeTTa experiments while the main stable library path went elsewhere. [experimental/inference-control/README.md] [experimental/pln-inf-ctl/pln-inf-ctl.metta] [experimental/prob-chaining/README.md]
+
+Section 10 - Author-attribution check
+
+C-10-1. Nil Geisweiller is the dominant visible author of the repo's main arcs. Recent history shows him merging the hyperon-pln import (PR #1), PLN inference control (PR #15), PLN-based inference control (PR #16), probabilistic backward chaining (PR #19), and the current Metamath/MORK benchmark work (PR #25). [`git log --grep="Add experiments from hyperon-pln" -n 1`] [`git log --grep="PLN inference control" -n 1`] [`git log --grep="PLN based inference control" -n 1`] [`git log --grep="probabilistic backward chainer" -n 1`] [`git log --format="%h %ad %an %s" -20`]
+
+C-10-2. Hedra Seid Yusuf's contribution is real but scoped. Git history shows the DTL PR, and the root README explicitly says the repo contains a backward/forward chaining module prepared by Hedra, while also noting uncertainty about how well maintained it is. That reads as an important imported module, not the dominant ongoing line. [`git log --grep="DTL" -n 5`] [README.md]
+
+C-10-3. Roman Treutlein's role is bounded to the argument-set chainer line. Git history shows PR #20 adding the submodule, the root README names his "Light PLN" argset chainer, and `.gitmodules` confirms it remains a separate embedded repo rather than integrated core logic. [`git log --grep="argset" -n 1`] [README.md] [.gitmodules]
+
+C-10-4. The repo therefore has a clear authorship split for wiki purposes: Geisweiller is the primary author of the active chaining research line and the migration experiments; Hedra is the source of the DTL module; Roman contributes the ArgSetChainer sidecar. That distinction matters because Source 7 is not one coherent code tradition authored by a single person. [README.md] [`git log` results above] [.gitmodules]
+
+End of findings.

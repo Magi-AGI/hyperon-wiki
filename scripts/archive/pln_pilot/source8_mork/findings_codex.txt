@@ -1,0 +1,163 @@
+Model: Codex
+Extraction date: 2026-04-24
+Source: MORK (code repo)
+Repo path: E:\GitHub\hyperon reference\MORK
+Commit: 4cef6f77c9712ddeef0d55ae751d249f89385e9c
+Method: source-based repository pass only; no build or test execution (PathMap dependency unresolved locally)
+
+Summary
+- MORK is a high-performance hypergraph execution kernel, not a checked-in FactorGraph or probabilistic-inference engine.
+- The repo provides a real executable substrate for `.mm2` programs and benchmark workloads, including the `chaining` Metamath benchmark interface.
+- The PLN FactorGraph / MORK paper stream therefore appears to be a code-to-paper proposal bridge, not an already-realized implementation in this repo.
+- MORK belongs to a distinct contributor ecosystem from the Geisweiller-centered PLN line; the connection is inter-ecosystem benchmarking/proposal, not a single unified implementation lineage.
+
+1. Architecture
+- The codebase is organized as a Rust workspace with `kernel/` as the default member, plus `expr/`, `frontend/`, `interning/`, and several `experiments/*` crates.
+- `kernel/src/space.rs` is the architectural center. Its `Space` type combines:
+  - a `PathMap`-backed storage surface,
+  - shared symbol mapping,
+  - zipper-driven expression traversal,
+  - interpretation and execution loops over `exec`-style expressions,
+  - optional integrations for JSON transcription, z3, wasm, and sink/source plumbing.
+- The architecture reads as a graph/term execution substrate:
+  - hypergraph-like storage and retrieval,
+  - zipper-based structural traversal,
+  - unification and substitution over expressions,
+  - MeTTa-calculus execution via `metta_calculus`.
+- `kernel/src/main.rs` exposes the repo as a CLI runtime rather than a library-only component. The core subcommands are `bench`, `test`, `run`, and `convert`.
+- `expr/src/lib.rs` is where low-level expression and unification logic lives. This supports the claim that MORK’s core competency is fast symbolic structure processing rather than domain-specific probabilistic inference.
+
+2. FactorGraph audit
+- I found no checked-in FactorGraph implementation surface in this repo.
+- Repository-wide searches turned up no meaningful code for:
+  - `FactorGraph`
+  - message passing / belief propagation
+  - marginalization / posterior / prior inference pipelines
+  - explicit probabilistic graphical model engines
+- This matches the brief’s pre-check: MORK currently has no FactorGraph code.
+- The strongest conclusion is negative but important:
+  - MORK may be a plausible target substrate for the FactorGraph/MORK research direction,
+  - but that direction is not realized here in code at this commit.
+- This means the wiki should not present MORK as already implementing the FactorGraph machinery proposed in the PLN FactorGraph/MORK papers.
+
+3. `.mm2` format and chaining benchmark interface
+- `.mm2` is a real executable program format in this repo, not just an archival artifact.
+- `kernel/resources/` contains multiple checked-in `.mm2` programs, including:
+  - `ancestor.mm2`
+  - `counter_machine_5.mm2`
+  - `decision_tree_learning.mm2`
+  - `decision_tree_learning_without_min_sink.mm2`
+  - `grounding.mm2`
+  - `ip_sudoku.mm2`
+  - `odd_even_sort.mm2`
+  - `std.mm2`
+  - `string_convert.mm2`
+  - `transitive.mm2`
+  - `zip_add.mm2`
+- `kernel/src/main.rs` includes explicit `.mm2`-focused routines and comments such as `work_mm2_run`, `mm2_bc`, and `mm2_bc_v3`, including comments about “MM2 inference control”.
+- The `Run` and `Convert` command paths show that MORK can ingest, execute, and transform these program representations directly.
+- The `chaining` benchmark interface is real:
+  - `chaining/experimental/metamath/benchmarks/benchmark.sh` invokes `MORK/target/release/mork run ...`
+  - this makes MORK an external runtime target for benchmarked `.mm2` workloads.
+- So the repo materially closes one part of the earlier paper/code gap:
+  - there is real MORK code in the cluster,
+  - and it is used from another cluster repo,
+  - but the realized surface is execution/runtime infrastructure, not FactorGraph PLN.
+
+4. `experiments/` deep dive
+- The `experiments/` subtree is substantial and meaningful, but it does not change the FactorGraph conclusion.
+- `experiments/eval`
+  - provides a `no_std` / nightly evaluation engine with function registry, stack-frame machinery, evaluation scope, and quoting/pure-eval support.
+  - This looks like experimental execution infrastructure, not probabilistic graph inference.
+- `experiments/eval-ffi`
+  - exposes a small FFI layer around the experimental eval stack.
+- `experiments/eval-examples`
+  - contains small example exported functions like arithmetic helpers, showing how the eval machinery can be embedded or extended.
+- `experiments/unification_test_laws`
+  - is especially important for recent development direction.
+  - It compares MORK unification against SWI-Prolog and diffs results, which aligns with the brief’s note that PR #49 (“Unification laws test”) is the latest merged work.
+- Net interpretation:
+  - experiments focus on evaluation, embedding, and unification correctness,
+  - not on turning MORK into a probabilistic inference engine.
+
+5. Recent development arc
+- The recent arc appears to center on:
+  - unification correctness,
+  - PathMap/API integration,
+  - execution plumbing and sink/source behavior,
+  - benchmarkability,
+  - and Metamath/MORK evaluation work.
+- The brief’s git-history notes are consistent with the code:
+  - PR #49 (`Unification laws test`) reflects the visible `experiments/unification_test_laws` surface.
+  - PR #48 (sparse tensor + einsum) was closed rather than merged, which is a useful negative signal: this repo is not trending into tensor/factor-graph territory at this time.
+- `kernel/src/main.rs`, `space.rs`, and the experiments crates all reinforce a story of kernel/runtime refinement rather than probabilistic model growth.
+- The repo therefore looks active and technically serious, but along a different axis than the FactorGraph/MORK papers imply.
+
+6. `kernel/resources/` checked-in programs
+- The checked-in resources are important because they show what MORK is actually being used to execute.
+- They span:
+  - logic examples (`ancestor.mm2`, `transitive.mm2`),
+  - algorithmic/process examples (`counter_machine_5.mm2`, `odd_even_sort.mm2`, `zip_add.mm2`),
+  - structured learning/demo work (`decision_tree_learning.mm2`),
+  - grounding and conversion (`grounding.mm2`, `string_convert.mm2`, `test.json`).
+- `decision_tree_learning.mm2` is especially notable:
+  - it includes Gini impurity and tree-learning style logic,
+  - but even here, the emphasis is executable symbolic/algorithmic structure, not FactorGraph inference.
+- `std.mm2` acts like a standard library for the `.mm2` surface.
+- Taken together, `kernel/resources/` presents MORK as a programmable symbolic execution platform with benchmark/demo workloads.
+
+7. PathMap dependency
+- `PathMap` is a hard architectural dependency and a practical build blocker in this environment.
+- The root `Cargo.toml` references `pathmap = { path = "../PathMap/" ... }`.
+- `kernel/src/space.rs`, `kernel/src/sinks.rs`, and related code use `PathMap` pervasively.
+- This is not an optional integration; it is a core substrate dependency.
+- As a result:
+  - I did not run a local build,
+  - and any future reproduction/build instructions in the wiki or repo docs should clearly state that MORK is not self-contained without the sibling `PathMap` checkout.
+
+8. Discovered references and ecosystem signals
+- The repo’s contributor/authorship profile is distinct from the PLN/URE line described in Sources 2-7.
+- The brief’s pre-populated attribution is consistent with the local codebase and repo framing:
+  - Adam Vandervorst is the primary architect,
+  - Remy Clarke and Luke Peterson are major contributors,
+  - Geisweiller is not a central figure here.
+- This matters for the wiki because the PLN FactorGraph/MORK line is not an internal, single-team continuation of the Geisweiller PLN work.
+- It is better described as an inter-ecosystem proposal or collaboration surface:
+  - PLN-side authors propose or benchmark against MORK,
+  - but MORK itself is governed by a different technical tradition and contributor base.
+
+9. Cluster-level interpretation
+- Source 8 resolves the code side of the MORK question in a way parallel to the URE -> chaining migration audit:
+  - MORK is real code in the cluster’s orbit,
+  - but not the code that the FactorGraph/MORK papers might lead a reader to expect.
+- The correct cluster-level framing is:
+  - MORK is an execution/performance substrate with real `.mm2` program execution and benchmark integration,
+  - the PLN FactorGraph/MORK papers appear to describe a proposed or aspirational coupling to that substrate,
+  - the checked-in repo does not yet realize FactorGraph PLN machinery.
+- This is valuable to the wiki because it sharpens future paper extraction:
+  - “implemented now” = MORK runtime substrate and benchmark code
+  - “paper-proposed but not found in code” = FactorGraph reasoning layer
+- The repo therefore closes the “no code at all” gap but leaves the “is the paper architecture implemented?” gap open.
+
+10. Author / contributor map
+- The brief’s git-history block already established the main authorship pattern, and the repo content is consistent with it:
+  - Adam Vandervorst is the dominant technical author/architect.
+  - Remy Clarke is strongly represented, including in executable `.mm2` resource work such as decision-tree learning.
+  - Luke Peterson is a significant contributor, including dependency and performance-related surfaces.
+  - Igor Malovitsa appears as a minor contributor.
+  - Geisweiller is effectively peripheral here.
+- This reinforces the ecosystem boundary:
+  - if the wiki later invites expert review on MORK itself, Vandervorst/Clarke/Peterson are the relevant technical reviewers,
+  - whereas Geisweiller remains the bridge reviewer for the PLN side of the connection.
+
+Directly actionable findings for the wiki
+1. Do not describe MORK as already implementing PLN FactorGraph reasoning.
+2. Do describe MORK as a real runtime/benchmark substrate now present in the cluster’s code story.
+3. When discussing the PLN FactorGraph/MORK paper series, explicitly distinguish:
+   - paper-proposed architecture,
+   - current checked-in MORK execution kernel,
+   - benchmark linkage via `chaining`.
+4. Treat MORK as a distinct ecosystem from the OpenCog/Geisweiller PLN line.
+5. Note the PathMap dependency whenever discussing reproducibility or local builds.
+
+End of findings.

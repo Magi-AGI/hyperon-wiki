@@ -1,0 +1,125 @@
+# PLN3 (ngeiswei fork) — Source 2 Extraction Brief (Cross-Model)
+
+This is the neutral extraction brief for independent per-model runs on **Source 2** of the PLN cluster pilot. Claude, Codex, and Gemini each run this brief separately against the same source. Results will be cross-reconciled; the pilot baseline is the Source 1 PLN book cross-model synthesis at `scripts/archive/pln_pilot/findings_reconciled_crossmodel.txt`.
+
+**Repo:** `PLN3` — local mirror of `ngeiswei/PLN` (fork of `trueagi-io/PLN`). Modular `src/` layout, MeTTa-native. Recent activity to 2025-08-15 (Negation support merged from trueagi-io PR #54). Upstream `trueagi-io/PLN` has since consolidated the code into a single `lib_pln.metta`; PLN3 preserves per-file modularity.
+
+**Local path:** `E:\GitHub\hyperon reference\PLN3\`
+
+**Pre-existing meta-docs in the repo** (consult first for self-description, don't take at face value — verify against code):
+- `README.md` — minimal, points to `https://github.com/trueagi-io/PLN/wiki`
+- `CLAUDE.md` — author-written Claude-Code orientation (describes structure and claimed rule list)
+- `AGENTS.md` — general-agent notes (claims near-identical to PLN2)
+- `GEMINI.md` — Gemini orientation (mirror of modular branch)
+
+Ignore stray `tmpclaude-*-cwd` files — those are leftovers from prior Claude-Code sessions, not repo content.
+
+---
+
+## Goal
+
+Produce an expert-level extraction that (a) documents PLN3 on its own terms and (b) identifies the **delta** between the 2008 PLN book (Source 1) and this current MeTTa implementation. The wiki's `Hyperon AI Algorithms+PLN` cards will be revised using the reconciled Claude + Codex + Gemini synthesis across all PLN-cluster sources.
+
+**Audience:** a domain expert reviewing for Ben Goertzel's approval. Favor specificity (file paths, symbol names, line-level citations) over generality.
+
+---
+
+## Required output sections
+
+Each as numbered, cited claims in the same `C-<section>-<n>` format as Source 1. Citation format: `[<file>:<line-or-symbol>]` or `[examples/X.metta]` etc.
+
+### §1 — Architecture and module map
+Per-file purpose, dependency / build order (`build.sh` concatenation sequence), entry points, derivation-engine topology, truth-value representation (the repo uses `(stv strength confidence)` — verify this and note any alternatives). What's the intended call-graph from `examples/*.metta` → `src/*.metta`?
+
+### §2 — Implemented inference rules and truth-value machinery
+For each rule actually present in `src/Rules.metta` and its backing formula in `src/Formulas.metta`:
+- Rule name as it appears in code.
+- Formula transcribed verbatim (MeTTa S-expression).
+- Compared to the Source 1 book formula for the same rule: **faithful**, **simplified**, **modernized**, or **different derivation**.
+- What truth-value fields are consumed and produced.
+
+The book claims PLN has >60 rules in various families. PLN3 almost certainly doesn't have all of them. Enumerate the gap explicitly.
+
+### §3 — Inference control strategy
+How does `src/Deriver.metta` pick tasks? Priority queue behavior, stamp-disjoint checking, termination (MaxSteps, confidence thresholds). How does control differ from the book's BIT/BC/FC + multi-armed bandit machinery? Does it reduce to forward chaining, backward chaining, something hybrid, or something new?
+
+### §4 — Deviations from the 2008 book
+This is the core of the extraction. Organize as:
+- **Faithfully implemented** — book rules/concepts preserved.
+- **Simplified or omitted** — book rules/concepts the code skips or reduces.
+- **Modernized** — book concepts re-expressed in MeTTa idiom (pattern matching, unification, etc.) rather than the book's explicit control structures.
+- **New / not in the book** — extensions without a clear book antecedent.
+
+### §5 — Experimental extensions and recent work
+Recent commits show active work on Negation (PR #54, Aug 2025), TaskReturn (PR #52), Modularity (PR #51). Cross-reference the wiki's active PLN-related raw data (e.g. `RawData+Publications+PLN FactorGraph MORK v3.2`, `PLN Chaining on MORK`, `Iterative FactorGraph MORK`). Does PLN3 contain FactorGraph-related work? MORK integration?
+
+### §6 — Tests, examples, worked inferences
+- `ruletests/*.metta` — what does each test assert? Are they unit tests on single rules, or chains?
+- `examples/*.metta` (`FlyingRaven`, `Robot`, `Smokes`, `Toothbrush`) — what domain does each model? What inference chain does each exercise?
+- `examples/PLN.py` — how does Python integration work?
+
+### §7 — Status, open issues, TODOs
+Any `TODO` / `FIXME` / `XXX` comments; any placeholder functions; any tests that are expected-to-fail or currently disabled. Any branches or PRs that suggest ongoing direction.
+
+### §8 — Discovered publications
+Any citations in code comments, commit messages, or example files pointing at papers. List each as: `title | author(s) | year | cited where`. These feed the wiki's `RawData+Publications+*` coverage reconciliation.
+
+---
+
+## Focus questions (Gemini-flagged for Source 2)
+
+1. **MeTTa-fication of rules.** Are the book's explicit formulas (e.g. independence-based deduction `sAC = sAB·sBC + (1−sAB)·(sC − sB·sBC)/(1−sB)`) ported verbatim, or has PLN3 moved toward MeTTa pattern matching + unification where the formula emerges from rule structure? Extract concrete examples.
+
+2. **MORK / FactorGraph connection.** The wiki has `RawData+Publications+PLN FactorGraph MORK v1..v3.2` (an iterative paper series). Does PLN3 reference FactorGraph decomposition, MORK, or M0RK semantics anywhere? If yes, cite the file/line.
+
+3. **Consistency enforcement.** The 2008 book (Source 1) uses Heaviside multipliers to zero out truth-values outside the `max(0, (sA+sB-1)/sA) ≤ sAB ≤ min(1, sB/sA)` region for deduction. Is this enforced in PLN3 via `src/Constraints.metta` or elsewhere, or is it left as a theoretical ideal?
+
+---
+
+## Book-to-code verification targets
+
+From the Source 1 cross-model reconciliation, these items have specific expected code-level manifestations in PLN3. Please verify.
+
+### V1 — Symmetric Modus Ponens formula
+Source 1 resolved in favor of the **multiplication form** `sB = sA·simAB + c·(1−sA)·(1+simAB)` (not division). Is PLN3's `symmetricModusPonens` consistent with this? Transcribe the formula as implemented.
+
+### V2 — Default term probability `c`
+The 2008 book uses `c = 0.02` as the default-term-probability constant for heuristic Modus Ponens. Does PLN3 use this value? If configurable, where?
+
+### V3 — Inference trails
+The book introduces bounded-length inference trails (~10–20 atoms) to prevent circular inference and TV inflation. Does PLN3's `Deriver.metta` maintain trails ("stamps")? What bound?
+
+### V4 — Revision with count drift
+The book warns that revision with `c > 0` drifts strengths toward 1. Does PLN3's revision rule use a nonzero overlap constant?
+
+### V5 — Rule list completeness
+CLAUDE.md claims rules: Revision, Modus Ponens, Symmetric Modus Ponens, Deduction, Induction, Abduction, Evaluation Implication, Inversion, Negation Elimination, Equivalence to Implication, Transitive Similarity. Verify each is actually present and has a formula; note any absent or stub.
+
+### V6 — Missing from PLN3 relative to book
+The book has >60 rules. Definite misses to call out if absent: concept-geometry deduction, distributional TV / matrix deduction, intensional-inheritance mixed cases, temporal/causal rules (PredictiveImplication, SeqAND etc.), quantifier rules, multideduction.
+
+---
+
+## Output file
+
+Write findings to: `E:\GitHub\Magi-AGI\hyperon-wiki\scripts\archive\pln_pilot\source2_pln3\findings_<model>.txt`
+
+e.g., `findings_claude.txt`, `findings_codex.txt`, `findings_gemini.txt`.
+
+Create the `source2_pln3/` subdirectory if missing. Markdown inside the `.txt` is fine. Header: model name, extraction date (2026-04-24), commit hash of the repo at time of extraction (run `git rev-parse HEAD` in the repo), claim counts per section.
+
+If the write is blocked by any extension-based guardrail, paste the full content verbatim in your response (no word limit).
+
+---
+
+## Rules
+
+- Do NOT consult any other source — no book, no wiki MCP, no other repos, no web. Only the files inside `E:\GitHub\hyperon reference\PLN3\`.
+- Cite file and symbol (or approximate line) for every concrete claim.
+- Prefer specificity over generality.
+- Flag anything the repo's own meta-docs (CLAUDE.md / AGENTS.md / GEMINI.md) claim that the code doesn't actually show.
+- For the discovered-publications list, include EVERYTHING cited, even if just "[Goertzel 2008]" with no full reference.
+
+---
+
+*End of Source 2 brief.*

@@ -1,0 +1,34 @@
+# chaining (trueagi-io) — Gemini Extraction Findings
+**Date:** 2026-04-24
+**Commit:** f2e1b031 (Nil Geisweiller, 2026-03-22 snapshot)
+
+## §1 — Migration Audit (URE -> Chaining)
+- **C-7-1: Bayesian Thompson Sampling:** Verified in `experimental/pln-inf-ctl/pln-inf-ctl.metta`. It exists as a `thompson-sample` stub. While the stub is simple (returns random if conf=0), the surrounding `pln-estimate` logic uses it to rank recursive chainer branches based on success probability. [pln-inf-ctl.metta:736]
+- **C-7-2: Control Policy (Meta-Reasoning):** The "Reasoning-based Controlled Backward Chainer" (`experimental/inference-control/inf-ctl-month-bc-cont-xp.metta`) represents the spiritual successor to URE's `control_as`. It implements continuation predicates (`$bcont`, `$rcont`, `$mcont`) that call *another instance* of the backward chainer on a control theory to decide whether to continue a proof branch. [inference-control/README.md]
+- **C-7-3: Complexity Penalty:** Not implemented in the URE/Kolmogorov sense. Grep returned no results for "complexity" or "MixtureModel" beyond comments.
+- **C-7-4: Backward Inference Tree (BIT):** Replaced by **Proof Trees** and explicit depth-limited search in the MeTTa chainer. The `dtl/backward/curried.metta` chainer is the standardized version of this logic.
+
+## §2 — MORK / FactorGraph Connection
+- **C-7-5: MORK Identified:** Verified in `experimental/metamath/benchmarks/`. The `benchmark.sh` script invokes a separate MORK binary located at `${hypdir}/MORK/target/release/mork`. [metamath/benchmarks/benchmark.sh:79]
+- **C-7-6: Performance Narrative:** Benchmarks show MORK (executing `.mm2` files) greatly outperforms PeTTa for **full forward chaining**, while PeTTa wins for low-density backward chaining. This is a critical finding for the wiki's "Inference Control" and "MORK" cards. [metamath/benchmarks/README.md]
+- **C-7-7: .mm2 DSL:** MORK uses a specialized logic DSL (`.mm2`) that allows `exec` commands and specialized predicates like `sol` (solution) and `rb` (rulebase). [metamath/benchmarks/pc-bc.mm2]
+
+## §3 — Iterative Chaining (The "Message Passing" Proxy)
+- **C-7-8: Iterative Chaining Definition:** In this repo, "Iterative Chaining" means **memoization of intermediate subtrees**. Caching results in the AtomSpace so subsequent queries can reuse partial proofs. [iterative-chaining/README.md]
+- **C-7-9: Scaling Strategy:** `experimental/iterative-chaining/ifc-xp.metta` implements a "Wrapped Iterative Chainer" that decomposes large reasoning tasks into smaller, cacheable chunks.
+
+## §4 — Program Synthesis
+- **C-7-10: Evolution from Hyperon-PLN:** The `experimental/synthesis/` directory contains a massive test suite (`SynthesizeTest.metta`, 233 KB) for the synthesizer engine inherited from Source 5. It confirms the synthesizer's role in automated proof discovery.
+
+## §5 — Implementation Styles (Source Delta)
+- **C-7-11: Rule Diversity:** Confirms the 4-track implementation (match, entail, equal, dependent-types) found in Source 5 and 4. `dtl/` appears to be the most "production-ready" standardization of these experiments.
+
+## §6 — Git History Context (Intent Attribution)
+- **Owner:** Nil Geisweiller is the almost exclusive owner of the experiments (280+ commits).
+- **Recent Direction:** Shifted heavily toward **Metamath** validation (March 2026).
+- **MORK Integration:** Commit `PR #25` (2026-03-22) is the first code-level touchpoint for MORK in the cluster, providing the benchmarking bridge.
+
+## Focus Questions Response
+1. **Migration:** Thompson Sampling and Control Policies are present as MeTTa-native experiments. Mixture Models and Kolmogorov complexity were dropped/lost.
+2. **MORK/FactorGraph:** `chaining` is the benchmarking harness for MORK. MORK is a separate high-performance chainer written in Rust (implied by `target/release/mork`).
+3. **Inference Control:** Uses a meta-reasoning approach where a "Control Theory" informs the chainer's branching decisions.

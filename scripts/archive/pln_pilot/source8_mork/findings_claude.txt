@@ -1,0 +1,305 @@
+# Source 8 — MORK (trueagi-io) — Claude single-pass findings
+
+**Model:** Claude Opus 4.7 (1M context) single deep pass
+**Extraction date:** 2026-04-24
+**Repo:** `E:\GitHub\hyperon reference\MORK\` → `trueagi-io/MORK`
+**Commit at extraction time:** `4cef6f77c9712ddeef0d55ae751d249f89385e9c` (HEAD = main, 2026-04-19 merge of PR #49)
+**Build state:** source-only pass; `pathmap` external dep at `../PathMap` is NOT cloned locally; nightly-required (Edition 2024).
+**Citation convention:** `C-<section>-<n>` with file path + symbol or approximate line.
+
+**Claim counts per section:**
+- §1 (architecture): 14 claims
+- §2 (FactorGraph audit): 9 claims  ← PRIORITY
+- §3 (.mm2 format): 8 claims
+- §4 (experiments deep dive): 10 claims
+- §5 (recent dev arc): 8 claims
+- §6 (kernel/resources/): 11 claims
+- §7 (PathMap dependency): 7 claims
+- §8 (publications/refs): 5 claims
+- §9 (cluster-level interpretation): 6 claims
+- §10 (author/contributor map): 5 claims
+**Total: 83 claims**
+
+---
+
+## §1 — Architecture: what MORK actually is
+
+**C-1-1.** MORK is a **Cargo workspace with 5 actual member crates** (workspace `Cargo.toml` lines 3-12): `interning/`, `expr/`, `frontend/`, `kernel/`, plus four under `experiments/`: `eval`, `eval-ffi`, `eval-examples`, `unification_test_laws`. CLAUDE.md's claim of "7 crates" was approximately right; GEMINI.md's claim of a `benchmarks/` crate is **incorrect** — there is no `benchmarks/` crate. Benchmarks are in-process functions inside `kernel/src/main.rs` and selected via the `bench` CLI subcommand.
+
+**C-1-2.** `default-members = ["kernel/"]` (root `Cargo.toml:14`) means `cargo +nightly build --release` only builds the kernel crate by default. AGENTS.md flags this correctly.
+
+**C-1-3.** The kernel crate's only public module is `space` (`kernel/src/lib.rs:7`); `sources`, `sinks`, `pure` are private modules used through `Space`. So MORK's external API is essentially `Space::new()` plus methods. The CLI binary is `kernel/src/main.rs` (6,008 lines).
+
+**C-1-4. Storage core = `Space` struct, not a generalized triemap class.** `kernel/src/space.rs:38-45`:
+```
+pub struct Space {
+    pub btm: PathMap<()>,
+    pub sm: SharedMappingHandle,
+    pub mmaps: HashMap<OwnedSourceItem, ArenaCompactTree<memmap2::Mmap>>,
+    pub z3s: HashMap<OwnedSourceItem, Box<Popen>>,
+    pub last_merkleize: Instant,
+    pub timing: bool,
+}
+```
+The "Triemap-based graph database" advertised in CLAUDE.md is **literally a single `pathmap::PathMap<()>`** (the `btm` field — likely "byte trie map") plus auxiliary mmap-backed and Z3-backed caches. The triemap implementation itself lives in the **external `pathmap` crate**.
+
+**C-1-5. Expression representation = byte-string with 4 tag types.** `expr/src/lib.rs:91-97`:
+```
+pub enum Tag {
+    NewVar,           // $
+    VarRef(u8),       // _1 .. _63
+    SymbolSize(u8),   // 1..63 byte symbols
+    Arity(u8),        // 0..63 arity expressions
+}
+```
+Each tag is one byte; symbols/expressions are flat byte strings prefixed with arity/size tags. This is what AGENTS.md calls "MM2 programs" / "byte-string mode": MeTTa S-expressions reified into a **prefix-encoded contiguous byte buffer** that can be stored as a path in the PathMap trie. `Expr` is a `*mut u8` pointer (`expr/src/lib.rs:191-195`).
+
+**C-1-6. Pattern matching is first-order Robinson-style unification with occurs check.** `expr/src/lib.rs:1960`: `pub fn unify(stack: Vec<(ExprEnv, ExprEnv)>) -> Result<BTreeMap<ExprVar, ExprEnv>, UnificationFailure>`. Failure modes: `Occurs`, `Difference`, `MaxIter` (bound 1000 iterations, `expr/src/lib.rs:1846`). There is also `pub fn anti_unify` (`expr/src/lib.rs:669`) and `Expr::unify` method (line 734). NO higher-order unification, NO HOAS. There is De Bruijn level support, but it's first-order term unification with a specific encoding.
+
+**C-1-7. The "Zipper Abstract Machine" is documentation-only nomenclature, not an in-code symbol.** Grep for `ZAM` / `abstract machine` / `virtual machine` returns matches only in `README.md`, `CLAUDE.md`, `GEMINI.md` — never in code or comments. The actual zipper machinery lives in the external `pathmap` crate (~125 `pathmap::` references across 6 files). MORK uses `ReadZipperUntracked`, `WriteZipperTracked`, `ProductZipper`, `ProductZipperG`, `PrefixZipper`, `DependentProductZipperG`, and the `PolyZipper` derive macro (`kernel/src/sources.rs:202`). The "VM" framing is aspirational packaging of these zipper operations.
+
+**C-1-8. The actual evaluation loop is `Space::metta_calculus(&mut self, steps: usize)`** (`kernel/src/space.rs:1717`). It looks for paths starting with the prefix `[Arity(4)] "exec"`, removes them, calls `Space::interpret`, repeats up to `steps` times. So the **execution model is: rewrite-rule scheduling driven by `(exec <loc> <pattern> <template>)` triples sitting in the same Space as the data.** Comments in `main.rs` repeatedly say "MM2 inference control" referring to this priority-encoded `<loc>` field.
+
+**C-1-9.** `Space::interpret` (`space.rs:1678`) destructures `(exec <loc> <pat> <tpl>)` and dispatches to `transform_multi_multi_*` based on whether `<pat>` starts with `,` (compat mode) or `I` (input/source mode), and `<tpl>` starts with `,` or `O` (output/sink mode). Four combinations, all routing into the same `transform_multi_multi_io` under `cfg(not(feature="specialize_io"))`. The default feature `specialize_io` enables four hand-specialized variants for performance.
+
+**C-1-10. `Space` "relational algebra" support** (CLAUDE.md's claim of "union, intersection, subtraction"): there is **no `Space::union/intersect/subtract` method**. The closest things are: (a) `add_all_sexpr` / `remove_all_sexpr` for individual additions/removals (`space.rs:835-836`); (b) `transform_multi_multi_io` performs the underlying multi-pattern join (relational equi-join via `ProductZipper`); (c) `WriteResourceRequest::pjoin` (`sinks.rs:43`) computes prefix overlap as a "join" of write requests. PR #50 ("add subtract command", currently open per the brief) suggests `subtract` is **proposed but not yet merged**. The "full relational algebra" claim is currently overstated; what exists is enough to be relationally complete in spirit, but MORK relies on the user to compose primitives.
+
+**C-1-11. CLI subcommands** (`kernel/src/main.rs:5721-5758`): `Bench`, `Test`, `Run`, `Convert`. Confirmed verbatim:
+- `Bench { only: String }` — runs a comma-separated list of named benchmarks; defaults to `"taxi_lts,counter_machine,transitive,clique,finite_domain,process_calculus,tile_puzzle_states"` (line 5771); `"all"` extends with `exponential, exponential_fringe, odd_even_sort, logic_query, tile_puzzle_states`; `"sinks"` extends with `taxi_lts, odd_even_sort` (lines 5772-5773).
+- `Test {}` — runs the in-process integration suite: 40+ tests covering positive/negative pattern matching, source/sink integration, pure-arithmetic sinks, source-cmp comparators, Z3/WASM cfg-gated, parsers (`parse_csv`, `parse_json`), and the modus-ponens / proof-search smokes (`mm2_bc_v3`, `bc0`, `ctl`, `meta_ana`, `meta_ana_exec`).
+- `Run { input_path, steps, instrumentation, timing, aux_path[], output_path? }` — load file as S-expressions, run `metta_calculus(steps)`, dump (`main.rs:5878-5907`).
+- `Convert { input_format, output_format, pattern, template, instrumentation, input_path, output_path? }` — converts between `metta`, `paths`, `act`, `json`, `upaths` formats (`main.rs:5908-6005`).
+
+**C-1-12. Convert format matrix:** Supported pairs are `(metta, metta|act|paths)`, `(paths, metta|act|paths)`, `(json, metta|act|paths)`, `(json, upaths)`. Anything else panics "unsupported conversion" (line 6003). Note `(_, csv)` is NOT supported as output, even though `load_csv` exists (`space.rs:509`).
+
+**C-1-13. Data ingest beyond MeTTa S-exprs:** `space.rs` exposes `load_csv` (line 509), `load_json` (line 555), `json_to_paths` (line 563), `jsonl_to_paths` (line 582), `load_neo4j_triples` (line 653), `load_neo4j_node_properties` (line 709), `load_neo4j_node_labels` (line 781). Neo4j is gated behind `#[cfg(feature = "neo4j")]` (`Cargo.toml:32` declares the feature). So MORK can pull data from a wider source set than the README admits.
+
+**C-1-14. Frontend parsers — README / CLAUDE.md overstate diversity.** `frontend/src/lib.rs:6-7` exports only `bytestring_parser` and `json_parser`. CLAUDE.md's claim of "CZ2, CZ3, HE (Hyperon Experimental), Rosetta, bytestring, JSON" is **stale**: `frontend/src/_main.rs` is a graveyard of `// fn main()` legacy commented-out parser experiments (Rosetta, HE), but no live `cz2_parser.rs` or `he_parser.rs` exists in the current tree. The CLAUDE.md sub-bullets enumerating those file names are **factually incorrect for HEAD**.
+
+---
+
+## §2 — FactorGraph audit (PRIORITY OUTPUT)
+
+**Verdict (verbatim): (d) absent.** With one nuanced caveat noted below.
+
+**C-2-1. Negative grep results, repo-wide (excluding `target/`, `.git/`):**
+- `FactorGraph` / `factor_graph` / `factorgraph` (case-insensitive) → **0 matches**
+- `MessagePass` / `message_pass` / `messagepass` → **0 matches**
+- `BeliefPropagation` / `belief_propagation` / `beliefpropagation` → **0 matches**
+- `marginal` / `marginalize` → **0 matches**
+- `bayes` / `bayesian` / `posterior` / `prior` (as identifiers) → **0 matches**
+- `probabilistic` / `probability` / `likelihood` → **0 matches**
+- `tensor` / `einsum` / `sparse` (as identifiers) → **0 matches**
+
+This **confirms and extends** the orchestrator's pre-spot-check.
+
+**C-2-2. Caveat: the word "factor" DOES appear, but in a different sense.** ~80 hits across `kernel/src/space.rs`, `kernel/src/sources.rs`, `kernel/src/sinks.rs`. Every hit refers to **algebraic factor zippers** (cartesian-product / relational-join factorization), not graphical-model factor nodes. Examples:
+- `n_factors = pat_expr.arity().unwrap()` (`space.rs:1009, 1117`) — the arity of a comma-conjunctive pattern `(, p1 p2 ... pn)` is the number of factors in the join.
+- `enum AFactor` (`sources.rs:203`) — enumerates types of input factors a query can have: `CompatSource`, `PosSource` (BTM), `ACTSource` (mmapped arena trie), `CmpSource` (equality/inequality comparator factor), `Z3Source`.
+- `ProductZipper`, `ProductZipperG`, `OneFactor`, `factor_count`, `focus_factor`, `prefix_subsumption_resources` — all relational-join terminology.
+
+This is the **algebra of joins**, identical to how database engines speak of "factoring" a query. **It is NOT graphical-model factor-graph reasoning.** No `MessagePassing`, no marginal sum-product, no max-product, no Bayes nets. This caveat must be flagged because text-grep alone is misleading: the word "factor" is everywhere but means something different.
+
+**C-2-3. No `TruthValue` / probabilistic-strength type anywhere.** Grep returns 0 hits across the entire MORK tree (compare: chaining has full `TruthValue.metta` Beta/Jeffreys infrastructure per Source 7 reconciliation). MORK has no concept of "strength × confidence" pairs, no Beta-distribution math, no posterior updates, no fuzzy/probabilistic primitives. The reduction sinks that DO exist are arithmetic only: `FloatReductionSink<Sum>`, `<Min>`, `<Max>`, `<Prod>` (`sinks.rs:1204-1207`); these compute deterministic float reductions over query results, NOT probabilistic combination.
+
+**C-2-4. No probabilistic dependency in the dependency graph.** Searching `Cargo.toml`s of all crates: no `rand_distr`, no `statrs`, no `nalgebra` for tensor work, no `petgraph` (only `pathmap`, `gxhash`, `wasmtime`, `subprocess`, `clap`, `serde`, `base64`, `hex`, `memmap2`, `itertools`, `futures`, `neo4rs (optional)`, `tokio (optional)`). One **interesting ghost dep**: `experiments/unification_test_laws/Cargo.toml:8` declares `distr-combinators = {git = "https://github.com/luketpeterson/distr-combinators.git"}` as a direct dependency, but **the crate's source code (`src/lib.rs`, `src/main.rs`) does NOT actually import or call any item from `distr_combinators`**. This is a Luke-Peterson-authored probabilistic-combinator library currently declared-but-unused — **the closest the repo comes to a probabilistic primitive**.
+
+**C-2-5. No design document or research note describing FactorGraph plans.** Grep across `kernel/resources/`, `experiments/`, `frontend/README.md`, `*.md` for any of the audit terms: 0 hits. The README links to `https://github.com/trueagi-io/MORK/wiki#where-to-start` for "examples, tutorials, and more info about both the formalism and implementation" — out of scope per the no-external-sources rule, but worth flagging as the only place where any FactorGraph-related design might live.
+
+**C-2-6. No "inference" code in the probabilistic sense.** All occurrences of the word "inference" across the repo refer to either:
+- "MM2 inference control" — meaning the priority-ordered `(exec <loc> ...)` rewriting scheduler (`main.rs:256, 303, 348, 489, 514, 539, 564`). This is **rule scheduling**, not probabilistic inference.
+- "modus ponens" / "MP" — in the propositional-calculus benchmark (`mm2_bc_v3` at `main.rs:5539`), a deterministic axiomatic proof search.
+
+**C-2-7. The substrate IS sufficient for FactorGraph reasoning, in principle.** What MORK provides that a FactorGraph reasoner could be built on top of:
+- Fast multi-pattern unification (the join engine).
+- Pure sinks for arithmetic via FFI (`PureSink`, `kernel/src/pure.rs` — has `f64_*`, `i32_*`, `u8_*` ops, plus structural `ifnz`, `tuple`, `hash_expr`).
+- Float-reduction sinks (`FSumSink`, `FMinSink`, `FMaxSink`, `FProdSink`) — exactly what message-passing needs for sum-product / max-product semirings.
+- A trie-keyed Space that can hold edges and node-marginals as relations.
+- Z3 integration as an external solver source/sink (`kernel/src/space.rs:1043-1073`, write-side `:1092-1106`) — closest thing to "delegate hard constraint reasoning".
+**These are primitives, NOT a FactorGraph implementation.** The wiki's `RawData+Publications+PLN FactorGraph MORK v1..v3.2` paper series presumably proposes MM2 protocols on top of these primitives, but Source 8 finds zero implementation-side code that realizes such protocols.
+
+**C-2-8. Closest-cousin: PR #48 (CLOSED, not merged) "Add sparse tensor primitives with einsum contraction"** by Igor Malovitsa (per orchestrator git history). The deliberate non-merge is a strong design-intent signal that MORK's maintainers have **explicitly rejected** broadening MORK into tensor / numerical territory. So the gap is not accidental: tensor / probabilistic-message machinery is being kept OUT of MORK by design.
+
+**C-2-9. Resolution of the cluster's bridge question:** MORK is a **substrate**, not a FactorGraph implementation. The `PLN FactorGraph MORK v1..v3.2` paper series can only describe *how* such reasoning could use MORK's primitives — there is no current code that realizes that. The wiki extraction must distinguish: "MORK as performance kernel for symbolic AI" (true, implemented) from "MORK as FactorGraph engine for PLN" (proposed in papers, NOT in code). Source 9 (paper bundle) needs to characterize how detailed the proposed protocols are, and whether they assume infrastructure that does not yet exist.
+
+---
+
+## §3 — `.mm2` format and chaining benchmark interface
+
+**C-3-1. `.mm2` is NOT Metamath 2 import format.** Despite the suggestive name (Metamath uses `.mm` files; Metamath 2 / `set.mm` is a known logic project), MORK's `.mm2` files are **NOT Metamath**. Visually inspecting `kernel/resources/std.mm2`, `ancestor.mm2`, `transitive.mm2`, `decision_tree_learning.mm2`, `counter_machine_5.mm2`, `grounding.mm2`, `ip_sudoku.mm2`, `odd_even_sort.mm2`, `string_convert.mm2`, all are MeTTa S-expression syntax with the MORK-specific `(exec <loc> <pat> <tpl>)` rewrite-rule form.
+
+**C-3-2. `.mm2` semantics = "MeTTa programs that drive MORK's `metta_calculus` rewrite scheduler."** Per `kernel/src/main.rs:5878-5906` (the `Run` subcommand), `mork run X.mm2` is implemented as: parse file as S-expressions via `add_all_sexpr` (no `.mm2`-specific parser anywhere), then call `Space::metta_calculus(steps)`. The file extension is purely a naming convention; internally it's just MeTTa S-expressions with `exec` rules. AGENTS.md mentions "MM2 programs" but never claims it's a separate language.
+
+**C-3-3. The "MM2" naming likely stands for "MeTTa Mass 2" or similar (no authoritative gloss in the source).** Comments in `main.rs` repeatedly mention "MM2 inference control" referring to the priority-ordered scheduler (e.g., `main.rs:256`: `// big number to show the MM2 inference control working`). The "MM" in MORK's own name is "MeTTa", so MM2 plausibly means "MeTTa rewrite system version 2." Regardless, the format is **a custom DSL using MeTTa syntax**, not Metamath. Gemini's prior hypothesis that `.mm2` was "a specialized DSL" was directionally correct; the Source-7 reconciliation already flagged Gemini's "Metamath 2" guess as inaccurate.
+
+**C-3-4. Rule shape: `(exec <loc> <pattern> <template>)`** where `<loc>` is a priority-tag (any atom; commonly tuples like `(0 0)`, `(STEP (1 6))`, `((MACRO_EXPAND 4))` per `decision_tree_learning.mm2`); `<pattern>` is `(, p1 p2 ... pn)` for default conjunctive matching, or `(I s1 s2 ... sn)` to invoke source factors (BTM/ACT/Z3/Cmp); `<template>` is `(, t1 t2 ... tm)` to assert all templates as facts, or `(O o1 o2 ... om)` to invoke sinks (`+`, `-`, `pure`, `head`, `count`, `hash`, `sum`, `and`, `fmin`/`fmax`/`fsum`/`fprod`, `wasm`, `act`, `z3`, `U`, `AU`).
+
+**C-3-5. Rule scheduling = `metta_calculus` reads ALL paths starting with `(exec ...)`, removes one at a time, interprets it.** `space.rs:1717-1748`. There is NO ordering on `<loc>` — the trie ordering of the byte-encoding determines processing order, which means MM2 programs typically rely on `<loc>` being chosen so byte-lex-min is the correct priority (e.g., `(0 0)` runs before `(0 1)` before `(1 0)`). This is a subtle execution-model detail the wiki should capture: priority is **not** a numeric comparison; it's the order of trie traversal.
+
+**C-3-6. MM2 programs span a wide capability spectrum.** Sampled files demonstrate: relational rewriting (`ancestor.mm2`, `transitive.mm2`); imperative algorithms encoded as rewrites (`counter_machine_5.mm2` — Wikipedia's counter machine; `ip_sudoku.mm2` — bitmask constraint propagation; `odd_even_sort.mm2` — sort network); meta-programmed pipelines (`decision_tree_learning.mm2` — full Gini-impurity decision-tree learner with macro-expansion stages, type-checking, predict + verify); grounding/interop (`grounding.mm2` — float ops via `pure` sink, hex parsing); macro libraries (`std.mm2` — 32-tuple `get` accessors auto-generated by `std.py`).
+
+**C-3-7. The chaining benchmark integration `mork run pc-fc.mm2`** (per Source 7 brief, file `chaining/experimental/metamath/benchmarks/pc-fc.mm2`) thus uses precisely this form: a MeTTa file containing rewrite-rule `exec` triples that implement Metamath-style propositional calculus forward chaining. The `mork` binary parses, runs `metta_calculus`, dumps results — no MORK-side Metamath logic. **The benchmark is "given these MeTTa rewrite rules, how fast does MORK execute them" — pure runtime competition with the PeTTa baseline.**
+
+**C-3-8. Conversion utility: `mork convert metta paths $ _1 file.metta`** (`main.rs:5908`) converts a MeTTa file to a serialized PathMap "paths" binary file via `Space::backup_paths`. This is the in-memory persistence story: MORK can dump/restore its byte-trie state, enabling pre-loaded knowledge bases (`work_mm2_run` example at `main.rs:154-166` restores a 1B-atom flybase index from `/dev/shm` then runs queries against it).
+
+---
+
+## §4 — `experiments/` deep dive
+
+**C-4-1. `experiments/eval/` (242 lines across 3 files)** — Expression evaluation engine for **dynamically loaded grounded functions**. `EvalScope` (`lib.rs:32-40`) holds a `HashMap<Vec<u8>, Func>` mapping function names to FFI function pointers. `Func` has a `func: FuncPtr` and `ty: FuncType` ∈ {`Macro`, `Pure`}. The `eval` method (line 80) walks an expression top-down, pushing stack frames for sub-expressions to evaluate, calling registered FFI functions when arity is satisfied.
+
+**C-4-2. `experiments/eval/src/main.rs` (84 lines)** — Demonstrates **dynamic library loading** via `libloading::Library::new(libeval_examples.so/dylib/dll)`, fetching `ground_sum` and `ground_mul` symbols, registering them as `+` and `*` in the `EvalScope`, then evaluating `("+" ("*" 1 2) ("*" 3 4))`. Includes integration with the `tracking-allocator` crate to measure per-evaluation allocation. **Status: working prototype, pre-release.**
+
+**C-4-3. `experiments/eval-ffi/` (286 lines)** — `no_std`-compatible C-ABI bridge crate. Defines `ExprSink` (writeable byte buffer), `ExprSource` (readable byte buffer), `EvalError` (with `NotEnoughSpace` / `Msg{ptr,len}` variants for safe error transport across FFI). `FuncPtr` typedef: `extern "C" fn(*mut ExprSource, *mut ExprSink) -> Result<(), EvalError>`. This crate is the **stable ABI for adding grounded functions to MORK without rebuilding the kernel**.
+
+**C-4-4. `experiments/eval-examples/` (31 lines, `crate-type = ["dylib"]`)** — A tiny dynamic library exporting `ground_sum` and `ground_mul` as `extern "C"` symbols. AGENTS.md correctly flags that **the dylib status matters**: changes to this crate affect dynamic loading assumptions of `experiments/eval/main.rs`. So `eval-examples/` is **deliberately a separate dylib**, not a regular crate.
+
+**C-4-5. `experiments/eval-ffi/sink.rs` and `source.rs`** — implement `ExprSink::write(SourceItem)` / `ExprSource::read() / consume_i32() / consume_head_check()` etc. These are the byte-level read/write protocols using MORK's expression encoding (`expr` crate's `Tag` byte format), so FFI functions can interoperate without copying.
+
+**C-4-6. `experiments/unification_test_laws/` (370 lines including Prolog file)** — PR #49 (merged 2026-04-19). Compares **MORK's unifier against SWI Prolog's `unify_with_occurs_check`** on the axioms in `kernel/resources/big.metta` (100,001 axioms). `lib.rs:9-113`: converts MeTTa axioms into `(line N (axiom ...))` form for both sides (Prolog gets uppercased variables to suppress singleton-warnings); `lib.rs:116-276`: runs **all-pairs unification** in parallel threads using `mork_expr::unify` with explicit post-hoc occurs check (lines 219-225 — workaround comment: *"the unify __function__ does not do full occurs check, this enforces it __after__ apply, making the unify __method__ cycle safe"*); `lib.rs:281-324`: collects per-axiom result files and consolidates; `main.rs:1-46`: runs both unifiers and `diff`s results.
+
+**C-4-7. unification_test_laws is essentially a correctness test.** Goal: prove MORK's unifier agrees with the canonical Prolog unifier on a non-trivial corpus. This signals the maintainers' priorities: **correctness via differential testing against an established reference implementation**, not features. AGENTS.md flags: `axiom_unify.prolog` requires SWI Prolog (`swipl`) to be installed locally to run.
+
+**C-4-8. Notable ghost dep in `unification_test_laws`:** `Cargo.toml:8` lists `distr-combinators = {git = "https://github.com/luketpeterson/distr-combinators.git"}`, but no usage in `lib.rs` or `main.rs`. Likely future-reserved for randomized unification stress tests; currently dead.
+
+**C-4-9. No experiments are FactorGraph- or probabilistic-related.** All four experiment crates are about: (a) FFI grounding, (b) dylib loading, (c) unifier correctness, (d) eval scope. None involve message passing, marginals, or graphical models.
+
+**C-4-10. Experiments are NOT included in `default-members`.** Workspace `Cargo.toml:14` sets `default-members = ["kernel/"]`, so `cargo build` skips experiments unless `--workspace` is passed. `unification_test_laws` is a binary (`main.rs` + `lib.rs`); `eval` is a binary; `eval-ffi` is `no_std` lib; `eval-examples` is dylib.
+
+---
+
+## §5 — Recent development arc (last 6 months, per orchestrator git history + verification)
+
+**C-5-1. Direction = unification correctness, performance primitives, type safety, eval correctness.** Per the brief's pre-curated last 25 commits and key-PR list, no commit/PR mentions FactorGraph, Bayesian, MessagePass, or probabilistic reasoning since at least Sept 2025.
+
+**C-5-2. PR #49 (merged 2026-04-19) — "Unification laws test"** by Remy Clarke. Verified by file presence at `experiments/unification_test_laws/`. The repo HEAD = main is exactly this PR's merge commit per the brief.
+
+**C-5-3. PR #46 (merged 2026-03-09) — "Min max sink".** Verified: `kernel/src/sinks.rs:1204-1207` enumerates `FloatReductionSink<Sum/Min/Max/Prod>` variants, and lines 944-1051 implement the float reduction logic. `decision_tree_learning_without_min_sink.mm2` (577 lines, sibling to `decision_tree_learning.mm2`) shows the workaround that **predated** the min-sink, suggesting the min-sink was added specifically to clean up DT-learning's path-selection step.
+
+**C-5-4. PR #45 (merged 2026-02-13) — "ZipperInfallibleSubtries trait bounds for PathMap API update".** Cannot verify in MORK source alone (the trait is defined in PathMap), but the existence of `ZipperInfallibleSubtries` as a recent concern is consistent with how heavily MORK's `space.rs` uses zipper traits.
+
+**C-5-5. PR #34 (open) — "Docker Build Infrastructure and PathMap Integration Updates"** by kabir. Open ⇒ visible signal that the maintainers are working on **hermetic builds** to handle the awkward `pathmap = { path = "../PathMap/" }` external-dep requirement. The fact it's still open after months suggests low priority.
+
+**C-5-6. PR #32 (merged 2025-10-14) — "Grounding and WASM change, add lens sink, refactor query multi"** by Adam Vandervorst. Verified: `Cargo.toml:31-38` declares `default = ["grounding", "specialize_io"]` plus optional `wasm`, `z3`, `interning`, `no_search`, `periodic_merkleize` features. `WASMSink` exists at `sinks.rs:402-514` (gated by `feature = "wasm"`). "lens sink" is not directly visible by name; the lens semantics likely correspond to the `head` / `count` / `pure` family.
+
+**C-5-7. PR #31 (merged 2025-10-14) — "Using new pathmap API around descend_to"** by Luke Peterson. Confirms the PathMap API is in active churn and Peterson is the upstream-side bridge (consistent with the `gxhash = git=luketpeterson/gxhash` URL). MORK accommodates that churn rather than fixing PathMap to a stable version.
+
+**C-5-8. PR #48 (CLOSED, NOT merged) — "Add sparse tensor primitives with einsum contraction"** by Igor Malovitsa. **Critical design-intent signal**: the maintainers actively chose **not to** add tensor / einsum primitives. This is the clearest negative signal in the entire repository about scope. Combined with PR #28 ("typed destruct", merged Oct 2025, also Malovitsa) and PR #46 (min/max sinks, scalar-only float reductions), the pattern is: **MORK is a symbolic / relational kernel, deliberately not a numeric / tensor framework**.
+
+---
+
+## §6 — `kernel/resources/` checked-in programs
+
+**C-6-1. 15 files, mixed `.mm2`, `.metta`, `.json`, `.py`** — `ancestor.mm2`, `big.metta`, `counter_machine_5.mm2`, `decision_tree_learning.mm2`, `decision_tree_learning_without_min_sink.mm2`, `grounding.mm2`, `ip_sudoku.mm2`, `odd_even_sort.mm2`, `out.metta`, `std.mm2`, `std.py`, `string_convert.mm2`, `test.json`, `transitive.mm2`, `zip_add.mm2`.
+
+**C-6-2. `std.mm2` (253 lines) — auto-generated tuple-`get` library.** Lines `(std (get ($x0 $x1 ... $xN-1) k $xk))` for N = 1..32, all k ∈ [0, N). Generated by `std.py` (22 lines, Python script) using a `Module` template-printer. **Purpose: avoid hand-writing 1024+ rewrite rules for tuple indexing.** This is a `.mm2` standard library.
+
+**C-6-3. `std.py` is the generator for `std.mm2`** — 22-line Python with `N_TUPLES = 22` hardcoded (note: existing `.mm2` covers up to N=32 in the checked-in version; the generator was likely re-run with a different `N_TUPLES`).
+
+**C-6-4. `ancestor.mm2` (39 lines) — classical Datalog ancestry example** with parent/child/generation/ancestor + an unusual `incest_victim` predicate (rule at line 38 finds people whose two ancestors at the same generation share a child). Demonstrates: chained `exec` rules with priority `(0 0) → (0 1) → (1 Z) → (1 (S Z)) → ... → (2 0) → (2 1)`. **Worked example / tutorial.**
+
+**C-6-5. `transitive.mm2` (10 lines) — minimal transitive-closure example** on a graph of 2 triangles (Brussels-Paris-London, Brussels-StPetersburg-Istanbul). **Smoke-test / minimal benchmark.**
+
+**C-6-6. `decision_tree_learning.mm2` (549 lines) — full Gini-impurity decision-tree learner** by Remy Clarke (per author comment, line 1). Implements: column-pair distinct table, path generation through non-predict properties, count aggregation per (context, column, YES/NO), Gini-impurity formula via `mk_gini_impurity` + `total_gini_impurity`, min-selection over candidate split columns, choice-chain assembly, leaf gathering, bottom-up tree construction, prediction verification against the original 15-record dataset (loves_cool_as_ice classifier). Uses `pure` sink for f64 arithmetic, macro-expand priority-encoding for staged pipeline, and a `(((NOW)))` rule-rewriting trick. **This is a MORK demonstration that you can write classical ML in MM2.** The companion `decision_tree_learning_without_min_sink.mm2` (577 lines) does the same without `fmin`, predating PR #46.
+
+**C-6-7. `counter_machine_5.mm2` (74 lines) — Wikipedia's counter machine** (10-instruction "copy register 2 to register 3"), encoded as MeTTa. Demonstrates: each instruction (`JZ`, `INC`, `DEC`, `H`) becomes a rewrite rule; the machine's execution is `metta_calculus` run-to-fixpoint. **Reference implementation of a Turing-equivalent classical machine.**
+
+**C-6-8. `ip_sudoku.mm2` (76 lines) — 4×4 Sudoku via constraint-propagation** with bitmask-encoded cells. Uses `pure` sink heavily for bit operations (`u8_andn`, `u8_count_ones`, `u8_shr`). Comment line 12-13 admits: *"propagation loop: 1. prop as long as there are changes... 2. pick and store (backtrack) <-- without this"* — **only does propagation, no backtracking. Incomplete solver.**
+
+**C-6-9. `odd_even_sort.mm2` (16 lines) — bubble-sort variant for 5 elements**, using `lt`, `succ`, `parity` predicates and phase-toggled rewrite rules. **Sort-network reference.**
+
+**C-6-10. `grounding.mm2` (69 lines) — multi-stage normalize-then-divide pipeline** demonstrating `pure` sink with f64 arithmetic, hex decoding (`decode_hex`), and the staged compute pattern: parse → bulk compute → output → cleanup. Comment line 11: *"grounding can come from sources/sinks ... can be embedded in wasm (sinks) JIT'd ... NEW: can be interpreted in pure (sinks)"*. **This file documents the grounding philosophy in code.**
+
+**C-6-11. `big.metta` (100,001 axioms) — algebra/calculus axiom corpus** used by `experiments/unification_test_laws/`. The axioms appear to be related to braided/categorical algebra (operators `K`, `T`, `L`, `*`, `%`, `a` with arity-laden expressions). `out.metta` (400 lines) is a related file with `\` instead of `%` — likely a re-export or alternative encoding. **The corpus's mathematical domain is unclear from the source alone (likely Vandervorst's research interest); for the wiki, target him for clarification.**
+
+---
+
+## §7 — PathMap dependency
+
+**C-7-1. PathMap is MORK's external storage backbone.** `Cargo.toml:32`:
+```
+pathmap = { path = "../PathMap/", version = "0.3.0", features = ["jemalloc", "arena_compact", "nightly"] }
+```
+And `kernel/Cargo.toml:12`: `pathmap = { workspace = true, features = ["nightly"] }`. **NOT cloned locally** in `hyperon-reference/` (per brief), so its source is invisible to this pass.
+
+**C-7-2. PathMap usage — surface area in MORK code:** ~125 `pathmap::` references across 6 files (`space.rs:68`, `sinks.rs:34`, `sources.rs:5`, `interning/lib.rs:1`, `frontend/_main.rs:1`, `interning/_main.rs:1`). Imported items include: `PathMap`, `zipper::*` (everything), `arena_compact::ArenaCompactTree`, `arena_compact::ACTMmapZipper`, `morphisms::Catamorphism`, `paths_serialization::SerializationStats / DeserializationStats`, `ring::AlgebraicStatus / Lattice`, `utils::BitMask / ByteMask / find_prefix_overlap`.
+
+**C-7-3. Key PathMap zipper APIs MORK relies on:** `descend_to`, `descend_to_byte`, `descend_to_existing_byte`, `descend_first_byte`, `descend_first_k_path`, `descend_until`, `to_next_val`, `to_next_k_path`, `to_next_sibling_byte`, `ascend`, `ascend_byte`, `path()`, `origin_path()`, `child_mask()`, `path_exists()`, `into_read_zipper`, `read_zipper_at_path`, `read_zipper_at_borrowed_path`, `set_val`, `move_to_path`, `reserve_buffers`, `reset`, `try_make_map`, `graft_map`, `fork_read_zipper`, `into_path`. The `ZipperHead`, `ZipperWriting`, `ZipperReading`, `ZipperAbsolutePath`, `ZipperIteration`, `ZipperMoving`, `ZipperProduct`, `ZipperInfallibleSubtries` traits are all PathMap-defined.
+
+**C-7-4. PathMap's `ProductZipper` / `ProductZipperG` / `DependentProductZipperG` / `PrefixZipper` are the substrate of MORK's multi-pattern join engine.** Used in `space.rs:1018, 1137, 1143` and throughout `sources.rs`. These are higher-order zippers that compose multiple read zippers into a virtual cartesian product, traversed in lockstep — this is **exactly the "factor zipper" abstraction** referenced in §2.
+
+**C-7-5. PathMap is co-developed by Luke Peterson.** Indirect evidence: (a) `Cargo.toml:29` declares `gxhash = {version="3.4.1", git="https://github.com/luketpeterson/gxhash/"}` — the workspace's hash library is hosted on Peterson's account; (b) PR #31 (merged 2025-10-14, "Using new pathmap API around descend_to") was authored by `luketpeterson`; (c) per brief git stats Peterson has ~70 commits in MORK and is consistently the one updating MORK to track PathMap API churn (PRs #31, #45). **Reasonable inference: Peterson is a primary author of PathMap (which is hosted at trueagi-io and tightly coupled), and one of the three core MORK architects.**
+
+**C-7-6. PathMap's Lattice / AlgebraicStatus types** (imported `space.rs:16, sinks.rs:19`) — PathMap exposes a lattice-theoretic algebra over its tries (join, meet, status during merge). MORK leverages this for set-algebra-like operations on the byte trie. This is part of why CLAUDE.md claims "full relational algebra" — the *primitives* are there at the PathMap level even if MORK doesn't expose union/intersect/subtract as named methods.
+
+**C-7-7. The PathMap `arena_compact` feature** (`Cargo.toml:32`) supplies `ArenaCompactTree` — a memory-mapped read-only compact representation. MORK uses it for the ACT (memory-mapped read-only persisted trie) source/sink pair (`sources.rs:13-18`, `space.rs:1035-1042`), enabling MORK to query trie data **without loading it into RAM** — critical for the flybase 1-billion-atom scenario (`main.rs:154-186`).
+
+---
+
+## §8 — Discovered publications and references
+
+**C-8-1. README references `https://github.com/trueagi-io/MORK/wiki#where-to-start`.** Out-of-scope for this pass (no external sources rule), but flagged as the only place where MORK formalism / tutorials / FactorGraph plans might be documented.
+
+**C-8-2. No academic citations in code comments.** Grep across MORK Rust source for `et al.`, `paper`, `arxiv`, `doi`, `citation`, `reference`: 0 hits. The codebase is entirely uncited.
+
+**C-8-3. Wikipedia cross-reference in `counter_machine_5.mm2:1`:** `Monotonic rewriting system version of https://en.wikipedia.org/wiki/Counter_machine#Program`. Only academic-adjacent reference in resources.
+
+**C-8-4. Authorial reference in `decision_tree_learning.mm2:1`:** "Remy Clarke, Decision Tree Learning experiment." Self-attribution. Mentions "originally from a video of Josh Starmer (StatQuest with Josh Starmer: https://youtu.be/_L39rN6gz7Y)" at line 70 — pedagogical YouTube reference, not academic.
+
+**C-8-5. Algorithmic-lineage external crates (Cargo deps):**
+- `pathmap` — trueagi-io internal trie database; co-author Luke Peterson.
+- `gxhash` (3.4.1, git=luketpeterson/gxhash) — Peterson's fork of gxhash; non-cryptographic SIMD-accelerated hash.
+- `wasmtime` (37.0.1, optional) — Bytecode Alliance WebAssembly runtime; for `WASMSink`.
+- `subprocess` (0.2.13) — Python-subprocess-style API in Rust; used for Z3 integration.
+- `memmap2` — for mmap-backed `ArenaCompactTree` reads.
+- `neo4rs` (optional) — Neo4j Bolt v2 client; for `load_neo4j_*` methods.
+- `clap`, `serde`, `base64`, `hex`, `itertools`, `futures`, `rand`, `log`, `env_logger` — standard utilities.
+- `distr-combinators` (luketpeterson git, declared in `experiments/unification_test_laws/Cargo.toml`, **unused**) — Peterson's distribution-combinators library.
+- `tracking-allocator` (tobz git, in `experiments/eval/Cargo.toml`) — for allocation profiling during `eval` testing.
+
+---
+
+## §9 — Cluster-level interpretation
+
+**C-9-1. MORK's role in the PLN-cluster narrative = speed substrate, not reasoning system.** Source 7 demonstrated chaining benchmarks call `mork run pc-fc.mm2` for Metamath-style propositional-calculus speed comparisons. MORK provides: byte-trie-backed Space, fast first-order unification, multi-pattern joins via product zippers, configurable sinks for arithmetic/aggregation, FFI grounding for primitive ops, optional WASM/Z3 integration. It does NOT provide: probabilistic semantics, TruthValue, BIT, multi-armed bandit control, MixtureModel, or ANY graphical-model machinery.
+
+**C-9-2. MORK's role in the Hyperon-platform narrative = optimization target for MeTTa interpreter.** README: *"MORK seeks to retrofit Hyperon with a state-of-the-art graph database and a specialized zipper-based multi-threaded virtual machine to provide speedy MeTTa evaluation across the full range of Space sizes and topologies."* Goal: *"thousands to millions of times"* speedup over baseline MeTTa interpreter. The Hyperon-MeTTa interpreter is a different codebase; MORK targets it as a swap-in performance layer for the Space backend + reduction engine. This is **symbolic AI's "GPU equivalent"** in marketing terms, but architecturally it's a CPU-optimized byte-trie database + rewrite engine.
+
+**C-9-3. The FactorGraph MORK paper series (`RawData+Publications+PLN FactorGraph MORK v1..v3.2`) interpretation, given the code findings:** the papers must be **proposing protocols** for using MORK's primitives (Triemap, ZAM-style zipper traversal, fast unification, float reduction sinks) to implement FactorGraph reasoning. The current code surface implements zero of those protocols. The protocols are **not implementable as a drop-in library** without substantial new infrastructure: a TruthValue-equivalent type, message-passing scheduler on top of `metta_calculus`, marginal/joint-distribution primitives, possibly belief-propagation convergence detection. If the papers describe these as MM2 macros over MORK's primitives, they could in principle be added without modifying the kernel — but PR #48's closure (sparse tensor + einsum) suggests the maintainers prefer keeping such math OUT of the kernel.
+
+**C-9-4. The cluster lineage map is reaffirmed**: MORK is in the **F1R3FLY-io / Hyperon-performance-tooling ecosystem** (Vandervorst lineage), not the OpenCog → PLN tradition (Geisweiller / Hammer / Isaev). The PLN-cluster wiki has been treating "PLN FactorGraph MORK" as a coherent topic, but the **two halves are produced by different author networks with different priorities**: PLN side wants probabilistic reasoning at scale, MORK side wants symbolic-rewriting performance. The bridge "MORK as FactorGraph engine" is currently unbuilt at the code level and there's no in-MORK design document indicating it's planned.
+
+**C-9-5. Open question for Source 9 (papers bundle):** how detailed are the proposed FactorGraph-on-MORK protocols? Do they assume primitives (e.g., `bayes_update`, `marginalize`, `belief_propagate` MM2 macros) that would need to be **implemented as MM2 programs** on top of `metta_calculus`, or do they assume kernel-level extensions? If the latter, given PR #48's closure, the papers' implementation path is **politically blocked**. If the former, the papers provide a complete recipe and someone needs to write it.
+
+**C-9-6. Wiki-implication framing** for cards about MORK:
+- "MORK is the canonical performance kernel for symbolic AI under the trueagi-io umbrella" — TRUE, implemented.
+- "MORK provides a high-performance MeTTa rewrite engine via byte-trie storage and zipper-based multi-pattern unification" — TRUE, implemented.
+- "MORK implements FactorGraph reasoning for PLN" — **FALSE for HEAD**; the papers propose protocols, the code does not realize them.
+- "MORK is the substrate on which PLN FactorGraph reasoning could be built" — **TRUE in principle** (primitives are sufficient), but flagged that PR #48's closure shows hesitancy to expand into the numeric/tensor space.
+
+---
+
+## §10 — Author and contributor map
+
+**C-10-1.** Per orchestrator git history (pre-curated in brief), top contributors at HEAD `4cef6f7`:
+- **Adam Vandervorst** (~239 effective): primary architect. Recent work: Z3 integration, float reductions, unification error reporting, ACT (Algebraic Cognitive Tools / arena-compact-tree) integration, lens sink, query refactoring. Writes the strategic / architectural code.
+- **Remy Pierre Bushnell Clarke** (~104): core contributor. Recent work: float reductions, min/max sinks, decision-tree learning examples (`decision_tree_learning.mm2`), unification testing (`experiments/unification_test_laws/`). Writes the worked examples + correctness-testing infrastructure.
+- **Luke Peterson** (~70): core contributor. Authors PathMap-related code; bridges MORK to the PathMap external library; owns `gxhash` fork. Writes the storage-layer integration.
+- **Igor Malovitsa** (16): contributor. PRs: typed destruct (#28), eval test (#40), eval bug fix (#42), root-level destructuring (#41), and the **closed** sparse-tensor+einsum (#48). Pushes scope boundaries; some accepted, some explicitly rejected.
+- **Surafel Fikru, Tim Verhaegen, Paladynee, kabir, charlie derr** — recent contributors via individual PRs. Tim Verhaegen has the open PR #50 ("add subtract command"). kabir has open PR #34 (Docker integration).
+- **Nil Geisweiller: 1 commit** — **not a primary author here**, distinct from his role across PLN cluster sources 2-7. Strong negative signal: the PLN-cluster expert circle is not building MORK.
+
+**C-10-2. Primary expert circle for MORK = Vandervorst + Clarke + Peterson.** Distinct from the PLN cluster's Geisweiller / Hammer / Isaev. For wiki review of:
+- MORK kernel architecture / ZAM design / future direction → **Adam Vandervorst** (he's also F1R3FLY-io: MeTTaIL, MacroLoop).
+- MORK's worked examples / `.mm2` programming patterns / unification-testing → **Remy Clarke** (also asi-alliance: OmegaClaw-Core).
+- MORK ↔ PathMap integration / storage internals → **Luke Peterson**.
+
+**C-10-3. The intersection "PLN FactorGraph on MORK" requires BOTH circles** — Geisweiller (PLN side, probabilistic semantics) and Vandervorst (MORK side, performance-kernel constraints). Current evidence shows **no commits or PRs by Geisweiller in MORK** (1 lifetime commit, not architecturally meaningful). The bridge is **socially as well as technically unbuilt**.
+
+**C-10-4. Igor Malovitsa is an interesting boundary case.** PRs #28, #40, #41, #42 (all merged) — typed destruct, eval test, eval correctness, root-level destructuring. PR #48 (closed) — sparse tensor + einsum. He's the contributor most pushing on **non-relational extensions** to MORK; the maintainers accept type-system improvements but reject tensor / numerical extensions. If FactorGraph-on-MORK ever gets built, Malovitsa's pattern (proposing then having tensor/numeric work rejected) is informative about what would happen.
+
+**C-10-5. Active branches signal experimental directions:** the brief enumerates 25 remote branches at HEAD. Notable experimental tracks: `state_machine_metta_calculus`, `journaling_with_state_machine`, `coro-paths`, `descend_no_return_flag`, `head_sink_all_dense_nodes`, `wasm_sink_all_dense_nodes`, `pure_reduce_basic`, `tutorial_beginnings`, `server`, `unify-transition-rework`. **No branch contains "factor", "bayes", "probab", "marginal", "message", or "belief"**. Confirms: **probabilistic reasoning is not on any active branch**.
+
+---
+
+*End of Source 8 — Claude single-pass findings. Reconciliation with Codex and Gemini to follow.*

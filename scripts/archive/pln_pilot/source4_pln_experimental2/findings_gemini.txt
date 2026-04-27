@@ -1,0 +1,41 @@
+# pln-experimental2 (ngeiswei) — Gemini Extraction Findings
+**Date:** 2026-04-24
+**Commit:** 6c9525e (ngeiswei/pln-experimental mirror)
+
+## §1 — nuPLN Theory (Global Universal Distribution)
+- **C-4-1: The Solomonoff Pivot:** `nuPLN` (documented in `docs/nuPLN/nuPLN.tex`) is a theoretical reformulation of PLN that embraces a global probability distribution $\nu$, mirroring Solomonoff Universal Induction. [docs/nuPLN/nuPLN.tex:42]
+- **C-4-2: Observable Predicates:** Observations in nuPLN are outcomes of evaluated predicates (probabilistic programs), rather than bit strings. [docs/nuPLN/nuPLN.tex:46]
+- **C-4-3: Dissolution of Intensional/Extensional Split:** The manuscript proposes dropping the concept side (Inheritance) entirely in favor of the predicate side (Implication), using the indicator-function/satisfying-set isomorphism. [docs/nuPLN/nuPLN.tex:178]
+- **C-4-4: Manuscript Status:** Confirmed as an incomplete draft. Sections 4.1 and 4.2 (Deriving Rules) end with "NEXT" placeholders. [docs/nuPLN/nuPLN.tex:297, 318]
+
+## §2 — Extended Truth-Value Model
+- **C-4-5: Bl and Pr Verified:** Contrary to earlier hypotheses, `Bl` (Boolean) and `Pr` (Probability) are **degenerate STVs**, not Indefinite or Distributional TVs.
+  - They return a hardcoded `max-count` of 1e9. [experimental/early-pln/common/truthvalue/TruthValue.metta:44]
+  - They return a confidence of 1.0. [experimental/early-pln/common/truthvalue/TruthValue.metta:93]
+- **C-4-6: STV as Posterior:** The implementation treats `STV` as the mode of a Beta distribution, using Jeffreys prior ($\alpha=\beta=0.5$). [experimental/early-pln/common/truthvalue/TruthValue.metta:34]
+
+## §3 — Implemented Rules (Source Delta)
+- **C-4-7: Implication Direct Introduction (IDI):** A sophisticated inductive rule not found in production PLN repositories.
+  - Implemented as `IDIBase` and `IDIRecursive`. [experimental/early-pln/pln/dependent-types/ImplicationDirectIntroductionDTL.metta:101]
+  - **Evidence Order:** Uses sorted IDs (`h < a`) to ensure evidence is never double-counted. The author realization: "far more efficient to enforce the order... than to prove non-membership." [experimental/early-pln/pln/dependent-types/ImplicationDirectIntroductionDTL.metta:148]
+- **C-4-8: Rule Scarcity:** This repository is a research sandbox and lacks 90% of the book's rules (no quantifiers, temporal, or concept-geometry).
+
+## §4 — Maxima Verification (Conjunction Introduction)
+- **C-4-9: Structural Evidence:** Experiments in `experimental/truth-value-formula/conjunction-introduction/` conclude that the **structure** of a composite predicate itself provides evidence. [experimental/truth-value-formula/conjunction-introduction/README.md:255]
+- **C-4-10: Independence Convergence:** Verified using Stirling approximation that uniformly sampled underlying sets converge to a Dirac delta at $pA \cdot pB$ as universe size $n \to \infty$, justifying the independence assumption in large systems. [experimental/truth-value-formula/conjunction-introduction/README.md:120]
+
+## §5 — Git History Context (Intent Attribution)
+- **Ownership:** Primarily developed by Nil Geisweiller (owner of the `nuPLN` manuscript).
+- **Recent Momentum:** Commit `2026-03-12 | Peter Isaev | Truth Functions and Confidences are better fit` matches the Source 3 (production PLN) timeline, indicating that the multiplicative confidence shift originated or was validated here.
+- **The nupln-xt Signal:** The existence of a dedicated `nupln-xt` branch suggests a continuing effort to finish the "Universal" formalization.
+
+## §6 — Discovered Publications
+- **Probabilistic Logic Networks for Temporal and Procedural Reasoning** | Geisweiller | 2023 | Cited in README.md.
+- **Towards a Complete Formalization of PLN** | Nil Geisweiller | (Draft) | Primary document in docs/nuPLN.
+- **PLN_AND_Confidence_Framework.md.pdf** | "Ben's document" | (Internal) | Suggests expressing dependencies with Equivalence instead of Implication.
+
+## Focus Questions Response
+1. **nuPLN Theory:** It provides the missing universal foundation for induction but remains mathematically unfinished in the implementation.
+2. **TV Extension:** `Bl`/`Pr` are confirmed to be simplified constants, not the missing book families.
+3. **Missing Rules:** Quantifiers and Temporal rules remain absent from the code, though the 2023 Temporal paper is cited.
+4. **Maxima Verification:** The scripts justify the independence assumption for large universes and explore Equivalence-based dependency.

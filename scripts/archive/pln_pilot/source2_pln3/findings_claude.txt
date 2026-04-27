@@ -1,0 +1,469 @@
+# PLN3 Source 2 Extraction — Claude (Opus 4.7, 1M)
+
+**Model:** Claude Opus 4.7 (1M context)
+**Extraction date:** 2026-04-24
+**Repo:** `E:\GitHub\hyperon reference\PLN3\` — mirror of `ngeiswei/PLN` (fork of `trueagi-io/PLN`)
+**Commit hash at extraction:** `55f1751d993f71b8a24da03e3aec94ab40789a59` (single clone commit from `refs/heads/main`; the local mirror was cloned on 2026-01-12 and contains no subsequent local or upstream commits in `.git/logs/HEAD`).
+**Scope:** Every source file read end-to-end (no sampling). Repo is ~18 `.metta` files totaling ~40 KB of MeTTa code plus ~2 KB Python and ~4 KB meta-docs.
+
+**Claim counts per section:**
+- §1 Architecture: 12 claims (C-1-1 .. C-1-12)
+- §2 Rules & formulas: 14 claims (C-2-1 .. C-2-14)
+- §3 Control: 9 claims (C-3-1 .. C-3-9)
+- §4 Deviations: 16 claims (C-4-1 .. C-4-16)
+- §5 Extensions / recent work: 7 claims (C-5-1 .. C-5-7)
+- §6 Tests & examples: 12 claims (C-6-1 .. C-6-12)
+- §7 Status / TODOs: 8 claims (C-7-1 .. C-7-8)
+- §8 Discovered publications: 6 claims (C-8-1 .. C-8-6)
+- V-verifications: V1–V6, each answered.
+
+Total: 84 primary claims + 6 book-verifications.
+
+---
+
+## §1 — Architecture and module map
+
+**C-1-1.** Build-order concatenation is fixed at `build.sh` L1-2: `cd src && cat Utils.metta Constraints.metta Formulas.metta Rules.metta Config.metta Deriver.metta > ../PLN.metta`. Note that CLAUDE.md claims "Utils → Constraints → Formulas → Rules → Config → Deriver → PLN.metta" which exactly matches build.sh; `Translator.metta` is **deliberately excluded** from the concatenated `PLN.metta` and is used only at `PLN.Init` time via Python shim (`examples/PLN.py` L31-33).
+
+**C-1-2.** Seven `src/` files exist (`Utils.metta`, `Constraints.metta`, `Formulas.metta`, `Rules.metta`, `Config.metta`, `Deriver.metta`, `Translator.metta`); six are concatenated into `PLN.metta` by `build.sh`. Sizes: `Utils` 2.5 KB, `Constraints` 1.25 KB, `Formulas` 6.5 KB, `Rules` 5.2 KB, `Config` 271 B, `Deriver` 4.3 KB, `Translator` 3.4 KB.
+
+**C-1-3.** Truth-value representation is `(stv strength confidence)` — confirmed. The only alternative surface form is the derived function `(STV $term)` used as a lookup for node-level TVs inside rule bodies (`src/Rules.metta` L32-35, L42-44, L50-52, etc.). There is no distributional/indefinite truth value, no `(ptv ...)` variant, no second-order TV carrier.
+
+**C-1-4.** Sentence wrapping is `(Sentence (term (stv s c)) (trail-tuple))` at the KB level (spelled `Sentence` with capital S in tests, `sentence` lowercase in kb-init lists). `src/Deriver.metta` expects capital `Sentence` in `PriorityRank`/`PriorityRankNeg`, and `Translator.metta` / `examples/*` emit lowercase `sentence`. The kbstatic constructors rely on a late rewrite `(= (sentence $A $B) (Sentence $A $B))` injected by `PLN.py` L51 to bridge the two spellings when running via Python. When running pure-MeTTa tests, many tests use lowercase `sentence` and the `RuleTester.metta` does not register the bridge — this appears to work because the test queries only match against what `PLN.Init` was given; see §7 for the inconsistency.
+
+**C-1-5.** `PLN.Init` (the main entry point) is **not defined in `src/`**. It is defined in `examples/PLN.py` L25-54 as a Python `OperationObject` registered as a MeTTa atom via `@register_atoms`. It runs `build.sh`, concatenates `Translator.metta` + user KB, runs `metta` on it, then loads the translated blob via `metta-morph` `(compile! ...)`. So the "engine" is a *Python-invoked offline compiler*; the derivation engine itself is pure MeTTa.
+
+**C-1-6.** Derivation engine entry points live in `src/Deriver.metta`:
+   - `(PLN.Derive $Tasks $Beliefs)` — top-level with all defaults (L60-61)
+   - `(PLN.Derive $Tasks $Beliefs $maxsteps)` (L57-58)
+   - `(PLN.Derive $Tasks $Beliefs $maxsteps $taskqueuesize $beliefqueuesize)` (L54-55)
+   - `(PLN.Derive $Tasks $Beliefs $steps $maxsteps $taskqueuesize $beliefqueuesize)` — recursive step-counted form (L34-52)
+   - `(PLN.Query $kb $term)` and three overloads (L67-81).
+
+**C-1-7.** The intended call-graph from `examples/*.metta` → `src/*.metta` is:
+   1. User file does `!(import! &self PLN)` (loads concatenated `PLN.metta`).
+   2. User calls `!(PLN.Init (kbstatic))` — Python hook translates nested implications (via `Translator.metta`) into flat `STV`/rewrite rules and compiles via `metta-morph`.
+   3. User calls `!(PLN.Query (kbdynamic) targetTerm)` — this enters `Deriver.metta` `PLN.Query` → `PLN.Derive` (priority queue loop) → `(|- $x $y)` matches against `Rules.metta` → rules call formulas in `Formulas.metta` → formulas call `Constraints.metta` consistency checks and `Utils.metta` helpers → returns best candidate by `ConfidenceRank`.
+
+**C-1-8.** `Config.metta` sets three integer constants: `PLN.Config.MaxSteps = 20`, `PLN.Config.TaskQueueSize = 20`, `PLN.Config.BeliefQueueSize = 200` (L4-10).
+
+**C-1-9.** `Utils.metta` provides ~12 helpers: `clamp`, `TupleConcat`, `TupleCount`, `and5`, `min5`, `/safe` (division guarding zero), `negate` (= 1-x), `invert` (= 1/x), `Test`, `InsertSorted`, `InsertionSort`, `Without`, `ElementOf`, `Unique`. `min`/`max` are commented out (L1-10) suggesting they are assumed to be standard-library.
+
+**C-1-10.** `Constraints.metta` holds the deduction consistency guards: `smallest-intersection-probability`, `largest-intersection-probability`, `conditional-probability-consistency`, and one top-level variant `Consistency_ImplicationImplicantConjunction` (lines 17-24). The file is small (1.25 KB) and the comment at L1-2 explicitly attributes the implementation to `trueagi-io/hyperon-pln DeductionDTL.metta`.
+
+**C-1-11.** The derivation-engine topology is a **single-population priority-queue beam-search with stamp checking**: one "tasks" PQ drives selection, one "beliefs" PQ stores all derived evidence, beams are bounded, each step selects *one* highest-confidence task, pairs it against *every* belief in `$Beliefs` that is stamp-disjoint, and also tries the single-premise rules on it. There is no separate BIT (Backward Inference Tree), no MAB scorer, no rule-selection probabilities.
+
+**C-1-12.** `Translator.metta` is not concatenated into `PLN.metta`; it runs once at `PLN.Init` time to macro-expand implications-of-implications and negated links into pre-curried rewrite rules that emit `Truth_ModusPonens` / `Truth_Negation` / `Truth_Identity` compositions (see Translator `buildlink` L1-9). This is the main "compilation" the library does.
+
+---
+
+## §2 — Implemented inference rules and truth-value machinery
+
+PLN3 ships **13 concrete inference rule clauses** (heads of the form `(= (|- ...) ...)`) in `src/Rules.metta`, backed by **11 truth-value formulas** in `src/Formulas.metta`. Enumerated with the head term, formula, and book-faithfulness verdict:
+
+**C-2-1. Revision.** `Rules.metta` L4-6: `(= (|- ($T $T1) ($T $T2)) ($T (Truth_Revision $T1 $T2)))`. Formula `Formulas.metta` L66-73:
+```
+(= (Truth_Revision (stv $f1 $c1) (stv $f2 $c2))
+   (let* (($w1 (Truth_c2w $c1))
+          ($w2 (Truth_c2w $c2))
+          ($w  (+ $w1 $w2))
+          ($f  (/safe (+ (* $w1 $f1) (* $w2 $f2)) $w))
+          ($c  (Truth_w2c $w)))
+         (stv (min 1.0 $f)
+              (min 1.0 (max (max $c $c1) $c2)))))
+```
+where `Truth_c2w $c = $c/(1-$c)`, `Truth_w2c $w = $w/($w+1)`. Verdict: **simplified / non-standard confidence step**. Book-faithful for the weighted-strength numerator, but the output confidence `max($c, $c1, $c2)` is **not** the book's `w2c(w1+w2)`; `$c` *is* `w2c(w1+w2)` already but the extra `max` with the inputs prevents the revision confidence from ever being lower than either premise. This is a hand-tweaked safety clamp; see §4.
+
+**C-2-2. Modus Ponens (asymmetric).** `Rules.metta` L9-11: `(= (|- ($A $T1) ((Implication $A $B) $T2)) ($B (Truth_ModusPonens $T1 $T2)))`. Formula `Formulas.metta` L46-48:
+```
+(= (Truth_ModusPonens (stv $f1 $c1) (stv $f2 $c2))
+   (stv (+ (* $f1 $f2) (* 0.02 (- 1 $f1)))
+        (* $c1 $c2)))
+```
+Verdict: **faithful** to the book's "heuristic Modus Ponens" formula `sB = sA·sAB + k·(1-sA)` with `k=0.02`, though the `(1-sA)` factor uses the default "background probability for ¬A" as 0.02 which is itself an approximation — the book (see Source 1 V2) uses 0.02 as the default-term-probability `c`. Confidence is product `c1·c2`, with a comment admitting "min overestimates here".
+
+**C-2-3. Symmetric Modus Ponens.** `Rules.metta` L14-22 (gated by `SymmetricModusPonensRuleGuard` which allows `Similarity`, `IntentionalSimilarity`, `ExtensionalSimilarity`). Formula `Formulas.metta` L51-55:
+```
+(= (Truth_SymmetricModusPonens (stv $sA $cA) (stv $sAB $cAB))
+   (let* (($snotAB 0.2)
+          ($cnotAB 1.0))
+         (stv (+ (* $sA $sAB) (* (* $snotAB (negate $sA)) (+ 1.0 $sAB)))
+              (min (min $cAB $cnotAB) $cA))))
+```
+Verdict: **multiplication form** — matches the V1 multiplication-form target. The formula is `sB = sA·simAB + 0.2·(1-sA)·(1+simAB)`. Note the constant is **0.2 not 0.02**, and it is named `$snotAB` (strength of `¬A→B` or similar), not the default-term constant `c`. See V1 below for detailed comparison.
+
+**C-2-4. Deduction (Syllogistic).** `Rules.metta` L28-35, guard `SyllogisticRuleGuard` accepts `Inheritance` and `Implication` (L25-26). Formula `Formulas.metta` L5-20:
+```
+(= (Truth_Deduction (stv $Ps $Pc)
+                    (stv $Qs $Qc)
+                    (stv $Rs $Rc)
+                    (stv $PQs $PQc)
+                    (stv $QRs $QRc))
+   (if (and (conditional-probability-consistency $Ps $Qs $PQs)
+            (conditional-probability-consistency $Qs $Rs $QRs))
+       (stv (if (< 0.9999 $Qs)
+                $Rs
+                (+ (* $PQs $QRs) (/safe (* (- 1 $PQs) (- $Rs (* $Qs $QRs))) (- 1 $Qs))))
+            (min $Pc (min $Qc (min $Rc (min $PQc $QRc)))))
+       (stv 1 0)))
+```
+Verdict: **faithful** — this is the classic independence-based deduction `sAC = sAB·sBC + (1-sAB)·(sC - sB·sBC)/(1-sB)`, with the `sB→1` singularity handled via short-circuit. Confidence is min of all five. **Fallback TV = `(stv 1 0)`**, which is an unusual choice — zero-confidence "unknown" at strength 1 rather than strength 0.5.
+
+**C-2-5. Induction.** `Rules.metta` L39-44. Formula `Formulas.metta` L23-31:
+```
+(= (Truth_Induction (stv $sA $cA) (stv $sB $cB) (stv $sC $cC)
+                    (stv $sBA $cBA) (stv $sBC $cBC))
+   (stv (+ (/safe (* (* $sBA $sBC) $sB) $sA)
+           (* (- 1 (/safe (* $sBA $sB) $sA))
+              (/safe (- $sC (* $sB $sBC)) (- 1 $sB))))
+        (Truth_w2c (min $cBA $cBC))))
+```
+Verdict: **faithful** to the book's PLN 2008 Appendix A induction formula, modulo the `Truth_w2c (min cBA cBC)` confidence — that confidence path routes through the w-domain roundtrip, giving a milder reduction than naive min. Comment at L31 says "confidence TODO check".
+
+**C-2-6. Abduction.** `Rules.metta` L47-52. Formula `Formulas.metta` L34-43:
+```
+(= (Truth_Abduction (stv $sA $cA) (stv $sB $cB) (stv $sC $cC)
+                    (stv $sAB $cAB) (stv $sCB $cCB))
+   (stv (+ (/safe (* (* $sAB $sCB) $sC) $sB)
+           (/safe (* $sC (* (- 1 $sAB) (- 1 $sCB))) (- 1 $sB)))
+        (Truth_w2c (min $cAB $cCB))))
+```
+Verdict: **faithful** to the book's 2008 Appendix A abduction formula. Also has "confidence TODO check" comment (L43).
+
+**C-2-7. Evaluation-over-Inheritance ModusPonens (3 cases).** `Rules.metta` L56-74 — three separate rules for unary predicate, binary arg1, binary arg2, all reusing `Truth_ModusPonens`. No dedicated formula. Verdict: **modernized** — these are surface-syntactic rewrites, not rigorous book derivations; book handles via EvaluationLink truth semantics, PLN3 uses the asymmetric ModusPonens TV directly on two unrelated truth values.
+
+**C-2-8. Negation Elimination.** `Rules.metta` L77: `(= (|- ((Not $A) $T)) ($A (Truth_Negation $T)))`. Formula `Formulas.metta` L77-78: `(stv (- 1.0 $s) $c)`. Verdict: **faithful** to the NOT-elimination rule in OpenCog classic PLN. Note: Negation *introduction* is handled by `Translator.metta`, not as a runtime rule (Rules.metta L76 comment).
+
+**C-2-9. Inversion (Inheritance & Implication).** `Rules.metta` L80-85 for both link types. Formula `Formulas.metta` L80-83:
+```
+(= (Truth_inversion (stv $Bs $Bc) (stv $ABs $ABc))
+   (stv $ABs (* $Bc (* $ABc 0.6))))
+```
+Verdict: **ad-hoc / simplified**. Comments at L81-82 explicitly say "confidence depends on Truth of (target) B node, which is not according to OpenCOG classic. confidence penalty not according to OpenCOG classic PLN. Is weaker in this implementation." The book Bayes-inversion formula is `sBA = sAB·sA/sB`; **PLN3 returns the strength unchanged and only discounts confidence by 0.6·cB·cAB**. This is a significant departure from the book.
+
+**C-2-10. Equivalence to Implication.** `Rules.metta` L88-94 — two rules emitting `Implication A B` and `Implication B A` from `Equivalence A B`. Formula `Formulas.metta` L86-92:
+```
+(= (Truth_equivalenceToImplication (stv $As $Ac) (stv $Bs $Bc) (stv $ABs $ABc))
+    (let* (($ConclS (if (< 0.99 (* $ABs $ABc))
+                        $ABs
+                        (/safe (* (+ 1.0 (/safe $Bs $As)) $ABs) (+ 1.0 $ABs)))))
+          (stv $ConclS $ABc)))
+```
+Verdict: **modernized with approximation** — derived from PLN book's `sim2inh` formula `inh(A,B) = ((1 + sB/sA)·sim)/(1+sim)` but with a **hack-branch** that bypasses the formula when `ABs·ABc > 0.99`, explicitly noted in the comment as "Hack to work around the lack of distributional TV". Confidence passed through unmodified.
+
+**C-2-11. Transitive Similarity.** `Rules.metta` L97-101. Formula `Formulas.metta` L95-111 uses a helper `TransitiveSimilarityStrength` that does a double-application of the sim→inh conversion and harmonic combination:
+```
+(= (TransitiveSimilarityStrength $sA $sB $sC $sAB $sBC)
+   (let* (($T1 (/ (* (+ 1.0 (/ $sB $sA)) $sAB) (+ 1.0 $sAB)))
+          ($T2 (/ (* (+ 1.0 (/ $sC $sB)) $sBC) (+ 1.0 $sBC)))
+          ($T3 (/ (* (+ 1.0 (/ $sB $sC)) $sBC) (+ 1.0 $sBC)))
+          ($T4 (/ (* (+ 1.0 (/ $sA $sB)) $sAB) (+ 1.0 $sAB))))
+         (invert (- (+ (invert (+ (* $T1 $T2) (* (negate $T1) (/safe (- $sC (* $sB $T2)) (negate $sB)))))
+                       (invert (+ (* $T3 $T4) (* (negate $T3) (/safe (- $sC (* $sB $T4)) (negate $sB)))))) 1.0))))
+```
+Verdict: **modernized** — book has a transitive-similarity derivation via forward+backward inheritance; PLN3's implementation packs the `sim→inh` conversion (T1,T3 forward; T2,T4 backward) into a harmonic-mean-of-deductions shape. Not verbatim book, but closely derived. Uses raw `/` not `/safe` on 4 spots (zero-`sA`, zero-`sB`, zero-`sC` will crash).
+
+**C-2-12. Evaluation Implication (surface rule).** `Rules.metta` L104-108. Formula `Formulas.metta` L127-135 wraps `simpleDeductionStrength` (L114-124, which duplicates Truth_Deduction strength logic but returns `empty` instead of `(stv 1 0)` on precondition failure) with an aggressive confidence penalty `0.9·0.9·min(cB,cA,cC,cAC,0.9·cAB)`. Verdict: **modernized** — the rule plugs Evaluation into deduction as if the predicate were a concept, with a 0.81·0.9 discount for the syntactic pun.
+
+**C-2-13. Member Deduction.** `Rules.metta` L112-116: `Member(A,B) + Inheritance(B,C) ⊢ Member(A,C)` using `Truth_Deduction`. Verdict: **simplified** — book distinguishes extensional vs intensional member derivations; here reuses deduction TV.
+
+**C-2-14. Total rule families implemented vs book.**
+*Implemented* (11 distinct TV-formula-backed rules plus 3 syntactic Evaluation variants): Revision, ModusPonens, SymmetricModusPonens, Deduction, Induction, Abduction, EvaluationModusPonens (×3), NegationElimination, Inversion (×2 link types), EquivalenceToImplication (×2 directions), TransitiveSimilarity, EvaluationImplication, MemberDeduction. Plus `Truth_Identity` (passthrough) used only by `Translator.metta`.
+*Book has but PLN3 lacks* (the enumerated "V6" rule gaps): concept-geometry deduction, distributional/matrix TV, all temporal rules (PredictiveImplication, SeqAND, SimultaneousAND), quantifier rules (ForAll, Exists, introduction/elimination), multi-deduction, intensional vs extensional link type distinctions beyond the Similarity guard, higher-order Context links, contextualiser rules, mixed inheritance-geometry rules, AGISim-style embodiment rules, Second-order TV truth values (distributional PTV), predicate satisfying set machinery, attention-value based rule scoring. PLN3 is roughly **12 rules out of the book's >60**.
+
+---
+
+## §3 — Inference control strategy
+
+**C-3-1.** Task selection is *highest confidence first*: `BestCandidate PriorityRank () $Tasks` in `Deriver.metta` L37, where `PriorityRank` of `(Sentence ($x (stv $f $c)) $Ev1)` is `$c` (L19). There is **no strength component, no complexity penalty, no bandit scoring, no attention-value mechanism**.
+
+**C-3-2.** Each derivation step (L36-52):
+   1. Pick best task `$x` by confidence.
+   2. For every belief `$y` in `$Beliefs`, if stamps are disjoint: try `(|- $x $y)` and `(|- $y $x)` (both orderings).
+   3. Also try the **unary** form `(|- $x)` (single-premise rules like inversion, negation-elim, equiv→impl).
+   4. Collect all non-empty derivations into `$derivations`.
+   5. Recurse: new tasks = `LimitSize(Unique(Tasks ∪ derivations) \ {selected}, taskqueuesize)`; new beliefs = `LimitSize(Unique(Beliefs ∪ derivations), beliefqueuesize)`.
+
+**C-3-3.** Termination (L35-36): `$steps > $maxsteps` or `$Tasks == ()`.
+
+**C-3-4.** Queue size enforcement: `LimitSize` (Utils-ish but defined in Deriver L27-31) iteratively removes lowest-priority elements (`BestCandidate PriorityRankNeg` — highest **negated** priority = lowest actual). So beams are strict priority bounded.
+
+**C-3-5.** `StampDisjoint` (Deriver L2-5) uses `collapse` + `superpose` to check whether any evidence-id in `$Ev1` equals any in `$Ev2`. If any match, the pair is skipped — this is the book's inference-trail disjointness check (see V3).
+
+**C-3-6.** **Stamp** = tuple of integer source-sentence ids supplied at KB init (e.g., `(1)`, `(1 2 3)`). After a successful derivation, the new sentence's stamp is `InsertionSort(TupleConcat($Ev1, $Ev2), ())` (L41) — i.e., the sorted union of both premises' stamps. Unary rules (`(|- $x)`) keep the original `$Ev1` (L45). There is **no bound on stamp length** inside PLN3 itself, other than via the beam-size parameter reducing the population of sentences.
+
+**C-3-7.** Control is effectively **exhaustive forward chaining with beam pruning**. There is no backward chaining, no goal-directed BIT exploration, no BC+FC alternation, no abductive/inductive control policy. `PLN.Query` (L68-72) simply runs `PLN.Derive` and then filters the resulting beliefs by term-equality — so querying for `X` just *hopes* `X` shows up in the finite-beam forward closure.
+
+**C-3-8.** No `pattern-check` or `check!` style backward resolver. No rewrite of a goal into sub-goals. No PLN book "inference control" in the BIT/MAB sense.
+
+**C-3-9.** Relative to the book's BIT + backward/forward + MAB: PLN3 is radically simpler. It is **single-directional forward-chaining beam search with priority = confidence**, whose only "smarts" is stamp-disjoint pair selection and priority-bounded beams.
+
+---
+
+## §4 — Deviations from the 2008 book
+
+### Faithfully implemented
+
+**C-4-1.** Deduction formula (C-2-4): book's independence-based formula including the `sB→1` short-circuit, with consistency guard from `Constraints.metta`. Cited in comments as "PLN book §1.4, page 15" and "PLN book §5.2.2.2, page 74".
+
+**C-4-2.** Induction formula (C-2-5): book's Appendix A formula, page 307 (cited in comment `Formulas.metta` L22).
+
+**C-4-3.** Abduction formula (C-2-6): book's Appendix A formula, page 307 (cited in comment `Formulas.metta` L33).
+
+**C-4-4.** Modus Ponens with default term probability 0.02 (C-2-2): verbatim book formula, cited "PLN book §5.7.1, page 111" (`Formulas.metta` L45).
+
+**C-4-5.** Consistency constraints (`Constraints.metta`) borrowed from `trueagi-io/hyperon-pln DeductionDTL.metta` enforce `max(0,(sA+sB-1)/sA) ≤ sAB ≤ min(1, sB/sA)` — precisely the book's page-74 condition.
+
+**C-4-6.** Revision structure (C-2-1) is book-faithful in the `w = c/(1-c)` weighting idiom (cited "PLN Book §5.10.2, page 116").
+
+### Simplified or omitted
+
+**C-4-7.** Inversion (C-2-9): strength is **not** updated (returned unchanged), contradicting the book's Bayes inversion `sBA = sAB·sA/sB`. Confidence penalty is a hand-tuned 0.6·cB·cAB. The code comments explicitly acknowledge this ("not according to OpenCOG classic", "is weaker").
+
+**C-4-8.** Revision confidence (C-2-1) is clamped with `max(c, c1, c2)` so the result is never below any premise's confidence. In the book, revision confidence is `w2c(w1+w2)`, which — combined with the `max` — gives a monotonic always-increasing confidence path. Since the result also lands in `min(1, ...)`, revision can saturate to c=1 after few rounds (see V4).
+
+**C-4-9.** Evaluation / Inheritance coupling (C-2-7, C-2-12, C-2-13) uses ModusPonens / Deduction TV directly as surface rewrites rather than modeling predicate satisfying sets — the book's rigorous mapping via `|S_P|/|U|` is not reified.
+
+**C-4-10.** No distributional (indefinite / second-order) TV. Section 2.4 of the book (second-order TV, matrix deduction) is not implemented. The EquivalenceToImplication code (C-2-10) explicitly acknowledges this gap via its "Hack to work around the lack of distributional TV" branch.
+
+**C-4-11.** No intensional vs extensional Inheritance distinction beyond the `SymmetricModusPonensRuleGuard` allowing `IntensionalSimilarity`/`ExtensionalSimilarity` as link types; there are no Int↔Ext conversion rules.
+
+**C-4-12.** No temporal/causal rules (PredictiveImplication, SeqAND, SimultaneousAND, etc.). No quantifier rules. No AttentionValue.
+
+### Modernized
+
+**C-4-13.** Rule application uses MeTTa unification on S-expression patterns like `(|- ((Inheritance $A $B) $T1) ((Inheritance $B $C) $T2))` rather than explicit rule objects with explicit premise-tuple matchers. This replaces the book's explicit BC/FC control structures with MeTTa's native pattern matching — a true "MeTTa-fication". The formulas themselves are still explicit numerical computations (not emergent from pattern structure).
+
+**C-4-14.** `Translator.metta` pre-expands nested `Implication (Implication A B) C` and negation-wrapped links at `PLN.Init` time into specialized rewrite rules with pre-composed `Truth_ModusPonens` / `Truth_Negation` / `Truth_Identity` pipelines. This is a compile-time partial evaluation distinctive to PLN3 — I do not see this in the 2008 book; the book's control handles nesting via BIT expansion at inference time.
+
+**C-4-15.** Priority queue + stamp-bounded beam is a simplification *and* modernization of the book's MAB + inference-trail control. The book's bandit-style rule selection is absent; only confidence-ranked task selection remains.
+
+### New / not in the book
+
+**C-4-16.** The `SymmetricModusPonensRuleGuard` and `SyllogisticRuleGuard` — type-level white-lists of which link types trigger which rule — are implementation-level artifacts (Rules.metta L14-16, L25-26). The book handles this via the type-taxonomy and truth-value semantics directly, not via explicit guard predicates. Minor but architectural.
+
+---
+
+## §5 — Experimental extensions and recent work
+
+**C-5-1.** The local mirror was cloned on 2026-01-12 (Unix epoch 1768198566) at commit `55f1751` and contains **zero subsequent commits** in `.git/logs/HEAD`. So "recent work" here means the state at that clone — we cannot see upstream commits past that date from this mirror alone.
+
+**C-5-2.** PR-level references in the brief (Negation PR #54 Aug 2025; TaskReturn PR #52; Modularity PR #51) are **not visible in this mirror's local git history**. The clone was a shallow/single-commit snapshot. The code **does** contain negation machinery — `Truth_Negation` in `Formulas.metta` L77-78, `Rules.metta` L77 negation-elim rule, and full negation-sensitive translation in `Translator.metta` L11-36 — so PR #54's content appears to be merged into this snapshot.
+
+**C-5-3.** There is no `TaskReturn` symbol, `task-return`, or similar in the repo (searched). PR #52's content is not identifiable by name here.
+
+**C-5-4.** There is no sign of FactorGraph decomposition anywhere: no `FactorGraph`, no `factor-graph`, no factor/marginal messaging infrastructure (grep confirmed zero hits). The closest thing is `Constraints.metta`'s conditional-probability-consistency block, which is a local algebraic guard — not a factor-graph framework.
+
+**C-5-5.** There is **no MORK or M0RK reference** anywhere in PLN3 (grep confirmed zero hits for MORK/M0RK). No space-level integration, no persistence hooks into a MORK server. `PLN.py` invokes `metta-morph` (a different tool — a MeTTa → compiled-MeTTa optimizer) not MORK.
+
+**C-5-6.** The only external tool PLN3 depends on (beyond `metta` itself) is `metta-morph` for runtime compile of the translated KB, as seen in `examples/PLN.py` L27-44. The path `~/metta-morph/extend/` is hardcoded.
+
+**C-5-7.** Link type white-lists (`Similarity`, `IntentionalSimilarity`, `ExtensionalSimilarity` for SymmetricModusPonens; `Inheritance`, `Implication` for Syllogistic) in `Rules.metta` L14-16, L25-26 are the only hint of richer link-type machinery. No Extensional/Intensional conversion rules are present.
+
+---
+
+## §6 — Tests, examples, worked inferences
+
+### ruletests/
+
+**C-6-1. `RuleTester.metta`** — Single-file regression for three rule paths:
+   - *Negation-elim into extensional penguin test*: `(Not (Inheritance Penguin Car))` with `(stv 0.99 0.9)` → asks `(Inheritance Penguin Car)`, expects `(stv 0.01 0.9) (5)`. This verifies `Truth_Negation` preserves confidence and flips strength.
+   - *Inversion test*: `Inheritance Sam Raven (0.99,0.9)` → `Inheritance Raven Sam` expects `(stv 0.99 0.54) (1)`. Confidence `0.54 = 0.6 · 0.9 · ≈1` — confirms the 0.6-discount inversion (C-2-9) and the `Bc=1` substitution (since `(Concept Raven)` has stv 0.142 1.0, so `Bc=1.0`, giving `0.6·1.0·0.9 = 0.54`). Strength passed through unchanged — consistent with the degenerate inversion formula.
+   - *Equivalence→Implication test*: expects `(stv 0.994974874371859 0.9) (2)`, i.e. `((1+0.142/0.142)·0.99)/(1+0.99) = 1.98/1.99 ≈ 0.9949748...`.
+
+**C-6-2. `equivalenceToImplication.metta`** — simple 1-depth test of the rule. KB: `Anna`, `Frank` concepts with stv 0.5 1.0; Equivalence(Anna,Frank) stv 0.98 0.87. Expected `(stv 0.98989898989899 0.87)` = `((1+0.5/0.5)·0.98)/(1+0.98) = 1.96/1.98`.
+
+**C-6-3. `evaluationImplicationRuleA.metta`** — Tests Eval-over-Inheritance ModusPonens. KB: `Tom` is really fat (Evaluation), `IsReallyFat → IsFat` (Implication), `Tom` is a cat (Inheritance). Query `(Evaluation IsFat (List Tom))` expects `(stv 1.0 0.729) (1 2 3)` — combined confidence `0.9·0.9·0.9 = 0.729`, suggesting two ModusPonens applications (each multiplying confidences). Uses the surface Evaluation rules (C-2-7).
+
+**C-6-4. `evaluationWithNegationAndInheritanceInversion.metta`** — chains Negation elim + Inheritance Inversion + Eval-Inh-MP. Expected `(stv 0.8 0.6) (1 2)`. Exercises the interplay of Translator-generated negation handling with runtime rules.
+
+**C-6-5. `inversion.metta`** — Minimal test of inheritance inversion: `Inheritance(B,A) (0.87,0.81)` → `Inheritance(A,B)` expects `(stv 0.87 0.486)`. `0.486 = 0.6 · 1.0 · 0.81` — confirms the 0.6-discount.
+
+**C-6-6. `memberDeductionA.metta`** — Member deduction chain (C-2-13). Expects `(stv 0.75 0.5) (1 2)`.
+
+**C-6-7. `transitiveSimilarity.metta`** — 2-hop similarity `A~B~C`, both 1.0. Expected `(stv 1.0 0.5)`, confidence = min of cABc, cBCc = min(0.89, 0.5) = 0.5 (matches C-2-11).
+
+### examples/
+
+**C-6-8. `FlyingRaven.metta`** — Canonical Tweety-problem: exceptions to flying. KB: Sam is a Raven, Pingu is a Penguin, Penguins don't fly (0.01), Ravens fly (via Birds fly 0.99 and Raven⊂Bird 0.99). Expected outputs:
+   - `flies(Sam)` → `(stv 0.97052375 0.81) (1 4 6)` — chains `Sam⊂Raven⊂Bird⊂(flies)` via deduction and evaluation MP.
+   - `flies(Pingu)` → `(stv 0.332225678571428 0.83690036900369) (2 3 5 6)` — combines Penguin-flies-0.01 with Bird-flies-0.99 via revision. The presence of Revision on an evaluation is what gives the 0.33 outcome (somewhere between the two inputs, weighted by confidence).
+   - The final `let*` block demonstrates single-step derivation filtering ("what's *new* after 1 step?").
+
+**C-6-9. `Robot.metta`** — Robot-fetch scenario. Implements a `PLNcategorizeObject` helper that queries "is object X a Y?" and a `PLNobjectsOfCategory` filter. Expected: (frisbee, orange) both inferred to belong to category `bring` via the chained implication `Inheritance toy → (see → bring)` and sportsball/orange being round. Demonstrates the nested-implication translation via Translator.
+
+**C-6-10. `Smokes.metta`** — Social-network smoking/cancer inference. Friend(Anna,X) ∧ smokes(Anna) → smokes(X) ∧ smokes(X) → cancerous(X). Expected `cancerous(Edward)` → `(stv 0.519920454545454 0.829078220412911) (4 9 10)`. Uses variable-quantified implications `(Implication (Evaluation (Predicate friend) (List $1 $2)) ...)`.
+
+**C-6-11. `Toothbrush.metta`** — Deeper nested implication chain: plastic → heat → melt → pliable → reshape → screwlike → wait → hardened → unscrew → removed. Six action steps chained via nested Implications of form `I(Inh x plastic) (I(Op x opLighter) (Inh x heated))`. Expected `Inheritance(X, removed)` → `(stv 0.905100467696027 0.895338254258716) (10 11 12 13 14)`. This is the stress test for Translator-based nested-implication compilation.
+
+**C-6-12. `PLN.py`** — Thin Python shim registering the `PLN.Init` atom. Does: (a) run `build.sh`, (b) concatenate `Translator.metta` + user KB into `TRANSLATE.metta`, (c) run `metta TRANSLATE.metta 2>> TRANSLATED.metta` capturing the translator output, (d) strip `#<n>` variable disambiguators via regex `r'\$([A-Za-z0-9]+)#([0-9]+)'`, (e) hand TRANSLATED.metta to `metta-morph` for compilation as `plnblob.metta`, (f) inject the `(= (sentence $A $B) (Sentence $A $B))` capitalization-bridge, (g) return `(PLN.Init.Success)` atom. Depends on `~/PLN` and `~/metta-morph` paths being set up.
+
+---
+
+## §7 — Status, open issues, TODOs
+
+**C-7-1.** `Formulas.metta` L31 and L43 — both Induction and Abduction confidence formulas carry `; confidence TODO check` comments, suggesting the authors have not validated the `Truth_w2c(min cBA cBC)` confidence reduction against the book or classical OpenCog PLN.
+
+**C-7-2.** `Utils.metta` L84 — `; Fast but TODO use efficient native handling once available: https://github.com/trueagi-io/metta-morph/pull/27` — the `Unique` function is marked as an inefficient placeholder pending a metta-morph PR.
+
+**C-7-3.** `Formulas.metta` L48 — comment "min overestimates here as we do not have access to node probabilities" on `Truth_ModusPonens` — flags a known limitation in confidence combination when premise strengths are unknown.
+
+**C-7-4.** `Formulas.metta` L81-82 — explicit admission that `Truth_inversion` is a weaker, non-classical implementation. This is a known-simplified rule (§4 deviation).
+
+**C-7-5.** `Formulas.metta` L87-89 — `Truth_equivalenceToImplication` has a "Hack to work around the lack of distributional TV" branch. This flags the distributional TV as missing infrastructure.
+
+**C-7-6.** **Spelling inconsistency:** `sentence` (lowercase) is used in KB initializers and tests, while `Sentence` (capital) is required by `Deriver.metta`'s `PriorityRank` / `PriorityRankNeg` patterns. The bridge rule `(= (sentence $A $B) (Sentence $A $B))` is injected by `PLN.py` L51 — but is **not present in `src/PLN.metta`**. Tests like `inversion.metta`, `memberDeductionA.metta`, `evaluationWithNegationAndInheritanceInversion.metta` use the capital `Sentence` form in their KB; other tests (`RuleTester.metta`, `FlyingRaven.metta`) use lowercase `sentence`. Running tests in pure-MeTTa (without the Python shim) would require consistent capitalization — this is a latent bug in `ruletests/test.sh` which copies `PLN.py` but does not actually invoke the Python hook.
+
+**C-7-7.** `TransitiveSimilarityStrength` (`Formulas.metta` L95-101) uses raw `/` (not `/safe`) in 4 places — will crash on `$sA=0`, `$sB=0`, or `$sC=0`. All example/test invocations use non-zero concept strengths, masking the bug.
+
+**C-7-8.** Clone-time snapshot — no branches, no tags, no remote-tracking refs beyond the `origin/main` pointer. No visible PRs, no issues, no open TODOs at the repo-metadata level (we cannot see GitHub issues from a local mirror).
+
+---
+
+## §8 — Discovered publications
+
+**C-8-1. PLN book (Goertzel et al., 2008).** Cited 4 times in source comments:
+   - `src/Constraints.metta` L1: "PLN book '5.2.2.2 PLN Deduction and Second-Order Probability', page 74"
+   - `src/Formulas.metta` L3: "PLN book '1.4 Truth-value Formulas', page 15"
+   - `src/Formulas.metta` L22: "PLN book 'Appendix A: Comparison of PLN Rules with NARS Rules', page 307"
+   - `src/Formulas.metta` L33: same, page 307
+   - `src/Formulas.metta` L45: "PLN book '5.7.1 Modus Ponens', page 111"
+   - `src/Formulas.metta` L57: "PLN Book '5.10.2 A Heuristic Revision Rule for Simple Truth-values', page 116"
+   - `src/Formulas.metta` L90: "Formula based on PLN book formula for sim2inh"
+   Citation form: no author, no year given explicitly. Must be Goertzel, Iklé, Goertzel, Heljakka *Probabilistic Logic Networks: A Comprehensive Framework for Uncertain Inference*, Springer 2008.
+
+**C-8-2. OpenCog classic PLN implementation.** Not a publication per se, but cited 11 times as source for rules:
+   - `opencog/pln/rules/wip/symmetric-modus-ponens.scm` (Formulas L50; Rules L18)
+   - `opencog/pln/rules/term/deduction.scm` (Rules L28)
+   - `opencog/pln/rules/wip/induction.scm` (Rules L38)
+   - `opencog/pln/rules/wip/abduction.scm` (Rules L46)
+   - `opencog/pln/rules/wip/negation-introduction.scm#L41` (Formulas L75)
+   - `opencog/pln/rules/wip/not-elimination.scm#L34` (Formulas L76) and `#L1-L8` (Rules L76)
+   - `opencog/pln/rules/wip/inversion.scm` (Rules L79; Formulas L80-82 for confidence-penalty deviation)
+   - `opencog/pln/rules/wip/equivalence-to-implication.scm` (Rules L87; Formulas L85)
+   - `opencog/pln/rules/wip/formulas.scm#L160-L173` (Formulas L94)
+   - `opencog/pln/rules/wip/transitive-similarity.scm` (Rules L96; Formulas L103)
+   - `opencog/pln/rules/wip/evaluation-implication.scm` (Rules L103; Formulas L126)
+   - `opencog/pln/rules/extensional/member-deduction.scm` (Rules L110)
+   This is the canonical pre-MeTTa OpenCog PLN Scheme implementation, which PLN3 is directly porting.
+
+**C-8-3. `trueagi-io/hyperon-pln DeductionDTL.metta`.** Cited 2 times:
+   - `src/Constraints.metta` L2 — "borrowed from ..."
+   - `src/Formulas.metta` L4 — "borrowed from ..." (the deduction formula itself)
+   Cross-repo code lineage: `hyperon-pln` (the upstream authoritative PLN, via trueagi-io) is the source of the deduction machinery.
+
+**C-8-4. `trueagi-io/metta-morph PR #27`.** Cited once in `src/Utils.metta` L84 — a dependency-tooling reference (MeTTa compiler improvements), not a paper.
+
+**C-8-5.** No academic papers (beyond the PLN book) cited in code. No Iklé, Heljakka, Matthew, Pitt, or other named co-authors surfaced. No FactorGraph / MORK paper references. No arXiv links.
+
+**C-8-6.** The `trueagi-io/PLN/wiki` is referenced once in `README.md` L7 as the intended documentation home; this is not a citation per se but is worth noting for where the project's *prose* documentation lives (off-repo).
+
+---
+
+## Book-verification targets (V1–V6)
+
+### V1 — Symmetric Modus Ponens formula
+
+Source 1 reconciled outcome: **multiplication form** `sB = sA·simAB + c·(1-sA)·(1+simAB)`.
+
+PLN3's `Truth_SymmetricModusPonens` (`Formulas.metta` L51-55, verbatim):
+```
+(= (Truth_SymmetricModusPonens (stv $sA $cA) (stv $sAB $cAB))
+   (let* (($snotAB 0.2)
+          ($cnotAB 1.0))
+         (stv (+ (* $sA $sAB) (* (* $snotAB (negate $sA)) (+ 1.0 $sAB)))
+              (min (min $cAB $cnotAB) $cA))))
+```
+
+**Verdict: CONSISTENT with the multiplication form.** Algebraically:
+`sB = sA·sAB + snotAB·(1-sA)·(1+sAB)` with `snotAB = 0.2`.
+
+This matches Source 1 V1 structurally. Two deltas from a book-literal reading:
+- The constant is **0.2**, not **0.02**. The variable is named `$snotAB` (strength of `¬A→B`), distinct from the default-term-probability constant `c` used in asymmetric ModusPonens (which *is* 0.02). This is the crucial PLN3-specific datum: asymmetric MP uses 0.02; symmetric MP uses 0.2.
+- Confidence is `min(cAB, cnotAB, cA)` with `cnotAB=1.0`, i.e. effectively `min(cAB, cA)`. No strength penalty branch.
+
+### V2 — Default term probability `c`
+
+**Found: `c = 0.02` used in exactly one place**, `Truth_ModusPonens` (`Formulas.metta` L47): `(+ (* $f1 $f2) (* 0.02 (- 1 $f1)))`. Hardcoded literal, not configurable. No corresponding `PLN.Config.DefaultTermProbability` in `Config.metta`.
+
+**Also note:** SymmetricModusPonens uses `0.2` (C-2-3) — a different constant, semantically different (it's the assumed background `s(¬A→B)`, not the default term probability). So PLN3 does respect the book's `c=0.02` for asymmetric MP but parameterizes a different constant for symmetric MP.
+
+### V3 — Inference trails (stamps)
+
+**Found: PLN3 maintains stamps.** Stamps are integer-id tuples attached to each sentence, e.g. `(Sentence (term (stv s c)) (1 2 3))`. Managed by:
+- `StampDisjoint` check before pairing (`Deriver.metta` L2-5).
+- Sorted-union on derivation (`InsertionSort (TupleConcat $Ev1 $Ev2) ()` in Deriver L40).
+
+**However, the stamp length is NOT explicitly bounded.** The book's ~10-20 atom trail bound is not enforced inside stamps themselves. Bound is indirect:
+- `BeliefQueueSize = 200` (`Config.metta` L10) — caps the number of *sentences*, not the size of any one stamp.
+- `TaskQueueSize = 20` (`Config.metta` L7) — caps active inference front.
+- `MaxSteps = 20` (`Config.metta` L4) — caps recursion depth.
+
+So the effective trail-length bound is ≤ MaxSteps=20, which coincidentally falls inside the book's 10-20 range — but only by accident of the default, and only because each step unions at most one extra stamp-id.
+
+### V4 — Revision with count drift
+
+The book warns that revision with `c > 0` drifts strengths toward 1.
+
+PLN3 `Truth_Revision` (`Formulas.metta` L66-73, verbatim above in C-2-1):
+- Output strength `$f = (w1·f1 + w2·f2) / (w1+w2)` — a **weighted mean**, not biased toward 1. The strength output is a convex combination of the premises.
+- Output confidence `min(1, max(c_from_w, $c1, $c2))` — this is where drift happens: confidence **never decreases** on revision, can only grow. Combined with `Truth_c2w`'s unbounded mapping of `c→∞` as `c→1`, the weighted mean then re-maps through `Truth_w2c` to get the new confidence, clipped to 1.
+
+**Verdict: Strength drift toward 1 is NOT present.** The weighted mean keeps strength bounded by the premise strengths. However, **confidence drift toward 1 IS present via the `max($c, $c1, $c2)` clamp** — revising twice with the same evidence will push confidence monotonically upward without proper double-counting protection (the `StampDisjoint` check is what *should* catch this; revision on stamp-disjoint evidence *is* safe, but the clamp bypasses the proper w2c calculation anyway). There is **no explicit "overlap constant"** in the revision formula itself.
+
+### V5 — CLAUDE.md rule list completeness
+
+CLAUDE.md claims these rules:
+- Revision ✓ (C-2-1)
+- Modus Ponens ✓ (C-2-2)
+- Symmetric Modus Ponens ✓ (C-2-3)
+- Deduction ✓ (C-2-4)
+- Induction ✓ (C-2-5)
+- Abduction ✓ (C-2-6)
+- Evaluation Implication ✓ (C-2-12)
+- Inversion ✓ (C-2-9)
+- Negation Elimination ✓ (C-2-8)
+- Equivalence to Implication ✓ (C-2-10)
+- Transitive Similarity ✓ (C-2-11)
+
+**Verdict: all 11 claimed rules are present and have formulas.** CLAUDE.md's list is accurate.
+
+CLAUDE.md is **incomplete** — it omits:
+- Member Deduction (Rules.metta L112-116, C-2-13)
+- Evaluation-over-Inheritance Modus Ponens (3 cases, Rules.metta L56-74, C-2-7)
+
+So the actual rule list is **strictly a superset** of what CLAUDE.md documents.
+
+### V6 — Missing from PLN3 relative to book
+
+Verified missing (no occurrences anywhere in the repo):
+- **Concept-geometry deduction:** absent.
+- **Distributional TV / matrix deduction:** absent; explicitly acknowledged as missing in `Formulas.metta` L87 comment.
+- **Intensional-inheritance mixed cases:** guard-whitelists include `IntensionalSimilarity`/`ExtensionalSimilarity` but no Int/Ext conversion rules.
+- **Temporal/causal rules (PredictiveImplication, SeqAND, SimultaneousAND):** absent.
+- **Quantifier rules (ForAll, Exists intro/elim):** absent.
+- **Multi-deduction (3+ premise combination):** absent; max arity is 2 premises in `(|- $x $y)` + 1 in `(|- $x)`.
+
+All V6 targets confirmed absent.
+
+---
+
+## Divergences between meta-docs and code
+
+**D-1.** `AGENTS.md` L4: claims "Near-identical copy of the modular `PLN2` branch". The meta-doc references a sibling `PLN2` directory that is outside this repo — not verifiable from PLN3 alone, but the claim that PLN3 is a mirror is confirmed by `.git/logs/HEAD` showing a single clone event.
+
+**D-2.** `CLAUDE.md` L64 rule list is strictly smaller than what exists — see V5. Minor doc gap.
+
+**D-3.** `CLAUDE.md` L42-44: build command listing matches `build.sh` exactly.
+
+**D-4.** `CLAUDE.md` L25-31: lists `examples/PLN.py` and per-directory `test.sh` files — all present.
+
+**D-5.** `GEMINI.md` L22 references a sibling `../PLN2/GEMINI.md` for architectural detail, which cannot be verified here.
+
+**D-6.** None of CLAUDE.md, AGENTS.md, GEMINI.md mention the `sentence` / `Sentence` capitalization inconsistency (C-7-6) or the bridge injection in PLN.py — a documentation gap that would trip a new contributor.
+
+**D-7.** Meta-docs do not mention the `Translator.metta` exclusion from `PLN.metta`. The user might assume all 7 `src/` files go into `PLN.metta`, but `build.sh` deliberately excludes `Translator`.
+
+---
+
+*End of Claude findings.*

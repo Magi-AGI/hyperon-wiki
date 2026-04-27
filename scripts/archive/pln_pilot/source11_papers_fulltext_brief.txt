@@ -1,0 +1,229 @@
+# Source 11 — Full-Text Upgrades + Late-Breaking Formalizations — Cross-Model Extraction Brief
+
+**Date:** 2026-04-25
+**Brief author:** Claude (orchestrator), incorporating Gemini's Source 11 proposal and Codex's Source 10 wording cautions.
+**Frame:** Two-lane bundle. Lane A upgrades 3 wiki "stub" cards by reading their full-text JSON sources. Lane B extracts 4 late-breaking formalizations from the ai-agents/mettapedia paper directory that were surfaced (but not extracted) during Source 10. Lane C is an inventory-only sweep — catalog the remaining ~12 newly-discovered papers without extraction.
+
+**Why now:** Source 9 covered 13 wiki paper cards. Source 10 surfaced ~20 new .tex papers in `ai-agents/lean-projects/mettapedia/papers/` plus confirmed 4 wiki publications cards exist as full-text JSON locally. Source 11 closes the highest-value subset (synergy stubs that gate cluster narrative + late-breaking formal-proof sources that resolve open Source 10 questions) before declaring the PLN cluster pilot closed.
+
+---
+
+## Bundle scope (cross-model — all 3 models read all sources)
+
+### Lane A — Full-text wiki-card upgrades (3 papers, JSON sources on disk)
+
+**Goal:** convert these wiki cards from extracted stub to full-content reconciliation. Each card already exists; the JSON is the canonical full-text. Read the JSON, then check the wiki card content for gaps and divergences.
+
+| # | Wiki card | JSON source | Cluster question |
+|---|---|---|---|
+| A1 | `RawData+Publications+Economic Attention Networks` (or equivalent ECAN card — search-verify) | `publication_texts/json/Economic_Attention_Networks.json` (29 KB) | How does the ECAN economic metaphor (rent / wages / tax / STI / LTI) constrain PLN inference control? Does the equation set match the URE Bayesian-stack control surface (Source 6) or contradict it? |
+| A2 | `RawData+Publications+OpenCog NS Hybrid Neural-Symbolic` (search-verify card name) | `publication_texts/json/OpenCog_NS_Hybrid_Neural-Symbolic.json` (29 KB) | The "grounding seam" — how do neural activation vectors convert into PLN truth values? Cross-check against the "Predicate-as-Indicator-Function" formalization Gemini cites in `nuPLN.tex`. |
+| A3 | `RawData+Publications+Compositional Spatiotemporal Deep Learning` (or equivalent card — search-verify) | `publication_texts/json/Compositional_Spatiotemporal_Deep_Learning.json` (37 KB) | Does this paper specify a deep-learning↔PLN integration pattern that a current MeTTa repo could realize, or is it proposal-only? |
+
+### Lane B — Late-breaking formalizations (4 papers, .tex sources from ai-agents/mettapedia/papers/)
+
+**Goal:** extract claim-by-claim from the .tex source. These resolve open Source 10 questions and add foundational evidence-theory background to the cluster narrative.
+
+| # | Paper | .tex path | Cluster question |
+|---|---|---|---|
+| B1 | **MORK-PathMap Formalization** | `ai-agents/lean-projects/mettapedia/papers/mork-mm2-pathmap-formalization.tex` | The MORK↔PLN cluster bridge paper. Extract the formal definition of the **Zipper Abstract Machine (ZAM)** and its relation to the **Product Quantale logic**. Does this paper close the Source 8 "FactorGraph-on-MORK" question (PAPER-ONLY / ABANDONED)? Authors per Gemini: "Remi/Zar" — verify Remy Clarke + Zarathustra Goertzel (cross-author, MORK substrate line × adjacent realization line). |
+| B2 | **xiPLN — The Finalized Interface** | `ai-agents/lean-projects/mettapedia/papers/xiPLN.tex` | The "Semantic Contract" — how does xiPLN differ from internal nuPLN logic? How are the "Calibrated Aliases" defined for the rule API? **Critical check:** does xiPLN.tex describe the cited `lib_pln_xi.metta` such that we can verify (or refute) Gemini's inferential claim that `CeTTa/lib/lib_wmpln.metta` is its realized implementation? |
+| B3 | **World-Model Calculus (Consolidated)** | `ai-agents/lean-projects/mettapedia/papers/world-model-calculus.tex` | Synthesize the paper's "No-Go Theorem" and "Exchangeability" proofs into a high-level architectural summary. Cross-reference against `Wm Pln Book V3` (Source 9 already covered the wiki extraction; this is the .tex source). Note any divergence from the wiki extraction — Source 10 noted the wiki bibliography misattributed authorship to "Zarko Zaremba." |
+| B4 | **Markov-de Finetti Formalization** | `ai-agents/lean-projects/mettapedia/papers/markov-definetti-formalization.tex` | The foundational evidence-theory paper. Why does PLN use `(n+, n-)` evidence carrier? Document the "evidence carrier as statistic" foundation. This is the deepest mathematical justification for the cluster's central data structure. |
+
+### Lane C — Inventory-only (no extraction; catalog for future passes)
+
+The following papers were surfaced in Source 10 but are **out of scope for Source 11 extraction**. They are cataloged here so that later passes can pick them up without re-discovering them. Do NOT extract during Source 11; just verify path existence and note one-line purpose if discoverable from filename.
+
+**Cluster-adjacent (medium priority):**
+- `nuPLN.tex` / `nuPLN_v1.tex` — the rule-layer specification underlying xiPLN. Per Gemini, xiPLN is an "API facade over nuPLN." If xiPLN.tex (B2) cites it heavily, may need promotion to extraction in a follow-up source.
+- `wm-pln-book_v3.tex` / `wm-pln-book_v3_oruzi.tex` — full source for Wm Book V3. Source 9 covered the wiki extraction; the .tex would be a verbatim upgrade.
+- `wm-pln-genomic-hypothesis.tex` — biomedical application paper, ties to CeTTa biomedical regression tests (Source 10 §2.A8).
+- `mq-calculus-lean-formalization.tex` — MQ-Calculus formalization.
+- `cetta_roadmap.tex` — CeTTa design intent / roadmap.
+
+**MeTTa-variant family (lower priority for PLN cluster):**
+- `MeTTaC.tex` / `MeTTaIL.tex` / `PureMeTTa.tex` / `ProbMeTTa.tex` / `CeTTa.tex` — MeTTa variant family papers.
+- `faithful-backends-he-metta.tex` — Hyperon-Erlang/MeTTa backend correspondence.
+
+**Out-of-cluster (defer indefinitely unless cited from a cluster paper):**
+- `governance-deontic-logic.tex`, `process-calculi.tex`, `modal-bridges.tex`, `open-map-bisimulation-lean.tex`, ks-foundations series (4 papers).
+
+---
+
+## Required output format
+
+For each Lane A and Lane B paper:
+
+```
+### <Paper title> (Lane A# / Lane B#)
+
+**Source:** <full path>
+**Length:** <approx KB / pages>
+**Authors:** <from .tex `\author{}` or JSON metadata>
+**Date / version:** <from source>
+
+**Core claims** (numbered, ~5-12 per paper):
+- C-N-1: <claim>
+- C-N-2: <claim>
+...
+
+**Code-implementation status** (one of: IMPLEMENTED / PROTOTYPE / BENCHMARK-ONLY / PAPER-ONLY / CONTRADICTED — same vocabulary as Source 9):
+<status with one-paragraph justification, citing repo+path from Sources 2-10 reconciliations>
+
+**Cross-source reconciliation:**
+- <Where does this paper agree / disagree with Sources 1-10?>
+
+**Wiki implications:**
+- <Specific update needed for which wiki card>
+
+**Unresolved questions / forward references:**
+- ...
+```
+
+For Lane C: just a one-line entry per paper noting `<filename> | <one-line purpose if filename-evident, else "TBD">`.
+
+---
+
+## Cross-model lane assignments
+
+All three models read **all 7 papers** (Lane A + Lane B). Different models emphasize different angles per Gemini's Source 11 proposal, but DO NOT skip papers based on lane assignment — the value of cross-model reconciliation is independent reads of the same source.
+
+- **Codex / Gemini emphasis:** mathematical bridges (ZAM ↔ Product Quantale, evidence quantale ↔ STV view, NB/kNN ↔ posterior factorization), Lean-to-MeTTa mappings, equation extraction for ECAN/N-S grounding.
+- **Claude emphasis:** philosophical and architectural narrative shifts (local→global transitions, what is "the World-Model era" vs. the "production PLN/PLN3" era, why the evidence-carrier pivot matters at the cluster level).
+
+These are emphasis hints, not exclusions. Claude must still extract math; Codex/Gemini must still extract narrative.
+
+---
+
+## Standing corrections to carry into the bundle
+
+(Cumulative from Sources 1-10 reconciliations; treat as authoritative.)
+
+1. **MORK is a substrate only.** No checked-in FactorGraph implementation. (Source 8.)
+2. **`.mm2` is MORK's executable rewrite-program format**, NOT Metamath. MeTTa S-expressions with `(exec <loc> <pat> <tpl>)`. (Source 8 §3.) **This is directly relevant to B1 (MORK-PathMap Formalization).**
+3. **The PLN3/PLN production line has no serious inference-control layer** — only a confidence-priority forward-chaining queue. (Source 3 reconciliation; Sources 6-7 confirm URE/chaining migration didn't close this.) **Relevant to A1 (ECAN) — does ECAN provide the missing control layer or is it a separate aspiration?**
+4. **pln0.9 introduced the multiplicative confidence pivot** (Peter Isaev, commit `7ffce05` in `PLN/`). 7 of 11 rules changed from min-based to multiplicative confidence with strength-entanglement. (Source 3 §2.) **Verify against B2 (xiPLN.tex) — does xiPLN preserve or extend this?**
+5. **The "0.2 MP hack" provenance is leungmanhin (PR #23 hyperon-pln, 2023-07).** (Source 5 §1.) **Source 10 D9 noted PLN-kNN-NB.tex rejects this as "heuristic/error-prone" — confirm the rejection in xiPLN.tex / world-model-calculus.tex.**
+6. **The dead-infrastructure pattern**: probabilistic primitives imported as affordances but never integrated into reasoning code (chaining `BetaDistribution`, MORK `distr-combinators`). (Source 8 §10.) **Relevant to A1 (ECAN equation set — is it cited but not wired?).**
+7. **Three+ parallel code traditions** (production / adjacent-executable / formal-proof / active-runtime + MORK substrate). (Source 10 §A10 reconciled.) Do not collapse them in narrative.
+8. **`lib_wmpln.metta` ≈ realized `lib_pln_xi.metta` is INFERENTIAL.** Gemini's claim, but Codex flags it as not verified-by-identity-check. **B2 (xiPLN.tex) is the resolution path.** If xiPLN.tex describes lib_pln_xi.metta in detail and lib_wmpln.metta matches that description, the inference becomes verified. If they diverge, the realization claim is wrong.
+9. **CeTTa is "active runtime line / implementation line"**, NOT "production deployment." (Codex Source 10 wording caution.) Avoid "production home" / "fully deployed" language.
+10. **Author attribution sanity:** Wm Pln Book V3 = Zarathustra Goertzel + Claude/"Oruži", NOT "Zarko Zaremba." Wiki bibliography contains the error. (Source 10 §A4 → §7 author attribution.)
+
+---
+
+## Lane A specifics — full-text upgrade rules
+
+For Lane A papers, the JSON is the canonical content. The wiki card may already be a partial extraction. Output flow:
+
+1. Read the JSON. Extract claims structured as above.
+2. Use `mcp__hyperon-wiki__search_cards` with the paper title (e.g., "Economic Attention Networks") to find the wiki card.
+3. `mcp__hyperon-wiki__get_card` to fetch current wiki content.
+4. **Diff** what the wiki card currently says vs. what the JSON contains. Specifically flag:
+   - Equations / formal definitions present in JSON but absent from card
+   - Card statements that are summary-level vs. JSON's actual content
+   - Any contradictions between card and JSON
+5. The wiki implication for Lane A papers is: **"Card X needs full-content upgrade — currently summary, missing <specific list>"**, not "create new card."
+
+If the search returns no card, document it as an absence finding and note "wiki gap" for Source 12+ creation work.
+
+---
+
+## Lane B specifics — late-breaking extraction rules
+
+For Lane B papers, the .tex is the canonical content. There is **no existing wiki card** for these papers (they are post-2026 from the cluster's most recent contributor, surfaced for the first time in Source 10).
+
+Output flow:
+1. Read the .tex file. Extract claims structured as above.
+2. Note all theorem statements (with file:line in the .tex). For Lean-verified theorems cited in the paper, **cross-check against the actual Lean file** (Sources 10 already verified the two headline theorems; if a B paper cites others, verify them similarly).
+3. The wiki implication is: **"Create new RawData publication card with extraction"** OR "promote to a Markdown card if synthesis-ready" — make the recommendation explicit.
+
+---
+
+## Source-of-truth check for B2 (xiPLN.tex)
+
+This is the most important verification in Source 11. Specifically check:
+
+- Does xiPLN.tex describe `lib_pln_xi.metta` (the cited file in PLN-kNN-NB.tex L57)?
+- If yes, does it specify the file's contents in enough detail that we can compare to `CeTTa/lib/lib_wmpln.metta`?
+- If `lib_wmpln.metta` matches the xiPLN.tex specification → **Gemini's inference verified, lib_pln_xi.metta is a renamed lib_wmpln.metta.**
+- If `lib_wmpln.metta` does not match (different rule API, different evidence operators, different config) → **lib_pln_xi.metta is genuinely missing and lib_wmpln.metta is a parallel implementation.**
+- If xiPLN.tex doesn't describe lib_pln_xi.metta concretely → **inference remains inferential; flag as still-open Source 12 question.**
+
+Document the resolution explicitly with file:line citations from xiPLN.tex and grep results from `CeTTa/lib/lib_wmpln.metta`.
+
+---
+
+## Special handling for ZAM / Product Quantale (B1)
+
+The MORK-PathMap formalization is the cluster's MORK↔PLN bridge paper. It was surfaced in Source 10 but not read. Specifically check:
+
+- Does the paper define the **Zipper Abstract Machine (ZAM)** as a formal model of MORK's `experiments/eval-ffi/` zipper API (cross-reference: `CeTTa/lib/mork.metta` has zipper / product-zipper APIs per Source 10 C-6-7)?
+- Does the **Product Quantale** structure relate to PLN's evidence quantale (`Evidence` carrier in `lib_wmpln_evidence.metta`)? If yes, this is the formal bridge MORK ↔ PLN that Sources 8 found missing.
+- Does the paper specify whether PLN-on-MORK is implementable, or does it formally show a no-go / abandonment?
+
+This is the paper that potentially CLOSES the open Source 8 question. Output should explicitly answer: "PLN-on-MORK status post-MORK-PathMap formalization: <PROPOSED / IMPLEMENTABLE / ABANDONED / OUT-OF-SCOPE>"
+
+---
+
+## Output files
+
+Write findings to:
+- `E:\GitHub\Magi-AGI\hyperon-wiki\scripts\archive\pln_pilot\source11_papers_fulltext\findings_<model>.txt`
+
+Create the `source11_papers_fulltext/` subdirectory if missing.
+
+Header must include:
+- Model name
+- Extraction date (2026-04-25)
+- ai-agents commit `32b1e97dbd0516b114798db32e11e2a5e08a4fce` (2026-04-25, Zar Goertzel; advance from Source 10's `b7ab8fb` — diff is IntuitionisticHOL Lean book + minor edits to `CeTTa.tex` only; Lane A/B sources unaffected)
+- CeTTa commit `cd744d579b57750142212ed97df6e8c718991320` (unchanged from Source 10)
+- Lane A papers: 3, Lane B papers: 4 (plus Lane C inventory)
+- Per-lane claim counts
+
+If `mcp__hyperon-wiki__*` tools are not loaded for a sub-agent, use `ToolSearch` with `select:mcp__hyperon-wiki__get_card,mcp__hyperon-wiki__search_cards`.
+
+If write is blocked, paste full findings inline.
+
+---
+
+## Rules
+
+- Read each source verbatim — do NOT summarize from filename or paper-title heuristics.
+- Cite paper-title + claim number + file:line for every concrete proposal.
+- Apply the standing corrections list — if a paper claim contradicts a standing correction, the *paper* is the aspirational/older one (or its proposal hasn't reached production).
+- For Lane A, structure the wiki card content as a diff against the JSON. Flag the gap.
+- For Lane B, structure as fresh extraction. Cross-verify any cited Lean theorems against the actual Lean files in `ai-agents/lean-projects/mettapedia/Mettapedia/Logic/`.
+- For Lane C, do NOT read; just verify path exists and one-line filename-purpose.
+- Read these prior reconciliations first for context (do not re-derive):
+  - Source 8 (MORK): `scripts/archive/pln_pilot/source8_mork/findings_reconciled_crossmodel.txt`
+  - Source 9 (papers): `scripts/archive/pln_pilot/source9_papers/findings_reconciled_crossmodel.txt`
+  - Source 10 (ai-agents+CeTTa): `scripts/archive/pln_pilot/source10_atps_cetta/findings_reconciled_crossmodel.txt`
+
+---
+
+## Cluster-close criteria
+
+After Source 11 reconciliation, the PLN cluster pilot is **closed for extraction**. Remaining work:
+
+- **Wiki edits**: Draft card direct-edits + `+AI` children for Published cards, applying the cumulative findings.
+- **Per-repo orientation doc refresh** (CLAUDE.md / AGENTS.md / GEMINI.md surgical updates) for sources 3-10.
+- **Top-level `hyperon-wiki/CLAUDE.md` refresh** — update cluster narrative to four-tradition language.
+- **Source 12+ candidates** (deferred): missing-PeTTa-files investigation, Lane C paper extraction if cited heavily by Lane B papers, ECAN MeTTa repo cross-cluster pass.
+
+---
+
+## Post-extraction note (appended 2026-04-25 after Phase 1 source-of-truth check)
+
+**V0-4 self-correction.** Standing corrections list item #10 above ("Wm Pln Book V3 = Zarathustra Goertzel + Claude/'Oruži', NOT 'Zarko Zaremba.' Wiki bibliography contains the error.") was **partially incorrect** in framing. On Phase 1 source-PDF inspection (`publication_texts/mattermost_papers/Pln_Review.json`, source `mattermost://PLN/0660_pln-review.pdf`), the source paper itself contains BOTH spellings:
+- Cover/title block: *"Zar and Oruži"* (the canonical author signature)
+- Bibliography entry [2]: *"Zarko Zaremba and Oruži (Claude Anthropic). The world-model calculus..."*
+
+Most plausible reading: **Zar Goertzel uses "Zarko Zaremba" as a pseudonymous self-citation in his own paper's bibliography** (Zaremba is a real Polish surname; consistent stylistic flourish elsewhere in his work). The wiki RawData chunk-2 faithfully preserves the source — **no wiki extraction error**.
+
+**Implications for downstream readers of this brief**: when applying standing-corrections #10 to Source 11 work, treat as: "synthesis-layer cards name Zarathustra Goertzel as canonical author + footnote the pseudonym; do NOT modify `RawData+Publications+Pln Review+chunk-2`." The corrected framing lives in `source11_papers_fulltext/findings_reconciled_crossmodel.txt` §V0-4 and `source10_atps_cetta/findings_reconciled_crossmodel.txt` §4.5 / §7. Lesson captured in memory at `feedback_attribution_verify_against_git.md`.
+
+---
+
+*End of Source 11 brief.*

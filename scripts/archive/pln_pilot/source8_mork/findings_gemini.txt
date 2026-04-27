@@ -1,0 +1,35 @@
+# MORK (trueagi-io) — Gemini Extraction Findings
+**Date:** 2026-04-24
+**Commit:** 4cef6f7 (Vandervorst, 2026-04-07 snapshot)
+
+## §1 — VM Architecture (Zipper-based VM)
+- **High-Performance Kernel:** MORK is a Rust-native (Edition 2024) hypergraph processing kernel. It targets 1000x to 1,000,000x speedups for MeTTa evaluation. [README.md]
+- **The Zipper Mechanism:** Uses the `pathmap` zipper library (`ReadZipper`, `WriteZipper`) for efficient hypergraph storage and multi-threaded reduction. [kernel/src/main.rs]
+- **Interpreter Loop:** The `metta_calculus` loop in `kernel/src/space.rs` scans for `(exec ...)` atoms and dispatches them to the `interpret` function. This provides a data-driven, concurrent execution model. [kernel/src/space.rs:1700]
+- **Nightly Rust Features:** Extensively uses `#![feature(gen_blocks)]`, `#![feature(coroutine_trait)]`, and `#![feature(coroutines)]` to squeeze maximum performance out of the hypergraph traversals. [kernel/src/lib.rs]
+
+## §2 — FactorGraph / Message Passing Gap
+- **Absence Check:** Verified that "FactorGraph", "MessagePassing", and "BeliefPropagation" are **entirely absent** from the `kernel/`, `expr/`, and `experiments/` directories.
+- **Expert Finding:** The theoretical papers (FactorGraph MORK v3.2) proposing MORK as a message-passing engine are currently **ahead of the implementation**. MORK is the foundational "engine," but the specific FactorGraph logic is not yet in the Rust source.
+- **Closed Frontier:** PR #48 (Sparse Tensor + Einsum) was **closed but not merged**, indicating a strategic decision to keep MORK focused on symbolic hypergraph reduction rather than general-purpose numerical tensor operations.
+
+## §3 — Hypergraph Storage & Unification
+- **Custom Graph DB:** Implements a state-of-the-art graph database backend in `kernel/src/space.rs`.
+- **Unification Engine:** `expr/src/lib.rs` provides a robust, stack-based `unify` implementation with occurs check, optimized for the `pathmap` layout. [expr/src/lib.rs:1960]
+- **Z3 Integration:** Contains a `z3` feature for formal logic verification, although mostly used as a stub or optional backend. [kernel/Cargo.toml]
+- **Neo4j Integration:** The `neo4j` feature (`neo4rs` dependency) suggests a path for offloading persistent hypergraph data to a standard graph database. [kernel/Cargo.toml]
+
+## §4 — Benchmarking Narrative (The PeTTa Bridge)
+- **Forward Chaining Dominance:** Corroborated with the `chaining` repository benchmarks—MORK's `exec`-based forward chaining greatly outperforms the standard PeTTa interpreter.
+- **Backward Chaining Caveat:** For low-density solution sets, the current MORK backward chainer is noted to be "too slow" compared to PeTTa (documented in `chaining/experimental/metamath/benchmarks/README.md`).
+
+## §5 — Git History Context (Intent Attribution)
+- **Primary Architect:** Adam Vandervorst (239 commits). He owns the kernel and the core zipper VM design.
+- **Core Contributors:** Remy Clarke (104), Luke Peterson (70).
+- **External Alignment:** Nil Geisweiller has only 1 commit, confirming that MORK is a separate development track from the OpenCog/PLN tradition.
+
+## Focus Questions Response
+1. **VM Architecture:** Multi-threaded zipper-based VM using coroutines for high-performance hypergraph reduction.
+2. **FactorGraph:** Absent from the current code. The relationship is theoretical/future-facing.
+3. **Benchmarks:** Optimized for high-density forward chaining; currently less efficient for sparse backward search.
+4. **Author:** Adam Vandervorst (F1R3FLY-io lineage).

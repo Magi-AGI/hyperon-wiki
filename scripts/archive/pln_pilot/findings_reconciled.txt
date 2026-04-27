@@ -1,0 +1,420 @@
+# PLN Book Pilot — Reconciled Findings (Source 1)
+
+**Source:** Probabilistic Logic Networks (Goertzel, Iklé, Goertzel, Heljakka — 2008, Springer). Extracted from `publication_texts/json/Probabilistic_Logic_Networks.json` (`full_text` = 574,626 chars, word_count 87,451).
+
+**Reconciled on:** 2026-04-24
+
+**Inputs:**
+- `findings_agent1.txt` — 189 claims (42 TV / 68 rules / 27 control / 30 impl / 22 gaps)
+- `findings_agent2.txt` — 158 claims (34 / 61 / 22 / 24 / 17)
+- `findings_agent3.txt` — 158 claims (38 / 56 / 22 / 25 / 17)
+- **Total raw claims: 505**; estimated deduplicated concept-level claims: ~150
+
+**Confidence legend for this doc:**
+- **[C3]** consensus (3/3 agents independently surfaced this claim)
+- **[C2]** majority (2/3)
+- **[C1]** singleton (1/3 — worth verifying against source before citing)
+- **[DISPUTE]** agents disagreed on a formula or detail — flagged for source-level audit
+
+---
+
+## 1. Critical cross-validated findings (relevant to wiki card edits)
+
+### 1.1 [C3, HIGH CONFIDENCE] **URE and ECAN are NOT mentioned in the 2008 PLN book.**
+All three agents independently verified this. The book's integrative architecture is exclusively the Novamente Cognition Engine (NCE). Attention is referred to only via NCE "importance" values (short- and long-term), not ECAN. Inference control is described without URE.
+
+**Wiki implication:** any current `Hyperon AI Algorithms+PLN` card that attributes URE or ECAN machinery to "the PLN book" is citing later Hyperon-era work, not the 2008 book. This should be corrected or clearly re-attributed.
+
+### 1.2 [C3, HIGH CONFIDENCE] **PLN's Modus Ponens is "very bad" by the authors' own admission.**
+`sB = sAB · sA + c·(1 − sA)` with `c` a system-wide default term probability (`c = 0.02` in the worked example). The authors call it "highly error-prone" and use it only as a fallback when term-logic deduction cannot apply. NARS handles MP differently (universal dummy statement K); PLN does not.
+
+### 1.3 [C3, HIGH CONFIDENCE] **Revision with non-zero `c` drifts strengths toward 1 over iterations.** The authors explicitly warn this must be dynamically tuned per domain — no general algorithm is given. The practical default `c = 0` is just arithmetic averaging.
+
+### 1.4 [C3, HIGH CONFIDENCE] **M2I and I2M rules are badly wrong for heterogeneous sets.** Cohesion of the target set is a prerequisite. "Things owned by Izabela" example: book-cited failure case.
+
+### 1.5 [C3, HIGH CONFIDENCE] **Combinatorial explosion in inference control is explicitly unsolved.** Authors: "these heuristics do not solve the problem fully adequately, except for the case of fairly simple inferences … it must be solved more thoroughly than is done here if PLN is to be useful for powerful general intelligence." Integration with pattern mining / evolutionary learning / attention allocation is required.
+
+### 1.6 [C3, HIGH CONFIDENCE] **Constant-extraction from ∃ fails under indefinite TVs.** `∃x: G ∧ F(x) ≠ G ∧ ∃x F(x)` in general. Classical predicate-logic equivalence violated. Numeric example in Ch. 11 §11.3: `G=<[0.45,0.46],0.9,10>, F=<[0.71,0.72],0.9,10>` yields wildly different results on the two sides. Book defers a principled treatment to "a future paper."
+
+### 1.7 [C3, HIGH CONFIDENCE] **Causal inference is only partly inside PLN.** Distinguishing cause vs enabling condition requires Novamente *importance* attention values, which live outside PLN proper. Intensional PredictiveImplication is used to filter out bogus correlations (rooster/dawn example).
+
+### 1.8 [C3, HIGH CONFIDENCE] **Induction cannot be globally rescued by a universe-size choice** (Ch. 8 §8.1). Unlike deduction, there is no single `|U|` that makes all inductions meaningful. The book concedes the implication: a system must give up the idea of a single global "space of events."
+
+---
+
+## 2. Truth-value semantics (consensus claims suitable for wiki)
+
+### 2.1 [C3] TV hierarchy and representations
+
+- **SimpleTruthValue `<s, w>`** — strength `s ∈ [0,1]`, weight-of-evidence `w ∈ [0,1]`. `<.6, 0>` meaningless.
+- **Dual form `<s, N>`** — count `N` relates to `w` by `w = N/(N+k)` (k adjustable).
+- **IndefiniteTruthValue `<[L,U], b, k>`** (the default in current practice) — interval `[L,U]`, credibility `b`, lookahead integer `k`. Semantics: "probability `b` that after `k` more observations the ordinary probability of S lies in `[L,U]`."
+- **DistributionalTruthValue** — discretized full distribution (StepFunctionTV, PolynomialTV). Under it, deduction = matrix multiply, inversion = matrix inverse.
+- Granularity hierarchy: single number < interval < indefinite quadruple < distributional matrix.
+
+### 2.2 [C3] Indefinite TV mechanics
+
+- `b = 1` → Walley-style imprecise probabilities. `b < 1` is what keeps intervals from collapsing to `[0,1]` under chaining.
+- IndefiniteTV carries 3 additional in-practice parameters beyond the quadruple: symmetric/asymmetric interval flag, second-order distribution family, first-order distribution family. Beta-binomial is the default family.
+- Walley interval form: `[m/(n+k), (m+k)/(n+k)]`.
+- Conversion `<[L,U], b, k> → <s, n>` derived under beta-binomial uniform-prior Bernoulli assumption:
+  `P(X successes in next k trials | x in n) = (n+1)·C(k,X)·C(n,x) / ((k+n+1)·C(k+n, X+x))`
+- Fast inverse: `n = −ln(b/A) / B` with A, B bilinear in L, U (and k). **[DISPUTE on coefficient values]** — see §8 below.
+
+### 2.3 [C3] First-order relationship types and semantics
+
+- `Subset A B <s>` means `s = P(B|A)`; with crisp Member: `s = P(Member x B | Member x A)`.
+- Fuzzy-member Subset: `s = Σₓ f(Mem x B.s, Mem x A.s) / Σₓ Mem x A.s`, with `f = min` in current practice (or `x·y`).
+- `IntensionalInheritance A B <s> := Subset A_PAT B_PAT <s>` (pattern-set subset).
+- `Inheritance A B <tv> := OR(Subset A B, IntensionalInheritance A B)`.
+- Symmetric variants: ExtensionalSimilarity, IntensionalSimilarity, Similarity.
+- Higher-order relationship TV formulas are the same as corresponding first-order ones.
+- Context macro: `Context C R A B <t> ≡ R (A ∧ C) (B ∧ C) <t>`.
+
+### 2.4 [C3] Universe size and context
+
+- Term TV: `A <tv> ≡ Subset Universe A <tv>`. The "universe" is a context parameter.
+- `|U|` smaller → more speculative inference. Larger → less error but less "creativity." No additional computational cost to large `|U|`.
+- **Optimal Universe Size Formula**: `nU = nB + (nA − nAB)(nC − nBC) / (nAC − nABC)`. Tested: ≈3% error on a 650K-sentence corpus using a few hundred triple-intersection counts.
+- Induction fails this globally: `|U|` must vary per inference.
+
+### 2.5 [C3] The four semantics of "Jim is tall .6" (Ch. 1 §1.6.1)
+
+All three agents flagged this as a locus of confusion PLN tries to disambiguate:
+- Fuzzy Member (partial set membership)
+- IntensionalInheritance (`.6` = shares 60% of tall-properties)
+- Indefinite-probability reading (after-more-info judgment will lie in an interval)
+- Composite Inheritance (weighted ext + int)
+
+Book: "some of the fuzzy set literature appears to us to be semantically confused regarding the difference between uncertainty and partial membership."
+
+### 2.6 [C2] TV arithmetic vector-space (A1, A2 only)
+
+- With count extended to `[−∞, ∞]` (allowing negative evidence), TVs form a 2-D vector space via `W(x,y) = ((1+x/y)/2, y)`; addition = PLN revision. No practical application yet — Ch. 5 §5.10.6. Authors flag it as "may emerge."
+
+### 2.7 [C3] Consistency conditions
+
+`(sA, sB, sAB)` must satisfy `max(0, (sA+sB−1)/sA) ≤ sAB ≤ min(1, sB/sA)`. Enforced in Maple formulas via Heaviside multipliers. Deduction returns 0 strength when violated.
+
+**[DISPUTE]** Agent 3 C-1-33 reports the lower bound with denominator `s_B` instead of `s_A`: `max(0, (sA+sB−1)/sB) ≤ sAB`. Agents 1 and 2 use `sA`. Need to verify against source — likely A3 transcription error.
+
+---
+
+## 3. Rule taxonomy (consensus core formulas)
+
+### 3.1 [C3] First-order core
+
+- **Deduction** (independence-based): `sAC = sAB·sBC + (1 − sAB)·(sC − sB·sBC)/(1 − sB)`. Assumes A, C conditionally independent in B and ¬B. Provably biased (systematically underestimates) for cohesive sets.
+- **Inversion / Bayes**: `sAB = sBA · sA / sB`.
+- **Induction** (= Inversion ∘ Deduction): `sAC = sBA·sBC·sB/sA + (1 − sBA·sB/sA)·(sC − sB·sBC)/(1 − sB)`.
+- **Abduction** (= Deduction ∘ Inversion₂): `sAC = sAB·sCB·sC/sB + sC·(1 − sAB)·(1 − sCB)/(1 − sB)`.
+- **Term Probability**: `A <sA>, Inh A B <sAB> ⊢ B <sB>` via `sB = sA·sAB/sBA`. Must participate in inference trails.
+
+### 3.2 [C3] Concept-geometry deduction
+
+For "cohesive" sets (average inner similarity > across-U similarity). 1-D form: `sAC = sAB·sBC / min(1, sAB + sBC)`. Also k-sphere formulas for higher-dimensional cohesion models. Corrects the underestimation bias of independence deduction.
+
+**[C1]** A1 uniquely captured the detailed `G(A,B,C) = P_sym_subsume + (1 − P_sym_subsume)·P_int_no_subsume` correction factor structure.
+
+### 3.3 [C3] Modus Ponens family
+
+- **MP** (heuristic): `sB = sAB·sA + c·(1 − sA)`, `c ≈ 0.02` default term probability.
+- **Symmetric MP**: **[DISPUTE]**
+  - A1: `sB = (sA·simAB + c·(1−sA)) / (1 + simAB)` (divides by (1+simAB))
+  - A2, A3: `sB = sA·simAB + c·(1 − sA)·(1 + simAB)` (multiplies by (1+simAB))
+  - → A2/A3 consensus, A1 probably has an algebra error or captured a different form. Need source check.
+- Modus Tollens reduces to MP via contrapositive.
+- Disjunctive Syllogism reduces to MP.
+
+### 3.4 [C3] Similarity conversion rules
+
+- `simAC = 1 / (1/sAC + 1/sCA − 1)` (2inh2sim)
+- `simAC = 1 / ((1 + sA/sC)/sAC − 1)` (inh2sim 3-arg)
+- `sAB = (1 + sB/sA)·simAB / (1 + simAB)` (sim2inh)
+- Transitive Similarity: complex closed form composing four deduction calls.
+
+### 3.5 [C3] Revision
+
+- Simple: `s = w₁·s₁ + w₂·s₂`, `n = n₁ + n₂ − c·min(n₁, n₂)`, `c ∈ [0,1]`.
+- Sharper (known evidence-set sizes): `s₃ = (x₁ + x₂ − x₁x₂/u) / (y₁ + y₂ − y₁y₂/u)`.
+- Simplified (same-size premises): `s₃ = (s₁ + s₂ − s₁s₂·c)/(2 − c)` where `c = q/u`.
+- Weight-of-evidence weighted: `v₁ = 2d₁/(d₁+d₂), v₂ = 2 − v₁`, then `s₃ = (v₁s₁ + v₂s₂ − s₁s₂·c)/(2 − c)`.
+- Indefinite: mix second-order distributions with count-based weights, re-extract quadruple.
+
+### 3.6 [C3] Boolean and set operators
+
+- Extensional `ANDExt`, `ORExt`, `MINUSExt` (asymmetric difference).
+- Intensional `ANDInt`, `ORInt` (on pattern-sets).
+- Mixed `ANDMix`, `ORMix` (e.g., "American Bank" = `American ANDMix Bank`).
+- Heuristic AND TV: `P(P AND Q) = P(P)·P(Q)` (independence; known imprecise).
+- OR: `P(P OR Q) = P(P) + P(Q) − P(P)·P(Q)`.
+- NOT: `P(¬P) = 1 − P(P)`.
+
+### 3.7 [C2-DISPUTE] Boolean equivalence likely OCR-damaged (Ch. 10 §10.6.2 p. 210)
+
+- A2 flagged: the book prints `(P ⇔ Q) ≡ (¬P ∨ ¬Q)`, which is classically **wrong** (that's NAND, not biconditional). Correct is `(P ⇔ Q) ≡ (P ⇒ Q) ∧ (Q ⇒ P)` (also given by the book).
+- A2 classifies as likely OCR/typesetting error on `↔` / `↮`.
+- A1, A3 did not flag. **If real, the wiki should not reproduce this erroneous equivalence.** Needs PDF-verification.
+
+### 3.8 [C3] Variable instantiation and HOI
+
+- **Variable Instantiation**: `F($X) <tv> ⊢ F(A) <tv1>` via `I2M(deduction(M2I(F.tv), sim2inh(Similarity A $X)))`. Valid only if `SatisfyingSet(F)` is cohesive.
+- **SatisfyingSet**: `S = SatSet P` with `Member $X S <t> ≡ Evaluation P $X <t>`. Reduces HOI to FOI.
+- **Evaluation–Implication combination rule** goes via 5-step SatisfyingSet / M2I / deduction / I2M chain.
+- **Combinators** (B, C, I, S) enable variable-free curried expressions. `kick_curry = C kick_curry_2` (passive voice dual).
+
+### 3.9 [C3] Quantifiers (Ch. 11)
+
+- Third-order probability machinery: envelope of envelopes, threshold PCL.
+- Existential Generalization: `F(c) <[L,U],b,k> ⊢ ∃x F(x) <[L,U],b,k>`.
+- Universal Specification: `∀x F(x) <[L,U],b,k> ⊢ F(c) <[L,U],b,k>`.
+- Quantifier Exchange rules hold verbatim under indefinite TVs.
+- Fuzzy quantifiers by sliding `[LPC, UPC]`: AlmostAll = [0.9, 0.99], AFew = [0.05, 0.1], Many is context-dependent.
+
+### 3.10 [C3] Intensional inference (Ch. 12)
+
+- **No separate intensional deduction rule** — convert IntInh → Subset via `s_Sub = (s_Inh − c)/(1−c)` (where c ≈ average IntInh strength in system), apply extensional deduction, convert back.
+- Mixed Inheritance = weighted combination of 4 cases (ExtExt, IntInt, ExtInt, IntExt). Weights learned or parameterized.
+- Pattern-intensity: `IN(F,G) = [c(G) − c(F)]₊ · ASSOC(F,G)` with `ASSOC(F,G) = [P(F|G) − P(F|¬G)]₊`.
+
+### 3.11 [C3] Temporal / causal (Ch. 14)
+
+- **SeqAND A B <s,T>** ≡ `A ∧ B ∧ (Initiation(B) − Initiation(A) ∈ T)`.
+- **DisjointSeqAND**: starts `T` seconds after A *finishes*.
+- **EventualSeqAND**: A followed eventually by B (no interval).
+- **SimAND**: `HoldsThroughout(A,T) ∧ HoldsThroughout(B,T)`.
+- **PredictiveImplication P Q <s,T>** ≡ `Implication P(S) [SeqAND(P,Q)<T>](S)`.
+- **EventualPredictiveImplication** (no interval): `starve → die` type.
+- **PredictiveChain**: nested sequential predictive implications.
+- **Temporal Deduction** must compute both Implication TV AND probability of temporal precedence.
+- **Causal filter**: high `ExtPredImp` + low `IntPredImp` → bogus causality (rooster/dawn).
+
+### 3.12 [C2] Large-scale inference alternatives (Ch. 9)
+
+- **Multideduction** (A1, A2): batch rule summing `sABᵢ·sBᵢC` minus intersection terms with fudge factor `ε`.
+- **Bayes-Net Augmentation** (A2): convert rule base to data table, run standard structure learning + belief propagation.
+- **Optimization-Based Inference (OBI)** (A2): stochastic local search minimizing `ε`-SP-inconsistency.
+- **Trail-Free Inference** (A2): iterate pattern-mining + SP-protocol + revision, no explicit trails.
+- **Batch Reasoning Graph** (A1, A3): static DAG optimization; quality `c·N + (1−c)·T/N`.
+
+### 3.13 [C1] Error-magnification gradient analysis (A3 only, Ch. 8)
+
+- Perturbation: `|v'−v| ≈ |∇f(w)|·|w'−w|·cos θ`; average `(2/π)·|∇f|·|w'−w|`.
+- Deduction at `sBC=0.5, sC=sB=0.25`: `∂sAC/∂sAB = 1/3` (error-attenuating).
+- At `sBC=1, sC=0.25, sB=0.5`: `∂sAC/∂sAB = 1.5` (error-magnifying).
+- **10 steps at magnification 2 erases 10 bits of precision** — weight-of-evidence discounting is the primary defense.
+
+*A3 uniquely captured this. Significant content; worth adding to wiki if the PDF confirms.*
+
+---
+
+## 4. Inference control (consensus)
+
+### 4.1 [C3] Control modalities
+
+- **Forward chaining**: apply rule input filters to known atoms; explore consequences. Interestingness-weighted pruning `u = I^c·d^a/E^b`.
+- **Backward chaining**: apply rule output-based-input filters to target atoms; recurse on required premises. Terminates when target TV *weight* exceeds controller-set threshold (not on first path).
+- **BIT (Backward Inference Tree)**: evolutionary interpretation; genotype = atoms+rules, fitness = weight-of-evidence at root. Multi-path combination via Rule of Choice.
+
+### 4.2 [C3] Rule and atom-pattern infrastructure
+
+- **Atom Structure Templates** `A^(X)` with AND/OR composition and TV-predicates (e.g., `HasTruthValueStrengthGreaterThan $1 0.5`).
+- **Rule** = Atom→Atom mapping; has **input filter** (forward) and **output-based-input filter** (backward).
+- `DeductionRule` input filter: `[Inh $1 $2, Inh $2 $3]`. Output-based for `Inh A C`: `[Inh A $1, Inh $1 C]`.
+- **Rule ≠ Formula**: Formula is TV-vector → TV; Rule is Atoms → Atom (applying Formula).
+
+### 4.3 [C3] Pruning
+
+- **Multi-armed bandit** with per-node utility `u`. Unexplored: a-priori via rule priority + solution-space restrictiveness. Explored: `u = d/E` or generalized `u = F^a/E^b`.
+- **SoftMax selection**: probability `∝ exp(u/T)`.
+- **Interdependent arguments** (shared variables): clone parent with binding when child finds one; bound clone has higher a-priori utility.
+- **Interdependent utility**: `u = (d₁·d₂)^a / E^b`.
+
+### 4.4 [C3] Inference trails
+
+- Bounded-length (e.g. 10 or 20) list of atoms whose TVs fed a given atom's TV.
+- Prevents circular inference; prevents weight-of-evidence inflation from overlapping-evidence revision.
+- Trail truncation is acknowledged unavoidable for large-cycle "coherence" (Wang's aphorism).
+
+### 4.5 [C3] Rule of Choice
+
+When revision is inappropriate: (a) distributional TV for conflict from disjoint evidence, (b) Hypothetical atoms for alternatives, (c) trail-merge reinference (expensive, important atoms only), (d) default: `d_conclusion = max(d₁, d₂)` instead of sum.
+
+### 4.6 [C3] Default inference
+
+**Not an inference rule** — emerges from inference control. Algorithm: arrange terms in a spanning DAG maximizing strength·confidence within a link budget; when reasoning about a term, use immediate parents first, ascend hierarchically without revisiting. Penguin / bird example: case A (`penguin→fly<0>, bird→penguin<.02>`) should be accepted; case B (`penguin→bird<1>, bird→fly<.9>`) should not (independence violation).
+
+### 4.7 [C3] URE / ECAN absence
+
+All three agents confirmed URE and ECAN are *not* named in the 2008 book. Attention allocation is referenced as NCE-level "importance" values (Ch. 14 §14.5.1.2).
+
+---
+
+## 5. Implementation-relevant (consensus)
+
+### 5.1 [C3] Knowledge representation
+
+- **Weighted directed hypergraph** (Bollobas). Atom = Term ∪ Relationship.
+- Type label + TV package + type-specific data (Number terms carry numbers; Word terms carry strings).
+- N-ary relations in two styles: List (`Evaluation f (x1,...,xn)`) and curried (`Evaluation (kick Ben) Ken`). Both stored; `listify` / `unlistify` convert.
+- **Variables** (prefix `$`) coexist with **combinator-based** variable-free forms for pragmatic compactness.
+
+### 5.2 [C3] Marker atoms
+
+- **Hypothetical**: `Hyp A` = "don't assume A." Inference inhibition rule: atoms marked Hyp don't propagate TV externally unless the conclusion is also wrapped.
+- **Context macro**: `Context C (Hyp R X Y) ≡ R (X ANDExt C) (Y ANDExt C)`.
+- **HOS vs HOJ**: default is Higher-Order Statement (embedded TVs irrelevant); Higher-Order Judgment (TV-carrying) is marked explicitly (e.g., `Implication_HOJ`).
+
+### 5.3 [C3] Scale target and implementation
+
+- PLN target: reasoning over **billions of premises**.
+- Implemented in NCE (Novamente Cognition Engine), with spinoff in OpenCog.
+- Explicit call-out: PLN alone doesn't solve AGI; must integrate with pattern mining, evolutionary program learning, statistical pattern mining, schema execution.
+
+### 5.4 [C3] Worked examples
+
+- **BioLiterate**: PubMed abstracts → parser → rule-extracted logical relationships → PLN forward chaining. Example: concluded "DLC prevents bone loss" and "cAMP prevents bone loss" as conjunction.
+- **AGISim Fetch**: virtual agent learns 4-step fetch via BC from reward target. Uses `try(X)`, `can(X)`, `done(X)` predicates with axiom `PredImp(SimAND(try X, can X), done X)`. Final schema = SequentialAnd of 4 `try` statements.
+- Atom handles like `[9053948]` preserved in NCE.
+- Inference rule shorthands: `ModusPonensRule`, `AndRules`, `SimpleANDRule`, `RewritingRule`, `CrispUnificationRule`.
+
+### 5.5 [C3] Heuristic multipliers
+
+- **I2MIntervalWidthMultiplier, M2IIntervalWidthMultiplier**: widen IndefiniteTV intervals during heuristic Member↔Inheritance conversion. More cohesive set → smaller multiplier.
+- **Count Multipliers**: simple-TV analog.
+- All empirically computed per-set cohesion or analogically inferred.
+
+### 5.6 [C3] Normalization
+
+- Optional in PLN. Default: light explicit (EquivalenceLink → 2 ImplicationLinks) + implicit (A ≡ ListLink(A) if singleton).
+- Holman's Elegant Normal Form (1990) flagged as future experimental target.
+
+### 5.7 [C2] Consistency-condition implementation
+
+Deduction/induction/abduction formulas multiplied by Heaviside products to zero out invalid regions. Example: `dedAC := [formula]·H(sAB − max((sA+sB−1)/sA, 0))·H(…)·…`.
+
+---
+
+## 6. Open questions / book-acknowledged gaps (unanimous)
+
+### 6.1 [C3] Authors state PLN is evolving, not final
+
+"PLN is an evolving framework … as applications continue to be developed, various components will be further refined and perhaps some of them replaced entirely."
+
+### 6.2 [C3] Gaps the book itself acknowledges
+
+- **Inference control combinatorial explosion** — acknowledged unsolved.
+- **Revision `c` parameter tuning** — no general algorithm; domain-dependent.
+- **Modus Ponens** — "very bad" heuristic.
+- **M2I / I2M** — wrong for random/heterogeneous sets.
+- **Constant-extraction from ∃** — classical equivalence violated in indefinite TVs.
+- **Causal inference** — requires Novamente importance; PLN alone can't do it.
+- **Frame problem** — side-stepped probabilistically; no complete solution.
+- **Induction** — no global universe-size rescue.
+- **Entropy-optimization for indefinite revision** — under development, not integrated.
+- **Error-analysis for A/B coefficient approximations** — "we have not yet derived" (Ch. 4 §4.5.1.2).
+- **Weighting of mixed-inheritance deduction** — parameter or analogy-learned; no principled default.
+- **Pattern-intensity complexity function** — choice of algorithmic vs probabilistic left to implementer.
+- **Revision §5.10.3–5.10.5** — more sophisticated formulas flagged as *not currently integrated* with indefinite probabilities.
+
+---
+
+## 7. Book-internal tensions / apparent contradictions flagged
+
+### 7.1 [C1] **A1**: §5.8 vs §12.4 conflict on Inheritance↔Member conversion heuristic. Two different formulas for the same operation.
+
+### 7.2 [C1] **A1**: §3.4 says term probability is a weighted average across contexts (C-1-27); Ch. 5 §5.7 MP uses a single global constant `c = 0.02`. Tension between context-specific and global-constant treatment unresolved.
+
+### 7.3 [C1] **A2**: Likely OCR/typesetting error on Ch. 10 §10.6.2 p. 210 — printed `(P ⇔ Q) ≡ (¬P ∨ ¬Q)` is classically false (NAND, not IFF). Needs PDF verification.
+
+### 7.4 [C1] **A1**: Ch. 12 has two consecutive sections both titled "Doing Inference on Inheritance Relationships" — apparent typographical duplication.
+
+### 7.5 [C1] **A1**: Appendix A NARS revision formula OCR has a malformed negative-count notation not present in main text.
+
+### 7.6 [C3] Ch. 1 §1.6.1 four-fold "Jim is tall .6" semantics — acknowledged as a source of confusion the book tries to disambiguate; all agents flagged.
+
+---
+
+## 8. Formula disagreements requiring source audit
+
+These are the cases where the three agents reported different formulas for the same concept. Each should be verified against the PDF before being used in wiki cards.
+
+### 8.1 [DISPUTE] Consistency condition lower bound
+
+- A1 C-1-39, A2 C-1-32: `max(0, (sA+sB−1)/sA) ≤ sAB ≤ min(1, sB/sA)` — denominator `sA`
+- A3 C-1-33: `max(0, (sA+sB−1)/sB) ≤ sAB` — denominator `sB`
+- **Likely A3 transcription error.** Verify against source.
+
+### 8.2 [DISPUTE] Symmetric Modus Ponens
+
+- A1 C-2-16: `sB = (sA·simAB + c·(1−sA)) / (1 + simAB)` — divides
+- A2 C-2-12, A3 C-2-16: `sB = sA·simAB + c·(1 − sA)·(1 + simAB)` — multiplies
+- **A2/A3 consensus; A1 outlier.** Verify against source.
+
+### 8.3 [DISPUTE] Inverse-approximation coefficient values (Ch. 4 §4.5.1.2)
+
+- A1 C-1-32: `A11=-2.922447948, A12=-0.072074201, A21=3.422902859, A22=0.252879708, B11=-0.261903438, B12=0.716893418, B21=-0.39831749, B22=-0.107482534` — "k-independent simplified form"
+- A2 C-1-13: `A_{111} = -0.00875486, A_{122} = -0.220372781`
+- A3 C-1-8: `A_{111} = -0.00875486, ..., B_{222} = -0.071902027`
+- A2/A3 match on `A_{111}`; A1 reports a different set. **Likely these are different sub-tables (k-indexed vs k-independent).** Need PDF to confirm which is which.
+
+---
+
+## 9. Source-text quality notes (agreed across agents)
+
+- JSON `full_text` is from the Fireflies-schema ingestion path; content is clean but wrapping metadata is wrong (file is a book, not a transcript).
+- OCR damage in math: stray `!` characters before formulas (likely LaTeX equation markers), Unicode set-theory symbols (`∈`, `∩`, `¬`) garbled to `!`, `#`, `$`; Greek letters ASCII-approximated.
+- Chapter boundaries cleanly located via `re.finditer(r'Chapter \d+:', text)`.
+- Figures (Mathematica plot3d code) survive only as source, not as images.
+- Bibliography present at end.
+
+---
+
+## 10. Directly actionable items for wiki card edits
+
+Based on the consensus findings, the following concrete changes/checks apply to `Hyperon AI Algorithms+PLN+PLN Full` (Draft) and `Hyperon AI Algorithms+PLN` (Published, via `+AI` child):
+
+### 10.1 Must correct / flag
+1. **URE/ECAN attribution**: audit all references. Any statement like "PLN uses ECAN for attention" cited to the 2008 book is wrong. Those are post-2008 Hyperon-era integrations.
+2. **Modus Ponens**: the book's own characterization as "highly error-prone" should be visible; the wiki should not present PLN MP as a polished rule.
+3. **M2I / I2M cohesion caveat**: should appear with the concrete failure case (heterogeneous collections).
+4. **Induction global-|U|**: should be called out; it's a significant structural result.
+
+### 10.2 Should add (detail likely missing from current cards)
+5. **Indefinite TV mechanics**: the three-level probability hierarchy, Monte Carlo sampling, `b<1` rationale.
+6. **Optimal Universe Size Formula** + empirical validation (~3% error on 650K corpus).
+7. **Concept-geometry deduction** as an alternative to independence-based deduction for cohesive sets.
+8. **Rule of Choice** four-option fallback hierarchy.
+9. **BIT evolutionary interpretation**.
+10. **Default inference as control-level heuristic, not rule** — penguin/bird worked example.
+11. **Causal inference framework**: ExtPredImp/IntPredImp filter with rooster/dawn example.
+12. **Frame-problem approach**: probabilistic persistence, not circumscription.
+
+### 10.3 Should flag as open
+13. Combinatorial-explosion unsolved (book's own admission).
+14. Revision §5.10.3–5.10.5 not integrated with indefinite TVs.
+15. Book-level contradictions / OCR ambiguities (see §7).
+
+### 10.4 Worth PDF-auditing before citing
+16. Symmetric MP formula (3 agents differed).
+17. Consistency-condition lower bound (A3 vs A1/A2).
+18. Boolean equivalence p. 210 (A2 OCR-damage flag).
+19. Inverse-approximation coefficient values (multiple tables).
+
+---
+
+## 11. Reconciliation assessment (for pilot checkpoint)
+
+**Quality of extraction:** high. All three agents produced structured, cited, detailed output. The three-way triangulation caught:
+- 3 genuine formula disagreements worth source-auditing.
+- 1 probable book-level OCR/typesetting bug (flagged by A2 only).
+- 1 unique error-magnification chapter (A3 only, not caught by A1/A2).
+- Consensus on ~80% of substantive claims.
+
+**Workflow judgment:** the three-agent pattern is producing real value. Triangulation catches both agent errors and source errors that a single pass would miss. The cost — one hour of wall clock per book, 3× compute — seems worth the depth gain.
+
+**Recommended next step:** proceed to Source 2 (`PLN3` ngeiswei fork) with the same three-agent pattern. The book findings above form the theoretical baseline the code-reading agents can reference.
+
+---
+
+*End of reconciled findings.*

@@ -1,0 +1,245 @@
+================================================================
+SOURCE 9 LANE 2 — Claude single-deep-pass extraction
+Model: Opus 4.7 (1M context)
+Date: 2026-04-24
+Lane: 2
+Papers extracted: 6 (with Wm Pln Book V3 spanning 7 sub-chunks)
+
+Per-paper claim counts:
+  PLN AND Confidence Framework.md       : 8 claims
+  PLN NARS TVs                          : 7 claims
+  PLN ECAN 2015v1                       : 7 claims
+  Wm Pln Book V3                        : 12 claims  (synthesis of 7-chunk book)
+  PLNUpdate                             : 4 claims  (slide-deck fragment)
+  Pln Review                            : 9 claims
+================================================================
+
+
+### RawData+Publications+PLN AND Confidence Framework.md
+
+**Lane:** 2
+**Card type:** RawData
+**Length:** ~9.3 KB (single-fetch, no chunking)
+**Date / version signal:** No explicit date; references Goertzel 2008 (PLN book), Wang 2006, Cover & Thomas 2006, Rosenthal 1990. Source path: mattermost://PLN/0506_PLN_AND_Confidence_Framework.md.pdf. Standalone math note, NOT dated by content.
+
+**Core claims:**
+- C-1: Confidence updating for the PLN AND rule should use a "weakness-composition" formulation in an information-theoretic quantale Q_E = ([0,∞) × [0,1], ≤, ⊗, I), where weakness w = 1 - c = k/(e + k).
+- C-2: Weakness composition under independence is probabilistic OR: w₁ ⊕ w₂ = 1 - (1-w₁)(1-w₂). Combined w_{A∧B} = 1 - (1-w_A)(1-w_B)(1-w_struct).
+- C-3: Strength under independence is multiplicative: s_{A∧B} = s_A · s_B; with correlation ρ, an additive correction √(s_A(1-s_A) s_B(1-s_B)) appears.
+- C-4: Structural weakness has an information-theoretic identity: w_struct(A,B) = H(A∧B | A∨B)/H(A∧B) = 1 - I(A;B)/min(H(A),H(B)).
+- C-5: Evidence overlap factor between two evidence sets uses an exponential decay over normalized mutual information: overlap = exp(-λ I(e_A; e_B)/H_min). Independent evidence ⇒ overlap=1; full dependence ⇒ exp(-λ).
+- C-6: Final confidence form: c_{A∧B} = c_A · c_B · overlap / (1 + k · w_combined).
+- C-7: Estimation procedure for empirical use: Miller-Madow corrected entropies for discrete data, KDE or k-NN (Kraskov-style ψ-digamma) for continuous.
+- C-8: PLN/NARS unification claim: NARS conjunction f×c formula c = c₁c₂(f_A + f_B - f_A f_B) is recovered from the PLN-with-overlap formula in the high-confidence limit (k→0) with overlap = inclusion-exclusion (f_A + f_B - f_A f_B).
+
+**Intended implementation target:** PLN AND/conjunction TruthValue formulas for the production PLN3/PLN/ confidence model.
+
+**Current implementation status:** PAPER-ONLY / ASPIRATIONAL.
+Reasons: (a) The production PLN3/PLN/ confidence pivot in Source 3 (pln0.9, Peter Isaev `7ffce05`, 2026-03-12) introduced multiplicative confidence with strength-entanglement and a `Truth_or` heuristic — but the strength-entanglement formula is c1·c2·s1 / (s1 + s2 - s1·s2)-style, NOT this paper's exp(-λ I)/(1+k w_combined). (b) No file in chaining or production PLN imports an information-quantale, mutual-information overlap factor, or Miller-Madow entropy corrector. (c) This paper proposes a 7-step algorithm (entropy estimation + KDE/k-NN MI estimation) that has no code-side reflection.
+
+**Code evidence:** none — paper-only. The closest production analog is `Truth_or` heuristic in `lib_pln.metta` (Source 3) but its derivation is *not* this paper's information-quantale story.
+
+**Unresolved questions / cross-references:**
+- This is the document Source 4's nuPLN.tex bibliography refers to as "Ben's document" (`PLN_AND_Confidence_Framework.md.pdf`). Comparing CONTENT (not just filename): the wiki card's title literally ends `.md` and the source URL says `0506_PLN_AND_Confidence_Framework.md.pdf`. Same file. The text's discussion of strength-entanglement (overlap factor) and weakness-composition is structurally adjacent to but mathematically DIFFERENT from the Source 3 production pivot. See Focus Question #1 below.
+
+
+### RawData+Publications+PLN NARS TVs
+
+**Lane:** 2
+**Card type:** RawData
+**Length:** ~20 KB (single-fetch, no chunking)
+**Date / version signal:** Source path mattermost://hyperon-agi-meetup/0682_PLN-NARS-TVs.pdf. Header explicitly: "WARNING: This was produced by GPT o1 model based on some interaction with Ben, and may contain hallucinations etc." — author Ben Goertzel + LLM-assisted. References Wang 1994, Goertzel 2009 (PLN book), Gelman et al. 2013. No specific date but "GPT o1" places it post-2024.
+
+**Core claims:**
+- C-1: PLN inference rules (deduction, induction, abduction) take TVs as <s,c>; NARS uses <f,c>. Under high uncertainty of node probabilities (s_A, s_B, s_C), PLN's formulas SIMPLIFY toward NARS-style results.
+- C-2: PLN deduction (independence-based) under high node uncertainty: s_AC ≈ s_AB · s_BC; c_AC ≈ c_AB · c_BC; product s·c ≈ s_AB s_BC c_AB c_BC. Matches NARS deduction product f·c = f₁f₂c₁c₂ EXACTLY.
+- C-3: PLN deduction (concept-geometry-based): s_AC = s_AB·s_BC / min(1, s_AB + s_BC). Differs from NARS by a normalization factor; numerical example: PLN 0.2323 vs NARS 0.3024 on (0.6,0.7) inputs.
+- C-4: PLN induction: under high uncertainty s_AC ≈ s_BA·s_BC. Numerical example shows alignment with NARS within ~0.1% (0.3024 vs 0.3014).
+- C-5: PLN abduction: s_AC ≈ s_AB·s_CB. Differs from NARS notably (0.084 vs 0.1183) because NARS includes experience-parameter k in denominator.
+- C-6: Key structural difference: NARS includes experience parameter k in confidence denominators (induction/abduction); PLN does not. Conversely, PLN's concept-geometry form has a normalization (s_AB + s_BC) that NARS lacks.
+- C-7: Both systems prioritize link strength/confidence over node probabilities under high node-uncertainty regime; deeper bridges should integrate evidence-based (NARS) with probabilistic (PLN) approaches.
+
+**Intended implementation target:** Theoretical/comparative — meant to inform whichever production PLN engine ships TVs. Does not name a target file.
+
+**Current implementation status:** PAPER-ONLY / ASPIRATIONAL.
+The product s·c ≈ NARS-product result is an analytical observation, not a rule. The closed-form NARS-equivalence claim has not been encoded as a switching mode in PLN3/PLN/, chaining, or pln0.9. Also note: the paper opens with a literal disclaimer that GPT-o1 generated it and "still needs careful checking" — flagged self-doubt in the source itself.
+
+**Code evidence:** none — paper-only. NARS-style truth functions are not present in the PLN3/PLN/ production line; chaining's `experimental/pln/` uses pre-pln0.9 min-based PLN math, not NARS-equivalent forms.
+
+**Unresolved questions / cross-references:**
+- 2008 PLN book Appendix A (Source 1) ALREADY contains a NARS comparison table. This paper is essentially an EXTENSION/REFINEMENT focusing specifically on the high-node-uncertainty asymptotic regime, which is a narrower angle than Appendix A's general comparison. Not a recap — it adds the s·c product analysis and the explicit numerical examples per inference type.
+- The paper's "PLN's products converge to NARS's products" finding aligns with the "Goertzel-Wang correspondence" theme but does NOT propose new TV formulas — it explains structural alignment.
+
+
+### RawData+Publications+PLN ECAN 2015v1
+
+**Lane:** 2
+**Card type:** RawData
+**Length:** ~19.6 KB (single-fetch)
+**Date / version signal:** Source path mattermost://A I/0751_PLN_ECAN_2015v1.pdf. Authors: Iklé, Bayetta, Goertzel, Belayneh, Harrigan, Yu (Adams State, HK Poly U, iCog, Novamente, OpenCog Foundation). 2015 era confirmed by content style and title. Filename literally contains "2015v1".
+
+**Core claims:**
+- C-1: ECAN (Economic Attention Networks) provides STI (short-term importance) and LTI (long-term importance) values to atoms; HebbianLinks carry probability values; an "attentional focus" prioritizes atoms.
+- C-2: PLN+ECAN integration is the canonical example of "cognitive synergy" in OpenCogPrime: ECAN focuses PLN forward/backward chaining on relevant atoms.
+- C-3: A "surprisingness" metric was defined: surprisingness(x, pop) = |s - s_pop| (deviation of an atom's truth value from population average over the same predicate).
+- C-4: Test problem: "Smokes" benchmark (from MLN literature, Tuffy framework). Authors added extraneous random nodes and links to create a stress test where ECAN must filter relevant from irrelevant.
+- C-5: PLN-without-ECAN struggled on stress-test version; PLN+ECAN successfully focused on relevant atoms. PLN backward-chaining produced cancer probabilities {Edward 0.62, Anna 0.50, Bob 0.45, Frank 0.45} comparable to MLN baseline {0.75, 0.65, 0.50, 0.45}.
+- C-6: An "ECAN test bench" was built for parameter optimization in isolation (before integration with PLN).
+- C-7: Future work: extend to Test 1b (extraneous inference rules, not just data); deeper PLN+ECAN integration for rule-selection-level inference control. NOT YET IMPLEMENTED at paper-time.
+
+**Intended implementation target:** OpenCogPrime / classic OpenCog Atomspace+PLN+ECAN stack (pre-Hyperon).
+
+**Current implementation status:** SUPERSEDED / PAPER-ONLY (in current Hyperon context).
+Per standing correction #4: chaining (Source 7) shows partial migration of URE control ideas (~5 of 16 URE features at toy scale). ECAN as such (STI/LTI/HebbianLink artificial economy) has NOT migrated to chaining or PLN3/PLN/. The "attentional focus" concept appears in chaining as priority-queue ordering but not as a Hebbian-economic system. The 2015 vintage — pre-MeTTa, pre-Hyperon — places this firmly in the OpenCog-classical era.
+
+**Code evidence:** none in the post-2023 Hyperon/MeTTa codebase. Old OpenCog Atomspace + ECAN modules are in legacy opencog repos (not in scope for Source 7's chaining audit). Source 7 confirms NO ECAN/STI/LTI structures land in chaining or production PLN.
+
+**Unresolved questions / cross-references:**
+- Direct compare to chaining `experimental/inference-control/` and `pln-inf-ctl/`: per standing correction #4, ~5 of 16 URE features survive — none are ECAN-derived. ECAN integration is ASPIRATIONAL in modern Hyperon; no prototype has landed in the audited code.
+- The Tuffy/MLN benchmark used here is the same family as Source 4's pln-experimental2 benchmarks; the inheritance is chronological (2015 → 2023+) but not code-level.
+
+
+### RawData+Publications+Wm Pln Book V3
+
+**Lane:** 2
+**Card type:** RawData (multi-chunk)
+**Length:** ~250 KB total across 7 chunks (chunk 1: 46.8KB; chunk 2: 46.7KB; chunk 3: 46.3KB; chunk 4: 46.6KB; chunk 5: 46.5KB; chunk 6: 45.3KB; chunk 7: 18.8KB). All 7 chunks fetched.
+**Date / version signal:** Title "The World-Model Calculus: A Sprout from the Formalization of PLN (v3 — March 19, 2026)". Authors "Zar and Oruži" (Zarko Zaremba + AI assistance via ChatGPT/Codex/Claude Code per chunk-1 footnote). Source path mattermost://PLN/0660_wm-pln-book_v3.pdf. NOTE: "Wm" stands for **"World-Model"**, NOT "Working Memory" as initial focus question hypothesized.
+
+**Core claims (synthesis across 7 chunks):**
+- C-1: PLN's truth-value-as-primary-representation is wrong; the system should carry a **revisable evidence state** with sufficient statistics, and treat truth values (strength, confidence, intervals) as LOSSY VIEW PROJECTIONS extracted only at decision time. (Desideratum D4 "Evidence over Views".)
+- C-2: A formal `WorldModel(State, Query, V)` typeclass with three operations `revise`, `empty`, `extract`; the additive subclass `AdditiveWorldModel` adds `extract_add`: extract(W₁+W₂, q) = extract(W₁, q) + extract(W₂, q). This is a monoid homomorphism. Profile-hom theorem: AdditiveWorldModel ≃ AddMonoidHom(State, Query → V).
+- C-3: Three kernel-formalized evidence carriers: Binary (n+, n-), Dirichlet (α₁,…,αₖ), Normal-Gamma (n, Σx_i, Σx²_i). Revision = componentwise addition of sufficient statistics. De Finetti / Solomonoff foundation justifies this categorically: exchangeability → de Finetti mixture → Kyburg flattening → Giry bind → evidence sufficiency.
+- C-4: Eight desiderata D1-D8: State Primacy, Compositional Extraction, Generic Carriers, Evidence-over-Views, Explicit Σ Side Conditions, Retractability, Conservation, Honest Boundaries. The book proves these desiderata are jointly discharged by the formalization, and that they're independent (each one has an independence witness).
+- C-5: The classical PLN deduction formula s_AC = s_AB·s_BC + (1-s_AB)(s_C - s_B s_BC)/(1-s_B) is RECOVERED EXACTLY for chain BNs A→B→C under explicit screening-off + positivity (0 < s_B < 1) side conditions. The PLN book stated this as universal; the WM calculus says: it's a Σ-guarded compiled rewrite, exact when Σ holds, not licensed otherwise.
+- C-6: The **No-Go theorem (Ch 9)**: there is no function f: V⁵ → V that, for ALL joint evidence states E, computes exact link evidence for A⇒C from local marginals (ev(A), ev(B), ev(C), ev(A⇒B), ev(B⇒C)) alone. Proof is a constructive mass-redistribution counterexample. Moral: local chaining cannot replace complete semantics; structural Σ matters.
+- C-7: **Five chaining-limitation theorems** quantify scalar-view propagation cost: variance accumulation (linear in chain length), sensitivity amplification (K^n exponential for K>1 Lipschitz), coverage collapse ((1-α)^n → 0), topology-CPT gap (no topology-only error bound), no universal error bound. Constructive resolution: distributional inference (carry full posterior, not scalar view).
+- C-8: The PLN book's binary intensional-extensional mixture InhInt(A,B) = α·Ext + (1-α)·IntAssoc is **disproved** as a general law (`binary_mixed_policy_collapse_no_go`). The corrected approach is a typed THREE-channel model: extensional, ASSOC (mutual-information), PAT (structural pattern). PAT contributes nontrivially and cannot be reduced to a function of the other two.
+- C-9: The book's multideduction inclusion-exclusion truncation (PLN book §9.3.1) is reframed: two-term IE does not determine union cardinality (proved via concrete counterexample on Fin(4)). Constructive resolution: residual decomposition |A∪B∪C| = (T₁ - T₂) + |A∩B∩C|. Practical implication: multideduction certified only when triple overlap is known, bounded, or structurally zero (tree BN).
+- C-10: PLN v0.9 stamps (StampDisjoint, StampConcat) **are** the formal provenance discipline of the WM calculus (Finset.Disjoint on scope supports). PLN v0.9 had no formal forgetting; the WM calculus adds it with proved conservation theorems (Noether-style: forgetting scope S preserves extraction outside S, anti-hallucination: revision Δ within S contributes 0 evidence outside S).
+- C-11: Three production PLN v0.9 confidence-formula bugs are formally proved and patched: (a) double-damping in induction (47% underestimate at c=0.9); (b) confidence-floor max(c, c1, c2) clamp masking errors; (c) c2w(c) = c/(1-c) division-by-zero at c=1 silently returns ∅. All three vanish when the system carries evidence pairs (n+, n-) instead of confidence scalars. (Mettapedia/Logic/PLNBugAnalysis.lean)
+- C-12: Bridge theorems prove WM-PLN subsumes/contains seven neighboring frameworks: MLN (compatibility-gated, exact under finite support), ProbLog (exact for ground acyclic programs; max diff < 1e-10 on chr16 GWAS pilot), NARS (Galois connection, round-trip on confidence and frequency exact), PLN v0.9 (20 conformance tests by `decide`), classical FOL (zero-uncertainty limit), Giry monad (Kyburg flattening = Giry bind, proved), ρ-calculus (multiset-ensemble world model). Total 704 theorems, 0 sorry, Lean 4.28.0 + Mathlib v4.28.0.
+
+**Intended implementation target:** Theoretical refoundation of PLN. The Lean codebase Mettapedia/* contains the formal proofs. NOT a runtime — the book explicitly states (Ch 18 Limitations) that no executable PLN engine, no MeTTa/Hyperon runtime integration is provided. "Operational concerns that depend on runtime infrastructure not yet available."
+
+**Current implementation status:** PROTOTYPE (in Lean) / PAPER-ONLY (for runtime).
+- IMPLEMENTED in Lean 4: 704 theorems with 0 sorry. Provenance, forgetting, conservation, BN exactness, evidence carriers, no-go theorems, bridges. Maple Court running example.
+- PAPER-ONLY for production PLN: no compiled MeTTa or Python runtime. The book maps PLN v0.9 stamps to its formal provenance discipline, but the PRODUCTION pivot in Source 3 (pln0.9 multiplicative confidence by Isaev) is NOT this book's evidence-pair (n+, n-) carrier — those are different mathematical lineages. PPLBench validation (Ch 24) is in Python scripts, kernel-checked formal lemmas backing the carriers.
+
+**Code evidence:**
+- Formal proofs: `Mettapedia/Logic/*.lean` family (PLNWorldModelGeneric, BinaryEvidence, EvidenceDirichletQuantale, EvidenceNormalGamma, PLNJointEvidenceNoGo, PLNBugAnalysis, PLNTrailFreeDynamicsCounterexample, PLNDistributionalConvergence, etc.)
+- Demos: `WMGasSensorDriftDemo.lean`, `GJPForecastDemo.lean`, `PLNBrokenSensorDemo.lean`, `WMSteelFaultDemo.lean`, `WMNABSleepDemo.lean`, etc.
+- Application scripts: `scripts/wm_pln_*.py` (Python evaluators against Stan/NumPyro for PPLBench).
+- NOT IN production PLN3/PLN/: per standing correction #1, production has only confidence-priority forward-chaining queue. No D5-style Σ guards, no D6-style forgetting, no D8-style boundary theorems land in production.
+
+**Unresolved questions / cross-references:**
+- "Wm" = **World-Model**, not Working Memory (focus question #5 corrected). The book is a *sprout from the formalization of PLN* (subtitle), not a separate Working-Memory PLN proposal.
+- Multiple authors: Zar (Zarko Zaremba) + Oruži (LLM-assisted: ChatGPT, Codex, Claude Code) per chunk-1 footnote. This is a 2026-vintage formalization project, not a classical Goertzel-era PLN book.
+- Strong overlap with Source 4's nuPLN (Geisweiller); chunk-1 explicitly cites Geisweiller's νPLN (`papers/nuPLN_v1.pdf` per Ch 27 ref [6]). The two efforts are PARALLEL: nuPLN grounds in Solomonoff Universal Induction; WM-PLN extends with the typed evidence-carrier algebra and the 8 desiderata.
+- Pln Review (separate card, this lane) is the **chapter-by-chapter formal review** of the original 2009 PLN book that this WM-PLN book is the *refoundation* of. The two cards together are book + review.
+
+
+### RawData+Publications+PLNUpdate
+
+**Lane:** 2
+**Card type:** RawData
+**Length:** ~1.6 KB (single-fetch — extremely small)
+**Date / version signal:** Source path mattermost://PLN/0045_PLNUpdate.pdf. No date in content. Content is FRAGMENT-LIKE: looks like extracted slide-deck OCR with PostScript bookmark code, scattered Greek letters (ϕ, ψ, ∫_Y, ∑wK), references to "Born rule" and "U_COMM" operators, "Spatial-behavioral type system", "Theory of Computation", "HOAS Theory + Graph", and "OSLF". This is clearly a slide-deck or talk update, not a paper.
+
+**Core claims (slide fragment level):**
+- C-1: Proposes a stochastic/quantum-mechanical extension of PLN where states are distributions over terms, rewrites are State × State → State, and one introduces both 1-norm (probability) and 2-norm (quantum amplitude) distributions.
+- C-2: A Born-rule-style probability calculation: `<P{@Q/y} | U_COMM(| for(y <- x)P | x!(Q) >)` gives the probability amplitude for a target rewrite state. The notation closely matches L. Gregory Meredith's spatial-behavioral types and ρ-calculus framework.
+- C-3: Extensions to OSLF (Open Spatial Logic Framework) are needed to support PLN: program extraction and probabilistic execution require "horizontal functors"; PLN was looking only at vertical functors. So PLN's existing functorial story is incomplete in the OSLF setting.
+- C-4: Mentions "Enriching Yoneda and sub" (3 times — possibly slide tags), suggesting an enriched-category direction for PLN extension.
+
+**Intended implementation target:** ASPIRATIONAL — a high-level direction-setting fragment for OSLF + PLN integration. No specific file or runtime named.
+
+**Current implementation status:** PAPER-ONLY / ASPIRATIONAL — and arguably even less than that, since the card is a slide-deck residue, not a coherent paper. The OSLF / ρ-calculus integration thread is followed up in Wm Pln Book V3 (Ch 17 §17.7 ρ-calculus bridge — kernel-checked) and Ch 8 §8.8 (multiset-ensemble world model from GSLTs), so this fragment may be the SEED that the WM-PLN book later operationalizes formally.
+
+**Code evidence:** Wm Pln Book V3 (this lane) has `Mettapedia/OSLF/Framework/RhoWorldModel.lean` and `Mettapedia/OSLF/Framework/RhoInstance.lean` formalizing the ρ-calculus bridge — that's the descendant. PLNUpdate itself has no code-side reflection.
+
+**Unresolved questions / cross-references:**
+- This card is the smallest in Lane 2 by 5x. Length (~1.6 KB) suggests it's either a stub of a longer paper or a slide-deck artifact. Source filename "0045_PLNUpdate.pdf" with the low number suggests it's an EARLY mattermost upload.
+- Connections to Meredith's "Spatial-behavioral types" cited in Wm Pln Book V3 chunk-7 ref [24]. This fragment may be Meredith's original PLN-update slides that seeded the later RhoWorldModel formalization.
+
+
+### RawData+Publications+Pln Review
+
+**Lane:** 2
+**Card type:** RawData (split into 2 chunks)
+**Length:** ~52.5 KB total (chunk 1: 46.0KB; chunk 2: 6.5KB)
+**Date / version signal:** Title "A Formal Review of Probabilistic Logic Networks, Ben Goertzel, Matthew Iklé, Izabela Freire Goertzel, Ari Heljakka (2009) (DRAFT --- March 14, 2026)". Authors: "Zar and Oruži". Source path mattermost://PLN/0660_pln-review.pdf. **Same author team as Wm Pln Book V3.** This is the FORMAL CHAPTER-BY-CHAPTER REVIEW of the original 2009 PLN book.
+
+**Core claims:**
+- C-1: Five verdict labels for every PLN-book claim: Formalized Cleanly, Corrected Statement, Explicit Assumptions, Counterexample/No-Go, Heuristic/Operational. Coverage requires theorem-level Lean artifacts, not just discussion.
+- C-2: Global summary: 14 chapters + Appendix A reviewed. Verdicts: Formalized Cleanly (Ch 1, 2, 3, 6, 7, 13, 14, App A); Corrected Statement (Ch 4, 5, 8, 10, 12); Explicit Assumptions (Ch 11); Counterexample/No-Go (Ch 9 — large-scale inference strategies).
+- C-3: **Ch 5 (FO Extensional Inference)** verdict: Corrected Statement. Classical PLN deduction formula proved EXACT for chain BN A→B→C and fork BN A←B→C under d-separation + positivity. BN-derived envelope theorems with kernel-checked Lean. The book stated rules unconditionally; the formalization recovers correct theoremic scope by making conditions explicit.
+- C-4: **Ch 9 (Large-Scale Inference Strategies)** verdict: Counterexample/No-Go for several core claims. Multideduction two-term IE is not identifiable (Lean witness `same_first_two_terms_different_union`); trail-free protocols don't stabilize (`orbit_not_eventually_constant`, 2-cycle); pooling axioms don't pin down additive fusion (`maxPoolingOperator_ne_fuse`). Damped trail-free converges with eventual fresh evidence. Pooling unique under external Bayes + total additivity.
+- C-5: **Ch 12 (Intensional Inference)** verdict: Corrected Statement. The book's binary mixed policy `InhInt = α·Ext + (1-α)·IntAssoc` is constructively disproved. Replaced by typed three-channel ASSOC/PAT model with selector-specialized endpoints and Solomonoff log-ratio bridge.
+- C-6: **Appendix B (Corrected Formulas)** lists 6 PLN-book formulas with explicit corrections: Deduction needs screening-off + positivity; ITV needs explicit Bayes-credible vs Walley-IDM selector; Intensional needs typed three-channel; Multideduction needs residual decomposition; Trail-free needs damped variant; Pooling needs total additivity.
+- C-7: **Appendix C (Counterexample Catalogue)** lists 8 formal counterexamples — each a kernel-checked Lean witness blocking a specific PLN-book claim.
+- C-8: **Appendix D (Deferred Claims)** explicitly lists what is NOT yet formalized: executable PLN engine (operational), arbitrary-domain quantifier parity (partial), Universal Prediction core (work-in-progress, 21-file WIP module), Chapter 9 operational closure (theorem-level done, runtime pending).
+- C-9: **Notation Translation appendix (App E)** maps PLN book → Lean → WM-PLN: ⟨s,c⟩ → STV → ⟨s,c⟩; STV/ITV → typed selector; Atom space → WorldModel + Σ; etc.
+
+**Intended implementation target:** Chapter-by-chapter formal-verification audit of the original 2009 PLN book. Companion to Wm Pln Book V3 ("for self-contained mathematical refoundation see The World-Model Calculus" — chunk-1).
+
+**Current implementation status:** IMPLEMENTED (in Lean). Each chapter's Lean modules are named explicitly: PLNWorldModel.lean, PLNDeduction.lean, PLNJointEvidenceNoGo.lean, PLNTrailFreeDampedConvergence.lean, PLNIntensionalAssocPatClosure.lean, etc. Total 704 theorems with 0 sorry per Wm Pln Book V3 cross-reference.
+
+**Code evidence:** The same Lean codebase as Wm Pln Book V3 — Mettapedia/Logic/* family. Pln Review is the *index/audit* into this codebase.
+
+**Unresolved questions / cross-references:**
+- Pln Review and Wm Pln Book V3 share the SAME source mattermost folder (PLN/0660_*) and the SAME author team. They are MATCHED PAIR: review (Pln Review) of a book (2009 original PLN) + new book (Wm Pln Book V3) replacing/refounding it.
+- "Universal Prediction core" deferred per App D — this connects to Geisweiller's νPLN/Solomonoff thread (Source 4) which IS about Universal Prediction. The two efforts are converging but νPLN is more advanced on that axis; WM-PLN is more advanced on the typed-state axis.
+
+================================================================
+LANE 2 SYNTHESIS / FOCUS QUESTIONS
+================================================================
+
+**Focus Question #1: Does `PLN AND Confidence Framework` explain the pln0.9 multiplicative-confidence pivot?**
+
+Answer: **NO.** The two are different mathematical lineages.
+
+Evidence:
+- `PLN AND Confidence Framework.md` proposes weakness-composition w_{A∧B} = 1 - (1-w_A)(1-w_B)(1-w_struct) plus an *information-theoretic* overlap factor exp(-λ I(e_A; e_B)/H_min).
+- pln0.9 (Source 3, Peter Isaev `7ffce05` 2026-03-12) introduces multiplicative confidence with strength-entanglement of the form c_AND ≈ c_1·c_2·s_1/(s_1 + s_2 - s_1·s_2) (or similar — Source 3 had the canonical formulas) plus a `Truth_or` heuristic.
+- The two CONVERGE conceptually on "confidence should multiply, with a strength-aware modulation" but they DIVERGE on the modulation. The framework paper uses information-theoretic mutual-information overlap; pln0.9 uses inclusion-exclusion-style strength terms.
+- The PLN AND Confidence Framework paper does claim to RECOVER NARS-style formulas under specific limits (k→0, uniform priors), and the pln0.9 production formulas are arguably descended from NARS-aware lineage. So they are RELATED via NARS but NOT directly derivable from each other's exact equations.
+
+Verdict: **Partial / NO**. Theoretical underpinning of pln0.9's general direction (multiplicative confidence with strength entanglement) is *consonant with* this paper's spirit, but the SPECIFIC FORMULAS in pln0.9 do not appear in this paper, and the paper's core mathematical machinery (information quantale, Miller-Madow entropy, exponential MI-decay overlap) does not appear in pln0.9 code.
+
+**Source-of-truth check (Focus Question #2):**
+
+The wiki card `PLN AND Confidence Framework.md` is **the same document** as the "Ben's document" `PLN_AND_Confidence_Framework.md.pdf` referenced in Source 4's nuPLN.tex bibliography. Same filename (modulo `.md`/`.md.pdf` suffix difference), same source mattermost folder PLN/, same content (information-quantale derivation, NARS-PLN unification claim, etc.). Confirmed match.
+
+**Implementation-status one-liner:** Across Lane 2's 6 papers, FIVE are PAPER-ONLY/ASPIRATIONAL with respect to current production PLN3/PLN/ runtime; ONE (Wm Pln Book V3 + Pln Review) is PROTOTYPE-IMPLEMENTED in Lean 4 (704 theorems, 0 sorry) but not yet in any executable runtime.
+
+**Most-surprising single finding:** **"Wm" stands for "World-Model", not "Working Memory".** The Wm Pln Book V3 is a typed-evidence-carrier formal refoundation of PLN, NOT a Working-Memory variant. This corrects focus question #5's hypothesis. The book's running example "Maple Court Community Commons" is a building-automation scenario, not a memory architecture. The book's 704-theorem Lean formalization (Mettapedia/Logic/* family, 0 sorry, 0 native_decide) makes it the most rigorous PLN-related artifact in Lane 2 by a wide margin — and explicitly identifies its scope as formal semantics, not executable runtime.
+
+**Other notable findings:**
+- `PLNUpdate.pdf` is a 1.6 KB slide-deck fragment, not a paper. Content is OCR-residue with PostScript bookmark code. Likely Meredith's PLN+OSLF integration slides, which much later sprouted Wm Pln Book V3's ρ-calculus bridge (Ch 17 §17.7).
+- `PLN ECAN 2015v1` is from 2015 OpenCogPrime / classical OpenCog era. Pre-MeTTa, pre-Hyperon. Per standing correction #4, ECAN as such has NOT migrated; only ~5/16 URE features survive in chaining.
+- `PLN NARS TVs` carries an explicit GPT-o1 hallucination warning in its abstract, AUTHORED INTO THE PAPER ITSELF. Effectively an LLM-assisted recap of Goertzel-Wang correspondence; extends 2008 PLN book Appendix A's NARS comparison via concrete s·c product analyses.
+- Wm Pln Book V3 + Pln Review are a matched pair (same authors Zar+Oruži, same mattermost folder PLN/0660_*, both dated 2026-03-XX). Together they constitute a chapter-by-chapter formal verification + refoundation of the original 2009 PLN book.
+- All 6 papers are FETCHABLE without trouble (no empty cards). Wm Pln Book V3 needed full pagination across 7 chunks (~250KB total). Pln Review needed 2 chunks (~52KB).
+
+**Empty/unfetchable/structurally surprising papers:**
+- PLNUpdate is structurally surprising in being a 1.6KB slide-deck fragment rather than a paper.
+- No empty or unfetchable cards in Lane 2.
+
+================================================================
+END LANE 2 EXTRACTION
+================================================================
+
+---
+
+## Post-extraction note (appended 2026-04-25 after Source 11 Phase 1 source-of-truth check)
+
+**Re: "Zarko Zaremba" attribution at L107 + L137 above.** The original Lane 2 finding propagated the wiki-bibliography reading verbatim (`Zar (Zarko Zaremba) + Oruži`). On Phase 1 Source 11 wiki-edit prep (2026-04-25), source-PDF inspection of `publication_texts/mattermost_papers/Pln_Review.json` (source `mattermost://PLN/0660_pln-review.pdf`) revealed the source PDF itself contains both spellings:
+- Cover/title block: *"Zar and Oruži"* (canonical author signature)
+- Bibliography entry [2]: *"Zarko Zaremba and Oruži (Claude Anthropic)..."*
+
+Most plausible reading: **"Zarko Zaremba" is Zar Goertzel's pseudonymous self-citation in his own paper's bibliography**, not a wiki extraction error or actual second author. Zaremba is a real Polish surname; consistent stylistic flourish elsewhere in his work. The user (Lake Watkins) personally verified `zariuq` = Zarathustra Goertzel.
+
+**Corrected canonical attribution for downstream cluster work**: Zarathustra Goertzel + Oruži (AI-assisted: ChatGPT, Codex, Claude Code), with optional footnote on the "Zarko Zaremba" pseudonym in the Pln Review bibliography. Wiki RawData faithfully preserves the source — no chunk-2 edit needed.
+
+Corrected framing lives in `source10_atps_cetta/findings_reconciled_crossmodel.txt` §4.5 / §7, `source11_papers_fulltext/findings_reconciled_crossmodel.txt` §V0-4, and memory `project_zar_goertzel_cluster_contributor.md`. Methodology lesson captured in `feedback_attribution_verify_against_git.md`.

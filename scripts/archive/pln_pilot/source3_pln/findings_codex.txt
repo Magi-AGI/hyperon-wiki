@@ -1,0 +1,119 @@
+# PLN Extraction - Codex Findings
+
+**Repo:** `PLN`
+**Commit:** `4405956947c4b53c7ff01bd565aa3b114bc970a1`
+**Model:** Codex
+**Extraction date:** 2026-04-24
+**Claim counts per section:** 1=8, 2=12, 3=5, 4=4, 5=4, 6=7, 7=3, 8=4
+
+## 1. Architecture delta: monolith vs. modular
+
+C-1-1: `PLN/` is a self-contained, PeTTa-oriented upstream surface built around one checked-in library file, `lib_pln.metta`, plus `examples/`, `ruletests/`, and a repo-root `test.sh`. There is no `src/` tree, no `build.sh`, and no checked-in `PLN.py` translator shim in this repo. [AGENTS.md:L4-L12] [CLAUDE.md:L7-L18] [README.md:L39-L63]
+
+C-1-2: `lib_pln.metta` is structurally a flattened successor to the former modular layout, with clear in-file boundaries for utilities, consistency constraints, truth functions, inference rules, config, and derivation/query control. The file progresses in that order from helper math and dedup (`/safe`, `PushUnique`, `ConcatUnique`), to constraints, then formulas, then rule schemas, then config and deriver/query logic. [lib_pln.metta:L1-L34] [lib_pln.metta:L38-L64] [lib_pln.metta:L65-L208] [lib_pln.metta:L210-L430]
+
+C-1-3: The public API is narrower and cleaner than the PLN3 path: there is no `PLN.Init`. The repo exposes `PLN.Derive` and `PLN.Query` directly from `lib_pln.metta`, and every example imports the repo by `git-import!` and then imports `(library PLN lib_pln)`. [lib_pln.metta:L377-L430] [README.md:L57-L64] [examples/FlyingRaven.metta:L1-L3]
+
+C-1-4: The Python/transpiler path from PLN3 is gone from the repo surface. The only remaining evidence of a former translator is a comment saying negation introduction is "handled by Translator", but there is no `Translator.metta`, no `PLN.py`, and no `PLN.Init` symbol in the checked-in tree. [lib_pln.metta:L283-L284]
+
+C-1-5: This means the Source 2 Python-shim dependency does not carry over as a repo-local runtime path. `PLN/` is intended to be imported and executed directly inside a PeTTa workspace through `git-import!`, not through generated intermediate files. [README.md:L24-L64] [AGENTS.md:L15-L27]
+
+C-1-6: `test.sh` is also different in shape from the PLN3 local-build flow. It expects the repo under `PeTTa/repos/PLN`, does `cd ../../`, and runs every `./repos/PLN/*/*.metta` file in parallel via `run.sh`, excluding only a few named examples. That makes the whole example and ruletest corpus part of the default regression surface. [test.sh:L1-L39]
+
+C-1-7: The controller defaults changed materially from the Source 2 configuration. `PLN/` now sets `MaxSteps=100`, `TaskQueueSize=10`, and `BeliefQueueSize=100`, i.e. a deeper horizon but tighter active queues. [lib_pln.metta:L325-L332]
+
+C-1-8: `CLAUDE.md` is stale on config: it still claims `MaxSteps=20`, `TaskQueueSize=20`, and `BeliefQueueSize=200`, while the code now defines `100/10/100`. The doc is reliable on the monolithic layout, but not on the current runtime knobs. [CLAUDE.md:L46-L52] [lib_pln.metta:L325-L332]
+
+## 2. Rule-level delta
+
+C-2-1: The core rule surface is still the same compact STV subset seen in Source 2: revision, asymmetric MP, symmetric MP, deduction, induction, abduction, three evaluation-over-inheritance bridge rules, negation elimination, inheritance inversion, implication inversion, two equivalence-to-implication directions, transitive similarity, evaluation implication, and member deduction. No new high-level rule families appear in `lib_pln.metta`. [lib_pln.metta:L210-L323]
+
+C-2-2: The book-facing formulas for deduction, induction, abduction, MP, symmetric MP, revision, negation, inversion, equivalence-to-implication, transitive similarity, and evaluation implication are still present verbatim in the monolith. This is not a conceptual rewrite of the Source 2 math; it is mostly a packaging/consolidation move. [lib_pln.metta:L82-L204]
+
+C-2-3: Standard Modus Ponens still hardcodes the familiar fallback constant `0.02`. That part of Source 2 carries forward unchanged. [lib_pln.metta:L123-L126]
+
+C-2-4: Symmetric Modus Ponens still uses the multiplication form, but it also still uses the distinct local constant `$snotAB = 0.2` rather than the book's `c = 0.02`. The `cnotAB` binding remains present but unused. [lib_pln.metta:L128-L133]
+
+C-2-5: Revision is still the same weighted-average STV merge with converted weights and an upward clamp by `max(max(c,c1),c2)`. There is no new overlap-sensitive or trail-sensitive revision derivation in the core library. [lib_pln.metta:L135-L143]
+
+C-2-6: Inversion is still the same simplified rule that preserves the original strength and only discounts confidence by `0.6 * target_confidence * link_confidence`. This remains a major semantic shortcut relative to classical/OpenCog-style Bayes inversion. [lib_pln.metta:L150-L153]
+
+C-2-7: Transitive similarity still uses raw `/` in the four `T1..T4` terms and only falls back to `/safe` in the later nested correction terms. The zero-division hazard is still present in the main similarity-strength calculation. [lib_pln.metta:L165-L171]
+
+C-2-8: The predicate bridge rules are still first-class runtime schemas, not just documentation claims: unary inheritance-to-predicate substitution, plus binary argument-1 and argument-2 substitutions. [lib_pln.metta:L261-L281]
+
+C-2-9: `Direct.metta` does not add a new core inference rule family. It is a user-space macro layer that compiles implication-like clauses into direct MeTTa reductions using `Truth_ModusPonens` and then merges alternate derivations with `Truth_Revision`. That is an example-level extension, not a new engine primitive. [examples/Direct.metta:L5-L15]
+
+C-2-10: The repo still cites older OpenCog rule files and the `hyperon-pln` dependent-types deduction file for provenance, but those citations do not correspond to recovered rule coverage. The executable library remains a compact subset. [lib_pln.metta:L38-L40] [lib_pln.metta:L82-L83] [lib_pln.metta:L128-L129] [lib_pln.metta:L155-L196] [lib_pln.metta:L235-L317]
+
+C-2-11: The only meaningful rule-surface additions over the practical Source 2 experience are the three new example programs and the wider top-level test sweep, not new implemented inference families inside `lib_pln.metta`. [test.sh:L1-L39] [examples/DeductionRevision.metta:L1-L18] [examples/Direct.metta:L1-L33] [examples/RavenInduction.metta:L1-L17]
+
+C-2-12: `README.md` and `GEMINI.md` describe "multi-component truth-values", but the actual code surface remains plain STV `(strength, confidence)` throughout. There is no second truth-value hierarchy beyond that pair. [README.md:L4-L21] [GEMINI.md:L9-L15] [lib_pln.metta:L67-L76] [lib_pln.metta:L82-L204]
+
+## 3. PLN3 bug / deviation verification
+
+C-3-1: V7 persists. `Truth_inversion` is still exactly the simplified form that leaves strength unchanged and only applies a `0.6` confidence discount: `(stv $ABs (* $Bc (* $ABc 0.6)))`. The Source 2 inversion bug is carried forward, not fixed. [lib_pln.metta:L150-L153] [ruletests/inversion.metta:L13-L18]
+
+C-3-2: V8 persists. `Truth_Revision` still computes `$c = Truth_w2c($w)` and then clamps the returned confidence with `min 1.0 (max (max $c $c1) $c2)`, so the monotone upward pressure on confidence remains part of the implementation. [lib_pln.metta:L135-L143]
+
+C-3-3: V9 persists. `TransitiveSimilarityStrength` still contains raw divisions by `$sA`, `$sB`, and `$sC` in the `T1..T4` terms, so the zero-division risk is still in the code path. [lib_pln.metta:L165-L171]
+
+C-3-4: V10 is effectively sidestepped. The repo-local files use `Sentence` consistently, and a repo-wide search finds no lowercase `sentence` symbol at all. The specific capitalization bug seen in PLN3 is not reproduced in this tree. [lib_pln.metta:L362-L420] [examples/FlyingRaven.metta:L12-L37] [examples/DeductionRevision.metta:L10-L18]
+
+C-3-5: V11 is fixed at the repository-surface level. `PLN/` no longer depends on a checked-in Python shim or generated translator artifact. The runtime path is direct `git-import!` plus `lib_pln`, and the test harness runs `.metta` files directly through PeTTa's `run.sh`. [README.md:L39-L64] [test.sh:L1-L39]
+
+## 4. New content: examples not in PLN3
+
+C-4-1: `DeductionRevision.metta` demonstrates revision through duplicated deduction paths, not a new revision formula. It sets up `A -> B`, `A -> C`, `B -> D`, and `C -> D`, then queries `A -> D` and expects a single revised result with combined evidence `(1 2 3 4)` and truth value `(stv 0.125 0.30429942952553224)`. This exercises "deduce twice, then revise", but it does not change the underlying revision logic. [examples/DeductionRevision.metta:L5-L18]
+
+C-4-2: `Direct.metta` is an example-level clause-compilation convenience layer. It defines a custom `=>` operator that folds antecedents through `Truth_ModusPonens`, a `?` query helper that collapses and revises multiple derived variants, and then demonstrates a small `father/mother/grandfather/old` toy theory. This is orthogonal to the core PLN rule inventory. [examples/Direct.metta:L5-L33]
+
+C-4-3: `RavenInduction.metta` is a clean induction example. It introduces two raven instances, one positively black and one negatively black, then queries `(Inheritance raven (IntSet black))` and expects `(stv 0.38000000000000006 0.6541049798115747)` with combined evidence `(1 2 3 4)`. That complements `FlyingRaven.metta`, which is deduction-driven, by making the class-property inference direction explicit. [examples/RavenInduction.metta:L4-L17] [examples/FlyingRaven.metta:L12-L49]
+
+C-4-4: Because `test.sh` now sweeps all `.metta` files under `examples/` and `ruletests/`, these three added examples are part of the default regression run, not just illustrative extras. [test.sh:L19-L39]
+
+## 5. Missing-family recovery check
+
+C-5-1: `PLN/` still does not recover the major book families missing from Source 2. There is no in-repo sign of concept-geometry deduction, distributional or indefinite TVs, quantifier rules, temporal/causal rules, intensional-extensional conversions, multideduction, OBI, BRGI, Bayes-net augmentation, or possible-world instantiation machinery. [lib_pln.metta:L67-L204] [lib_pln.metta:L210-L323]
+
+C-5-2: There is still no FactorGraph or MORK implementation surface anywhere in the repo. The library, tests, examples, and docs stay entirely within the compact STV rule engine. [README.md:L1-L75] [lib_pln.metta:L1-L430]
+
+C-5-3: There is also no attention or importance-value machinery in the code. The scheduler is still a simple confidence-ranked queue; it does not expose ECAN/URE-style importance control. [lib_pln.metta:L325-L430] [README.md:L4-L21]
+
+C-5-4: The comments referencing `hyperon-pln` and old OpenCog rule files are provenance links, not evidence of recovered missing families. They show lineage, but the executable code still implements only the compact subset above. [lib_pln.metta:L38-L40] [lib_pln.metta:L82-L83] [lib_pln.metta:L128-L129] [lib_pln.metta:L155-L196]
+
+## 6. Canonical current surface
+
+C-6-1: The real current entrypoints are `PLN.Derive` and `PLN.Query`, each with multiple arities. `PLN.Derive` returns `($Tasks $Beliefs)` state, and `PLN.Query` selects the best-confidence matching sentence from the derived belief set. [lib_pln.metta:L377-L430]
+
+C-6-2: The controller remains a confidence-ranked forward derivation loop, but the current defaults show a different operational posture than Source 2: longer derivation horizon (`100`) with tighter active buffers (`10` task queue, `100` belief queue). [lib_pln.metta:L325-L332] [lib_pln.metta:L377-L430]
+
+C-6-3: The active dedup/order substrate has been modernized inside the monolith. The file now carries `PushUnique`, `ConcatUnique`, a recursive `StampDisjoint`, and named `PriorityRankNeg`/`BestConfidenceCandidate` helpers, which aligns with the recent git history entry "Port queue dedup and ordering fixes into lib_pln". [lib_pln.metta:L23-L34] [lib_pln.metta:L334-L423] [git log: c17c750]
+
+C-6-4: `StampConcat` is defined but not actually used by the current deriver, which still constructs stamps inline with `msort (append $Ev1 $Ev2)`. Likewise, `cnotAB` is bound in `Truth_SymmetricModusPonens` but never consumed. These are small signs of active but not fully cleaned-up code. [lib_pln.metta:L129-L133] [lib_pln.metta:L345-L348] [lib_pln.metta:L382-L385]
+
+C-6-5: The repo presents itself operationally as the current import target, not just one fork among many. Every doc points users to `git-import! "https://github.com/trueagi-io/PLN.git"` or the PeTTa `repos/PLN` layout; none of the in-repo docs frame this as experimental or secondary. [README.md:L24-L75] [AGENTS.md:L15-L27] [CLAUDE.md:L68-L79]
+
+C-6-6: The recent history supports that positioning: `pln0.9` was merged at current head, preceded by "examples updated", "Added Induction Example", "Truth Functions and Confidences are better fit", "Port queue dedup and ordering fixes into lib_pln", and earlier "gitimportable" / "lib_pln.metta from PeTTa" changes. [git log: 4405956] [git log: faa3f39] [git log: 7ffce05] [git log: 3529c70] [git log: c17c750] [git log: 8449a1c] [git log: 515a4aa]
+
+C-6-7: I did not execute `test.sh` in this pass. The harness expects the surrounding PeTTa workspace layout and runs outside the writable sandbox roots, so this extraction is source-based rather than runtime-verified. [test.sh:L1-L39]
+
+## 7. Discovered publications
+
+C-7-1: The only publication-style citation still visible in the repo is the 2008 PLN book, cited in comments for deduction consistency, deduction, induction, abduction, Modus Ponens, and revision. [lib_pln.metta:L38-L40] [lib_pln.metta:L82-L83] [lib_pln.metta:L101-L123] [lib_pln.metta:L135-L143]
+
+C-7-2: I did not find any new paper titles in the examples, tests, or docs. The repo's non-book references are code provenance links to `hyperon-pln` and old `opencog/pln` rule files, not publication references. [README.md:L74-L78] [lib_pln.metta:L38-L40] [lib_pln.metta:L128-L129] [lib_pln.metta:L155-L196]
+
+C-7-3: The README's link to the upstream PLN wiki is documentation, not a publication citation. It may still be useful for later manual review, but it does not add a new source entry to the publication inventory. [README.md:L74-L75]
+
+## 8. Lineage and relationship to other PLN repos
+
+C-8-1: `lib_pln.metta` explicitly acknowledges lineage from `hyperon-pln` for the consistency conditions and deduction formula by linking to `trueagi-io/hyperon-pln/blob/main/metta/pln/dependent-types/DeductionDTL.metta`. That is direct provenance evidence inside the current upstream. [lib_pln.metta:L38-L40] [lib_pln.metta:L82-L83]
+
+C-8-2: The rest of the rule comments trace back mainly to older `opencog/pln` Scheme rules. This suggests a layered lineage: OpenCog rule math, then `hyperon-pln` dependent-type formalization for some deduction pieces, then the current MeTTa library in `PLN/`. [lib_pln.metta:L128-L129] [lib_pln.metta:L145-L196] [lib_pln.metta:L225-L317]
+
+C-8-3: `AGENTS.md` explicitly distinguishes this repo from `PLN2/` and `PLN3/`, describing `PLN/` as the compact base repo without the modular `src/` tree or local metta-only build flow. That is the clearest in-repo statement about its relationship to the sibling repos. [AGENTS.md:L4-L7] [AGENTS.md:L24-L27]
+
+C-8-4: The repo does not literally label itself "canonical", but operationally it behaves as current-of-record: docs tell users to clone/import this repo URL, recent commits are active through `pln0.9`, and the code is maintained as the current git-importable monolith rather than as a dormant experiment. [README.md:L24-L63] [CLAUDE.md:L7-L18] [git log: 4405956]
+
+*End of Codex findings.*

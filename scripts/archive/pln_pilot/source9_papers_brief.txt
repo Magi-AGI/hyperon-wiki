@@ -1,0 +1,188 @@
+# PLN Paper Bundle — Source 9 Extraction Brief (Cross-Model)
+
+Neutral extraction brief for Source 9 of the PLN cluster pilot. Claude, Codex, and Gemini each run independently on the same paper bundle. **This is a paper bundle, not 13 separate sources** — one findings file per model, organized into three lanes.
+
+**Purpose**: now that Sources 1-8 have established the **code baseline** (what exists in PLN/, PLN3, pln-experimental2, hyperon-pln, URE, chaining, MORK), Source 9 reads the theoretical literature and produces a **theory-vs-code reconciliation**. The output is an **implementation-status table** per major claim, NOT a generic paper summary.
+
+---
+
+## Bundle scope (13 papers/cards verified to exist)
+
+All cards retrieved via the wiki MCP tool `mcp__hyperon-wiki__get_card`. Use the exact card names below.
+
+### Lane 1: FactorGraph / MORK (iterative version stream — treat together)
+- `RawData+Publications+PLN FactorGraph MORK` (base, no version)
+- `RawData+Publications+PLN FactorGraph MORK v1`
+- `RawData+Publications+PLN FactorGraph MORK v2`
+- `RawData+Publications+PLN FactorGraph MORK v3.1`
+- `RawData+Publications+PLN FactorGraph MORK v3.2`
+- `RawData+Publications+PLN Chaining On MORK`
+
+### Lane 2: Confidence / control / update
+- `RawData+Publications+PLN AND Confidence Framework.md`
+- `RawData+Publications+PLN NARS TVs`
+- `RawData+Publications+PLN ECAN 2015v1`
+- `RawData+Publications+Wm Pln Book V3`
+- `RawData+Publications+PLNUpdate` (search-verify; if a slight name mismatch, check `Pln Review` etc.)
+- `RawData+Publications+Pln Review` (search-verify)
+
+### Lane 3: Application / framing
+- `Publications+Guiding PLN with Attention Allocation` (Markdown card, not RawData)
+- `Publications+Deep Learning Perception with PLN` (Markdown card)
+- `RawData+Publications+PLN kNN NB`
+
+If a card is unexpectedly missing or empty, document it as an absence finding rather than skipping silently.
+
+---
+
+## Required output format per paper
+
+For each paper in the bundle, structured fields:
+
+```
+### <Card Name>
+
+**Lane:** 1 / 2 / 3
+**Card type:** RawData / Markdown / Draft
+**Length:** approx <n> words / <n> KB
+**Date / version signal:** any date or version info from card content
+
+**Core claims** (numbered, ~3-10 per paper):
+- C-1: <claim>
+- C-2: <claim>
+...
+
+**Intended implementation target** (which repo / system):
+<e.g., "URE C++ inference-control engine" / "MORK as a hypergraph-DB substrate for FactorGraph reasoning" / "Hyperon-MeTTa PLN interpreter">
+
+**Current implementation status** (one of):
+- IMPLEMENTED — full implementation exists in cited Sources 2-8
+- PROTOTYPE / EXPERIMENTAL — partial implementation exists, not productionized
+- BENCHMARK-ONLY — code exercises the idea but doesn't realize it
+- PAPER-ONLY / ASPIRATIONAL — no code-side reality
+- CONTRADICTED / SUPERSEDED — paper claim has been replaced or invalidated by later work
+
+**Code evidence** (specific file paths from Sources 2-8 reconciliations):
+- repo: <name>, path: <file:line>, source: <#>, status: <one of above>
+- ...
+
+**Unresolved questions / cross-references**:
+- ...
+```
+
+---
+
+## Standing corrections to carry into the bundle
+
+(Sourced from Sources 2-8 cross-model reconciliations. Treat these as authoritative; if a paper claim contradicts them, the *paper* is wrong/aspirational, not the standing correction.)
+
+1. **MORK is a substrate only.** No checked-in FactorGraph implementation. Zero `FactorGraph`/`MessagePass`/`BeliefPropagation` matches in MORK source. Source 8 reconciliation confirms.
+2. **`.mm2` is MORK's executable rewrite-program format**, NOT Metamath. The file extension is naming convention; the format is MeTTa S-expressions with `(exec <loc> <pat> <tpl>)` rewrite syntax. Source 8 §3.
+3. **`chaining` shows only partial migration of URE control ideas.** ~5 of 16 URE features survive at toy scale. BIT, MixtureModel, full Thompson Sampling all absent. Source 7 reconciliation §1-2.
+4. **The current production PLN3/PLN/ line has no serious inference-control layer** — only a confidence-priority forward-chaining queue. Source 3 reconciliation. Sources 6-7 confirmed the URE/chaining migration didn't close this gap.
+5. **pln0.9 introduced a real confidence-model pivot** — 7 of 11 rules changed from min-based to multiplicative confidence with strength-entanglement, plus introduction of `Truth_or` heuristic. Source 3 reconciliation §2.
+6. **The "0.2 MP hack" provenance is leungmanhin (PR #23 hyperon-pln, 2023-07)**, NOT later authors. The 0.2 lives in `Truth_SymmetricModusPonens`; the 0.02 `Truth_ModusPonens` is a separate post-2023 book-faithful addition. Source 5 reconciliation §1.
+7. **`PLN AND Confidence Framework.md.pdf` was referenced as "Ben's document"** in pln-experimental2 (Source 4). Provenance is unverified beyond the local-PDF reference. **Treat the wiki's `RawData+Publications+PLN AND Confidence Framework.md` card as local/unpublished unless content + comparison to the Source 4 reference establishes it as a published document.**
+8. **The dead-infrastructure pattern**: probabilistic primitives are imported as affordances across the cluster but never integrated into reasoning code. Examples: chaining's unused `BetaDistribution` (`experimental/common/truthvalue/`), MORK's unused `distr-combinators` Cargo dep, MORK's `experiments/eval/` and `eval-ffi/` work loosely tied to TVs but not for Bayesian inference. **When a paper proposes "use Beta posteriors here" — verify against this pattern. The math may exist but isn't wired in.**
+9. **MORK is in a distinct ecosystem from the PLN cluster.** Vandervorst / Clarke / Peterson lead MORK; Geisweiller has 1 commit. The "PLN-on-MORK" connection is **inter-ecosystem**, socially as well as technically unbuilt.
+10. **chaining's `experimental/pln/` uses pre-pln0.9 (min-based) confidence**, NOT the production pln0.9 multiplicative pivot. Two PLN math lineages coexist in the cluster.
+
+---
+
+## Gemini's focus questions (advisory; weave answers into appropriate lanes)
+
+1. **The Confidence Framework**: Does *"Ben's document"* (`RawData+Publications+PLN AND Confidence Framework.md`) explain the move to the multiplicative confidence shift seen in pln0.9? **(Lane 2.)**
+2. **MORK Synergies**: Do the *"PLN Chaining on MORK"* and *FactorGraph MORK* papers specify how MORK was supposed to implement FactorGraphs, and can we identify why those paths were not taken in the current Rust source? **(Lane 1.)**
+3. **ECAN/Attention**: Reconcile the 2015 ECAN paper (`PLN ECAN 2015v1`) with the wiki's `Hyperon AI Algorithms+ECAN+ECAN Full` draft card. Does the current MeTTa attention repository (separate from this PLN cluster) reflect these papers? **(Lane 3.)**
+
+---
+
+## Special handling for the FactorGraph MORK iterative version stream
+
+The 5 FactorGraph cards (`v1`, `v2`, `v3.1`, `v3.2`, plus the unversioned base) are an **iterative paper stream**, not 5 independent papers. Treat as one paper across versions. After per-version extraction, produce a **version-to-version delta table**:
+
+```
+| Claim / proposal | v1 | v2 | v3.1 | v3.2 |
+|---|---|---|---|---|
+| <claim 1> | introduced | revised | dropped | reintroduced |
+| <claim 2> | absent | introduced | persisted | persisted |
+| ...
+```
+
+If a claim first appears in one version and disappears later, note that explicitly. The version stream may show:
+- Refinements (v1 has an idea, v2 sharpens it).
+- Abandonment (v1 has an idea, v3.x drops it — possibly indicating implementation difficulty).
+- New introductions (v2 adds a concept absent from v1).
+- Persistence (claim stays through all versions — likely the most robust proposal).
+
+---
+
+## Source-of-truth check (per Gemini)
+
+If you find both the wiki card `RawData+Publications+PLN AND Confidence Framework.md` AND a local `PLN_AND_Confidence_Framework.md.pdf` reference (Source 4 mentioned this), **compare**: does the wiki card content match the PDF's stated content? If yes, "Ben's document" is the same as the wiki card. If no, they're separate documents and need separate treatment. Document the comparison outcome explicitly.
+
+(Note: the local PDF was *referenced* in Source 4's nuPLN.tex bibliography; it may not actually be on disk. Don't fabricate. If you can't find the PDF locally, just compare the wiki card content against Source 4's described content.)
+
+---
+
+## How to fetch card content
+
+Use `mcp__hyperon-wiki__get_card` with the card name. Example invocation:
+- Tool: `mcp__hyperon-wiki__get_card`
+- Argument: `name: "RawData+Publications+PLN FactorGraph MORK v3.2"`
+
+(If your subagent does not have this tool loaded, use `ToolSearch` with query `select:mcp__hyperon-wiki__get_card` to load it. The card content is the data deliverable; you must fetch it, not summarize from the card name.)
+
+---
+
+## Required output sections (overall)
+
+Each model's findings file:
+
+1. Header (model, date, claim counts).
+2. **Lane 1: FactorGraph / MORK**, with per-paper section + the version-delta table at the end of the lane.
+3. **Lane 2: Confidence / control / update**, per-paper sections.
+4. **Lane 3: Application / framing**, per-paper sections.
+5. **Cross-paper synthesis**: which papers' claims are most consistent with each other; which contradict; which papers are "siblings" (same underlying idea).
+6. **Code-vs-paper master table** combining all papers' status fields:
+   ```
+   | Paper | Lane | Core claim | Code status | Code evidence | Notes |
+   ```
+7. **Wiki implications**: per claim, what should the wiki say about its current implementation status.
+8. **Discovered publications and references**: any publications cited by these papers but not in the cluster's wiki coverage. Add to the cluster's "papers to find" backlog.
+9. **Unresolved questions** for Source 10 or follow-up extraction.
+10. **Author attribution**: per paper, identify authors if possible (PLN papers are primarily Goertzel + Geisweiller + collaborators).
+
+---
+
+## Output file
+
+Write findings to: `E:\GitHub\Magi-AGI\hyperon-wiki\scripts\archive\pln_pilot\source9_papers\findings_<model>.txt`
+
+Create the `source9_papers/` subdirectory if missing.
+
+Header must include: model name, extraction date (2026-04-24), bundle commit-equivalent (use the wiki's last-update timestamps from card metadata; e.g., 2026-04-08), claim counts per lane.
+
+If the write is blocked, paste the FULL findings content verbatim in your response.
+
+---
+
+## Rules
+
+- Use `mcp__hyperon-wiki__get_card` to fetch card content. **Do not summarize from card titles.**
+- Cite the specific paper/version + claim number for every concrete proposal.
+- Frame as **theory-vs-code reconciliation**, NOT generic paper summaries.
+- Apply the standing corrections list — if a paper claim contradicts a standing correction, the paper is the aspirational/older one.
+- For the FactorGraph version stream, produce the per-version delta table.
+- For Ben's document, do the source-of-truth check explicitly.
+- Code evidence must cite specific repo + path from Sources 2-8 (already extracted; the cluster code baseline is established).
+- Read these prior reconciliations first for context (do not re-derive them):
+  - Source 1 (book): `scripts/archive/pln_pilot/findings_reconciled_crossmodel.txt`
+  - Source 3 (PLN/): `scripts/archive/pln_pilot/source3_pln/findings_reconciled_crossmodel.txt`
+  - Source 6 (URE): `scripts/archive/pln_pilot/source6_ure2/findings_reconciled_crossmodel.txt`
+  - Source 7 (chaining): `scripts/archive/pln_pilot/source7_chaining/findings_reconciled_crossmodel.txt`
+  - Source 8 (MORK): `scripts/archive/pln_pilot/source8_mork/findings_reconciled_crossmodel.txt`
+
+---
+
+*End of Source 9 brief.*

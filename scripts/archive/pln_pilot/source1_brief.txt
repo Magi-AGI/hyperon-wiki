@@ -1,0 +1,119 @@
+# PLN Book — Source 1 Extraction Brief (Cross-Model)
+
+This is the neutral extraction brief for independent per-model runs on **Source 1** of the PLN cluster pilot. Claude, Codex, and Gemini each run this brief separately against the same source file; results will be cross-reconciled afterward to identify consensus vs. model-specific claims.
+
+**Book:** Probabilistic Logic Networks — A New Conceptual, Mathematical and Computational Framework for Uncertain Inference. Goertzel, Iklé, Goertzel, Heljakka. Springer, 2008.
+
+**Source file (local path, 87,451 words):**
+`E:\GitHub\Magi-AGI\hyperon-wiki\publication_texts\json\Probabilistic_Logic_Networks.json`
+
+Schema: `{card_name, publication_card, source_url, type, full_text (574,626 chars), fetched_at, word_count}`. Extract from `full_text`.
+
+---
+
+## Goal
+
+Produce an expert-level extraction a domain reviewer (at Ben Goertzel's standards) would find technically accurate and comprehensive. The `Hyperon AI Algorithms+PLN` cards on the wiki will be revised using a cross-model reconciliation of Claude, Codex, and Gemini findings.
+
+**Audience:** a reviewer who knows the field. Favor specificity over generality. Capture mathematical notation verbatim (LaTeX / ASCII).
+
+---
+
+## Extract these five sections. Each as numbered, cited claims.
+
+### §1 — Truth-value semantics
+Strength, confidence, count, indefinite probabilities, first-order vs higher-order truth values, intensional vs extensional, context, revision/merging formulas. Include all mathematical definitions.
+
+### §2 — Rule taxonomy
+Every inference rule defined in the book, grouped by family (first-order core, HOI, quantifiers, intensional, Boolean/set, temporal/causal, large-scale). Per rule: formula(s), strength/confidence calculation, intended meaning, caveats.
+
+### §3 — Inference control model
+Forward/backward chaining, target selection, rule selection, resource allocation, termination criteria, relation to URE/ECAN if mentioned. (Flag explicitly if URE/ECAN are NOT mentioned — this is a verification target.)
+
+### §4 — Implementation-relevant claims
+Concrete engineering guidance, data structures, complexity notes, pragmatic shortcuts, hand-traced examples. Distinguish "theoretical claim" from "authors' implementation recommendation."
+
+### §5 — Open questions / book-acknowledged gaps
+Where authors admit incompleteness or flag future work. Internal contradictions, OCR-damaged passages, tensions between sections.
+
+---
+
+## Citation format
+
+`C-<section>-<n>: <one or two sentence claim>. [Source: Ch. X §Y ~p. Z]`
+
+Page numbers approximate (based on chapter ToC offsets) are fine. Chapter boundaries are cleanly recoverable via `re.finditer(r'Chapter \d+:', text)`.
+
+---
+
+## Source-text quality notes
+
+- JSON uses a Fireflies transcript-shaped wrapper schema; the actual book text is in the `full_text` field.
+- OCR damage in math: stray `!` characters before formulas (likely LaTeX equation markers), Greek letters ASCII-approximated, some Unicode set-theory symbols (`∈`, `∩`, `¬`) appear as `!`, `#`, `$`. Formulas must often be reconstructed from context.
+- Figures survive only as Maple/Mathematica source snippets.
+- Bibliography is present at the end.
+- Cleanly-extractable: Chapters 1–14 + Appendix A.
+
+---
+
+## Disputed items flagged for source-level verification
+
+Claude's prior three-agent internal extraction surfaced the following **formula disagreements** between its own passes. These are the highest-value items to verify against the source when you do your extraction.
+
+### Dispute 1: Consistency-condition lower bound
+Claude agents 1 and 2 reported the lower bound as:
+`max(0, (sA + sB − 1) / sA) ≤ sAB ≤ min(1, sB / sA)` *(denominator sA)*
+
+Claude agent 3 reported:
+`max(0, (sA + sB − 1) / sB) ≤ sAB` *(denominator sB)*
+
+**What does the book actually say?** Check Ch. 5 §5.2.2.2 ~p. 74.
+
+### Dispute 2: Symmetric Modus Ponens formula
+Claude agent 1 reported:
+`sB = (sA·simAB + c·(1 − sA)) / (1 + simAB)` *(division by (1+simAB))*
+
+Claude agents 2 and 3 reported:
+`sB = sA·simAB + c·(1 − sA)·(1 + simAB)` *(multiplication by (1+simAB))*
+
+**What does the book actually say?** Check Ch. 5 §5.7.2 ~p. 111-112.
+
+### Dispute 3: Boolean equivalence on p. 210 (possible OCR damage)
+The book appears to print:
+`(P ⇔ Q) ≡ (¬P ∨ ¬Q)`
+
+This is classically **false** — `(¬P ∨ ¬Q)` is NAND, not biconditional. The correct classical equivalence is `(P ⇔ Q) ≡ (P ⇒ Q) ∧ (Q ⇒ P)` (which the book also gives elsewhere). Either this is an OCR error on `↔` / `↮`, or a genuine typo/bug in the source.
+
+**What does the source text actually show?** Check Ch. 10 §10.6.2 ~p. 210. Is the printed formula an error, and if so, is it in the book or only in this JSON extraction?
+
+### Dispute 4: Inverse-approximation coefficient values (Ch. 4 §4.5.1.2)
+Claude agent 1 reported one set of numeric coefficients (e.g., `A11 = -2.922447948`).
+Claude agents 2 and 3 reported a completely different set (e.g., `A_{111} = -0.00875486, B_{222} = -0.071902027`).
+
+These may be **different sub-tables** (k-independent simplified form vs. k-indexed full form). Verify how the book organizes the coefficient tables and which ranges are correctly labeled.
+
+---
+
+## Output file
+
+Write findings to: `E:\GitHub\Magi-AGI\hyperon-wiki\scripts\archive\pln_pilot\findings_<your_model>.txt`
+
+e.g., `findings_codex.txt`, `findings_gemini.txt`, `findings_claude.txt`.
+
+Markdown formatting inside a `.txt` is fine. Include a header with model name, extraction date, and claim counts per section.
+
+If the write is blocked by any extension-based guardrail, paste the full content verbatim in your response (no word limit) so the orchestrator can recover it.
+
+---
+
+## Rules
+
+- Do NOT consult any other source — no repos, no other papers, no wiki, no web. Book text only.
+- Capture math notation verbatim (LaTeX or ASCII with stable conventions).
+- Flag book-internal contradictions in §5.
+- Prefer specificity over generality. "The deduction rule uses formula X (Ch. 5 §2)" beats "The book defines deduction."
+- Aim for completeness over polish. A long list of cited claims is the deliverable; synthesis happens at reconciliation.
+
+---
+
+*End of Source 1 brief.*

@@ -1,0 +1,153 @@
+Model: Codex
+Extraction date: 2026-04-24
+Repo: ure2
+Commit: 6f4c6eeba34cf6f17c534abf67cf1274a7ba32b4
+Method: source-based pass only; no build or test execution
+
+Claim counts per section:
+- §1 Architecture map and core C++ surface: 6
+- §2 Inference control: 8
+- §3 Rule representation and rule families: 6
+- §4 forwardchainer/ and backwardchainer/ deep dive: 7
+- §5 Scheme and Python bindings: 4
+- §6 Bit-rot diagnostic: 7
+- §7 Successor handoff: 4
+- §8 Branch surface: 5
+- §9 Discovered publications / citations: 4
+- §10 Lineage and successor map: 6
+
+§1 - Architecture map and core C++ surface
+
+C-1-1. `opencog/ure/` is a self-contained C++ rule-engine surface with explicit control, rule, forward-chaining, backward-chaining, Scheme glue, and type-definition modules, not just a thin wrapper around AtomSpace APIs. Evidence: top-level files `ActionSelection.*`, `BetaDistribution.*`, `MixtureModel.*`, `Rule.*`, `ThompsonSampling.*`, `UREConfig.*`, `URESCM.cc`, `Utils.*`, plus `backwardchainer/`, `forwardchainer/`, and `types/`. [opencog/ure/]
+
+C-1-2. The backward-chaining side is architecturally first-class: it has dedicated `BackwardChainer`, `BIT`, `ControlPolicy`, `Fitness`, and `TraceRecorder` units, which means the search/control model is implemented in code rather than left to external scripts. [opencog/ure/backwardchainer/BackwardChainer.h; opencog/ure/backwardchainer/BIT.h; opencog/ure/backwardchainer/ControlPolicy.h]
+
+C-1-3. The forward-chaining side is also first-class but simpler in its public structure: `ForwardChainer`, `SourceSet`, `SourceRuleSet`, and `FCStat` organize source/rule population and inference tracing. [opencog/ure/forwardchainer/ForwardChainer.h]
+
+C-1-4. URE remains natively Atomese/AtomSpace-oriented: rule application is expressed over `Handle`, `BindLink`, `ExecutionOutputLink`, `EvaluationLink`, and `AtomSpace`, not MeTTa modules or standalone mathematical kernels. [opencog/ure/Rule.h; opencog/ure/backwardchainer/BIT.h; opencog/ure/URESCM.cc]
+
+C-1-5. The core Bayesian/control files are all explicitly authored by Nil Geisweiller, which is strong local evidence that Geisweiller, not just Linas Vepstas, designed the advanced inference-control layer. Evidence: authorship headers on `ActionSelection.h`, `ThompsonSampling.h`, `BetaDistribution.h`, `MixtureModel.h`, `ControlPolicy.h`, `Fitness.h`, and `BIT.h/cc`. [opencog/ure/ActionSelection.h; opencog/ure/ThompsonSampling.h; opencog/ure/BetaDistribution.h; opencog/ure/MixtureModel.h; opencog/ure/backwardchainer/ControlPolicy.h; opencog/ure/backwardchainer/Fitness.h; opencog/ure/backwardchainer/BIT.h]
+
+C-1-6. This repo is a legacy engine with repo-local orientation docs already acknowledging that status: local `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md` all describe `ure2` as a mirror/legacy copy rather than an active current implementation line. [AGENTS.md; CLAUDE.md; GEMINI.md]
+
+§2 - Inference control: MAB / ControlPolicy / ActionSelection
+
+C-2-1. URE implements explicit Bayesian action selection, not just ad hoc heuristic weighting. `ActionSelection` stores `HandleTVMap action2tv`, a `TruthValueSeq`, and a `ThompsonSampling` instance, and its docstring defines the action probability as `Pi = ∫ pdf_i(x) * Π_j!=i cdf_j(x) dx / nt`. [opencog/ure/ActionSelection.h, class `ActionSelection`; opencog/ure/ActionSelection.cc]
+
+C-2-2. `ThompsonSampling` is the arm-selection algorithm, and the code confirms it uses beta-posteriors rather than softmax over scalar scores. `ThompsonSampling::distribution()` builds per-action CDFs from `BetaDistribution(tv).cdf(_bins)` and approximates the selection weights; `ThompsonSampling::operator()` samples a posterior draw for each arm and picks among maxima. [opencog/ure/ThompsonSampling.h, class `ThompsonSampling`; opencog/ure/ThompsonSampling.cc, `distribution()` and `operator()`]
+
+C-2-3. `BetaDistribution` is the TV-to-posterior bridge. It maps a `TruthValuePtr` to `(alpha, beta)` using `tv->get_mean() * tv->get_count()` and exposes `mean()`, `variance()`, `pdf()`, `cdf()`, and posterior sampling via `ibeta_inv`. [opencog/ure/BetaDistribution.h; opencog/ure/BetaDistribution.cc, constructors and `operator()`, `mean()`, `variance()`]
+
+C-2-4. `MixtureModel` goes beyond arm selection and tries to infer the truth value of a control decision from multiple partial models. Its comments explicitly frame this as a Universal Operator Induction-style mixture with complexity priors and a Kolmogorov-style estimate `K(D) = |D|^(1-c)` for unexplained data. [opencog/ure/MixtureModel.h, class comment and `operator()()`; opencog/ure/MixtureModel.cc, `prior_estimate()`, `kolmogorov_estimate()`, `weighted_average()`]
+
+C-2-5. `ControlPolicy` is the control-rule orchestrator for backward chaining. It takes `UREConfig`, `BIT`, `target`, and optional `control_as`; computes valid rules for a selected `AndBIT`/leaf; queries active expansion-control rules; builds `MixtureModel` TVs when such rules exist; and otherwise falls back to default rule TVs. [opencog/ure/backwardchainer/ControlPolicy.h; opencog/ure/backwardchainer/ControlPolicy.cc, constructor, `get_valid_rules()`, `expansion_success_tvs()`, `rule_weights()`]
+
+C-2-6. The control rules are themselves Atomese patterns over inference-tree state, not hard-coded policy branches. `ControlPolicy` looks for implication-scope rules whose antecedent contains `Evaluation(Predicate "URE:BC:preproof-of", ...)` plus an `Execution` of `TraceRecorder::expand_andbit_schema_name`, optionally with extra pattern clauses. [opencog/ure/backwardchainer/ControlPolicy.h, comments on `get_antecedent_preproof()`, `get_expansion()`, `fetch_expansion_control_rules()`; opencog/ure/backwardchainer/ControlPolicy.cc, `mk_expansion_control_rules_query()`]
+
+C-2-7. Backward search control is richer than a plain BIT plus random rule choice. `BackwardChainer::expand_bit()` selects an `AndBIT`, then a `BITNode` leaf, then calls `_control.select_rule(andbit, *bitleaf)` to get both a rule instance and a probability-of-success estimate used in expansion complexity and tracing. [opencog/ure/backwardchainer/BackwardChainer.cc, `expand_bit()`]
+
+C-2-8. The repo therefore contains a materially richer inference-control surface than a simple confidence-ranked queue: explicit BIT state, per-leaf fitness, Thompson-sampled rule weights, mixture-modeled control-rule success TVs, and complexity-aware pruning. Even before any cross-repo comparison, those components are all visible in the local C++ path. [opencog/ure/backwardchainer/BIT.h; opencog/ure/backwardchainer/Fitness.h; opencog/ure/backwardchainer/ControlPolicy.cc; opencog/ure/ActionSelection.cc; opencog/ure/MixtureModel.cc]
+
+§3 - Rule representation and rule families
+
+C-3-1. URE's `Rule` abstraction is generic Atomese, not a built-in PLN formula table. A rule is structurally a `BindLink` whose body contains premises/clauses and whose implicand is an `ExecutionOutputLink`; the header comments explain variable declarations, premises, conclusions, and `ExecutionOutputLink` wrapping. [opencog/ure/Rule.h, class `Rule` and rule-format comments]
+
+C-3-2. Rules are attached to rule bases as weighted members. The header comment and implementation describe `MemberLink <TV> <rule alias> <rbs>`, and `ControlPolicy` later uses those member TVs as default rule priors. [opencog/ure/Rule.h; opencog/ure/backwardchainer/ControlPolicy.cc, constructor]
+
+C-3-3. Meta-rules are part of the intended surface. `RuleSet::expand_meta_rules()` instantiates derived rules from meta-rules, and both backward and forward chainer paths invoke meta-rule expansion as a temporary hack before full native support. [opencog/ure/Rule.cc, `RuleSet::expand_meta_rules()`; opencog/ure/backwardchainer/BackwardChainer.cc, `expand_meta_rules()`; opencog/ure/forwardchainer/ForwardChainer.cc, `expand_meta_rules()`]
+
+C-3-4. The checked-in local rule/test surface is broader than the recent MeTTa PLN repos. Under `tests/ure/rules/` there are files for deduction, modus ponens, fuzzy conjunction introduction, implication instantiation, implication introduction, implication-scope direct evaluation, implication-and-lambda factorization, conditional direct evaluation, and intensional inheritance direct introduction. [tests/ure/rules/*.scm]
+
+C-3-5. That breadth is mostly expressed as external Scheme/Atomese rule files, not specialized C++ rule classes. The C++ engine is generic; the concrete inference families live in SCM rule definitions and test fixtures. [opencog/ure/Rule.h; tests/ure/rules/*.scm; opencog/ure/README.md]
+
+C-3-6. I found no checked-in local evidence of FactorGraph, MORK, temporal/causal rule families, or distributional-truth-value implementations in this repo. The engine is generic enough to host more families, but the visible local rule surface is centered on classical PLN/OpenCog families and utility rules. [repo-wide read of `opencog/ure/`, `tests/ure/rules/`, `tests/ure/backwardchainer/scm/`, `tests/ure/forwardchainer/scm/`]
+
+§4 - `forwardchainer/` and `backwardchainer/` deep dive
+
+C-4-1. The BIT data structure is fully implemented here. `BITNode` stores a target/body, fitness, available rule instantiations, complexity, and exhaustion status; `AndBIT` stores an FCS (`BindLink`) plus leaf-to-BIT-node mapping and expansion logic; `BIT` stores a sorted population of `AndBIT`s. [opencog/ure/backwardchainer/BIT.h]
+
+C-4-2. Search complexity is explicit and probabilistic. `BITNode::complexity` is initialized as `-log(operator()())`; `AndBIT::expand_complexity()` adds parent complexity, selected leaf complexity, and `1 - log(prob)` from the selected rule's success estimate. [opencog/ure/backwardchainer/BIT.cc, `BITNode::BITNode`, `BITNode::operator()`, `AndBIT::expand_complexity()`]
+
+C-4-3. Backward chaining is a three-phase loop: expand BIT, fulfill BIT, reduce BIT. `BackwardChainer::do_step()` calls `expand_bit()`, `fulfill_bit()`, and `reduce_bit()` each iteration. [opencog/ure/backwardchainer/BackwardChainer.cc, `do_step()`]
+
+C-4-4. `fulfill_bit()` runs selected FCS programs in a temporary child atomspace and writes back inferred results to the knowledge base, with a warning in comments that this may unintentionally mutate TVs of pre-existing atoms. That is a nontrivial operational caveat, not just a missing polish item. [opencog/ure/backwardchainer/BackwardChainer.cc, `fulfill_fcs()`]
+
+C-4-5. BIT reduction is probabilistic and explicitly tied to inference-control assumptions. `remove_unlikely_expandable_andbit()` computes each tree's probability of never being expanded for the remaining iterations and removes trees according to that distribution. [opencog/ure/backwardchainer/BackwardChainer.cc, `remove_unlikely_expandable_andbit()`]
+
+C-4-6. Forward chaining also uses Thompson sampling, but in a narrower way. It maintains `SourceSet` / `SourceRuleSet`, supports an alternative "source rule producer implementation" (`_srpi`), Thompson-samples among valid rules for a source, and computes source-rule TVs by scaling beta means/variances by source weight. [opencog/ure/forwardchainer/ForwardChainer.h; opencog/ure/forwardchainer/ForwardChainer.cc, `mk_source_rule()`, `select_rule()`, `calculate_source_rule_tv()`]
+
+C-4-7. The forward-chainer docs are themselves unfinished. `opencog/ure/forwardchainer/README.md` says it is "utterly a draft" and contains only a tiny specification note about `SetLink` sources, which matches the code's relative lack of documented high-level control policy compared with the backward chainer. [opencog/ure/forwardchainer/README.md]
+
+§5 - Scheme and Python bindings
+
+C-5-1. Scheme is the primary documented interface. `URESCM.cc` defines `cog-mandatory-args-fc`, `cog-mandatory-args-bc`, and `cog-ure-logger`, and the repo README documents user-facing `(cog-fc ...)` and `(cog-bc ...)` entry points. [opencog/ure/URESCM.cc, `init()`, `do_forward_chaining()`, `do_backward_chaining()`; opencog/ure/README.md]
+
+C-5-2. The Scheme API exposes both inference and control parameters. `do_forward_chaining()` accepts rule base, source, vardecl, trace toggle, trace atomspace, and focus set; `do_backward_chaining()` accepts target, trace toggle, control toggle, control atomspace, and focus link. [opencog/ure/URESCM.cc]
+
+C-5-3. There is a Python/Cython test surface, but I only verified it by presence of tests rather than reading binding code. The repo contains `tests/cython/backwardchainer/test_bc.py` and `tests/cython/forwardchainer/test_fc.py`, and there is a remote branch named `add-mixture-model-python-binding`, which implies Python exposure for at least part of the control stack was actively contemplated. [tests/cython/backwardchainer/test_bc.py; tests/cython/forwardchainer/test_fc.py; `git branch -r`; `git log -1 origin/add-mixture-model-python-binding`]
+
+C-5-4. README-level usage and test harnesses are still Scheme-centric, not Python-centric. The forward and backward unit tests load `(use-modules (opencog) (opencog ure) (opencog logger))` and SCM fixture files rather than Python fixtures. [tests/ure/backwardchainer/BackwardChainerUTest.cxxtest; tests/ure/forwardchainer/ForwardChainerUTest.cxxtest]
+
+§6 - Bit-rot diagnostic
+
+C-6-1. The top-level master README is unambiguous: "IT IS NO LONGER MAINTAINED. The lead developer walked away. Some unit tests pass. It's slowly bit-rotting." [README.md]
+
+C-6-2. The test build config disables the entire backward-chainer test subtree. `tests/ure/CMakeLists.txt` says "Backward chainer code has bit-rotted and unit tests no longer work" and comments out `ADD_SUBDIRECTORY(backwardchainer)`. [tests/ure/CMakeLists.txt]
+
+C-6-3. Recent git history confirms the decay is active and concrete, not rhetorical. The latest commits include "Disable backward chainer unit tests. They have bit-rotted." (2025-01-25), "More fixes for odds-n-ends of bitrot" (2025-01-24), "Disable ForwardChainerUTest" (2024-04-02), and "Remove failing unit tests. Unsupported" (2024-04-02). [`git log --format="%ai | %an | %s" -20`]
+
+C-6-4. Backward-chainer tests show exactly what stopped being supportable: `xtest_green_balls`, `xtest_induction`, and `xtest_focus_set` are disabled pending `GlobNode`, meta-rule, and focus-set support. [tests/ure/backwardchainer/BackwardChainerUTest.cxxtest, disabled `xtest_*` methods and comments]
+
+C-6-5. The codebase has many unimplemented or partially stabilized areas, especially around control and threading. Examples: `ControlPolicy::is_control_rule_active()` asserts "Not implemented yet" if control and actual variables overlap instead of alpha-converting them; `ForwardChainer` contains multiple TODOs about mutex refinement, thread behavior, and old/new standard differences; `Rule.h` still carries TODOs about backward rule form and API cleanup. [opencog/ure/backwardchainer/ControlPolicy.cc; opencog/ure/forwardchainer/ForwardChainer.cc; opencog/ure/Rule.h]
+
+C-6-6. The repo's own docs overstate maturity in one place and understate it in another. `opencog/ure/README.md` still says the rule engine is "rather mature" and lists only a few missing things, while the root `README.md` and test/CMake history describe a much more degraded state. That mismatch should be corrected in any expert-facing wiki summary. [opencog/ure/README.md; README.md; tests/ure/CMakeLists.txt]
+
+C-6-7. API churn from neighboring OpenCog components is part of the failure mode. Recent commit subjects mention moving code/types from AtomSpace into URE, removing deprecated API usage, and splitting Unify into its own repo; these are maintenance adaptations rather than new reasoning work. [`git log --format="%ai | %an | %s" -20`]
+
+§7 - Successor handoff
+
+C-7-1. At the extraction hash on `origin/master`, the top-level README does not yet contain a Hyperon Chainer handoff. It only declares the repo unmaintained and links to AtomSpace, term-unifier, examples, and related repos. [README.md; opencog/ure/README.md]
+
+C-7-2. The successor handoff is visible in branch metadata: remote branch `origin/update-readme` points to commit `5ed55500e Add link to Hyperon Chainer in the message about the state of the repo`. That means the handoff exists in repo history, but not obviously in the extracted master snapshot. [`git branch -r`; `git log -1 origin/update-readme`]
+
+C-7-3. The repo-local orientation docs have partially propagated the handoff already. `GEMINI.md` says "New development has shifted to the Chaining repository" and links `https://github.com/trueagi-io/chaining`, even though master `README.md` does not yet show that text. [GEMINI.md]
+
+C-7-4. So the successor signal is real but split across surfaces: branch metadata and local orientation docs point to `trueagi-io/chaining`, while the master README at this hash still presents URE mainly as a bit-rotting legacy engine. [README.md; GEMINI.md; `git log -1 origin/update-readme`]
+
+§8 - Branch surface
+
+C-8-1. The remote branch surface is small and legible: `origin/master`, `origin/add-mixture-model-python-binding`, `origin/rTreutlein-MetaRuleSupport`, `origin/singnet-master`, and `origin/update-readme`. [`git branch -r`]
+
+C-8-2. `origin/add-mixture-model-python-binding` is clearly an unfinished extension of the Bayesian-control stack into Python; its tip is `aea0d0b32 Start adding python binding for mixture model`. That branch reinforces that `MixtureModel` was considered important enough to expose, not just an internal experiment. [`git log -1 origin/add-mixture-model-python-binding`; opencog/ure/MixtureModel.h]
+
+C-8-3. `origin/update-readme` is a documentation/handoff branch rather than a semantic-engine branch; its tip is the Hyperon Chainer link commit described above. [`git log -1 origin/update-readme`]
+
+C-8-4. `origin/singnet-master` appears to be an integration/fork branch rather than a new reasoning direction. Its tip is `9a9cdccb6 Merge pull request #28 from ngeiswei/merge-opencog-to-singnet`, which reads as merge maintenance. [`git log -1 origin/singnet-master`]
+
+C-8-5. I did not diff `origin/rTreutlein-MetaRuleSupport` against master, so the safest local claim is limited: the branch name plus the existing meta-rule TODOs/tests suggest it targets the known incomplete meta-rule surface, but that intent should not be treated as confirmed implementation detail until the branch contents are read directly. [`git branch -r`; tests/ure/backwardchainer/BackwardChainerUTest.cxxtest; opencog/ure/README.md]
+
+§9 - Discovered publications / citations
+
+C-9-1. The repo cites documentation and design material mainly through wiki pages, not academic papers. `opencog/ure/README.md` links the Unified Rule Engine wiki page, URE Configuration Format, URE Control Policy, and Pattern Matcher. [opencog/ure/README.md]
+
+C-9-2. The README also links to external example/rule corpora for PLN and Relex2Logic, which is important provenance evidence: URE was intended as the generic engine below those systems, rather than as a standalone domain-specific reasoner. [opencog/ure/README.md]
+
+C-9-3. I found no direct academic paper citations in the inspected C++ control files (`ActionSelection`, `ThompsonSampling`, `BetaDistribution`, `MixtureModel`, `ControlPolicy`); the closest thing to a formal research pointer is the `MixtureModel` comment invoking Universal Operator Induction-style reasoning and a missing README path for "inference-control-learning". [opencog/ure/MixtureModel.h; repo-wide search results]
+
+C-9-4. The cited "inference-control-learning" material is not present at the referenced path in this clone. `ControlPolicy.h` points readers to `<OPENCOG_ROOT>/examples/pln/inference-control-learning/README.md`, but that file was not found in this local `ure2` checkout, which is itself a useful documentation-gap finding. [opencog/ure/backwardchainer/ControlPolicy.h; failed lookup under `examples/pln/inference-control-learning/README.md`]
+
+§10 - Lineage and successor map
+
+C-10-1. URE's enduring contribution is architectural, not just algorithmic: it combines a generic Atomese rule engine with explicit search objects (`BIT`, `AndBIT`, `BITNode`), explicit Bayesian control (`ThompsonSampling`, `BetaDistribution`, `MixtureModel`), and configurable control rules in the AtomSpace. Those are the big lineage-bearing ideas in this repo. [opencog/ure/backwardchainer/BIT.h; opencog/ure/ActionSelection.h; opencog/ure/MixtureModel.h; opencog/ure/backwardchainer/ControlPolicy.h]
+
+C-10-2. The most plausible survivors into later systems are conceptual rather than code-level: rule application as search, probability-weighted rule selection, and the distinction between structure-level control policy and individual rule formulas. The concrete C++/Scheme implementation here is tightly coupled to AtomSpace handles and SCM glue, which makes straight code carryover unlikely. [opencog/ure/Rule.h; opencog/ure/URESCM.cc; opencog/ure/backwardchainer/ControlPolicy.h]
+
+C-10-3. The repo also shows what was easy to abandon: the entire BIT/control-rule/MAB stack is concentrated in specialized C++ modules and disabled tests, which makes it much easier for successors to retain "rule firing" while dropping the full inference-control layer. That abandonment risk is visible locally even without reading successor repos. [opencog/ure/backwardchainer/*.h/*.cc; tests/ure/CMakeLists.txt; README.md]
+
+C-10-4. The local evidence strongly supports Claude's broader cluster interpretation that URE went beyond the 2008 book on inference control rather than merely implementing it. The code contains Bayesian Thompson sampling, a mixture-model over active control rules, and probabilistic BIT pruning machinery that are research extensions in their own right, not just a direct transcription of a simple softmax loop. [opencog/ure/ActionSelection.h; opencog/ure/ThompsonSampling.cc; opencog/ure/MixtureModel.h/.cc; opencog/ure/backwardchainer/BackwardChainer.cc]
+
+C-10-5. The likely historical authority split is visible from local evidence: Linas Vepstas dominates long-term maintenance and API-churn commits, but Nil Geisweiller is the named author on the advanced control/selection machinery. Any wiki claim about inference-control design intent should therefore not collapse those roles into a single maintainer narrative. [`git shortlog -sn HEAD`; authorship headers in `ActionSelection.*`, `ThompsonSampling.*`, `MixtureModel.*`, `ControlPolicy.*`, `BIT.*`]
+
+C-10-6. The successor signal is now bifurcated: master presents URE as a bit-rotting historical artifact, while branch/doc surfaces point to `trueagi-io/chaining` as the future line. For wiki purposes, that means URE should be documented as a historically important but no-longer-authoritative reasoning engine whose control ideas matter precisely because later lines simplified or replaced them. [README.md; GEMINI.md; `git log -1 origin/update-readme`]
+
+End of findings.

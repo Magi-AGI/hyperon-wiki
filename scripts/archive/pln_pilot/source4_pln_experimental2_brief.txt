@@ -1,0 +1,197 @@
+# pln-experimental2 (ngeiswei) — Source 4 Extraction Brief (Cross-Model)
+
+Neutral extraction brief for Source 4 of the PLN cluster pilot. Claude, Codex, and Gemini each run this brief independently against the same source snapshot; results cross-reconciled afterward.
+
+**Repo:** `pln-experimental2` — `ngeiswei/pln-experimental`, the most recent active fork of `trueagi-io/pln-experimental`. Research-oriented: contains a theoretical manuscript (`docs/nuPLN/nuPLN.tex` + PDF), experimental truth-value formulations, alternative TV types (`Bl`, `Pr`), Maxima symbolic derivations, and multi-encoding rule explorations.
+
+**Local path:** `E:\GitHub\hyperon reference\pln-experimental2\`
+
+**Commit at extraction time:** `6c9525e1657c4bafac78ab6367bc10253c7e403c` (pulled 2026-04-24; 2026-03-12 "Misc" — most recent commit in the cluster). **All three models must extract against this exact hash.**
+
+**Pre-existing meta-docs in the repo:** `README.md`, `CLAUDE.md`, `AGENTS.md`, `GEMINI.md`. **Read them first per the orientation-doc workflow.** Claude and Gemini have already confirmed: `docs/nuPLN/` is a theoretical manuscript; `experimental/early-pln/` has 4 rule encodings (dependent-types, entail, equal, match); Maxima `.mac` files in `experimental/truth-value-formula/`.
+
+Ignore stray `tmpclaude-*-cwd` files.
+
+---
+
+## Context: this is a DELTA + THEORETICAL analysis
+
+Three prior sources reconciled cross-model:
+- **Source 1** (PLN book, 2008) — at `source1_... /findings_reconciled_crossmodel.txt`
+- **Source 2** (PLN3, ngeiswei modular, 2025-08) — at `source2_pln3/findings_reconciled_crossmodel.txt`
+- **Source 3** (PLN/, trueagi-io, pln0.9 consolidation) — at `source3_pln/findings_reconciled_crossmodel.txt`
+
+Key Source 3 finding worth flagging upfront: pln0.9 introduced a **systematic confidence-formula pivot** across 7 of 11 rules, moving from `min`-based to multiplicative-with-strengths. This is a theoretical shift. Does `pln-experimental2` continue that pivot, predate it (same formulas as PLN3), or experiment in a different direction?
+
+Additionally, Source 3 verified **V7/V8/V9 bugs are still present** upstream (inversion ignores strength; revision clamp saturates; TransSim zero-div risk). Does `pln-experimental2` fix any of them, or is it orthogonal research?
+
+---
+
+## Goal
+
+Answer: **is `pln-experimental2` a research vehicle that extends PLN toward the missing book families (quantifiers, temporal/causal, intensional, distributional), or is it a separate semantic-research direction?** Produce a delta against Sources 2 and 3, plus extract the theoretical claims from `docs/nuPLN`.
+
+---
+
+## Required output sections
+
+Each as numbered, cited claims in the same `C-<section>-<n>` format.
+
+### §1 — Architecture and repo layout
+
+What's in `docs/`, `experimental/`, top-level? File-type distribution. Relationship between `experimental/early-pln/{common, pln, …}/` and the 4-encoding pattern (`dependent-types`, `entail`, `equal`, `match`) that appears in `hyperon-pln` (Source 5 target). Is this repo a sibling research branch, a successor, or neither?
+
+### §2 — `docs/nuPLN/` — theoretical manuscript
+
+**Read `nuPLN.tex` (not the PDF). Extract every numbered claim as if it were the PLN book.** This is potentially the "successor theory" to the 2008 book.
+
+Specifically:
+- **Motivation / problem statement** — what does nuPLN propose to fix from the 2008 book?
+- **"Global universal distribution"** (Gemini's preview hint) — how does this change the semantics of induction vs. the Source 1 induction-can't-be-globally-rescued limitation?
+- **Formal definitions** — new truth-value types, new rules, new semantics.
+- **Relationship to 2008 book** — what's preserved, what's replaced, what's extended.
+- **Status** — is this proposed, partially-implemented, fully-implemented? Does `experimental/` reflect the manuscript?
+
+Use the same rigor as Source 1: cited claims with section/page references, verbatim formulas.
+
+### §3 — Alternative truth-value types (Bl, Pr)
+
+Gemini's preview surfaced `Bl` and `Pr` types in `experimental/early-pln/common/truthvalue/TruthValue.metta` and test files. What are they?
+
+Specifically:
+- `Bl` — Boolean truth value? How does it relate to STV?
+- `Pr` — Probability truth value? Does this implement the book's IndefiniteTV or DistributionalTV that's been missing from sources 2-3?
+- What rules consume/produce `Bl` and `Pr` instead of / alongside `STV`?
+- Are they the successors to the book's TV hierarchy, or orthogonal experiments?
+
+### §4 — Missing-family recovery (re-run V6 from Source 2, V5 from Source 3)
+
+For each of the following absent-from-PLN3-and-PLN/ families, check if `pln-experimental2` recovers anything:
+
+- **Quantifier rules** — ForAll, ThereExists, Existential Generalization, Universal Specification, Quantifier Exchange
+- **Temporal / causal rules** — PredictiveImplication, SeqAND, DisjointSeqAND, EventualSeqAND, SimAND, PredictiveChain
+- **Intensional ↔ Extensional conversion rules** (not just type whitelists, but actual conversion)
+- **Distributional / IndefiniteTruthValue** implementation (multi-element or matrix TV)
+- **Concept-geometry deduction** (k-sphere / 1-D interval models)
+- **Multideduction** (batch 3+ premise combination)
+- **BRGI / OBI / Bayes-Net augmentation**
+- **Attention / importance / ECAN-style values**
+- **FactorGraph / MORK / M0RK-adjacent implementations**
+- **Context as first-class link type**
+- **Possible-worlds variable instantiation machinery**
+
+**Particularly important:** `experimental/early-pln/pln/` is the most likely location. Enumerate what rules are actually implemented there.
+
+### §5 — Confidence-formula continuity with pln0.9 pivot
+
+For every rule in `pln-experimental2` that has a counterpart in PLN/ (Source 3):
+- Transcribe the confidence formula verbatim.
+- Compare to pln0.9's multiplicative-with-strengths formula.
+- Classify: **matches pln0.9 pivot** / **predates it (matches PLN3)** / **different from both**.
+
+Does `pln-experimental2` use `Truth_or`-style heuristics? Any new TV-combination primitives?
+
+### §6 — Maxima symbolic derivations
+
+`experimental/truth-value-formula/conjunction-introduction/conjunction-xp.mac` is the only `.mac` file in the repo. Read it. Extract:
+- What formula is being symbolically derived?
+- Does it relate to any currently-implemented rule (e.g., a conjunction-introduction rule)?
+- Can the derivation be used to validate or invalidate the pln0.9 multiplicative-confidence pivot?
+- Any other hints about where Maxima-verified formulas are (or aren't) used in the codebase.
+
+### §7 — Bug carryover status (V7–V9 re-run)
+
+For each bug from Sources 2-3:
+- **V7 Truth_inversion strength** — does any PLN-style `Truth_inversion` in `pln-experimental2` actually update strength via Bayes, or carry the same deviation?
+- **V8 Truth_Revision confidence clamp** — does revision here saturate upward, or use proper `w2c(w1+w2)`?
+- **V9 TransitiveSimilarity zero-division** — if present, does it use `/safe` or raw `/`?
+
+### §8 — Status, open issues, TODOs
+
+- "More brainstorming notes" commits (2025-12 and 2026-03) — what's in them?
+- Any `TODO` / `FIXME` / `XXX` comments; any disabled tests; any branches of semantic significance.
+- Is `pln-experimental2` still active? Next steps signaled anywhere?
+
+### §9 — Discovered publications
+
+Every citation in code comments, commit messages, docs. **Particularly in `nuPLN.tex`** — its bibliography at `docs/nuPLN/local.bib` should be enumerated in full. These feed the wiki's `RawData+Publications+*` coverage reconciliation.
+
+### §10 — Relationship to other PLN repos
+
+Given Sources 2 (PLN3), 3 (PLN/), and the eventual Source 5 (hyperon-pln) — how does `pln-experimental2` position itself? Is it upstream to any of them? Downstream? Parallel? Does `nuPLN.tex` or any code comment acknowledge the relationship?
+
+---
+
+## Output file
+
+Write findings to: `E:\GitHub\Magi-AGI\hyperon-wiki\scripts\archive\pln_pilot\source4_pln_experimental2\findings_<model>.txt`
+
+e.g., `findings_claude.txt`, `findings_codex.txt`, `findings_gemini.txt`. Create the `source4_pln_experimental2/` subdirectory if missing.
+
+Header must include: model name, extraction date (2026-04-24), commit hash `6c9525e1657c4bafac78ab6367bc10253c7e403c`, claim counts per section.
+
+If the write is blocked, paste the FULL content verbatim in your response (no word limit).
+
+---
+
+## Rules
+
+- Do NOT consult any other source — no book, no other repos, no wiki MCP, no web. Only files inside `E:\GitHub\hyperon reference\pln-experimental2\`.
+- Cite file and symbol (or approximate line) for every concrete claim.
+- For nuPLN.tex: treat it with book-level rigor. Extract numbered claims with section/equation references.
+- For Bl/Pr: transcribe type definitions verbatim into §3 findings.
+- For `.mac` files: read the symbolic derivation fully. It's short; don't skip.
+- Transcribe rule formulas verbatim when comparing to pln0.9.
+- Frame as **deltas** against Sources 2 and 3 where applicable.
+- Flag divergences between this repo's meta-docs (AGENTS.md / CLAUDE.md / GEMINI.md) and the actual code.
+
+---
+
+---
+
+## §Git-history context (pre-populated by orchestrator)
+
+Snapshot at extraction hash `6c9525e`. This block is curated for agents; do not re-run git commands.
+
+**⚠ Correction to prior informal retroactive summaries:** Previous Codex and Gemini outputs claimed (a) the nuPLN manuscript was added 2024-11-20, and (b) `pln-experimental2` contains a `"Truth Functions and Confidences are better fit"` commit matching Source 3's timing. **Both are wrong.** (a) nuPLN was added via PR #46 "Nupln document" merged 2025-06-02 by ngeiswei. (b) The `"Truth Functions and Confidences..."` commit is in `PLN/` (Source 3), NOT this repo. The 2026-03-12 commits here are `"Misc"` and `"More brainstorming notes"` by ngeiswei. Agents must verify against the commit data below, not against prior-model recollection.
+
+**Commit narrative (last 30 at hash):** Sole author in the window is **Nil Geisweiller**. Narrative arc:
+- **2023-12:** "Iterative chaining experiments" (PR #35); "Attempt to reproduce HOL examples from Isabelle" (PR #36).
+- **2024-01–04:** "First experiments about inference control" (PR #37); "curried forward chainer" by Hedra S Yusuf (PR #38); "Improve comments + add backward chainer tests" (PR #39); "Draw fully annotated proof tree" (PR #40); "Complete first round of inference control experiments" (PR #41); README improvements (#42, #43); "WIP HOL" (PR #44); "fix imports according to changes with modules in hyperon" by besSveta (PR #45).
+- *Gap* Apr 2024 → Jun 2025.
+- **2025-06–07:** "Add nuPLN document" (PR #46, 2025-06-02); "Add next token prediction use case" (PR #47, 2025-06-13); "Continue PLN formalization + add PLN-based surprisingness document" (PR #48, 2025-07-15). **Earliest nuPLN work trace: "Complete section on global probability distribution" commit 2025-03-12** (pre-manuscript-merge).
+- **2025-12-18** — Major restructure (PR #49): "Remove Idris experiments", "Remove redundant work already present in the chaining repository", "Move folders around and add README.md files", "Add conjunction introduction tv calculations". **Idris experiments were DELETED from this repo in 2025-12** — the current `experimental/early-pln/dependent-types/` subtree is the MeTTa-only descendant.
+- **2025-12-19 onward:** "More brainstorming notes" (twice), "Misc" (2026-03-12). **No code/theory changes in the last 3 months — only notes. Repo is in an introspective / reflective phase.**
+
+**Tags:** none. No release structure.
+
+**Remote branches (4 total):** `main`, `nupln-xt`, `tv-calc-xps`, and `HEAD→main`. `nupln-xt` is likely cutting-edge nuPLN extension work; `tv-calc-xps` is presumably truth-value-calculation experiments. **Both branches merit inspection by extraction agents** — they may contain work not in `main`.
+
+**Top authors (at extraction hash):**
+- **Nil Geisweiller: 471 commits** (~95% of repo)
+- Hedra S Yusuf (tanksha24): 22
+- glicerico (Andres Suarez): 19
+- leungmanhin: 5
+- Guillaume Yziquel, besSveta: 1 each
+
+**Key PRs (`trueagi-io/pln-experimental`):**
+- **#49 "Clean-up + add README.md files + add conjunction introduction truth value experiments"** (2025-12-18) — most recent substantive change. Removed Idris experiments; added Maxima `.mac` derivations for conjunction-introduction.
+- **#48 "Continue PLN formalization + add PLN-based surprisingness document"** (2025-07-15).
+- **#47 "Add PLN based next token prediction use case"** (2025-06-13).
+- **#46 "Nupln document"** (2025-06-02) — **nuPLN manuscript's introduction into this repo**.
+- #45 fix imports (2024-04).
+- #44 "WIP HOL" (2024-04).
+- #43–#40 (2024-03) inference-control experiments and proof-tree visualization.
+- #39 "Improve comments + add backward chainer tests" (2024-01).
+- **#38 "curried forward chainer"** by Hedra S Yusuf (2024-01) — non-Nil contributor.
+- #37 "First experiments about inference control" (2024-01).
+- **#36 "Attempt to reproduce HOL examples from Isabelle"** (2023-12) — **explicit connection to Isabelle/HOL theorem-proving tradition**.
+- #35 "Iterative chaining experiments" (2023-12).
+
+**Interpretation for agents:** This repo is Nil Geisweiller's **personal research playground** for PLN formalization and extension. Scope arcs through: inference-control experiments (2024-01..03) → HOL/Isabelle theorem-proving parallels (2024-04) → gap → nuPLN theoretical manuscript (2025-06) → surprisingness analysis + next-token-prediction use case → conjunction-introduction TV calculations + restructure (2025-12) → introspective notes (2025-12 through 2026-03). The repo is NOT mid-implementation-sprint at extraction time. Treat `docs/nuPLN/nuPLN.tex` and `experimental/` as the primary deliverables; code is consistent-with-nuPLN, not independently-derived. `nupln-xt` branch may contain nuPLN work-in-progress beyond `main`.
+
+**Wiki-outreach implication:** for theoretical review of nuPLN-related wiki claims, **Nil Geisweiller is the authoritative expert** (471 commits, sole author of the manuscript). Hedra S Yusuf authored the forward-chainer experiments — a possible secondary reviewer for inference-control cards.
+
+---
+
+*End of Source 4 brief.*

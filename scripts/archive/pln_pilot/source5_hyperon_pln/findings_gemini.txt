@@ -1,0 +1,33 @@
+# hyperon-pln (patham9) — Gemini Extraction Findings
+**Date:** 2026-04-24
+**Commit:** 0d017c4 (frozen 2023-08-01 snapshot)
+
+## §1 — Program Synthesizer (metta/synthesis/)
+- **C-5-1: The Synthesizer Logic:** `Synthesize.metta` implements a depth-limited proof search using MeTTa's `let*` and non-deterministic function calls. It enumerates programs consistent with a query `(: TERM TYPE)`. [metta/synthesis/Synthesize.metta:42]
+- **C-5-2: Arity-Specific Dispatch:** The synthesizer manually handles rules of different arities (Nullary to Quintenary) rather than using a generic recursive curry pattern. [metta/synthesis/Synthesize.metta:46-105]
+- **C-5-3: Integration:** The synthesizer is intended to automate the discovery of proofs within the **Dependent Type Logic (DTL)** framework. [README.md]
+- **C-5-4: Missing from Downstream:** I verified that the `metta/synthesis/` directory **did not survive** the migration to the production `PLN/` monolith (Source 3), making this repo the sole source for the original synthesis engine.
+
+## §2 — Idris Prototyping (idris/)
+- **C-5-5: Formalized Evidence Sorting:** `StrictlySorted.idr` prototypes a strictly sorted list type using dependent types and proof reflections (`(x < y) === True`). [idris/StrictlySorted.idr:14]
+- **C-5-6: Rationale:** This Idris prototype provided the formal foundation for the **non-double-counting evidence stamps** found in MeTTa's `IDIBase` and `IDIRecursive`. [metta/dependent-types/ImplicationDirectIntroductionDTL.metta:148]
+
+## §3 — Truth Value System & PrCnt Link
+- **C-5-7: PrCnt Verified:** `PrCnt (Number, Number)` is a first-order probability plus a raw count. [metta/common/truthvalue/TruthValue.metta:27]
+- **C-5-8: Representation Link:** `PrCnt` and `STV` are semantically equivalent in this repo; `STV` uses confidence which is derived from count via `confidence = count / (count + lookahead)`. `PrCnt` allows reasoning directly on the evidence count. [metta/common/truthvalue/TruthValue.metta:112-125]
+- **C-5-9: Evolutionary Link:** `PrCnt` appears in early DTL formulas (DeductionFormula.metta) but was phased out in favor of the standard `STV` in the production monolith.
+
+## §4 — Formulas & Historical Continuity
+- **C-5-10: Formula Origin:** The formulas in `metta/common/formula/DeductionFormula.metta` are the common ancestors for both Source 4 (`pln-experimental2`) and the production `PLN/`. 
+- **C-5-11: Handoff Point:** The repository was effectively frozen on **Aug 1, 2023** with commit `0d017c4` ("Merge pull request #23 from leungmanhin/modus-ponens"). Research then pivoted to `trueagi-io/pln-experimental`.
+
+## §5 — Git History Context (Intent Attribution)
+- **Primary Maintainer:** Nil Geisweiller (handled the complex DTL logic and Idris work).
+- **Contributors:** Patrick Hammer (architecture), Peter Isaev (formulas and Modus Ponens).
+- **Final Act:** The last meaningful commit was adding a "temporary hack" to the Modus Ponens formula (0.2 constant), which we later saw persist into Source 4.
+
+## Focus Questions Response
+1. **Synthesizer:** It uses depth-limited search and manual arity dispatch. It is a powerful but orphaned component not present in the current standard library.
+2. **Idris:** Formalized `StrictlySorted` lists for evidence handling.
+3. **PrCnt:** Confirmed as a raw-count sibling to `STV`, primarily used in the DTL track.
+4. **Historical Continuity:** Frozen Aug 2023; research continued in `pln-experimental`.

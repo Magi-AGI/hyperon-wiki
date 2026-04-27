@@ -1,0 +1,208 @@
+# Source 11 — Full-Text Upgrades + Late-Breaking Formalizations — Cross-Model Reconciliation
+
+**Reconciliation date:** 2026-04-25
+**Inputs:**
+- `findings_claude.txt` (40 KB, ~58 claims) — narrative emphasis, in-session direct read after sub-agent stalled at write step
+- `findings_codex.txt` (29 KB, ~75 claims) — math + Lean-citation emphasis
+- `findings_gemini.txt` (5 KB, advisory bullets) — equation-verification emphasis
+- `reconciliation_codex_notes.txt` (Source 10) — wording cautions carried forward
+**Repos under review:**
+- `zariuq/ai-agents` HEAD `32b1e97dbd0516b114798db32e11e2a5e08a4fce` (2026-04-25, Zar Goertzel; advance from Source 10's `b7ab8fb` was IntuitionisticHOL Lean book + minor `CeTTa.tex` edits — Lane A/B sources unaffected)
+- `zariuq/CeTTa` HEAD `cd744d579b57750142212ed97df6e8c718991320` (unchanged from Source 10)
+
+**Frame:** Two-lane bundle. Lane A = 3 wiki-card stub upgrades from local JSON. Lane B = 4 late-breaking formalizations from `ai-agents/lean-projects/mettapedia/papers/`. Lane C = inventory only.
+
+---
+
+## §0 — Verdict: source-of-truth checks resolved
+
+### V0-1. **B2 divergence overruled in favor of Codex + Claude.** ❌ Gemini hallucination
+
+**Gemini's V-11-3 claim**: "xiPLN paper describes the 'posterior-state calculus' realized in `CeTTa/lib_wmpln.metta` library — this resolves the naming ambiguity: `lib_wmpln` IS the implementation of xiPLN semantic contract."
+
+**Codex's claim** (C-B2-10): "xiPLN.tex does not mention `lib_pln_xi.metta`. It mentions PeTTa and canonical Lean APIs, but gives no concrete file identity or enough runtime specification to equate `lib_wmpln.metta` with `lib_pln_xi.metta`."
+
+**Claude's independent verification**: direct grep of `xiPLN.tex` (1,922 lines) for patterns `lib_pln_xi|lib_wmpln|lib_pln\.metta|wmpln_evidence` AND for any `\.metta` reference returns **zero matches in both cases**.
+
+**Reconciled verdict**: Gemini's Source 11 V-11-3 ("Verified") is unsupported by the source. The paper does not name *any* `.metta` runtime file. The lib_wmpln.metta ≈ lib_pln_xi.metta question remains **OPEN, biased negative**: the two libraries share Layer-2 evidence-algebra structure (verifiable from CeTTa's `lib_wmpln_evidence.metta` content), but xiPLN's Layer-1 (JointEvidence over `Fin(2^n)`) and the Σ-guarded query-plan layer are NOT realized in `lib_wmpln.metta` per inspection — those are theorem-level only in `Mettapedia/Logic/`. xiPLN paper L566-570 explicitly states: *"Chapter 9 future work (operational closure): … remains theorem-level and counterexample-first on the Lean side"* — the author is on record that operational/.metta closure is pending.
+
+**Standing rule reinforcement**: Gemini has now issued "Verified" on multiple claims that did not survive source-of-truth checks in this cluster pilot. (Note: the "Zarko Zaremba" framing in earlier reconciliations was *itself* partially wrong — see V0-4 below; the genuine standing example is the xiPLN ≈ lib_wmpln identity claim here.) Cross-reference `feedback_attribution_verify_against_git.md` — extends to all "Verified" claims, not just attribution.
+
+### V0-2. **Brief error: CSDLN ≠ FISHGRAM.** ❌ Source 11 brief assumption wrong
+
+**Codex caught and Claude verified:** `Compositional_Spatiotemporal_Deep_Learning.json` is the **2011** "A Novel Strategy for Hybridizing Subsymbolic and Symbolic Learning and Representation" paper. The brief implicitly equated it with the **2013** "Deep Learning Perception with PLN" / FISHGRAM paper. They are different papers with different content.
+
+**Implication**: `Publications+Deep Learning Perception with PLN` (Markdown stub) is NOT closed by Source 11. The full text of the 2013 FISHGRAM paper is genuinely missing from `publication_texts/json/`. Source 12+ backlog: locate "Integrating deep learning based perception with probabilistic logic via frequent pattern mining" (Goertzel et al., 2013).
+
+### V0-3. **B1 author attribution drift.** ⚠️ Gemini "Remi/Zar" not in source
+
+**Gemini's Source 10 claim** (carried forward): `mork-mm2-pathmap-formalization.tex` was authored by "Remi/Zar" (i.e., Remy Clarke + Zarathustra Goertzel — first MORK-substrate × ai-agents-realization cross-author paper).
+
+**Direct read of `\author{}` in mork-mm2-pathmap-formalization.tex L77-79**: `\author{Zar \and Oru\v{z}i\footnote{...AI-assisted collaboration using Claude Code (Anthropic), ChatGPT, and Codex (OpenAI).}}`
+
+**Reconciled**: paper authorship is **Zar + Oruži (AI-assisted)**, NOT "Remi/Zar." Gemini's Source 10 attribution was wrong. (Same drift pattern as V0-1 — though the Wm-Book-V3 "Zarko Zaremba" framing in earlier sources was itself partially incorrect; see V0-4.) The cross-author "MORK substrate × ai-agents" bridge paper does not exist; the MORK-PathMap formalization is a Zarathustra-Goertzel-led paper *about* MORK, not co-authored with the MORK ecosystem leads.
+
+### V0-4. **Self-correction: the "Zarko Zaremba wiki bibliography error" was misframed.** ⚠️ Earlier-sources framing wrong
+
+The Source 10 / Source 11 reconciliations called this a *"wiki bibliography error needing cleanup."* On 2026-04-25 source-PDF inspection (`mattermost://PLN/0660_pln-review.pdf` via `publication_texts/mattermost_papers/Pln_Review.json`), the source itself contains BOTH spellings: cover/title says "Zar and Oruži"; bibliography entry [2] says "Zarko Zaremba and Oruži." Source-JSON grep confirms 1 occurrence of each. **Most plausible reading: "Zarko Zaremba" is Zar Goertzel's own pseudonymous self-citation in his paper's bibliography** (Zaremba is a real Polish surname; consistent stylistic flourish).
+
+**Implication for wiki edits**: do NOT modify `RawData+Publications+Pln Review+chunk-2` — the chunk faithfully captures the source PDF. Phase 1 of the wiki edits plan (bibliographic corrections) is **scope-reduced to zero**: no edits needed. Synthesis cards (Phase 4 PLN Full) and new Lane B RawData cards (Phase 2) name Zarathustra Goertzel as canonical author and footnote the pseudonym.
+
+**Lesson for cluster methodology**: when a model summary asserts "wiki contains the error," verify the source PDF before adopting the framing. In this case, all three models (including Claude) propagated the framing without checking the source. Only the Phase 1 pre-edit source-of-truth check caught it.
+
+---
+
+## §1 — Universal agreement across all three models
+
+### A1. ECAN equations verbatim
+All three models extracted the same equations from `Economic_Attention_Networks.json`. Gemini provided the cleanest verbatim list (`rent = Rent * max(0, log2(si / recentMaxSTI))^2`, Hebbian update, diffusion stochastic decision); Codex provided the math context (8 claims with paper structure); Claude provided the architectural framing (ECAN is a third-control-architecture orthogonal to URE and chaining). **No factual disagreement on ECAN content.** All three flag ECAN as PAPER-ONLY for the current Hyperon-MeTTa cluster.
+
+### A2. ECAN is the missing-control-layer story
+All three converge: the cluster's current production line has no inference-control layer (Source 3); ECAN provides one; the cluster did not implement it. Wiki framing is consistent across models: ECAN should be cited as the **historical control proposal that was abandoned in the MeTTa migration**, alongside the URE Bayesian stack (Source 6) and chaining's toy-scale fragments (Source 7).
+
+### A3. xiPLN three-layer separation
+- Layer 1: world-model posterior states (complete semantics; reference instance `JointEvidence(n) = Fin(2^n) → ℝ≥0^∞`)
+- Layer 2: evidence algebra (the carrier `(n+, n-)` with quantale/Heyting structure)
+- Layer 3: operational views (strength, confidence, intervals as projections)
+
+All three models extract this. Codex provides verbatim `\subsection{}` headings; Claude provides the slogan ("Probability is what you query; evidence is what you carry" L142-144); Gemini summarizes. **The three-layer separation is the cluster's central architectural pivot.**
+
+### A4. The No-Go Theorem (B2 / B3 cross-references the same theorem)
+xiPLN.tex §5 (L320-345) and world-model-calculus.tex §No-Go Theorem state the same theorem: no function `Evidence^5 → Evidence` computes exact `A⇒C` evidence from local premises alone. Lean proof at `Mettapedia/Logic/PLNJointEvidenceNoGo.lean`. Both papers cite the result independently; both treat it as the architectural justification for the World-Model approach.
+
+**Significance**: this is the cluster's deepest theoretical justification. It says the production Local-Rule PLN paradigm is **formally known to be incomplete** for arbitrary world models. All three models converge on this framing.
+
+### A5. ZAM Lean formalization
+mork-mm2-pathmap-formalization.tex contains the formal Lean definition of the Zipper Abstract Machine (ZAM) with soundness theorems (`zam_oslf_sound`, `zam_diamond_sound`, `zam_box_sound` per Codex C-B1-5). Six-class typeclass hierarchy mirrors the Rust `pathmap::zipper` trait stack. **All three models converge.**
+
+**Refinement to Source 8**: Source 8 said "ZAM is documentation-only in MORK Rust source." This was correct for the Rust source but is misleading as cluster narrative — ZAM has full Lean formalization in the adjacent `ai-agents` workspace. Refined cluster wording: *"ZAM is a Rust-side abstraction that is formally proved sound in the adjacent Lean stack, but is not a Rust symbol that production code can call into."*
+
+### A6. Markov-de Finetti foundation
+26,665 lines of Lean, 0 sorry, 33 files (per paper L57-60, all three models cite same numbers). Justifies `(n+, n-)` as sufficient statistic under exchangeability. Connects PLN evidence to Solomonoff induction at foundational level (paper L580-607). **All three models converge.**
+
+### A7. Operational runtime closure is explicitly pending (per author)
+xiPLN.tex L566-570: *"Chapter 9 future work (operational closure): complete the operational large-scale inference layer once the Lean-side MeTTa runtime stack is stable enough for executable chainer/runtime integration; until then, Ch. 9 remains theorem-level and counterexample-first on the Lean side."* Codex C-B2-9 quotes this; Claude C-B2-10 quotes this. Gemini did not extract this caveat (consistent with V0-1 hallucination — Gemini stated "verified" runtime equivalence on a paper that explicitly states runtime is pending).
+
+### A8. Authorship attribution converges on Zarathustra Goertzel + Oruži
+xiPLN.tex `\author{}`: Zar + Codex CLI (OpenAI GPT-5.2). world-model-calculus.tex `\author{}`: Zar + Oruži. mork-mm2-pathmap-formalization.tex `\author{}`: Zar + Oruži. **All three Lane B papers** explicitly name Zar (Zarathustra Goertzel) as primary author. *(2026-04-25 V0-4 update)*: the earlier framing of "wiki bibliography contains the Zarko Zaremba error" was itself incorrect — the source PDF uses "Zarko Zaremba" as a pseudonymous self-citation in its bibliography. Wiki RawData faithfully preserves the source. Synthesis-layer cards (Phase 4 PLN Full + new Phase 2 Lane B RawData) name Zarathustra Goertzel as canonical author and footnote the pseudonym. (B4 markov-definetti.tex authors as "Mettapedia Project," more abstracted.)
+
+---
+
+## §2 — Differentiated insights (one or two models only)
+
+### D1. Codex: idempotency obstacle in Finset (Multiset variant) — material for cluster narrative
+Codex C-B3-3 / Claude C-B3-3: world-model-calculus.tex L191-195 acknowledges that Finset union is idempotent (`W ∪ W = W`), which breaks `evidence_add` for non-disjoint pairs. Multiset sum is the free commutative monoid. **This is methodologically critical** — the WM calculus only works for disjoint stores under Finset; Multiset is required for general use. Wiki should note this when describing PathMap evidence. Gemini did not extract this.
+
+### D2. Codex: structural-audit warning from B4
+Codex C-B4-9: *"Zero sorry can still mask unproved content if definitions encode assumptions as Props."* The paper documents three bugs and fixes. **Methodology note for cluster:** when wiki cites "0 sorry" Lean theorems, qualify with "subject to definitional discipline." Claude carried this forward at C-B4-5. Gemini did not extract.
+
+### D3. Codex: B2 PeTTaChainer cross-validation
+xiPLN.tex L386-387: PeTTaChainer's `MpFormula` uses strength multiplication `s_AB · s_BC` (not addition), consistent with the paper's finding that additive carriers are wrong for Markov composition. **This is the formal validation of the multiplicative MP heuristic that Source 5 traced to leungmanhin's 2023 PR.** The cluster's "0.2 hack" + multiplicative pivot has theoretical justification *in retrospect*, even though it predates the formalization. Codex flagged this connection. Claude carried it at C-B2-7.
+
+### D4. Codex: explicit gap inventory in B1 (mork-pathmap)
+Codex C-B1-10 / Claude C-B1-6: paper L1894-1933, L1998-2034, L2085-2183 list explicit gaps in formal coverage — Rust serialization, concrete node-type selection, concurrent scheduling, Z3 subprocess lifecycle, ACT external files, named atomspaces, some product/overlay/mutation zipper pieces. **Cluster-narrative implication**: the formal-verification project has *publish-quality hygiene* — papers explicitly mark coverage boundaries. Wiki citations should preserve this discipline.
+
+### D5. Claude: two-paradigm framing
+Claude §9 frames the cluster as having **two PLN paradigms** that coexist:
+- **Paradigm 1: Local-Rule PLN** (production: `PLN/`, `PLN3`) — formally incomplete (B2 No-Go), but ships
+- **Paradigm 2: World-Model PLN** (Lean-formal: Mettapedia + lib_wmpln*) — rigorous, but not productionized
+
+Codex's narrative is more granular (five traditions); Claude's is binary at the paradigm level. **Both are useful**; the cluster wiki should adopt the five-tradition language for the cluster map AND the two-paradigm framing for the architectural narrative. They are not in conflict.
+
+### D6. Claude: ZAM Rust-vs-Lean asymmetry framing
+Claude C-B1-1 / V-Claude-3: the cluster now has a *Lean-formal MORK substrate specification* alongside the *Rust MORK implementation*; these are not bridge-verified (no proof Rust implements Lean spec). **This is the formal-verification analog of the cluster's "theory and code diverged" pattern, even within a single contributor's work.** Wiki should call out this asymmetry explicitly. Codex implied it; Claude named it.
+
+### D7. Claude: methodology vocabulary for wiki citations
+Claude §9 proposes a citation discipline for World-Model line theorems:
+- *"Lean-formalized"* (with file:line)
+- *"Theorem-level / no production code"*
+- *"Research synthesis / design rationale"*
+
+This is more nuanced than Source 9's IMPLEMENTED / PROTOTYPE / PAPER-ONLY vocabulary. Needed because the World-Model line is genuinely novel — formal artifacts at production-Lean scale that have no production runtime equivalent.
+
+### D8. Gemini: equation-verification value even when wrong on V0-1
+Despite V0-1 hallucination, Gemini's verbatim ECAN equations (rent / wages / Hebbian update / diffusion) are the cleanest extraction in this bundle. **Gemini's strength remains specific-equation extraction; weakness is integrative-claim verification.** Wiki should use Gemini's extractions for math-and-equations cards, but route integrative narrative claims through Codex/Claude.
+
+---
+
+## §3 — Reconciled five-tradition cluster map (refined from Codex § Cluster-close)
+
+| # | Tradition | Repos / cards | Status |
+|---|---|---|---|
+| 1 | **Production Local-Rule PLN line** | `PLN/`, `PLN3` (trueagi-io, Geisweiller) | **Ships, runs, formally incomplete** (B2 No-Go) |
+| 2 | **Historical OpenCog/URE/ECAN control** | URE Bayesian stack (Source 6), ECAN (A1), historical OpenCog | **Largely abandoned** in MeTTa migration |
+| 3 | **Adjacent ai-agents Python+Lean** | `ai-agents/atps/scripts/` (Python selectors), `ai-agents/lean-projects/mettapedia/` (Lean theorems incl. xiPLN, world-model-calculus, MORK-PathMap) | **Active formalization + benchmark workspace** (Zarathustra Goertzel) |
+| 4 | **CeTTa active runtime line** | `CeTTa/lib/` (lib_pln + lib_wmpln* family), `CeTTa/tests/support/bio_wmpln_*` | **Active runtime + biomedical regression tests** — *deployment status unverified* (Codex caution) |
+| 5 | **MORK substrate + formalization** | Rust `MORK/` (Vandervorst/Clarke/Peterson — Source 8); Lean `mork-mm2-pathmap-formalization.tex` (Zar) | **Substrate is Rust-implemented; spec is Lean-formalized in adjacent ai-agents workspace** — bridge unverified |
+
+**Plus the orthogonal architectural pivot**: traditions 3-4 jointly constitute the **World-Model PLN paradigm**; tradition 1 is the **Local-Rule PLN paradigm**. The cluster has two paradigms, not just multiple repos.
+
+---
+
+## §4 — Reconciled wiki implications (consolidated from all three models)
+
+### Markdown stub upgrades (Lane A)
+1. `Publications+Economic Attention Networks` — full-content from `Economic_Attention_Networks.json`. Add: STI/LTI conservation, Attentional Focus, rent/wage/tax/diffusion, convergence theorem, Variant-2 AVDIFF, AM caveat, ECAN-PLN inference-control loop.
+2. `Publications+OpenCog NS Hybrid Neural-Symbolic` — full-content from `OpenCog_NS_Hybrid_Neural-Symbolic.json`. Add: global/local memory taxonomy, HANN decomposition, MemberLink grounding seam, NN↔STI conversion-rate, **explicit "not implemented" caveat** (paper L… cited by Codex C-A2-7).
+3. `Publications+Compositional Spatiotemporal Deep Learning` — full-content from `Compositional_Spatiotemporal_Deep_Learning.json`. Add: tripartite semantic CSDLN bridge, dynamic adaptive linkage, feedback loop, **2011 dating**, **explicit "not the same as 2013 FISHGRAM" note**.
+
+### New RawData publication cards (Lane B)
+4. `RawData+Publications+MORK MM2 PathMap Formalization` — fresh card from `mork-mm2-pathmap-formalization.tex`. Authors: Zar + Oruži. 19,538 Lean lines / 46 files / 0 sorry / 0 custom axioms.
+5. `RawData+Publications+xiPLN` — fresh card from `xiPLN.tex`. Authors: Zar + Codex CLI. **Promote rapidly to a Markdown synthesis card** — central narrative-anchor paper.
+6. `RawData+Publications+World-Model Calculus` — fresh card from `world-model-calculus.tex`. Authors: Zar + Oruži. **Likely promote to Markdown synthesis card** alongside xiPLN.
+7. `RawData+Publications+Markov-de Finetti Formalization` — fresh card from `markov-definetti-formalization.tex`. Author: Mettapedia Project. **Foundation card** for evidence-carrier sufficiency.
+
+### Wiki gaps remaining (Source 12+ backlog)
+8. **2013 FISHGRAM full text** — `Publications+Deep Learning Perception with PLN` Markdown stub still needs upgrade from a separate retrieval (V0-2).
+9. **`lib_pln_xi.metta` runtime closure** — open per author statement (xiPLN.tex L566-570).
+
+### Bibliographic corrections
+10. **"Zarko Zaremba" attribution clarification** *(V0-4: scope-reduced from earlier framing)*. The source PDF (`Pln_Review.pdf`) contains the pseudonymous self-citation in its bibliography; the wiki RawData chunk-2 faithfully preserves this. **No RawData edit needed.** Synthesis-layer cards (Phase 4 PLN Full) and new Lane B RawData cards (Phase 2) should name Zarathustra Goertzel as canonical author and footnote the pseudonym (Zaremba is a real Polish surname; pseudonymous self-citation is the most plausible reading). xiPLN.tex, world-model-calculus.tex, mork-mm2-pathmap-formalization.tex `\author{}` all name "Zar" verbatim.
+11. **`mork-mm2-pathmap-formalization.tex` authorship** — Zar + Oruži (per `\author{}` L77-79); NOT "Remi/Zar" as Gemini Source 10 stated.
+
+### Cluster-map narrative updates
+12. **Adopt five-tradition language** in the cluster map card (§3 above).
+13. **Adopt two-paradigm framing** in `Hyperon AI Algorithms+PLN+PLN Full`: Local-Rule PLN (production) vs World-Model PLN (formal). Both real, neither fully wins yet.
+14. **Cite the No-Go theorem** as the architectural justification for the World-Model paradigm. This is the cluster's deepest formal result.
+
+### Methodology notes for future cluster wiki work
+15. **Citation discipline** for Lean theorems from the World-Model line: distinguish Lean-formalized (with file:line) / theorem-level / research-synthesis. Match the paper authors' own status-note discipline (B1 gap inventory; B3 status note).
+16. **"Zero sorry" qualification**: not sufficient for theorem-surface honesty (B4 audit warning).
+
+---
+
+## §5 — Cluster-close readiness
+
+Source 11 was scoped as the cluster's extraction-close. With this reconciliation, **the PLN cluster pilot is closed for extraction.** Remaining cluster work is editorial, not investigative:
+
+- **Wiki edits phase**: Draft card direct-edits + `+AI` children for Published cards. Apply 16 wiki implications above + Sources 1-10 outstanding edits.
+- **Per-repo orientation doc refresh**: CLAUDE.md / AGENTS.md / GEMINI.md surgical updates for sources 3-11 repos.
+- **Top-level `hyperon-wiki/CLAUDE.md` refresh**: adopt five-tradition + two-paradigm language.
+- **Source 12+ candidates** (deferred, not blocking):
+  - 2013 FISHGRAM retrieval (V0-2 follow-up)
+  - `lib_pln_xi.metta` location (V0-1 follow-up — possible separate `zariuq/PeTTa` repo, possible uncommitted, possible never written)
+  - Lane C paper extraction if cited heavily by Lane B (e.g., `nuPLN.tex` if narrative-critical)
+  - Build verification of B2/B3 zero-sorry claims (`lake build` against `Mettapedia/`)
+  - Biomedical WM-PLN reconciliation (CeTTa bio_wmpln tests vs paper)
+
+### Recommended next move
+**Wiki edits phase**, starting with the highest-value cards:
+1. `Hyperon AI Algorithms+PLN+PLN Full` — apply two-paradigm framing + No-Go citation + five-tradition cluster map
+2. *(V0-4 scope-reduced)* — no Wm Book V3 / Pln Review chunk-2 RawData edits needed; pseudonym lives in the source PDF, faithfully captured in wiki. Author identity surfaced in Phase 2 + Phase 4 synthesis cards.
+3. New RawData cards for xiPLN, World-Model Calculus, MORK-PathMap, Markov-de Finetti
+
+The orientation-doc refresh and CLAUDE.md update can run in parallel with wiki edits.
+
+---
+
+## §6 — Process notes for the cluster pilot record
+
+This pilot ran 11 sources with the two-layer triangulation pattern (Claude single deep pass + Codex parallel pass + Gemini parallel pass + reconciliation). Source 11 surfaced two important process learnings:
+
+1. **Sub-agent stall at write step is recurring.** Source 1 PLN book agents refused to write .md files (resolved with `.txt` + inline-paste fallback). Source 11 Claude sub-agent stalled at the write step after gathering all data (no recovery possible — agent watchdog killed it). **Mitigation**: when a sub-agent stalls at write, switch to in-session direct read + write rather than re-launching. Memory rule already covers `.md` blocking; should extend to write-step stalls.
+
+2. **Model "Verified" claims need source-of-truth checks** — *and so do orchestrator framings*. The cluster pilot accumulated several "verified" claims that did not survive direct source inspection: (i) xiPLN ≈ lib_wmpln identity (Source 11 V0-1, Gemini); (ii) `mork-mm2-pathmap-formalization.tex` "Remi/Zar" authorship (Source 11 V0-3, Gemini); (iii) **the "wiki bibliography contains the Zarko Zaremba error" framing (Source 11 V0-4, Claude orchestrator)** — propagated through Sources 9-11 reconciliations without source-PDF check until Phase 1 pre-edit; the "error" is a pseudonymous self-citation in the source paper itself, not a wiki extraction issue. **Lesson**: source-of-truth checks apply to orchestrator narrative claims too, not just sub-agent outputs. The existing standing rule (`feedback_attribution_verify_against_git.md`) names attribution drift specifically; **extend to all "Verified"-style claims and to orchestrator-level synthesis statements about whether errors live in source vs extraction**.
+
+---
+
+*End of Source 11 cross-model reconciliation. PLN cluster pilot extraction phase: COMPLETE.*

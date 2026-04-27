@@ -1,0 +1,45 @@
+# ure2 (Unified Rule Engine) — Gemini Extraction Findings
+**Date:** 2026-04-24
+**Commit:** 4b6e8a0 (Linas Vepstas, 2025-02-02 snapshot)
+
+## §1 — Architecture and C++ Module Map
+- **Core Engine:** URE implements forward and backward chaining on the C++ AtomSpace.
+- **Rule Representation:** Rules are C++ `Rule` objects wrapping `BindLink` atoms. [Rule.h]
+- **Key Modules:**
+  - `opencog/ure/ActionSelection.h/cc`: Implements the selection logic using Thompson Sampling.
+  - `opencog/ure/ThompsonSampling.h/cc`: Bayesian Thompson Sampling over discretized second-order distributions (bins).
+  - `opencog/ure/MixtureModel.h/cc`: Combines multiple active "Control Rules" using universal operator induction approximations.
+  - `opencog/ure/UREConfig.h/cc`: Dynamically fetches parameters (max-iter, complexity-penalty) from the AtomSpace.
+  - `opencog/ure/backwardchainer/BIT.h`: Implements the Backward Inference Tree.
+
+## §2 — Sophisticated Inference Control
+- **C-6-1: Beyond Priority Queues:** Unlike the MeTTa ports which use simple confidence-based priority queues, URE uses a **Bayesian Thompson Sampling** distribution to balance exploration and exploitation. [ActionSelection.h]
+- **C-6-2: Learnable Control Policy:** The engine can be "guided" by a dedicated `control_as` AtomSpace containing `ImplicationScope` rules that predict expansion success based on structural patterns. [ControlPolicy.cc]
+- **C-6-3: Complexity Penalization:** Uses a Kolmogorov complexity heuristic `K(D) = |D|^(1-c)` to estimate the "length" of missing data and penalize overly complex inference paths. [MixtureModel.h]
+
+## §3 — Rule representation and unification
+- **Structure:** Rules are defined as `BindLink` atoms where the rewrite term can be an `ExecutionOutputLink` containing a formula. [Rule.h]
+- **Unification:** The `Rule` class provides `unify_source` (FC) and `unify_target` (BC), which stochastically alpha-convert variables to avoid name collisions. [Rule.cc]
+- **Meta-Rules:** URE supports "Meta-Rules" (rules that produce rules), which are forward-expanded during the engine initialization. [RuleSet::expand_meta_rules]
+
+## §4 — Integration and Bindings
+- **Scheme:** `cog-fc` and `cog-bc` primitives provide the high-level API.
+- **Python:** Cython bindings (`opencog/cython/`) allow Python-based logic (like early PLN) to invoke the C++ engine.
+- **Data Driven Config:** Configuration is not just a file; the engine queries the AtomSpace for its own parameters (e.g., `URE:maximum-iterations`). [UREConfig.cc]
+
+## §5 — Lineage and "Missing Links"
+- **Author Attribution:** **Nil Geisweiller** is the primary author of the advanced statistical control machinery (`ActionSelection`, `MixtureModel`, `ThompsonSampling`). **Linas Vepstas** is the primary maintainer of the C++ infrastructure.
+- **The MeTTa Gap:** The sophisticated MAB/BIT machinery found in URE was **entirely dropped** in the MeTTa `PLN/` ports, which favor a simpler "Greedy" confidence search.
+- **Historical Significance:** URE is the "Expert" heavy-lifter that grounded PLN in the C++ AtomSpace before the Hyperon transition.
+
+## Focus Questions Response
+1. **Inference Control:** URE uses Thompson Sampling and Mixture Models. It is far more mathematically rigorous than the MeTTa "confidence-only" queue.
+2. **Rule Representation:** `BindLink`-based wrapper. Allows for complex "Meta-Rule" hierarchies.
+3. **Missing Links:** The entire "Control Learning" (Bayesian Thompson + MixtureModel) layer is missing from modern MeTTa implementations.
+4. **Integration:** Historically mediated via Scheme/Guile and Cython.
+
+## Verification Targets
+- **V-6-1 (MAB):** Bayesian Thompson Sampling confirmed. [ThompsonSampling.h]
+- **V-6-2 (Mixture):** Mixture Model using universal operator induction approximation confirmed. [MixtureModel.h]
+- **V-6-3 (BIT):** Backward Inference Tree implementation confirmed. [BIT.h]
+- **V-6-4 (Complexity):** Kolmogorov heuristic `|D|^(1-c)` confirmed. [MixtureModel.h]

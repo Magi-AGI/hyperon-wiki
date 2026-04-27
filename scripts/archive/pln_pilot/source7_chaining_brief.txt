@@ -1,0 +1,273 @@
+# trueagi-io/chaining — Source 7 Extraction Brief (Cross-Model)
+
+Neutral extraction brief for Source 7 of the PLN cluster pilot. Claude, Codex, and Gemini each run independently against the same source snapshot.
+
+**Repo:** `chaining` — `trueagi-io/chaining`. The **explicit URE successor** per PR #132 of `opencog/ure` (2025-03-12) and via PR #1 of THIS repo (2024-04-12, *"Add experiments from hyperon-pln"*). Currently maintained by Nil Geisweiller; with contributions from Hedra S Yusuf (DTL module), Roman Treutlein (argset chainer submodule), and Bitseat. Active to 2026-03-17. Repository description: *"MeTTa module containing various flavors of backward and forward chaining, as well as converters between these flavors."*
+
+**Local path:** `E:\GitHub\hyperon reference\chaining\`
+
+**Commit at extraction time:** `f2e1b031d11890e45b41d9ecf3de96896ace01a7` (HEAD = main, 2026-03-17 "Merge pull request #25 from ngeiswei/metamath-mm2"; pulled 2026-04-24, no upstream drift). All three models extract against this exact hash.
+
+**Pre-existing meta-docs (already consulted by orchestrator; agents read first per workflow):**
+- `README.md` (16 lines) — minimal: lists experiment categories, calls out Roman Treutlein's argset chainer as a git submodule and Hedra Seid Yusuf's DTL contributions ("don't know how well maintained it is").
+- `CLAUDE.md` (98 lines) — comprehensive: documents `dtl/` core + 22+ `experimental/` subdirs, MeTTa conventions, run commands.
+- `AGENTS.md` (56 lines) — Codex-style guidelines; flags `experimental/ArgSetChainer/` as a git submodule, points to extra dependencies in metamath and sumo.
+- `GEMINI.md` (46 lines) — high-level component summary.
+
+Ignore `AGENTS.codex.tmp.md` (temp file, identical content to `AGENTS.md`).
+
+---
+
+## Cluster lineage map (closing through Source 7)
+
+```
+Source 1 (PLN book 2008) ─── theoretical foundation
+Source 5 (patham9/hyperon-pln, frozen 2023-08-01) ─── MeTTa formalization seed
+   ⇡ rename
+trueagi-io/hyperon-pln → trueagi-io/pln-experimental
+                                ⇣ fork
+                          ngeiswei/pln-experimental = Source 4
+
+────── separate C++ tradition ──────
+
+Source 6 (ngeiswei/ure = ure2)
+   research extension of book (BIT + Thompson + MixtureModel + ControlPolicy)
+   bit-rotting since 2024
+                                ⇣ explicit handoff via PR #132
+                                ⇣ + PR #1 of chaining "Add experiments from hyperon-pln"
+                          trueagi-io/chaining = Source 7  ←── THIS PASS
+                                research playground, active to 2026-03
+
+────── production line, separate fork chain ──────
+
+ngeiswei/PLN = Source 2 (PLN3)
+   ⇣
+trueagi-io/PLN = Source 3 (PLN/, pln0.9)
+```
+
+`chaining` is the **research-experimental playground** that absorbed both:
+1. The `hyperon-pln` experimental seed (PR #1 "Add experiments from hyperon-pln" — confirmed via PR #1 title + verified `pln-inf-ctl/`, `pln/`, `inference-control/` directories present today).
+2. URE's spiritual succession (per PR #132 of `opencog/ure` adding chaining as the named successor).
+
+`PLN/` (Source 3) is the parallel **production library**. The two trees may have separate evolution but share author (Geisweiller) and likely some semantic ideas.
+
+---
+
+## Goal
+
+This is a **migration audit**, not a standalone repo summary. The headline question from Source 6's reconciliation:
+
+**Did URE's Bayesian inference-control architecture (Thompson Sampling, BetaDistribution, MixtureModel, ControlPolicy, BIT) survive the migration to `chaining`, or was it lost?**
+
+Source 6's reconciliation §6 noted this is the single highest-priority cluster-level open question. **Resolution determines whether the cluster's "no inference control in MeTTa-era PLN" gap is:**
+- (a) **migration + simplification** (the architecture lives, just simpler / different language),
+- (b) **partial migration** (some pieces, not all),
+- (c) **conceptual loss** (the architecture died with URE).
+
+Gemini's preliminary discovery confirmed `thompson-sample` exists in `experimental/pln-inf-ctl/pln-inf-ctl.metta`. **But "thompson-sample exists as a function" is not the same as "the full BIT+ControlPolicy+MixtureModel+BetaDistribution+meta-control-rule stack survived."** The agents must produce a precise feature-by-feature comparison.
+
+---
+
+## Required output sections
+
+Each as numbered, cited claims in the same `C-<section>-<n>` format. Cite file path + symbol or approximate line.
+
+### §1 — Architecture map (dtl/ vs experimental/)
+
+`dtl/` is the documented production-ish core (forward, backward, curried, no-curry, tests, utils). What's actually in there? How does it compare to URE's BIT-style `BackwardChainer`?
+
+`experimental/` has 22+ subdirectories — many of them research tracks. Enumerate each with one-line description from its README. Particularly:
+- `pln/` — PLN ports
+- `pln-inf-ctl/` — PLN inference-control (the Bayesian-stack-migration target)
+- `inference-control/` — generic inference control (probably URE's `ControlPolicy` analog)
+- `iterative-chaining/` — book-style trail / inference-replay
+- `polyward-chaining/` — combined forward+backward (URE's BIT-based BC + FC-strategy hybrid?)
+- `prob-chaining/` — probabilistic chaining
+- `synthesis/` — program synthesis (Source 5 hyperon-pln's synthesis engine successor?)
+- `metamath/` — Metamath formalism in MeTTa (recent major work; likely orthogonal to the URE migration question)
+- `ArgSetChainer/` — Roman Treutlein's argument-set chainer (git submodule)
+- `evolutionary-programming/`, `program-verification/`, `proof-tree/`, `lambda-abstraction/`, `modal-logic/`, `subtyping/`, `sumo/`, `implicit-argument/`, `no-depth/`, `curried-chaining/`, `forward-chaining/`, `backward-chaining/`, `converters/`, `common/`
+
+### §2 — URE migration audit (PRIORITY OUTPUT)
+
+Cross-reference each component of URE's Bayesian inference-control stack against `chaining`:
+
+| URE component (Source 6) | `chaining` analog? | Status: full migrate / simplified / dropped |
+|---|---|---|
+| `BIT` / `AndBIT` / `BITNode` (And-Or backward inference tree) | ? | ? |
+| `BetaDistribution` (TV → Beta posterior) | ? | ? |
+| `ThompsonSampling` (full Bayesian arm selector) | thompson-sample exists in `pln-inf-ctl/` — verify scope | ? |
+| `ActionSelection` (Handle→TV map wrapper) | ? | ? |
+| `MixtureModel` (Universal Operator Induction style mixing) | ? | ? |
+| `ControlPolicy` (control-rule meta-layer; orchestrator) | ? | ? |
+| Control-rule patterns in separate atomspace | ? | ? |
+| Complexity penalty + Kolmogorov K(D) heuristic | ? | ? |
+| Probabilistic BIT pruning `(1-p)^remaining_iter` | ? | ? |
+| `expansion_andbit_weights` survival sampling | ? | ? |
+| `TraceRecorder` (inference-control-learning replay) | ? | ? |
+| Multi-threaded chainer | ? | ? |
+| `FCStat` (forward-chaining statistics) | ? | ? |
+| `UREConfig` AtomSpace-resident config | ? | ? |
+| Meta-rules (rule-producing rules) | ? | ? |
+
+For each: read the corresponding files in `chaining` (start with `experimental/pln-inf-ctl/`, `experimental/inference-control/`, `experimental/proof-tree/`, `experimental/iterative-chaining/`), find the relevant code, and record verbatim formula or function signature.
+
+**Particularly verify**:
+- `experimental/pln-inf-ctl/pln-inf-ctl.metta` — read fully. Does `thompson-sample` use a Beta-posterior or a simpler heuristic? Is there `BetaDistribution`-equivalent? Is there `MixtureModel`-equivalent?
+- `experimental/inference-control/inf-ctl-month-bc-cont-xp.metta` — Gemini's preliminary said this implements "Continuation Predicates and Context Updaters that allow PLN itself to control its own search space — essentially porting URE's `_control_as` logic to MeTTa." Verify.
+- `experimental/inference-control/inf-ctl-xp.metta` and `inf-ctl-month-xp.metta` — what control mechanisms do they exercise?
+
+### §3 — DTL core (`dtl/`)
+
+This is the most production-like surface. Document:
+- `dtl/forward/curried.metta` and `no-curry.metta` — forward chainer implementations
+- `dtl/backward/curried.metta` and `no-curry.metta` — backward chainer
+- `dtl/utils.metta`
+- `dtl/tests/*.metta` — test scope
+
+Compare to:
+- Source 3's `lib_pln.metta` `Deriver` (PQ-based, simpler)
+- Source 6's URE's `BackwardChainer` (BIT-based, complex)
+
+Is DTL's backward chainer BIT-style, PQ-style, or something else?
+
+### §4 — PLN integration in `chaining`
+
+`experimental/pln/` per CLAUDE.md has multiple PLN port attempts (match, entail, equal, dependent-types). Connect to Source 5 (hyperon-pln's 4-encoding pattern).
+
+`experimental/pln-inf-ctl/` is presumably PLN-specific inference control. Read fully.
+
+How do these relate to the **production** PLN line (Sources 2-3)?
+- Are the rule formulas in `experimental/pln/` byte-identical to anything in PLN3's `src/Formulas.metta` or PLN/'s `lib_pln.metta`?
+- Has `chaining`'s pln-inf-ctl been integrated into `lib_pln.metta`? (We've extracted PLN/ at HEAD — Source 3 reconciliation showed no inference-control machinery there. Confirm.)
+
+### §5 — Notable research tracks beyond inference control
+
+- **`metamath/`** — recent major work (PRs #22-25 from Feb-March 2026): Metamath propositional calculus port, MORK vs PeTTa benchmarks, gnuplot performance plots. **Important: this is the active 2026 research direction. Document the shape of this work.**
+- **`evolutionary-programming/`** — PR #8 "evolutionary programming reframed as a form of reasoning"; PR #9 "candidate generation." Connection to MOSES?
+- **`modal-logic/`** — PR #12 "Experiment with extending the backward chainer to support modal logic." First chainer extension to non-classical logic.
+- **`synthesis/`** — possibly the surviving descendant of Source 5's `metta/synthesis/` engine. Verify.
+- **`ArgSetChainer/`** (git submodule per `.gitmodules`) — Roman Treutlein's chainer. Don't deep-dive (it's a separate repo); but note its relationship to the cluster.
+
+### §6 — Production-vs-research positioning
+
+- README.md self-describes as "experiments." `dtl/` is the closest thing to production.
+- Is the repo intended as a library that other code imports, or as a collection of standalone experiments?
+- Cross-check: do PLN3 / PLN/ import anything from chaining? (Almost certainly no — Sources 2-3 reconciliations didn't surface any chaining import.)
+- What's the future direction signal from PR list? (Recent activity is heavy on metamath benchmarks, not inference-control.)
+
+### §7 — Successor handoff status
+
+Codex/Gemini's earlier framing: chaining is the URE successor. Verify:
+- Does any file in `chaining` cite URE explicitly?
+- Are URE's wiki pages referenced (e.g., `wiki.opencog.org/w/URE`)?
+- Are there migration notes in any README?
+- Did the URE wiki references survive into `chaining`?
+
+### §8 — Discovered publications and references
+
+Every citation in code, README files, .md docs. Particularly look for:
+- The `inference-control-learning` design doc that Source 6 noted is broken-linked from URE (`<OPENCOG_ROOT>/examples/pln/inference-control-learning/README.md`). Did its content migrate here?
+- Any new academic citations.
+- Metamath / SUMO / KIF references that imply specific external corpora.
+
+### §9 — Cluster-level synthesis
+
+Given findings, characterize:
+- **chaining is the URE successor for**: ___ (list components that migrated)
+- **chaining did NOT preserve**: ___ (list components that died with URE)
+- **chaining adds beyond URE**: ___ (modal logic, lambda abstraction, evolutionary programming, etc.)
+- **chaining vs production PLN/ (Source 3)**: relationship (research playground vs library?)
+
+This produces the **migration outcome map** that resolves the cluster's headline open question.
+
+### §10 — Author-attribution check
+
+§Git-history has the curated info. Confirm:
+- Does Geisweiller dominate as expected?
+- Does Hedra S Yusuf's DTL work look isolated or integrated with the rest?
+- Does Roman Treutlein's argset chainer (PR #20 submodule) connect anywhere structurally?
+
+---
+
+## §Git-history context (pre-populated by orchestrator)
+
+Snapshot at extraction hash `f2e1b031`. Curated for agents.
+
+**Commit narrative (last 25 at hash):** Recent activity (since 2026-03-12) is **heavily focused on Metamath**: gnuplot scripts, benchmark CSV/PNG plots, `pc-bc-fa.mm2`, "Add depth parameter," "Add Identity Reflexion theorem," etc. PR #25 "Add Metamath MORK vs PeTTa benchmarks" (2026-03-17) is the most-recent merge. **The Bayesian inference-control work was done earlier (PR #15 May 2025, PR #16 May 2025); no recent commits modify `pln-inf-ctl/` or `inference-control/`.**
+
+**Tags:** none (no formal release structure).
+
+**Remote branches:** `main` and `HEAD→main` only. No long-lived feature branches.
+
+**Top authors (per `git shortlog`):** Nil Geisweiller dominates (rough estimate ~80% of commits based on visible PR list). Other contributors per PR list:
+- Hedra S Yusuf (tanksha): PR #5, #6 (DTL module, 2024-08–09).
+- Roman Treutlein (rTreutlein): PR #11 (closed; not merged), PR #20 (argset submodule, 2025-07-23).
+- Bitseat: PR #18 (clean-up, 2025-07-17).
+
+`git shortlog -sne` returned empty (likely Windows/Git Bash quirk same as ure2/hyperon-pln before). The visible PR-author counts are accurate alternative.
+
+**Key PRs (`trueagi-io/chaining`)** — full timeline of substantive work:
+
+- **#1 (2024-04-12, ngeiswei) "Add experiments from hyperon-pln"** — **the migration seed**. Brought hyperon-pln (Source 5) experimental work into this repo as the foundation.
+- #2 (2024-04-30) "Make progress towards reasoning about programs."
+- #3 (2024-04-30) "Add converters between knowledge representations (curried vs uncurried for now)."
+- #4 (2024-08-09) "Lambda abstraction + Program verification."
+- #5 (2024-08-28, Hedra) "Pass the knowledge base space as an argument."
+- **#6 (2024-09-20, Hedra) "DTL"** — **the DTL module addition** by Hedra S Yusuf.
+- #7 (2025-01-14) misc.
+- #8 (2025-01-24) "Experiment about evolutionary programming reframed as a form of reasoning."
+- #9 (2025-01-24) "Add candidate generation part of evolutionary programming experiment."
+- #10 (2025-01-24) "Improve comment in candidate generation experiment."
+- #11 (2025-01–07, Roman) "Add an argset chainer" — **CLOSED, not merged**.
+- #12 (2025-02-04) "Experiment with extending the backward chainer to support modal logic."
+- #13 (2025-02-25) "Remove definitions of <= as it is now in the standard library" — adapts to MeTTa stdlib evolution.
+- **#14 (2025-03-19) "Initial MetaMath port attempt"** — start of the metamath research direction.
+- **#15 (2025-05-01) "PLN inference control early stage experiments"** — start of the **inference-control work** (the URE-migration target).
+- **#16 (2025-05-30) "PLN based inference control experiments"** — continued inference-control work.
+- #17 (2025-06-17) "Add missing random import" — minor.
+- #18 (2025-07-17, Bitseat) "clean up functions for smoother run."
+- **#19 (2025-07-22) "Add probabilistic backward chainer"** — `prob-chaining/` line.
+- **#20 (2025-07-23, Roman) "Add submodule for argset Chaining"** — git submodule for ArgSetChainer.
+- #21 (2025-07-25) "Edit README.md."
+- **#22 (2026-02-05) "Add Metamath on MeTTa experiment with a propositional calculus corpus"** — Metamath research takes off.
+- **#23 (2026-02-12) "Speed up metamath experiment in various ways"** — performance focus.
+- #24 (2026-02-16) "Import logger with git-import" — tooling.
+- **#25 (2026-03-17) "Add Metamath MORK vs PeTTa benchmarks"** — current HEAD; **explicit MORK reference!** First Source we've seen with MORK in the actual codebase.
+
+**Interpretation:**
+- The repo is **active** (last merged PR ~5 weeks before extraction) but **focus has shifted** since mid-2025 from inference-control to Metamath benchmarks.
+- The inference-control work happened in a 2-month window (May 2025, PRs #15-#16). It was substantive but not the current focus.
+- **PR #25 "MORK vs PeTTa benchmarks" is the first appearance of MORK in the cluster's actual codebase**. The wiki's `RawData+Publications+PLN FactorGraph MORK v3.2` paper series finally has a corresponding code experiment, even if it's just performance measurement of MeTTa interpreters.
+
+**Wiki-outreach implication for chaining**: Nil Geisweiller is the dominant author (continues Source 4 + Source 6 attribution). For DTL specifically, Hedra S Yusuf is the original author. For argset chainer, Roman Treutlein. For inference-control specifically, Geisweiller.
+
+---
+
+## Output file
+
+Write findings to: `E:\GitHub\Magi-AGI\hyperon-wiki\scripts\archive\pln_pilot\source7_chaining\findings_<model>.txt`
+
+e.g., `findings_claude.txt`, `findings_codex.txt`, `findings_gemini.txt`. Create the `source7_chaining/` subdirectory if missing.
+
+Header must include: model name, extraction date (2026-04-24), commit hash `f2e1b031d11890e45b41d9ecf3de96896ace01a7`, claim counts per section.
+
+If the write is blocked, paste the FULL findings content verbatim in your response.
+
+---
+
+## Rules
+
+- Do NOT consult any other source — no book, no other repos, no wiki MCP, no web. Only files inside `E:\GitHub\hyperon reference\chaining\`.
+- Do NOT enter the `experimental/ArgSetChainer/` submodule — it's a separate repo, out of scope.
+- Cite file and symbol (or approximate line) for every concrete claim.
+- For the URE migration audit (§2): transcribe relevant `chaining` formulas verbatim. Compare to Source 6's URE classes by name.
+- Frame as **migration audit + delta vs sources 2-3 (production line)**.
+- Read these prior reconciliations first for context (do not re-derive their findings):
+  - Source 5 (hyperon-pln): `scripts/archive/pln_pilot/source5_hyperon_pln/findings_reconciled_crossmodel.txt`
+  - Source 6 (URE): `scripts/archive/pln_pilot/source6_ure2/findings_reconciled_crossmodel.txt`
+  - Source 3 (PLN/): `scripts/archive/pln_pilot/source3_pln/findings_reconciled_crossmodel.txt` (for the PQ-Deriver baseline)
+
+---
+
+*End of Source 7 brief.*

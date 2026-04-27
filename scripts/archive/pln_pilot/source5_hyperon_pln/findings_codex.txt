@@ -1,0 +1,105 @@
+# hyperon-pln Extraction - Codex Findings
+
+**Repo:** `hyperon-pln`
+**Commit:** `0d017c4d154de05fa8234bcf2717c268cf82d791`
+**Model:** Codex
+**Extraction date:** 2026-04-24
+**Claim counts per section:** 1=6, 2=5, 3=7, 4=5, 5=3, 6=5, 7=4, 8=1, 9=5
+
+## 1. Repo structure and the four-encoding pattern
+
+C-1-1: The repo’s own README describes exactly four approaches to the Hyperon port: "Proofs as match queries", "Proofs as custom Atom structure", and "Proofs as programs, and properties as dependent types", with dependent types explicitly called "the most advanced approach for now." `CLAUDE.md` maps those approaches to `match/`, `equal/`, `entail/`, and `dependent-types/` under `metta/`. [README.md:L9-L27] [CLAUDE.md:L55-L63]
+
+C-1-2: The actual checked-in tree matches that story. `metta/dependent-types/`, `metta/match/`, `metta/entail/`, and `metta/equal/` all exist, and the shared formula layer sits in `metta/common/formula/`. This is the ancestor of the four-encoding layout later seen under Source 4’s `experimental/early-pln/pln/`. [metta/*] [CLAUDE.md:L13-L31]
+
+C-1-3: The dependent-types encoding is the structural center of gravity. It has all three core rule families as dedicated files: `DeductionDTL.metta`, `ImplicationDirectIntroductionDTL.metta`, and `ModusPonensDTL.metta`, each exposing a constructor-style rule (`Deduction`, `IDIInduction`/`IDIAxiom`, `ModusPonens`) intended to be consumed by the generic synthesizer. [metta/dependent-types/DeductionDTL.metta:L16-L29] [metta/dependent-types/ImplicationDirectIntroductionDTL.metta:L44-L91] [metta/dependent-types/ModusPonensDTL.metta:L30-L40]
+
+C-1-4: The other encodings are narrower and more operationally fragile. `entail/` defines deduction and implication direct introduction directly with the `⊢` symbol; `equal/` encodes rules as equality rewrites and explicitly comments that backward use fails because the interpreter cannot unify left-hand sides containing function calls; `match/` encodes rules as helper functions plus `match` queries and carries interpreter-workaround comments around `let*`. [metta/entail/DeductionEntail.metta:L16-L30] [metta/equal/DeductionEqual.metta:L23-L40] [metta/equal/ImplicationDirectIntroductionEqual.metta:L54-L65] [metta/match/DeductionMatch.metta:L23-L51] [metta/match/ImplicationDirectIntroductionMatch.metta:L55-L71]
+
+C-1-5: The file later cited by PLN3/PLN comments is present here exactly where the later repos point: `metta/dependent-types/DeductionDTL.metta`. This is the frozen provenance source for the DTL deduction rule constructor and the associated consistency/formula machinery. [metta/dependent-types/DeductionDTL.metta:L1-L29]
+
+C-1-6: Source 5 is therefore not just “another old repo”; it is the earliest frozen MeTTa formalization seed in this cluster with all four representation strategies still visible side by side. Downstream repos keep pieces of it, but not the whole experimental matrix. [README.md:L9-L27] [metta/*]
+
+## 2. Truth-value type hierarchy (`Bl`, `Pr`, `PrCnt`, `STV`)
+
+C-2-1: `TruthValue.metta` defines four constructors, not three: `Bl (Bool)`, `Pr (Number)`, `PrCnt (Number Number)`, and `STV (Number Number)`. `PrCnt` is documented as a second-order probability constructor carrying probability plus raw count, while `STV` carries probability plus confidence. [metta/common/truthvalue/TruthValue.metta:L16-L32]
+
+C-2-2: `PrCnt` is therefore a real transitional TV type rather than a cosmetic alias. Its `count` is stored directly as the second field, its `confidence` is derived from that count via `count->confidence`, and its `mean` is computed through the same Beta-posterior machinery as `STV`. This makes it more meaningful than `Pr`, which is just a first-order probability with implicit max-count / confidence 1.0. [metta/common/truthvalue/TruthValue.metta:L103-L126] [metta/common/truthvalue/TruthValue.metta:L144-L161]
+
+C-2-3: `PrCnt` is actively used in this frozen snapshot. The generic deduction helper `ded_formula` returns `PrCnt`, and the equality/entailment test suites also use `PrCnt` in premises and conclusions. That means `PrCnt` was part of the live rule-experiment surface here, not a dead type declaration. [metta/common/formula/DeductionFormula.metta:L39-L57] [metta/equal/DeductionEqualTest.metta:L5-L24] [metta/entail/DeductionEntailTest.metta:L4-L8]
+
+C-2-4: Later branches appear to drop `PrCnt` in favor of the simpler `STV`-only executable surface. In this repo, the IDI base case is still written as `ETV Empty (PrCnt 1 0)` in `equal/` and `match/`, while later Source 4 files use `ETV Empty (STV 1 0)` instead. Source 5 is the place where the `PrCnt` layer is still explicit and first-class. [metta/equal/ImplicationDirectIntroductionEqual.metta:L29-L35] [metta/match/ImplicationDirectIntroductionMatch.metta:L29-L35]
+
+C-2-5: `Bl` and `Pr` already have the same “degenerate wrapper” shape seen later: both are mapped to max-count and confidence 1.0. So the meaningful hierarchy in this repo is not `Bl -> Pr -> STV`; it is `PrCnt`/`STV` as two alternative second-order encodings, with `PrCnt` eventually disappearing downstream. [metta/common/truthvalue/TruthValue.metta:L109-L126]
+
+## 3. Implemented rules and formula provenance
+
+C-3-1: The shared formula layer already contains the rule math later inherited by the rest of the cluster. `DeductionFormula.metta` defines `smallest-intersection-probability`, `largest-intersection-probability`, and `conditional-probability-consistency`, plus both a generic `ded_formula` and an STV-specialized `deduction-formula`. This is the source of the consistency-condition lineage later cited in Sources 2-4. [metta/common/formula/DeductionFormula.metta:L7-L22] [metta/common/formula/DeductionFormula.metta:L39-L75]
+
+C-3-2: The generic deduction path here is not identical to the later stabilized versions. In this frozen snapshot, `conditional-probability-consistency` is stubbed to `True`, with the actual inequality checks commented out. The STV-specialized `deduction-formula` still uses the real consistency checks, but `ded_formula`’s generic path does not. This is a concrete difference between the seed and the later production-facing descendants. [metta/common/formula/DeductionFormula.metta:L16-L22] [metta/common/formula/DeductionFormula.metta:L39-L57] [metta/common/formula/DeductionFormula.metta:L59-L75]
+
+C-3-3: The Modus Ponens hack is already fully present here. `ModusPonensFormula.metta` hardcodes `$notABs 0.2` and labels it a "temporary hack", and `ModusPonensDTL.metta` repeats the exact rationale: the rule is imprecise because it lacks a `P(B|Not A)` premise and should ideally be replaced by a more precise rule. This proves the `0.2` choice is inherited from Source 5, not invented later. [metta/common/formula/ModusPonensFormula.metta:L7-L14] [metta/dependent-types/ModusPonensDTL.metta:L12-L27]
+
+C-3-4: Implication Direct Introduction is also already present here in recognizable form. The shared formula computes a conclusion from evidence via either a count-based aggregate (`idi_formula`) or a simpler Boolean/STV update (`direct-introduction-formula`), and the DTL/equality/match encodings all wrap that formula into rule schemas. This is the ancestor of the IDI line that survives into Source 4. [metta/common/formula/ImplicationDirectIntroductionFormula.metta:L6-L37] [metta/dependent-types/ImplicationDirectIntroductionDTL.metta:L58-L91] [metta/equal/ImplicationDirectIntroductionEqual.metta:L40-L74] [metta/match/ImplicationDirectIntroductionMatch.metta:L37-L71]
+
+C-3-5: The DTL deduction constructor itself is structurally the same object later treated as provenance in downstream comments: a typed constructor named `Deduction` taking five premises and returning `(≞ (→ $p $r) (deduction-formula ...))`. The high-level shape is already settled here. [metta/dependent-types/DeductionDTL.metta:L20-L29]
+
+C-3-6: The rule inventory is still narrow even in this seed. The repo has Deduction, Modus Ponens, and Implication Direct Introduction across multiple encodings, but no checked-in quantifier rules, temporal/causal rules, intensional/extensional conversion rules, FactorGraph/MORK logic, or richer higher-order families. In other words, the “small core” did not emerge later; it was already small in the seed. [metta/dependent-types/*] [metta/entail/*] [metta/equal/*] [metta/match/*]
+
+C-3-7: This makes the provenance story precise: later repos inherit specific formulas and encodings from Source 5, but they do not “trim down” a once-large rule inventory. The seed itself is a focused formalization of a few canonical rules plus a synthesis engine, not a broad port of the 2008 book. [README.md:L9-L27] [metta/*]
+
+## 4. `metta/synthesis/` - the program synthesizer
+
+C-4-1: The synthesizer is a first-class part of the design here, not an auxiliary demo. Both the README and `CLAUDE.md` say the dependent-type approach relies on a generic program synthesizer, and the DTL tests import `../synthesis/Synthesize.metta` directly to search for proofs/rule applications. [README.md:L28-L35] [CLAUDE.md:L64-L70] [metta/dependent-types/DeductionDTLTest.metta:L7-L10] [metta/dependent-types/ModusPonensDTLTest.metta:L43-L46]
+
+C-4-2: `Synthesize.metta` implements a depth-limited proof search over an axiom supplier and a rule supplier. The comments explicitly list supported use modes: backward chaining, forward chaining, mixed chaining, type checking, and type inference. The implementation enumerates nullary through quintenary rule arities using recursive `let`/`let*` expansion rather than a single higher-order rule walker. [metta/synthesis/Synthesize.metta:L5-L37] [metta/synthesis/Synthesize.metta:L38-L80]
+
+C-4-3: The unifier exists but is not yet the default backend. `README.md` says `unify`/`unify*` are intended to replace `let`/`let*`, but the main synthesizer still comments out `import Unify.metta` and says it "still relies on `let` and `let*`" due to issues. `UnifyTest.metta` is called "not working yet." [metta/synthesis/README.md:L3-L16] [metta/synthesis/Synthesize.metta:L1-L4] [metta/synthesis/Unify.metta:L1-L25]
+
+C-4-4: The experiments folder documents an active design search around this engine: synthesis via type checking, superposition, `let`, `case`, and `unify`, plus non-determinism experiments. The experiments README even notes that the type-checking route fails because the type checker is static. This experimental synthesizer work is a major part of Source 5’s identity. [metta/synthesis/experiments/README.md:L1-L18] [metta/synthesis/experiments/README.md:L23-L50]
+
+C-4-5: This synthesis-heavy architecture does not appear to remain central in later practical repos. Source 4 still carries a `synthesis/` subtree descended from this line, but its own docs frame `early-pln` as likely no longer relevant; the later `PLN3`/`PLN/` practical engines instead revolve around direct derivation/query controllers rather than this generic proof synthesizer. Within Source 5 itself, the evidence for downstream abandonment is that the main rule tests are built around `synthesize`, while the later production-oriented line no longer exposes that as the primary API. [metta/dependent-types/*Test.metta] [README.md:L28-L35]
+
+## 5. `idris/` directory and type-theory prototyping
+
+C-5-1: The Idris side is tiny and very specific. `idris/StrictlySorted.idr` is a single experiment about defining a strictly sorted list/set type using dependent types and proofs that prepended elements are smaller than the current head. It is not a PLN rule implementation; it is a type-theory prototype for sorted-set invariants. [idris/StrictlySorted.idr:L1-L33] [idris/StrictlySorted.idr:L35-L67]
+
+C-5-2: The second half of the file explores an alternative encoding that avoids putting `Maybe a` directly in the type head, plus commented suggestions from Michael Messer. This is unmistakably language-level dependent-type experimentation, not reasoning-system logic. [idris/StrictlySorted.idr:L35-L105]
+
+C-5-3: The README already says the Idris folder exists because "Idris is more mature than MeTTa" for prototyping some dependent-type aspects of the port. So the repo itself frames Idris as a scaffolding language for concepts later hoped to land in MeTTa. [README.md:L54-L58]
+
+## 6. MeTTa-specific design choices preserved or abandoned
+
+C-6-1: The `0.2` Modus Ponens hack is definitively already present in 2023 and explicitly acknowledged as technical debt. That provenance is not ambiguous: both the formula file and the DTL wrapper carry the comment. [metta/common/formula/ModusPonensFormula.metta:L7-L14] [metta/dependent-types/ModusPonensDTL.metta:L18-L27]
+
+C-6-2: Min-based confidence propagation is also already settled here. Deduction uses nested `min` across premise confidences, and Modus Ponens uses `min($ABc, $notABc, $Ac)`. The later `pln0.9` multiplicative-confidence pivot is therefore a true departure from Source 5, not a continuation of its semantics. [metta/common/formula/DeductionFormula.metta:L52-L57] [metta/common/formula/DeductionFormula.metta:L68-L75] [metta/common/formula/ModusPonensFormula.metta:L12-L14]
+
+C-6-3: The evidence-handling design here is not yet the sorted-ID double-counting guard later seen in Source 4. Source 5 uses a generic `Set` abstraction and the recursive IDI rules only require `a ∉ ev` plus `insert a ev`; there is no ordered-set specialization in the evidence wrapper itself. That means later sorted/ordered evidence handling is a downstream refinement rather than something already fixed in the seed. [metta/common/EvidentialTruthValue.metta:L17-L27] [metta/common/Set.metta] [metta/dependent-types/ImplicationDirectIntroductionDTL.metta:L65-L91]
+
+## 7. What was abandoned downstream
+
+C-7-1: `PrCnt` is the clearest abandoned concept. It is pervasive in Source 5’s generic formulas and some tests, but later snapshots simplify down to the `Bl`/`Pr`/`STV` surface without keeping `PrCnt` as a first-class TV constructor. [metta/common/truthvalue/TruthValue.metta:L23-L32] [metta/common/formula/DeductionFormula.metta:L39-L57] [metta/equal/DeductionEqualTest.metta:L5-L24]
+
+C-7-2: The Idris prototyping path is another obvious abandonment. Source 5 keeps `idris/StrictlySorted.idr` and the README still advertises Idris as a prototyping lane; later cluster history explicitly says Idris experiments were removed from the `pln-experimental` line. Source 5 is therefore the surviving local archive of that branch of thought. [README.md:L54-L58] [idris/StrictlySorted.idr:L1-L105]
+
+C-7-3: The synthesis engine also looks like a partially abandoned architecture. It is central in Source 5, survives experimentally into Source 4, but does not remain the primary user-facing surface in the later `PLN3`/`PLN/` line. Source 5 is where the cluster most explicitly treats reasoning as generic program synthesis over typed proof constructors. [metta/synthesis/README.md:L1-L16] [metta/dependent-types/*Test.metta]
+
+C-7-4: The frozen-state signs are also visible in the tests and comments: TODOs around type-checking, disabled/imperfect unifier tests, and equality/match workarounds for interpreter limitations remain in place at the moment the repo goes dormant. Later repos inherit some formulas, but not this exact architecture of open-ended synthesis experimentation. [metta/synthesis/README.md:L8-L16] [metta/dependent-types/DeductionDTLTest.metta:L38-L52] [metta/equal/DeductionEqual.metta:L31-L40] [metta/match/ImplicationDirectIntroductionMatch.metta:L55-L71]
+
+## 8. Discovered publications
+
+C-8-1: I did not find publication-style citations inside the repo beyond project references to Hyperon itself and the old canonical repository URLs. This source is mainly valuable for code provenance rather than for adding new bibliography items to the wiki. [README.md:L5-L7] [CLAUDE.md:L7-L8]
+
+## 9. Lineage and relationship
+
+C-9-1: The local remote proves this clone is `patham9/hyperon-pln`, not an active `trueagi-io` remote. The README/CLAUDE docs still talk about `trueagi-io/hyperon-pln` as canonical, which matches the brief’s note that the original upstream was later renamed and moved forward elsewhere. In other words, this clone is a frozen fork/snapshot, not the still-evolving primary repo. [git remote -v] [README.md:L42-L51] [CLAUDE.md:L7-L8]
+
+C-9-2: Content-wise, Source 5 clearly predates and seeds Source 4. It already has the same four encoding families, the same three core rule families, the same Modus Ponens hack, the same ETV/temporal wrapper concepts, and the same synthesis experiments, but still includes `PrCnt` and Idris prototyping that the later line simplifies or drops. [metta/*] [idris/StrictlySorted.idr:L1-L105]
+
+C-9-3: The precise provenance line for the deduction machinery is especially strong: later repos cite `DeductionDTL.metta` as the source of consistency-condition and deduction formula structure, and that file is here in frozen form with the same constructor-level DTL shape. [metta/dependent-types/DeductionDTL.metta:L1-L29] [metta/common/formula/DeductionFormula.metta:L7-L75]
+
+C-9-4: So the right interpretation of Source 5 is not "obsolete alternative implementation"; it is "the last preserved pre-rename formalization seed." It tells us where later MeTTa PLN repos got their small core, their MP hack, and their dependence on proof-search/synthesis ideas, while also showing which experimental ideas failed to survive the lineage. [README.md:L9-L35] [metta/synthesis/README.md:L1-L16] [metta/common/truthvalue/TruthValue.metta:L16-L32]
+
+C-9-5: The repo’s dormancy matters for wiki language. Claims drawn from it should be phrased as historical provenance or early formalization choices, not as the current state of Hyperon PLN. The current state lives later in the renamed/descended lines; Source 5 explains where those lines came from. [git log --oneline -5] [README.md:L3-L7]
+
+*End of Codex findings.*

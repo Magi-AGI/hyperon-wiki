@@ -1,0 +1,235 @@
+# MORK (trueagi-io) — Cross-Model Reconciled Findings (Source 8, FINAL)
+
+**Source:** `E:\GitHub\hyperon reference\MORK\` → `trueagi-io/MORK` at commit `4cef6f77c9712ddeef0d55ae751d249f89385e9c` (HEAD = main, 2026-04-19 "Merge pull request #49 from trueagi-io/unification_test_laws"; pulled 2026-04-24, no upstream drift).
+
+**Reconciled on:** 2026-04-24
+
+**Inputs:**
+- **Claude** (Opus 4.7 single pass, 83 claims, 45 KB) → `findings_claude.txt`
+- **Codex** (60+ claims, 11 KB) → `findings_codex.txt`
+- **Gemini** (concise, ~12 highlights, 4 KB) → `findings_gemini.txt`
+
+Confidence legend:
+- **[X3]** all three models confirmed
+- **[X2]** two models confirmed
+- **[X1]** one model caught it
+- **[VERIFIED]** spot-checked against actual source
+
+---
+
+## 1. CODE-TO-PAPER BRIDGE — RESOLVED
+
+**[X3 unanimous] FactorGraph audit outcome: (d) ABSENT.**
+
+The wiki's `RawData+Publications+PLN FactorGraph MORK v1..v3.2` paper series describes proposals; **MORK does NOT implement them**. MORK is a substrate. **Zero matches** across the entire repo for `FactorGraph`, `factor_graph`, `MessagePass`, `message_pass`, `BeliefPropagation`, `belief_propagation`, `marginal`, `marginalize`, `bayes`, `posterior`, `prior`, `probabilistic`, `likelihood`, `tensor`, `einsum` (Claude verbatim verification).
+
+**[X1 Claude — important nuance]** The word *"factor"* DOES appear ~80 times in MORK source — but exclusively in the **algebraic/relational-join sense**: `AFactor`, `n_factors`, `ProductZipper`, `OneFactor`. The graphical-model sense (probabilistic factor, factor node, message-passing) is **wholly absent**. Wiki authors searching for "factor" in MORK should not be misled.
+
+**[X1 Claude]** Another **"dead infrastructure"** signal: `experiments/unification_test_laws/Cargo.toml:8` declares `distr-combinators` (a Luke-Peterson distribution-combinator crate) as a dependency, but the dep is **never imported anywhere in MORK source**. This parallels Source 7's finding that chaining's `experimental/common/truthvalue/TruthValue.metta` defines Beta machinery never wired up. **Pattern across the cluster: probabilistic primitives exist as defined-but-uncalled affordances**, ready for someone to build the FactorGraph layer on top.
+
+---
+
+## 2. The "Zipper Abstract Machine" reality
+
+**[X1 Claude — VERIFIED]** Claude uniquely caught: the **"Zipper Abstract Machine (ZAM)" is documentation-only**. There is no `ZAM` symbol in MORK's source. The actual zipper machinery lives in the **external `pathmap` crate** (which is not even cloned locally). MORK's "VM" framing is **aspirational packaging** of:
+- `ProductZipper`, `PrefixZipper`, `DependentProductZipperG` traversals (per Codex C-1)
+- A single `metta_calculus` rewrite-scheduler loop (Claude C-1)
+
+**Wiki implication**: when documenting MORK, distinguish between the marketing-narrative ZAM and the actual code architecture (pathmap-zipper traversals + a rewrite scheduler). The two are not identical.
+
+[X2 Codex + Gemini] Both confirm the `pathmap` crate is the actual zipper-VM substrate; MORK is the orchestrator + `metta_calculus` semantics layer.
+
+[X1 Gemini] MORK uses Rust nightly **coroutines and `gen_blocks`** for concurrent hypergraph reduction. Core loop in `kernel/src/space.rs` scans for `(exec <loc> <pat> <tpl>)` atoms — **data-driven execution model**.
+
+---
+
+## 3. The `.mm2` format — what it actually is
+
+**[X1 Claude — DEFINITIVE FINDING]** `.mm2` files in MORK are **NOT Metamath**. They are **MeTTa S-expressions with `(exec <loc> <pat> <tpl>)` rewrite-rule syntax**. `mork run X.mm2` just parses S-expressions and calls `metta_calculus(steps)`. **No `.mm2`-specific parser exists; the file extension is naming convention only.**
+
+This **corrects a likely wiki misreading**: the chaining repo's `experimental/metamath/` directory uses MORK to run `.mm2` files for the Metamath propositional calculus benchmarks. One could naturally infer "`.mm2` is Metamath 2 format." That inference is wrong. The `.mm2` files happen to encode Metamath proofs as MeTTa rewrite rules, but the format itself is generic MeTTa.
+
+**[X1 Codex agreement]** Codex independently noted: "`.mm2` is a real executable program format in MORK, not just a benchmark artifact." Both agents agree the format has runtime semantics; it's how you write MORK programs.
+
+**[X1 Claude — additional evidence]** `kernel/resources/decision_tree_learning.mm2` (**549 lines, by Remy Clarke**) is a **complete Gini-impurity decision-tree learner** written entirely in MM2 rewrite rules — including type-checking, macro-expansion stages, `pure`-sink f64 arithmetic, and prediction verification. **Demonstrates MM2 is a usable Turing-complete-ish programming language inside MORK, not just a config format.** This significantly upgrades how the wiki should characterize MORK: it's not just a hypergraph DB + zipper VM; it's a *programming environment* with non-trivial worked programs.
+
+---
+
+## 4. Cross-model unanimous findings
+
+### 4.1 [X3] What MORK actually IS (in code terms)
+
+- **High-performance hypergraph processing kernel** (CLAUDE.md / README explicit).
+- **Rust workspace** (Edition 2024, nightly required) with 7+ crates: `kernel/`, `expr/`, `frontend/`, `interning/`, `experiments/eval/`, `experiments/eval-ffi/`, `experiments/eval-examples/` (dylib), `experiments/unification_test_laws/`.
+- **CLI subcommands**: `bench`, `test`, `run`, `convert` (per `kernel/src/main.rs`).
+- **Multiple frontend parsers**: CZ2, CZ3, HE (Hyperon Experimental), Rosetta, bytestring, JSON.
+- **Triemap-based graph database** with relational algebra (union, intersection, subtraction). Subtraction is being added in PR #50 (open).
+- **External hard dependency**: PathMap at `../PathMap/` (NOT cloned locally; build blocker).
+
+### 4.2 [X3] What MORK is NOT
+
+- **NOT a probabilistic reasoner.** No TruthValue, no Beta posteriors, no Bayes operations.
+- **NOT a FactorGraph engine.** No factor-graph data structures, no message-passing protocols, no marginalization machinery.
+- **NOT a tensor framework.** PR #48 (sparse tensor primitives + einsum) was **CLOSED, not merged** — explicit scope rejection by maintainers.
+- **NOT a benchmark-only artifact.** Despite the `chaining/experimental/metamath/benchmarks/` integration that brought MORK into the cluster pilot, MORK is a real engine with worked programs (decision trees, unification tests, etc.).
+
+### 4.3 [X3] Strategic-scope signal: PR #48 closure
+
+PR #48 by Igor Malovitsa proposed *"Add sparse tensor primitives with einsum contraction"*. **CLOSED, not merged.** All three models flag this as the strategic-scope signal: maintainers explicitly chose NOT to broaden MORK into tensor/numeric/numerical-linear-algebra territory. **MORK is intentionally a symbolic hypergraph kernel** — even though the FactorGraph papers might naturally invite tensor extensions, the team rejected that direction.
+
+### 4.4 [X3] Distinct ecosystem from PLN cluster
+
+- **Adam Vandervorst** (~239 commits) — primary architect. Also visible in F1R3FLY-io org (MeTTaIL, MacroLoop).
+- **Remy Clarke** (~104 commits as Remy Pierre Bushnell Clarke + ClarkeRemy). Also asi-alliance org (OmegaClaw-Core).
+- **Luke Peterson** (~70 commits, luketpeterson). Authors PathMap and gxhash crates.
+- **Igor Malovitsa** (16 commits). Recent contributor with eval-correctness PRs.
+- **Nil Geisweiller has 1 commit in MORK.** Distinct from Sources 2-7 where he's central (471 in pln-experimental2, ~3,800 in URE, 280 in chaining).
+
+**[X3] Cluster narrative implication**: The PLN cluster's expert circle is **not** building MORK. The "use MORK for FactorGraph" connection in the wiki papers is an **inter-ecosystem proposal**, not a single-team initiative. **The FactorGraph bridge is socially as well as technically unbuilt.** Wiki cards should reflect this — both ecosystems are interested in the connection but neither has built it.
+
+### 4.5 [X3] Active development direction
+
+Recent PRs (Oct 2025 → Apr 2026) cluster around:
+- **Performance primitives** (zipper traversals, dense node sinks, lens sinks)
+- **PathMap API integration** (PR #31, PR #45 trait-bounds adaptation)
+- **Unification correctness** (PR #49 "Unification laws test", Prolog-vs-MORK comparison)
+- **Eval correctness** (PR #40, #41, #42 by Igor Malovitsa)
+- **Multi-platform support** (WASM in PR #32, server branch, Docker in open PR #34)
+
+NOT in the direction:
+- Probabilistic reasoning
+- FactorGraph implementation
+- Tensor/numerical extensions
+- ECAN / attention values
+
+---
+
+## 5. Performance characterization (X1 Gemini, useful for wiki)
+
+[X1 Gemini]: **MORK is highly optimized for full forward chaining (where it greatly outperforms PeTTa) but is currently less efficient for sparse backward chaining.** Sourced from chaining's benchmark README (`chaining/experimental/metamath/benchmarks/README.md`).
+
+**Wiki implication**: when describing MORK's performance, the answer is workload-dependent. Full FC: dramatic speedup. Sparse BC: not yet competitive. Don't over-generalize the "millions of times" claim; it depends on traversal pattern.
+
+---
+
+## 6. Author and contributor map
+
+[X3 unanimous]:
+
+| Author | Effective commits | Role | Cluster context |
+|---|---|---|---|
+| **Adam Vandervorst** | ~239 (Vandervorst + Adam-Vandervorst + Adam V) | **Primary architect** | Also F1R3FLY-io: MeTTaIL, MacroLoop |
+| **Remy Clarke** | ~104 (Remy Pierre Bushnell Clarke + ClarkeRemy) | Co-architect; recent unification work | Also asi-alliance: OmegaClaw-Core |
+| **Luke Peterson** | ~70 (luketpeterson) | Co-architect; authors PathMap + gxhash | External ecosystem (his own crates) |
+| **Igor Malovitsa** (imlvts) | 16 | Recent eval-correctness contributor | New entrant |
+| **Charlie derr** | 2 | Tutorial / docs contributor | New entrant |
+| **Nil Geisweiller** | **1** | Single commit | **NOT MORK's primary tradition** |
+
+**Wiki-outreach implication for MORK cards**: target Vandervorst as primary expert, Clarke and Peterson as secondary. **Do NOT target Geisweiller for MORK questions** — different ecosystem, different design intent. For the "PLN→MORK FactorGraph bridge" question, the right cross-cutting expert pair is Vandervorst (MORK side) + Geisweiller (PLN side).
+
+---
+
+## 7. Cluster lineage map (final, post-Source 8)
+
+```
+Source 1 (PLN book 2008) — theoretical foundation
+
+PLN MeTTa-era line (Geisweiller-led):
+  Source 5 (hyperon-pln, frozen 2023-08-01)
+       ⇣ rename
+  trueagi-io/hyperon-pln → trueagi-io/pln-experimental
+       ⇣ fork
+  ngeiswei/pln-experimental = Source 4 (research, nuPLN)
+       ↘
+  ngeiswei/PLN = Source 2 (PLN3, modular)
+       ⇣
+  trueagi-io/PLN = Source 3 (PLN/, pln0.9 production)
+
+C++ tradition (Linas + Geisweiller, dying):
+  Source 6 (URE, bit-rotting since 2024)
+       ⇣ partial migration
+  Source 7 (chaining, partial + diversification)
+       ⇡ Metamath benchmarks call
+       ⇣
+       (separate ecosystem)
+       ⇣
+Hyperon performance substrate ecosystem (Vandervorst-led):
+  Source 8 (MORK)  ←── THIS PASS
+       Adam Vandervorst (~239), Remy Clarke (~104), Luke Peterson (~70)
+       Hypergraph kernel, NOT a reasoner.
+       FactorGraph papers describe protocols on top; protocols not yet built.
+```
+
+---
+
+## 8. Wiki implications
+
+### 8.1 The FactorGraph MORK paper series (Source 9 priority)
+
+Now that we know MORK is a substrate, the paper series can be characterized precisely. Suggested wiki framing:
+
+> *"The PLN FactorGraph MORK paper series proposes protocols for implementing factor-graph reasoning on top of MORK's hypergraph processing primitives (zipper traversals, Triemap-based graph DB, multi-threaded VM). MORK itself does not currently implement these protocols. Papers should be read as design-stage proposals rather than documentation of existing MORK functionality. Cross-ecosystem implementation work (PLN side: Geisweiller; MORK side: Vandervorst) is the path forward; no integrated implementation exists today."*
+
+### 8.2 Specific wiki updates from this source
+
+1. **MORK is in the cluster** but in a **separate ecosystem** with a different team. Wiki should note this.
+2. **`.mm2` files are MeTTa S-expressions**, not Metamath. Wiki must not conflate "Metamath benchmarks via .mm2 files" with "Metamath format support."
+3. **Performance is workload-dependent**: forward-chaining-friendly, sparse backward chaining still less efficient. The "millions of times speedup" claim is asymptotic / best-case.
+4. **PR #48 closure documents intent**: MORK is symbolic, not numerical. Tensor / einsum / sparse-tensor extensions are explicitly out of scope.
+5. **`distr-combinators` dependency unused** — another "dead infrastructure" signal. Probabilistic primitives are imported as deps but not wired in. Same pattern as chaining's unused `BetaDistribution`.
+6. **MORK has the substrate primitives** that *could* implement probabilistic / FactorGraph reasoning — but the PLN cluster team (Geisweiller et al.) is not the team building MORK, and the MORK team has explicitly de-prioritized numerical extensions.
+
+### 8.3 Per-repo orientation doc refresh
+- `MORK/CLAUDE.md`: surgical update — ZAM is documentation-only (actual zippers in pathmap), `.mm2` is MeTTa-S-expr-with-(exec), decision_tree_learning demonstrates MM2-as-language, no FactorGraph code, PR #48 closure as scope signal.
+- `MORK/AGENTS.md`: similar Codex-side surgical update.
+- `MORK/GEMINI.md`: per Gemini's self-check, well-maintained; minor note about FactorGraph theoretical-only status.
+
+---
+
+## 9. Workflow assessment
+
+**Cross-model triangulation at Source 8**:
+- Strong convergence on the headline (FactorGraph absent).
+- Claude added three substantive unique findings: ZAM-is-documentation-only, .mm2-is-not-Metamath, decision_tree_learning-as-evidence-MM2-is-a-language. None of these were caught by Codex or Gemini.
+- Codex and Gemini agreed at the high level but did not catch the source-code-vs-marketing distinction (ZAM) or the format clarification.
+- **The "dead infrastructure" pattern repeats**: chaining's unused `BetaDistribution` (Source 7) + MORK's unused `distr-combinators` (Source 8). **Probabilistic primitives are imported as affordances across the cluster but never actually integrated into reasoning code.** This is a cluster-level pattern worth flagging in the eventual synthesis.
+
+**No model errors caught at reconciliation.** No attribution drift this round.
+
+**Source 8 declared complete.** Cluster's "wiki has FactorGraph papers but no code" gap is **partially resolved**: there IS code (MORK), but it's a substrate, not the FactorGraph implementation. The papers describe what could be built, not what is built.
+
+---
+
+## 10. Proposed Source 9: Paper bundle
+
+After 8 code sources, the cluster's remaining gap is the theoretical literature. Both Codex and Gemini explicitly suggested moving to the paper bundle as the next step. Suggested scope:
+
+### 10.1 Highest-priority papers (PLN-cluster theory)
+1. **`Publications+Guiding PLN with Attention Allocation`** — wiki Markdown card. Bridges PLN with ECAN attention. Sources 2-3 don't have ECAN integration; understanding the proposed bridge.
+2. **`Publications+Deep Learning Perception with PLN`** — wiki Markdown card. Possibly bridges PLN to neural perception.
+3. **`RawData+Publications+PLN FactorGraph MORK v1..v3.2`** — the iterative paper series. **Now that we know MORK is a substrate, these papers can be characterized as proposals.**
+4. **`RawData+Publications+PLN AND Confidence Framework.md`** + **`PLN AND Confidence Framework.md.pdf`** ("Ben's document" surfaced in Source 4 reconciliation). Likely explains the pln0.9 multiplicative-confidence pivot motivation.
+5. **`RawData+Publications+PLN Chaining On MORK`** — explicit "PLN-on-MORK" paper. Pairs with Source 7 + Source 8.
+6. **`RawData+Publications+PLN NARS TVs`** — TV-comparison paper. Source 1 had Appendix A NARS comparison; this is potentially extended work.
+7. **`RawData+Publications+PLN ECAN 2015v1`** — older ECAN integration paper.
+8. **`RawData+Publications+Wm Pln Book V3`** — likely "Working Memory PLN Book v3".
+9. **`RawData+Publications+PLN kNN NB`** — kNN + Naive Bayes integration. Suggests classifier-level PLN integration.
+10. **`RawData+Publications+PLNUpdate`**, **`RawData+Publications+Pln Review`** — likely status / update documents.
+
+### 10.2 Recommended approach for Source 9
+- **Treat as a paper bundle**, not 10 separate sources. Each model reads all in one pass.
+- **Frame as theory-vs-code reconciliation**: with Sources 2-8 we now know what exists in code. The papers tell us what was planned / proposed. Reconciliation produces an "implementation status" table per claim.
+- **Output**: a single `findings_<model>.txt` per model covering all papers, organized by paper.
+
+### 10.3 Alternative: split into 2-3 sub-sources
+- Source 9a: PLN FactorGraph MORK series (the v1..v3.2 papers + PLN Chaining On MORK)
+- Source 9b: Confidence Framework + PLN-update/review papers
+- Source 9c: PLN-attention/perception/ECAN/NARS-comparison papers
+
+The bundle approach is faster but produces less-detailed extractions. The split approach is more thorough but takes 3× the agent time.
+
+**Recommended**: bundle approach for Source 9. We already have Sources 1-8 doing the heavy code lifting; the papers can be read at the proposal level (key claims, status: implemented / prototyped / aspirational) without needing book-level extraction depth.
+
+---
+
+*End of cross-model reconciled findings for Source 8.*

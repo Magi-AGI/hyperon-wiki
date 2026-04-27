@@ -1,0 +1,233 @@
+# trueagi-io/chaining — Cross-Model Reconciled Findings (Source 7, FINAL)
+
+**Source:** `E:\GitHub\hyperon reference\chaining\` → `trueagi-io/chaining` at commit `f2e1b031d11890e45b41d9ecf3de96896ace01a7` (HEAD = main, 2026-03-17 merge of PR #25 "Add Metamath MORK vs PeTTa benchmarks"; pulled 2026-04-24, no upstream drift).
+
+**Reconciled on:** 2026-04-24
+
+**Inputs:**
+- **Claude** (Opus 4.7 single pass, 75 claims, 39 KB) → `findings_claude.txt`
+- **Codex** (60+ claims, 21 KB) → `findings_codex.txt`
+- **Gemini** (concise, ~10 advisory points, 4 KB) → `findings_gemini.txt`
+
+Confidence legend:
+- **[X3]** all three models confirmed
+- **[X2]** two models confirmed
+- **[X1]** one model caught it
+- **[VERIFIED]** spot-checked against actual source files
+
+---
+
+## 1. CLUSTER HEADLINE QUESTION — RESOLVED
+
+**The Source 6 reconciliation surfaced this as the single highest-priority open question of the cluster pilot:**
+
+> *"Did URE's Bayesian inference-control architecture (Thompson Sampling, BetaDistribution, MixtureModel, ControlPolicy, BIT) survive the migration to `chaining`, or was it lost?"*
+
+**Resolution (X3 unanimous): (b) PARTIAL MIGRATION + DIVERSIFICATION.**
+
+The MeTTa-era PLN cluster's "no inference control" gap **is real.** `chaining` re-explores some URE concepts as research experiments but does NOT implement the production-grade Bayesian control stack URE had.
+
+Quantitative summary (Claude C-2-x): of 16 evaluated URE features, **~5 partially migrated**, **~11 dropped**. The mature URE control stack did NOT land here as a settled successor architecture.
+
+---
+
+## 2. The URE → chaining migration audit (X3 verbatim verification)
+
+| URE feature (Source 6) | chaining status | Confidence |
+|---|---|---|
+| **`BIT` / `AndBIT` / `BITNode`** (And-Or backward inference tree) | **ABSENT** — no symbol with these names exists | [X3] |
+| **`thompson-sample`** | **DEGENERATE STUB** — `experimental/pln-inf-ctl/pln-inf-ctl.metta:L737-L742` handles ONLY confidence ∈ {0, 1}: uniform-random for c=0, return-strength for c=1. Source comment: *"This assumption allows us to operate Thompson sampling without requiring a Beta distribution."* Function name preserved; algorithm NOT. | [X3] |
+| **`BetaDistribution` math** | **DEAD INFRASTRUCTURE** — Full Beta machinery exists in `experimental/common/truthvalue/TruthValue.metta` (Jeffreys prior, posterior α/β, mean = α/(α+β)) — *richer than anywhere else in the cluster* — but is **NOT imported by any inference-control file**. Library exists; nobody calls it. | [X1 Claude — VERIFIED] |
+| **`ActionSelection`** (Handle→TV map wrapper) | **ABSENT** — no symbol | [X3] |
+| **`MixtureModel`** (Universal Operator Induction style mixing) | **ABSENT** — negative grep confirms | [X3] |
+| **`ControlPolicy`** (full orchestrator) | **ABSENT** by name; the *concept* of meta-control rules is present but at toy scale | [X3] |
+| **Control-rule meta-layer in separate atomspace** (URE's `_control_as`) | **PARTIAL — toy-scale** — `experimental/inference-control/inf-ctl-month-bc-cont-xp.metta` defines `&td-ctl-kb` (control-rule atomspace) with **3 hand-written `Continue`-typed rules** for the months-of-year toy theory. Conceptually faithful to URE's `_control_as`; never generalized. | [X3 with Claude verbatim quote] |
+| **`Continue` / continuation predicates** | **PRESENT** — `experimental/inference-control/` defines `Control` / `MkControl` types and a control theory proving `Continue` judgments to gate branch expansion | [X2 Codex + Claude] |
+| **Complexity penalty + Kolmogorov K(D)** | **ABSENT** — no analog in any chaining file | [X3] |
+| **Probabilistic BIT pruning `(1-p)^remaining_iter`** | **ABSENT** (BIT itself is absent; no analog) | [X3] |
+| **`expansion_andbit_weights` survival sampling** | **ABSENT** | [X3] |
+| **`TraceRecorder`** (inference-control-learning replay) | **ABSENT** | [X3] |
+| **Multi-threaded chainer** | **ABSENT** | [X3] |
+| **`FCStat`** (forward-chaining statistics) | **ABSENT** | [X3] |
+| **`UREConfig` AtomSpace-resident config** | **ABSENT** | [X3] |
+| **Meta-rules** (rule-producing rules) | **ABSENT** | [X3] |
+
+**Net assessment**: only the *idea* of Bayesian inference control survives, not the implementation. Two preserved features (`thompson-sample` and the control-rule meta-layer) are at one-experiment scale, both in the months-of-year toy theory. The architectural keystone (`BIT`) and the most sophisticated machinery (`MixtureModel`) are both gone.
+
+---
+
+## 3. Claude's "dead infrastructure" finding (X1, important)
+
+[X1 Claude — VERIFIED] Claude uniquely caught: `experimental/common/truthvalue/TruthValue.metta` contains a **richer Beta-distribution / posterior implementation than anywhere else in the cluster** — Jeffreys prior, posterior α/β computation, mean = α/(α+β). But:
+
+- It is **NOT imported by any inference-control file**.
+- It is **NOT used by `pln-inf-ctl/pln-inf-ctl.metta`'s `thompson-sample`** (which explicitly avoids it via the c∈{0,1} simplification).
+- It is **NOT used in the production PLN line** (Sources 2-3 had no Beta machinery).
+
+This is **dead infrastructure**: someone ported the math, nobody wired it in. Two interpretations:
+1. Reserved for future inference-control work that never happened.
+2. Pedagogical leftover from the URE-era thinking.
+
+Either way, **the wiki should not claim PLN-cluster has Beta-posterior reasoning** — the math exists but is uncalled.
+
+**Wiki implication**: when documenting `chaining`, distinguish between *defined* and *integrated* code. The TV utilities are defined-but-not-wired; the inference-control concepts are wired-but-toy-scale.
+
+---
+
+## 4. Other cluster findings
+
+### 4.1 [X3] `experimental/pln/` preserves four-encoding hyperon-pln line WITH PRE-pln0.9 CONFIDENCE
+
+Claude flagged: `chaining/experimental/pln/` uses **min-based confidence formulas**, matching Source 5 (hyperon-pln) and Source 4 (pln-experimental2), NOT the pln0.9 multiplicative pivot from Source 3 (PLN/).
+
+**Wiki implication**: chaining is **out of sync** with the production PLN line on the confidence-formula change. The pln0.9 pivot did not propagate here. Two distinct lineages of PLN math now coexist in the cluster.
+
+### 4.2 [X3] First MORK code-surface in the cluster
+
+PR #25 (2026-03-17) "Add Metamath MORK vs PeTTa benchmarks" puts MORK code into a cluster repo for the first time. Per Gemini: MORK is *"a high-performance separate binary (likely Rust-based) using a specialized `.mm2` DSL"* — **flagged as Gemini's hypothesis, not directly verified.** Note: `.mm2` files are historically Metamath 2 format; Gemini's "specialized DSL" framing may be inaccurate. The benchmarks show MORK outperforms PeTTa for full forward chaining (Gemini).
+
+**Wiki implication**: the `RawData+Publications+PLN FactorGraph MORK v3.2` paper series finally has corresponding code-level evidence (benchmarks). This closes one half of the "wiki has papers but no code" gap. The actual MORK implementation is still external (binary or separate repo); not in `chaining`'s sources.
+
+**Followup item**: locate MORK source. Per the user's earlier mass-clone, MORK is at `hyperon reference/MORK/` (cloned from `trueagi-io/MORK` originally as a fork-mirror). Worth a Source 8 or 9 deep extraction.
+
+### 4.3 [X3] Active direction is Metamath, not inference control
+
+Recent PRs (#22-25 from Feb-March 2026) are entirely Metamath benchmarks. Inference-control work was a 2-month window in May 2025 (PRs #15-16). **The chaining repo is not currently focused on closing the inference-control gap** — its 2026 roadmap is about Metamath and MORK performance.
+
+### 4.4 [X3] Repository scope (orientation)
+
+22+ experimental subdirectories. By .metta file count:
+- `common/` (24), `pln/` (20), `synthesis/` (16), `metamath/` (9), `sumo/` (8), `program-verification/` (6), `inference-control/` (4), `pln-inf-ctl/` (2), `iterative-chaining/` (2), `proof-tree/` (2), `prob-chaining/` (2), `evolutionary-programming/` (2), `converters/` (2)
+- 1-file experimental tracks: `polyward-chaining`, `no-depth`, `modal-logic`, `lambda-abstraction`, `implicit-argument`, `forward-chaining`, `curried-chaining`, `backward-chaining`
+- `subtyping/` (2)
+- `ArgSetChainer/` (git submodule, not a regular dir; 0 metta files in main tree)
+
+`dtl/` (the production-ish core) has ~5 .metta files (forward, backward, utils, tests).
+
+**Production-vs-research positioning** [X3]: README explicitly self-describes as "experiments." `dtl/` is the closest thing to a stable library. Other code is research playground. **Production PLN3/PLN/ do not import anything from chaining** — confirmed via Sources 2-3 reconciliations (no chaining import statements visible).
+
+### 4.5 [X1 Gemini] Iterative chaining clarification
+
+Gemini noted: *"Iterative Chaining"* in `experimental/iterative-chaining/` refers to **memoization of intermediate proof subtrees** to accelerate future queries — not message-passing as in some theoretical papers. Useful clarification for wiki.
+
+### 4.6 [X3] Other research tracks (one-liners)
+
+- **`metamath/`**: Metamath propositional calculus port + MORK vs PeTTa performance benchmarks; current 2026 active direction.
+- **`synthesis/`**: program synthesis via backward chaining; 16 .metta files; **carries Source 5 hyperon-pln's synthesis engine forward**.
+- **`pln/`**: PLN ports preserving the 4-encoding pattern from hyperon-pln; pre-pln0.9 confidence semantics.
+- **`prob-chaining/`**: Problog-inspired probabilistic chaining; **NOT URE-style** (different tradition).
+- **`modal-logic/`**, **`lambda-abstraction/`**, **`subtyping/`**, **`evolutionary-programming/`**, **`program-verification/`**, **`implicit-argument/`**: wholly new directions, not in URE or hyperon-pln.
+- **`sumo/`**: SUMO-KIF reasoning; SUO-KIF→MeTTa converter shell script.
+- **`proof-tree/`**: proof-tree construction primitives.
+- **`evolutionary-programming/`**: PR #8 reframed evolutionary programming as reasoning — possible MOSES-successor lineage.
+
+---
+
+## 5. Cluster lineage map (final, post-Source 7)
+
+```
+Source 1 (PLN book 2008) ─── theoretical foundation
+Source 5 (patham9/hyperon-pln, frozen 2023-08-01) ─── MeTTa formalization seed
+   ⇡ rename
+trueagi-io/hyperon-pln → trueagi-io/pln-experimental
+                                ⇣ fork
+                          ngeiswei/pln-experimental = Source 4 (research, nuPLN, surprisingness)
+                                ↘
+                          ngeiswei/PLN = Source 2 (PLN3, modular MeTTa)
+                                ⇣
+                          trueagi-io/PLN = Source 3 (PLN/, pln0.9 — production library, multiplicative confidence)
+
+────── separate C++ tradition ──────
+
+Source 6 (ngeiswei/ure = ure2)
+   research extension of book 2008 (BIT + Thompson + MixtureModel + ControlPolicy + Beta + complexity penalty)
+   bit-rotting since 2024
+                                ⇣ explicit handoff via PR #132 + PR #1 of chaining
+                          Source 7 (trueagi-io/chaining)  ←── MIGRATION TARGET
+                                research playground, active to 2026-03
+                                ~5 of 16 URE features as one-experiment-scale sketches
+                                Beta-machinery defined-but-unused
+                                Active direction = Metamath / MORK benchmarks (not inference control)
+```
+
+**Both lineages converge on Geisweiller as primary author** (Source 4: 471 commits in pln-experimental2; Source 6: 3,797 commits in URE; Source 7: 280 commits / 96% in chaining; Source 5: dominant merger). **He IS the bridge person across all current MeTTa-era PLN-cluster work.**
+
+---
+
+## 6. Wiki implications (cluster-level)
+
+### 6.1 The "no inference control" gap is REAL — flag it
+
+After Source 7, we can confidently state in wiki text:
+
+- **The 2008 PLN book describes BIT + multi-armed bandit control.**
+- **URE (OpenCog Classic, C++) implemented this and went beyond it** with Bayesian Thompson Sampling, MixtureModel, control rules, Kolmogorov complexity heuristic, multi-threaded chainer, FCStat, AtomSpace-resident config.
+- **`chaining` (the URE successor) preserves only sketches** — `thompson-sample` as a degenerate stub, control rules as 3 hand-written Continue rules in a toy theory. Beta machinery defined but unused.
+- **Production PLN3/PLN/ has none of it** — confidence-priority queue only.
+
+The MeTTa-era PLN cluster's inference control is **less sophisticated than the 2008 book described, less than URE implemented, and less than chaining sketches**. This is a legitimate "loss of capability" finding for the wiki.
+
+### 6.2 Cluster architectural narrative for the Published card
+
+Suggested wiki framing for `Hyperon AI Algorithms+PLN+PLN Full` (Draft):
+
+> *"PLN's inference-control mechanism in the current Hyperon-MeTTa lineage is a confidence-priority forward-chaining queue (per `lib_pln.metta`'s `Deriver`). This is a substantial simplification from the 2008 book's described BIT + multi-armed bandit framework, and from the OpenCog Classic URE C++ implementation that extended the book with Bayesian Thompson Sampling, MixtureModel, and AtomSpace-resident control rules. The successor `chaining` repository preserves these concepts at experimental / one-test scale (e.g., `experimental/pln-inf-ctl/`, `experimental/inference-control/`) but has not productionized them into the core `lib_pln.metta` library. Re-establishing inference control at production scale is open research work."*
+
+### 6.3 Specific wiki updates from this source
+
+1. **MORK code now exists** (PR #25 benchmarks) — wiki should note that the `RawData+Publications+PLN FactorGraph MORK` paper series now has an associated code surface in `chaining/experimental/metamath/`. (The MORK binary itself is external; `chaining` uses it.)
+2. **`chaining`'s `experimental/pln/` uses pre-pln0.9 confidence** — wiki PLN version map should distinguish between the production library (multiplicative) and the research playground (min-based).
+3. **DTL is the only production-ish layer** in chaining — wiki should describe `chaining` primarily as a research repository.
+4. **Hedra Seid Yusuf** authored the DTL module (PRs #5, #6) — secondary expert candidate for wiki review on chainer correctness.
+5. **Roman Treutlein's argset chainer** is a git submodule (`experimental/ArgSetChainer/`) — separate repository, separate review track.
+6. **Active 2026 direction is Metamath benchmarks**, not inference control — wiki should set expectations accordingly.
+
+### 6.4 Per-repo orientation doc refresh
+- `chaining/CLAUDE.md`: surgical update — add the URE-migration audit summary, the Metamath direction note, and the dead-Beta-infrastructure observation.
+- `chaining/AGENTS.md` (Codex): similar surgical update.
+- `chaining/GEMINI.md` (Gemini's own self-check noted): add the "Legacy Migration" section per Gemini's recommendation; lacks the MORK/PeTTa benchmarking narrative + URE migration details.
+
+---
+
+## 7. Workflow assessment
+
+**Cross-model triangulation at Source 7**: clean convergence. All three models reached the same conclusion (partial migration + diversification) by independent paths.
+
+**Claude's value-add**: the "dead infrastructure" finding (`TruthValue.metta` Beta machinery defined but uncalled). Codex and Gemini noted the absence of MixtureModel and the simplification of thompson-sample but didn't catch the unused-Beta-library detail. This is a genuinely useful nuance for the wiki — distinguishes "missing capability" from "defined-but-unintegrated capability."
+
+**Codex's value-add**: cleaner per-component outcome table; explicit "no MixtureModel surface, no BIT surface, no ControlPolicy surface" by negative-grep verification.
+
+**Gemini's value-add**: the iterative-chaining-as-memoization clarification and the MORK-binary hypothesis (with the Rust/`.mm2` framing flagged as unverified).
+
+**No model errors caught at reconciliation.** Standing attribution-verification rule applied; no spurious claims to flag.
+
+**Source 7 declared complete.** Cluster's central open question resolved: **the inference-control gap is real**.
+
+---
+
+## 8. Proposed Source 8
+
+The PLN cluster has covered: book (1), PLN3 (2), PLN/ (3), pln-experimental2 (4), hyperon-pln (5), URE/ure2 (6), chaining (7). What's left:
+
+### Direct cluster repos (low leverage)
+- **`PLN2/`** (patham9/PLN) — patham9's mirror at the same `55f1751` commit as PLN3 (Source 2). **Almost certainly redundant.** A confirm-or-skip pass would be quick; not high priority.
+- **`hyperon-pln-hansonrobotics/`** — separate hansonrobotics fork. Different content per Codex's earlier flag (some SUO-KIF stub work). Low priority unless Hanson-robotics-cluster work expands.
+
+### Adjacent code (medium leverage)
+- **`MORK/`** — now confirmed as the active research direction. Repo presumably contains the binary + Rust source. **High leverage** because the wiki has an entire FactorGraph MORK paper series with no extracted code yet. Source 7's PR #25 benchmark integration just gave us the entry point.
+- **`PeTTa/`** — the comparison target in PR #25's benchmarks. Same priority as MORK.
+
+### Theoretical content (high leverage)
+- **`Publications+Guiding PLN with Attention Allocation`** + **`Publications+Deep Learning Perception with PLN`** + **`RawData+Publications+PLN FactorGraph MORK v1..v3.2`** + **`PLN AND Confidence Framework`** — all PLN-specific paper content not yet extracted. **The "wiki has papers but no extraction" gap.**
+
+### Recommend Source 8 = MORK (the code repo)
+
+Rationale: Source 7 just demonstrated MORK is now in the cluster's active codebase. Closing the implementation-side first, then extracting the theory papers, follows the same pattern that worked for the URE → chaining transition (we needed Source 6 first to know what to look for in Source 7).
+
+Alternatively: **Source 8 = `Publications+Probabilistic Logic Networks` (the PLN book chapters not yet covered) + `Publications+Guiding PLN with Attention Allocation` + the FactorGraph MORK paper series**. Treat them as a paper bundle; multi-paper extraction in one pass.
+
+I lean toward **Source 8 = MORK code** since the implementation-first pattern worked well, and the FactorGraph MORK paper series will be more comprehensible after we know what MORK actually is.
+
+---
+
+*End of cross-model reconciled findings for Source 7.*

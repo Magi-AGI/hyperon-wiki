@@ -1,0 +1,229 @@
+# pln-experimental2 (ngeiswei) — Cross-Model Reconciled Findings (Source 4, FINAL)
+
+**Source:** `E:\GitHub\hyperon reference\pln-experimental2\` → `ngeiswei/pln-experimental` at commit `6c9525e1657c4bafac78ab6367bc10253c7e403c` (pulled 2026-04-24; most recent in the cluster, 2026-03-12).
+
+**Reconciled on:** 2026-04-24
+
+**Inputs:**
+- **Claude** (Opus 4.7 single pass, 130 claims, 53 KB) → `findings_claude.txt`
+- **Codex** (60+ claims, 23 KB) → `findings_codex.txt`
+- **Gemini** (concise, ~20 points, 5 KB) → `findings_gemini.txt`
+
+Confidence legend:
+- **[X3]** all three models independently confirmed
+- **[X2]** two models confirmed
+- **[X1]** one model caught it
+- **[VERIFIED]** cross-checked against actual git data in the brief's §Git-history block
+- **[CORRECTED]** factual error in a model output flagged and resolved via source verification
+
+---
+
+## 1. Executive summary
+
+`pln-experimental2` is **Nil Geisweiller's personal research playground** (471 of ~520 commits, ~95% of repo). Primary deliverables are the **`docs/nuPLN/nuPLN.tex` manuscript** (nuPLN = "new universal PLN"), supporting use-case docs (surprisingness, next-token-prediction), Maxima symbolic derivations (conjunction-introduction), and a narrow `experimental/early-pln/` 4-encoding experiment (dependent-types / entail / equal / match) covering only 3 rules.
+
+**Major finding**: nuPLN is a serious successor-theory attempt addressing the 2008 book's induction-universe-size limitation via a **Solomonoff-style global universal distribution ν**, but derivations are incomplete at source level — TODO citations, `NEXT` placeholders, empty sections. **Theoretical ambition is high; formal execution is mid-flight.**
+
+**Key negative findings**:
+- `Bl` and `Pr` types are NOT the missing IndefiniteTV/DistributionalTV hierarchy — they are degenerate down-steps from STV with fixed count=1e9 (fixed-certainty wrappers over Bool/Number).
+- Repo **predates** the pln0.9 multiplicative-confidence pivot — its confidence formulas are still `min`-based (matches PLN3/pre-pivot).
+- Only 3 rules implemented across 4 encodings: Deduction, ModusPonens, ImplicationDirectIntroduction. Zero recovery of quantifiers/temporal/causal/intensional/distributional/FactorGraph/MORK.
+
+**One new rule worth adding to wiki coverage**: **ImplicationDirectIntroduction (IDI)** — base + recursive Bayesian forms (`inc-pos-count` / `inc-neg-count`) with sorted evidence IDs for double-counting prevention. Not present in Sources 2-3.
+
+---
+
+## 2. Unanimous cross-model findings
+
+### 2.1 [X3] nuPLN is a real successor-theory attempt with a Solomonoff-style grounding
+
+All three models confirm: `docs/nuPLN/nuPLN.tex` introduces a **global universal distribution ν** to ground induction, mirroring Solomonoff induction. Motivation: fix the 2008 book's acknowledged inability to globally rescue induction via any single universe-size choice (Source 1 §2.8). **ν is uncomputable in the strict Solomonoff sense**; nuPLN treats it as a theoretical anchor rather than a computable primitive.
+
+**[X1 Claude] Methodological pivot within nuPLN**: nuPLN **dissolves the intensional/extensional split** rather than implementing conversion rules between them. It keeps only the extensional side via an indicator-function / satisfying-set isomorphism (Claude: L254-266 verbatim — extensional = induction-approach to inheritance, intensional = abduction-approach to the same inheritance). If accepted, this would obsolete an entire book-era machinery. Worth expert review.
+
+**[X3] Derivations are incomplete**: §4.1 (Predicate Direct Introduction) and §4.2 (Implication Direct Introduction) both end with bare `NEXT` placeholders. 6 un-resolved `\cite{TODO}`. One empty section, one empty subsection. **Readers should treat nuPLN as proposed-theory, not complete-theory.**
+
+### 2.2 [X3 CORRECTED] Bl / Pr are NOT the missing TV hierarchy
+
+Gemini's original preview hypothesis (before extraction) was that Bl and Pr might be Indefinite/Distributional TVs. **All three extractions agree: they are NOT.**
+
+- `Bl` wraps `Bool` with count = 1e9 (fixed certainty).
+- `Pr` wraps `Number` with count = 1e9 (fixed certainty).
+- Claude verified: **no rule formula consumes Bl or Pr** — only STV is destructured by Deduction / ModusPonens / IDI.
+- They are degenerate high-confidence wrappers, not evidence-accumulation types.
+
+The book's IndefiniteTV (`<[L,U], b, k>`) and DistributionalTV (StepFunction, Polynomial) remain **unimplemented** in this repo, same as in Sources 2-3.
+
+### 2.3 [X3] Confidence-pivot status: PREDATES pln0.9
+
+All three models confirm `pln-experimental2` uses `min`-based / count-based confidence formulas, matching PLN3 and the pre-pivot state. **The pln0.9 multiplicative-confidence pivot is NOT present here.**
+
+**[CORRECTED]** Gemini's summary claimed *"the multiplicative confidence shift was also active here in March 2026, authored by Peter Isaev."* This is **factually wrong**:
+- The commit `7ffce05` *"Truth Functions and Confidences are better fit"* exists in `PLN/` (Source 3), NOT in `pln-experimental2`.
+- Peter Isaev has **zero commits** in `pln-experimental2` (verified via `git shortlog`: 471 Geisweiller, 22 Hedra, 19 glicerico, 5 leungmanhin, 1 Yziquel, 1 besSveta — no Isaev).
+- The 2026-03-12 commits here are by Geisweiller (`"Misc"` and `"More brainstorming notes"`).
+- Gemini's own in-turn error: **the Source 4 brief's §Git-history block explicitly flagged this correction**, but Gemini's summary reproduced the earlier prior-turn error anyway.
+
+Codex corrected itself in its actual extraction ("this repo predates the pln0.9 multiplicative-confidence pivot"), but Gemini's summary did not. Lesson for future reconciliation: **verify each model's attribution claims against the `§Git-history` block in the brief, not against prior informal turns.**
+
+**Anomaly noted by all three**: ModusPonens in `experimental/early-pln/` uses constant `0.2` (labeled `$notABs`), 10× the book's `c = 0.02`. In-code comment flags as *"temporary hack."* Same constant appears in PLN3 and PLN/'s SymmetricMP (not asymmetric MP) — suggests a shared intuition about background-probability for the sim-direction inference, not aligned with book theory.
+
+### 2.4 [X3] Rule-family recovery: effectively zero
+
+Only 3 rules implemented across all four `experimental/early-pln/{dependent-types, entail, equal, match}/` encodings:
+- Deduction
+- ModusPonens
+- ImplicationDirectIntroduction (**NEW — not in Sources 2-3**)
+
+**All confirmed absent**: quantifiers (ForAll/ThereExists), temporal/causal (PredictiveImplication/SeqAND family), intensional↔extensional conversion rules, distributional / indefinite TV machinery, concept-geometry deduction, multideduction, BRGI, OBI, attention/importance values, FactorGraph, MORK, Context as first-class, possible-worlds variable instantiation.
+
+### 2.5 [X3] ImplicationDirectIntroduction (IDI) — the one new rule
+
+Distinct from Sources 2-3. Gemini's concise framing (verified by Claude's detail):
+- **IDIBase**: base case for empty evidence set.
+- **IDIRecursive**: accumulates evidence via sorted-ID check to prevent double-counting when composing.
+- Helper functions: `inc-pos-count`, `inc-neg-count` — incremental Bayesian updates.
+
+Interpretation: IDI is the rule that would generate an Implication link's truth-value from direct observation of the implication holding / failing, rather than from deduction of component terms. Candidate to propose for the wiki's `Hyperon AI Algorithms+PLN+PLN Full` as a "forthcoming rule family" once Geisweiller completes the nuPLN derivations.
+
+### 2.6 [X3] Maxima `.mac` is exploratory, not yet ported
+
+`experimental/truth-value-formula/conjunction-introduction/conjunction-xp.mac` (387 lines) derives `Pr(pAB = x)` as a Stirling-approximation of the binomial-combination probability for conjunction-introduction. **Key theoretical result (Claude verified verbatim)**: under independence assumption, the distribution converges to a **Dirac delta at pA·pB as n → ∞**.
+
+Also studies A→B-dependency and A↔B-dependency variants. Conclusion in the file: *"the structure of a composite predicate, by itself, provides some forms of evidence."*
+
+**Status**: exploratory, **not ported into any rule formula in the MeTTa tree**. The repo's code and the Maxima work are parallel research tracks, not integrated.
+
+### 2.7 [X3] Repo activity status
+
+Active research phase ran 2025-06 through 2025-12 (nuPLN manuscript, surprisingness doc, next-token-prediction use case, conjunction-introduction). **No code/theory changes in the last 3 months** — only "More brainstorming notes" + `Misc`. Repo is in an **introspective / reflective phase**, not mid-implementation-sprint.
+
+---
+
+## 3. Model-unique contributions (worth preserving)
+
+### Claude-unique
+- **νPLN dissolves intensional/extensional** (§2.1 above) — methodological pivot not highlighted by Codex/Gemini.
+- Maxima detail: specific convergence to Dirac delta at `pA·pB` and the structure-as-evidence conclusion.
+- Concrete incompleteness cataloging: §4.1/§4.2 bare `NEXT`, 6 `\cite{TODO}`, empty section/subsection counts.
+- 4 specific new publications with identifiers + 1 local-only document (see §4).
+- Detailed attribution verification confirming 471 Geisweiller commits.
+
+### Codex-unique
+- Clean framing of "still narrow implementation surface" vs "serious successor-theory attempt" dichotomy.
+- Explicit call for per-repo doc refresh after reconciliation (already codified in our workflow).
+- Sharp observation that `pln-experimental2/CLAUDE.md` currently overstates the implementation surface — an orientation-doc update item.
+
+### Gemini-unique
+- Concise IDI description: "IDIBase and IDIRecursive with sorted evidence IDs to prevent double-counting" — clearer than Claude's more technical framing.
+- Explicit statement that the existing `GEMINI.md` correctly identifies the repo as a research branch, so minimal orientation-doc surgical updates needed.
+
+### Gemini-wrong (flagged)
+- The "multiplicative pivot connection" attribution to Isaev in March 2026 — contradicts git data in the brief's §Git-history block and Gemini's own claim that the repo "predates the pivot." Internal inconsistency within Gemini's output. Treated as a factual error, not a finding.
+
+---
+
+## 4. Discovered publications (feeds wiki RawData+Publications reconciliation)
+
+### 4.1 New publications (not surfaced by Sources 1-3)
+
+From `docs/nuPLN/local.bib` (121 entries; mostly AI-DSL legacy) + README citations:
+
+| Title | Author(s) | Year | Identifier |
+|---|---|---|---|
+| *(Warrell 2016 paper on probabilistic logic in hypergraphs)* | Jonathan Warrell | 2016 | arXiv:1602.06420 |
+| *(Warrell 2022 AGI-22 paper)* | Jonathan Warrell | 2022 | AGI-22 proceedings |
+| *Engineering General Intelligence, vol. 2, Ch. 18* | Goertzel, Pennachin, Geisweiller | 2014 | EGI book chapter |
+| *Temporal PLN* | Nil Geisweiller | 2023 | ResearchGate 370994045 |
+
+**Plus one local-only document referenced but not externally published:**
+- `PLN_AND_Confidence_Framework.md.pdf` — referred to as "Ben's document," likely an unpublished Goertzel note. **Action: locate this file if it's in any of our local repos or mailbox archives; it's a direct-source-of-current-thinking on the confidence framework that may explain the pln0.9 pivot's motivation.** Wiki `RawData+Publications+PLN AND Confidence Framework.md` card already exists per Source 2 findings — cross-check that card against this filename for alignment.
+
+### 4.2 Existing publications (already in wiki coverage)
+
+- PLN book 2008 (Goertzel/Iklé/Goertzel/Heljakka) — Source 1.
+- Solomonoff 1964 — citation anchor for nuPLN's ν; worth verifying it's in wiki's RawData+Publications.
+- NARS (Pei Wang) — implicit via nuPLN.tex discussion.
+- Goertzel 2009 PLN paper — citation in nuPLN bibliography.
+
+**Net: 4 new publications + 1 local document to add** to wiki RawData+Publications; 2 existing citations to verify.
+
+---
+
+## 5. Relationship to other PLN repos
+
+`pln-experimental2` positions as a **parallel research track**, not upstream or downstream of PLN3/PLN. Key relationships:
+
+- **Author**: Geisweiller authored Source 4 sole-contributor; Source 2 (PLN3) and Source 3 (PLN/) are Hammer/Isaev-dominated. **Different author ownership, different priorities.**
+- **Code lineage**: `experimental/early-pln/` is author-acknowledged as "legacy" (commit message: *"Remove redundant work already present in the chaining repository"* — some of the experimental surface was pruned 2025-12).
+- **Dependency direction**: `experimental/early-pln/dependent-types/DeductionDTL.metta` is the same file that `PLN3/src/Formulas.metta` and `PLN/lib_pln.metta` cite as their deduction-formula provenance. So `pln-experimental2` (and earlier hyperon-pln, Source 5 target) is the theoretical-formalization ancestor of the consistency-condition + deduction-formula code in Sources 2-3.
+- **Cutting-edge branches (2)**: `nupln-xt` and `tv-calc-xps` — both worth inspecting. Neither was read in this extraction pass (pass was on `main`).
+
+**Source 5 target**: `hyperon-pln` (patham9, 2023-dormant) is the original DTL-formalization seed — the theoretical ancestor of Source 4's `experimental/early-pln/` subtree. Looking at it next closes the theoretical-lineage arc.
+
+---
+
+## 6. Actionable items for wiki card edits
+
+### 6.1 Add to the cluster synthesis
+1. **nuPLN as a proposed successor theory** — address the 2008 book's induction-universe-size limitation via a Solomonoff-style global universal distribution ν. Flag as proposed-not-complete (TODOs, NEXT placeholders).
+2. **Intensional/extensional dissolution hypothesis** (νPLN §) — theoretical pivot worth expert review. Do NOT blithely adopt in wiki text without expert sign-off.
+3. **ImplicationDirectIntroduction (IDI) rule** — new to the cluster vs Sources 2-3. Describe as a base + recursive Bayesian form. Status: experimental, not in production `lib_pln.metta`.
+4. **Conjunction-introduction research via Maxima** — note that structure-of-predicate-as-evidence is a research-active concept with Dirac-delta convergence result. Exploratory; not implemented.
+5. **Expert attribution**: for nuPLN theoretical review, **Nil Geisweiller is the authoritative expert**. Hedra S Yusuf for forward-chainer material.
+
+### 6.2 Flag unchanged items
+- Still no quantifiers / temporal / intensional-conversion / distributional / FactorGraph / MORK in any PLN-cluster code extracted so far (sources 2-4).
+- IDI's ModusPonens-like `0.2` constant is a temporary hack (in-code comment).
+
+### 6.3 Per-repo orientation doc refresh (deferred to post-reconciliation step)
+Per the workflow:
+- `pln-experimental2/CLAUDE.md` needs a surgical update: currently overstates implementation surface; should reflect "3 rules across 4 encodings, research playground, primary deliverable is nuPLN manuscript."
+- `pln-experimental2/AGENTS.md` similar refresh from Codex side.
+- `pln-experimental2/GEMINI.md` per Gemini's own note, correctly identifies as a research branch; minimal changes needed.
+- Hold `hyperon-wiki/CLAUDE.md` cluster-close refresh for end of PLN cluster.
+
+### 6.4 Add publications
+- Warrell 2016 (arXiv 1602.06420), Warrell 2022 (AGI-22), EGI vol 2 ch 18, Geisweiller 2023 Temporal PLN → new RawData+Publications+ cards needed (or stubs if full text unavailable).
+- Locate and cross-reference `PLN_AND_Confidence_Framework.md.pdf` / existing `RawData+Publications+PLN AND Confidence Framework.md` wiki card.
+
+---
+
+## 7. Workflow assessment
+
+**Cross-model value at Source 4:** three independent perspectives converged on all major findings. Gemini's single factual error (pivot attribution) was caught because:
+1. The §Git-history block in the brief had explicit corrections flagged upfront.
+2. The reconciler (me, main Claude) cross-referenced Gemini's claim against the git data before accepting.
+3. Codex's independent extraction contradicted Gemini's claim.
+
+**Lesson codified**: **the §Git-history block in the brief is authoritative for attribution/chronology claims**; model summaries that contradict it should be flagged during reconciliation, not propagated.
+
+**Cost vs value at Source 4:** reasonable. Three models' output totaled ~80 KB; reconciliation surfaced one methodological pivot (intensional/extensional dissolution), one new rule (IDI), one incompleteness catalog, 4 new publications, and rejected one hypothesis (Bl/Pr as missing TV hierarchy). Net new content for wiki editing is substantial.
+
+**Source 4 declared complete.** Unblocked for Source 5.
+
+---
+
+## 8. Proposed Source 5: `hyperon-pln` (patham9)
+
+**Rationale**: `hyperon-pln` is the **original DTL-formalization seed** that `pln-experimental2/experimental/early-pln/dependent-types/` and `PLN3/`+`PLN/`'s `Constraints.metta` / `Truth_Deduction` directly cite as provenance (`trueagi-io/hyperon-pln/blob/main/metta/pln/dependent-types/DeductionDTL.metta`). Looking at it closes the theoretical-lineage arc across the PLN cluster.
+
+**Known constraints** (from Source 3 scoping):
+- 2023-dormant (last commit 2023-08-01).
+- Small (~50 KB total).
+- Narrow scope: 2-3 rules explored across 4 semantic encodings (DTL / Entail / Equal / Match). Similar structural pattern to Source 4's `experimental/early-pln/`.
+- Owned by patham9 (Patrick Hammer — same person as Source 2's author), not trueagi-io despite PLN3 citations pointing at `trueagi-io/hyperon-pln`. **Confirmation needed**: did trueagi-io/hyperon-pln transfer ownership to patham9, or is `trueagi-io/hyperon-pln` a separate repo we haven't yet cloned?
+
+**Focus questions for Source 5 brief:**
+1. Does this repo's dependent-types encoding pre-date or succeed `pln-experimental2/experimental/early-pln/dependent-types/`?
+2. Are its formulas verbatim-copied into `lib_pln.metta` (i.e., PLN3/PLN borrow from here directly), or have they been modified?
+3. Does the Idris file (`idris/StrictlySorted.idr`) relate to current work or abandoned lineage?
+4. What's the status of `trueagi-io/hyperon-pln` — same repo transferred, or a separate sibling?
+
+**Alternatives**: `ure2` (legacy C++ URE; conceptually foundational but a different tradition — lower leverage); `pln-experimental` (trueagi-io, not ngeiswei; likely just the upstream of `pln-experimental2` with less activity).
+
+Proceed with Source 5 = `hyperon-pln`?
+
+---
+
+*End of cross-model reconciled findings for Source 4.*

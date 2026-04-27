@@ -1,0 +1,127 @@
+# pln-experimental2 Extraction - Codex Findings
+
+**Repo:** `pln-experimental2`
+**Commit:** `6c9525e1657c4bafac78ab6367bc10253c7e403c`
+**Model:** Codex
+**Extraction date:** 2026-04-24
+**Claim counts per section:** 1=5, 2=7, 3=5, 4=5, 5=4, 6=4, 7=4, 8=5, 9=6, 10=4
+
+## 1. Architecture and repo layout
+
+C-1-1: `README.md` positions this repo as an experimental PLN workspace and explicitly sends production users elsewhere: "for a more production-ready version one may go to the PLN repository." It also defines the top-level split as `docs/` plus `experimental/`, with the former holding nuPLN/use-case writings and the latter holding chaining and truth-value-formula experiments. [README.md:L3-L22]
+
+C-1-2: `experimental/README.md` narrows the scope further: `early-pln` is described as "early on experiments that are probably no longer relevant but still kept around just in case", while `truth-value-formula` is the dedicated folder for symbolic truth-value calculations. That means the repo's own docs frame the code as exploratory residue around a manuscript/research core, not as a clean implementation branch. [experimental/README.md:L1-L12]
+
+C-1-3: The executable PLN subtree is small and highly regular. `experimental/early-pln/pln/README.md` says the port is explored in exactly four encodings: `match`, `entail`, `equal`, and `dependent-types`. The checked-in file list under `experimental/early-pln/pln/` matches that description and only contains Deduction, Modus Ponens, and Implication Direct Introduction families plus tests. [experimental/early-pln/pln/README.md:L1-L8] [experimental/early-pln/pln/*]
+
+C-1-4: The truth-value side is similarly compact. The common truth-value layer is concentrated in `TruthValue.metta`, `EvidentialTruthValue.metta`, and `TemporalTruthValue.metta`, not in a large hierarchy of rule-specific TV modules. The repo's "wider" surface comes mostly from docs (`nuPLN`, `surprisingness`, `next-token-prediction`) and from the Maxima conjunction-introduction experiments. [experimental/early-pln/common/truthvalue/TruthValue.metta:L10-L142] [experimental/early-pln/common/truthvalue/EvidentialTruthValue.metta:L11-L61] [experimental/early-pln/common/truthvalue/TemporalTruthValue.metta:L14-L26]
+
+C-1-5: The local meta-docs mostly agree on the experimental/mirror framing, but `CLAUDE.md` overstates implementation heft by summarizing the repo as "60 implementation files" with core modules like `Unify.metta`. The actual PLN rule surface exposed under `experimental/early-pln/pln/` is much narrower than that summary suggests. `AGENTS.md` is closer to the truth when it says there is no root test harness and the repo should be treated like a mirror/research branch. [CLAUDE.md:L7-L18] [CLAUDE.md:L50-L67] [AGENTS.md:L3-L16]
+
+## 2. `docs/nuPLN/` - theoretical manuscript
+
+C-2-1: `nuPLN.tex` explicitly proposes a Solomonoff-style reformulation of PLN. The introduction says the goal is to approach an unknown first-order distribution `mu` via a known second-order universal distribution `nu`, and because this "departs somewhat from the definition of PLN in the PLN book" the author gives it a new name, `nuPLN`. [docs/nuPLN/nuPLN.tex:L55-L79]
+
+C-2-2: The manuscript's core semantic move is to make a global probability space unavoidable. In the Definitions section, the author says he "cannot conceive a complete definition of PLN that does not rely on such global probability distribution", then defines `(Omega, Field, nu)` where each world contains a probabilistic predicate/program plus its full mapping over the domain. [docs/nuPLN/nuPLN.tex:L81-L101] [docs/nuPLN/nuPLN.tex:L102-L170]
+
+C-2-3: The global-distribution proposal is stronger than a notational cleanup. `mu` is typed as `Domain -> Omega -> Bool` (or curried multi-argument variants), and the manuscript treats reasoning about unknown worlds/generators as fundamental rather than optional. That is the repo's clearest attempt to answer the classic PLN problem of induction without a single fixed global event space. [docs/nuPLN/nuPLN.tex:L130-L167] [docs/nuPLN/nuPLN.tex:L222-L228]
+
+C-2-4: The manuscript does not implement the original intensional/extensional split; it argues that the split should disappear conceptually. In `Concepts vs Predicates`, Geisweiller says extensional inheritance is induction-oriented, intensional inheritance is abduction-oriented, and either side can define the other, so he chooses the extensional side and then recovers the predicate side through indicator-function / satisfying-set isomorphism. [docs/nuPLN/nuPLN.tex:L241-L266] [docs/nuPLN/nuPLN.tex:L295-L315]
+
+C-2-5: The manuscript is still incomplete at source level. It contains unresolved `\cite{TODO}` placeholders, unresolved `\ref{TODO}` placeholders, and bare `NEXT` markers in both the Bernoulli-posterior subsection and the Implication Direct Introduction subsection. Two subsection headers, `Truth Value as Posterior Distribution` and `Statement versus Judgement`, are effectively empty. [docs/nuPLN/nuPLN.tex:L56-L89] [docs/nuPLN/nuPLN.tex:L213-L213] [docs/nuPLN/nuPLN.tex:L256-L291] [docs/nuPLN/nuPLN.tex:L336-L339] [docs/nuPLN/nuPLN.tex:L384-L411]
+
+C-2-6: The Implication Direct Introduction derivation is specifically unfinished. The text says the rule is not explicit in the 2008 book but can be derived from iterative induction and revision, and it sets up a Beta/Bernoulli posterior story for implication truth values; then the actual derivation stops at `NEXT`. [docs/nuPLN/nuPLN.tex:L392-L411]
+
+C-2-7: The practical consequence is that `nuPLN.tex` is a successor-theory draft, not a completed theoretical replacement for the 2008 book. Its aspiration is clear and important, but the repo does not contain finished proofs or a completed semantics document that could be cited as settled doctrine without expert review. [docs/nuPLN/nuPLN.tex:L51-L52] [docs/nuPLN/nuPLN.tex:L55-L79] [docs/nuPLN/nuPLN.tex:L413-L418]
+
+## 3. Alternative truth-value types (`Bl`, `Pr`, `STV`, `ETV`, `TTV`)
+
+C-3-1: `TruthValue.metta` defines exactly three core constructors: `Bl : Bool -> TruthValue`, `Pr : Number -> TruthValue`, and `STV : Number Number -> TruthValue`. The comments label `Pr` as "mere probability" and `STV` as the second-order probability constructor. [experimental/early-pln/common/truthvalue/TruthValue.metta:L16-L26]
+
+C-3-2: `Bl` and `Pr` are not the missing richer TV hierarchy from the book. Their `count` is forced to `max-count = 1e9` and their `confidence` is forced to `1.0`, which makes them degenerate "full-certainty" wrappers rather than implementations of `IndefiniteTruthValue` or `DistributionalTruthValue`. [experimental/early-pln/common/truthvalue/TruthValue.metta:L43-L45] [experimental/early-pln/common/truthvalue/TruthValue.metta:L97-L112]
+
+C-3-3: Only `STV` participates in real evidence accumulation. `inc-neg-count` and `inc-pos-count` are defined solely on `STV`, converting confidence to count, changing the positive/total counts, and returning a new `STV`. That means the repo's real inductive updating machinery still lives in the classic `(strength, confidence)` pair, not in `Bl` or `Pr`. [experimental/early-pln/common/truthvalue/TruthValue.metta:L51-L83]
+
+C-3-4: `ETV` is a wrapper around an existing `TruthValue`, not a new truth-value family. `EvidentialTruthValue.metta` defines `ETV (OrderedSet a) TruthValue`, and all accessors (`mode`, `count`, `confidence`, `mean`) simply delegate to the wrapped TV while carrying explicit evidence alongside it. [experimental/early-pln/common/truthvalue/EvidentialTruthValue.metta:L17-L27] [experimental/early-pln/common/truthvalue/EvidentialTruthValue.metta:L29-L61]
+
+C-3-5: The temporal layer is also only a wrapper at this repo snapshot. `TemporalTruthValue.metta` defines `TTV` as a map from time to `TruthValue` and `TETV` as a map from time to `EvidentialTruthValue`, but it contains no temporal inference rules. So the repo names temporal truth values without recovering the temporal PLN rule families themselves. [experimental/early-pln/common/truthvalue/TemporalTruthValue.metta:L1-L6] [experimental/early-pln/common/truthvalue/TemporalTruthValue.metta:L14-L26]
+
+## 4. Missing-family recovery check
+
+C-4-1: The actual implemented rule surface under `experimental/early-pln/pln/` contains only three rule families: Deduction, Modus Ponens, and Implication Direct Introduction. There are no checked-in rule files for quantifiers, temporal/causal operators, concept geometry, multideduction, BRGI, OBI, attention/importance, FactorGraph, MORK, or context links. [experimental/early-pln/pln/README.md:L1-L8] [experimental/early-pln/pln/*]
+
+C-4-2: The repo does not recover the book's intensional/extensional conversion machinery as code. The only explicit treatment of that topic is the manuscript argument that the split should collapse into a single extensional/predicate-side formalization via isomorphism. That is a methodological pivot, not an implemented conversion rule family. [docs/nuPLN/nuPLN.tex:L254-L315]
+
+C-4-3: The repo does not recover temporal/causal or distributional families locally; it only points to them externally. The next-token-prediction use case explicitly points readers to the external Temporal PLN paper for predictive implication / sequential conjunction and to an old AtomSpace issue for category/generalized distributional truth values. [docs/use-cases/next-token-prediction/next-token-prediction.md:L74-L100] [docs/use-cases/next-token-prediction/next-token-prediction.md:L177-L210]
+
+C-4-4: The conjunction-introduction experiments introduce the idea of a future `UTV` (Universal Truth Value) as the ideal integration object for confidence calculations, but `UTV` is only a research intention here. There is no checked-in `UTV` type or rule implementation. [experimental/truth-value-formula/conjunction-introduction/README.md:L8-L20]
+
+C-4-5: The one genuinely new rule surface relative to Sources 2-3 is Implication Direct Introduction, including a base case and a recursive evidence-accumulation rule. That is new, but it does not broaden the repo toward quantifiers/temporal/intensional/distributional/FactorGraph families. [experimental/early-pln/common/formula/ImplicationDirectIntroductionFormula.metta:L6-L19] [experimental/early-pln/pln/dependent-types/ImplicationDirectIntroductionDTL.metta:L80-L144]
+
+## 5. Confidence-formula continuity vs. the `pln0.9` pivot
+
+C-5-1: `pln-experimental2` predates the Source 3 multiplicative-confidence pivot. Its implemented confidence formulas are still min/count based: deduction returns `min($Pc, $Qc, $Rc, $PQc, $QRc)`, Modus Ponens returns `min($ABc, $notABc, $Ac)`, and Implication Direct Introduction updates confidence only through `count->confidence` / `inc-pos-count` / `inc-neg-count`. [experimental/early-pln/common/formula/DeductionFormula.metta:L38-L54] [experimental/early-pln/common/formula/ModusPonensFormula.metta:L7-L14] [experimental/early-pln/common/formula/ImplicationDirectIntroductionFormula.metta:L8-L19]
+
+C-5-2: Modus Ponens does contain the same `0.2` anomaly seen elsewhere, but here it is explicit research debt rather than a silent carryover. `ModusPonensFormula.metta` hardcodes `$notABs 0.2` as a "temporary hack", and `ModusPonensDTL.metta` repeats that this should ideally be replaced by a precise Modus Ponens requiring an explicit `P(B|Not A)` premise. [experimental/early-pln/common/formula/ModusPonensFormula.metta:L7-L14] [experimental/early-pln/pln/dependent-types/ModusPonensDTL.metta:L12-L27]
+
+C-5-3: I did not find any `Truth_or`-style heuristic, multiplicative-with-strength confidence formula, or generalized pln0.9-style confidence rewrite in this repo's implemented rules. The experimental confidence work here is happening in the Maxima derivations and nuPLN manuscript, not in the current executable rule formulas. [experimental/early-pln/common/formula/*.metta] [experimental/truth-value-formula/conjunction-introduction/README.md:L8-L20]
+
+C-5-4: This makes Source 4 semantically orthogonal to Source 3. `PLN/` changed executable confidence propagation across its rule core; `pln-experimental2` instead explores successor semantics on paper and in Maxima, while its checked-in MeTTa rules remain closer to the older/min-based regime. [docs/nuPLN/nuPLN.tex:L55-L79] [experimental/early-pln/common/formula/*.metta] [experimental/truth-value-formula/conjunction-introduction/README.md:L8-L16]
+
+## 6. Maxima symbolic derivations
+
+C-6-1: The Maxima work is focused on conjunction introduction, not on the currently implemented Deduction/MP/IDI trio. The README frames the goal as deriving confidence calculations that are efficient yet justified by probability theory, ideally as approximations to an uncomputable universal integration, starting with conjunction introduction "for its simplicity." [experimental/truth-value-formula/conjunction-introduction/README.md:L6-L20]
+
+C-6-2: The first Maxima result argues that when `A` and `B` are uniformly randomly distributed and the universe size tends to infinity, the distrolet for `pAB` tends to a Dirac delta with mean `pA*pB`, i.e. the independence assumption becomes justified in that limit. The README gives the closed-form `Pr(pAB = x)` expression derived using Stirling approximation. [experimental/truth-value-formula/conjunction-introduction/README.md:L60-L95] [experimental/truth-value-formula/conjunction-introduction/README.md:L111-L123]
+
+C-6-3: The same research track then introduces extra dependency premises (`A -> B` and later `A <-> B`) and studies how these change the concluding second-order distribution. The README concludes that structure itself can provide evidence, and the `conjunction-xp.mac` script contains the supporting symbolic/probabilistic machinery, including unfinished scaled-beta fitting functions left as `NEXT`. [experimental/truth-value-formula/conjunction-introduction/README.md:L132-L183] [experimental/truth-value-formula/conjunction-introduction/README.md:L349-L358] [experimental/truth-value-formula/conjunction-introduction/conjunction-xp.mac:L170-L180] [experimental/truth-value-formula/conjunction-introduction/conjunction-xp.mac:L319-L321]
+
+C-6-4: These derivations do not validate or invalidate the Source 3 `pln0.9` pivot directly, because the symbolic target here is conjunction introduction, a rule family that is not ported into the repo's MeTTa PLN encodings. They are best read as future-facing semantic experiments rather than as support for the current executable rule formulas. [experimental/truth-value-formula/conjunction-introduction/README.md:L18-L20] [experimental/truth-value-formula/conjunction-introduction/conjunction-xp.mac:L247-L259]
+
+## 7. Bug carryover status (V7-V9 re-run)
+
+C-7-1: `pln-experimental2` does not fix the Source 2/3 inversion bug because it does not implement a `Truth_inversion` / inheritance inversion rule in the inspected rule surface at all. The active rule inventory remains Deduction, Modus Ponens, and Implication Direct Introduction. [experimental/early-pln/pln/README.md:L1-L8] [experimental/early-pln/pln/*]
+
+C-7-2: It likewise does not fix revision-confidence saturation in executable code, because there is no checked-in `Truth_Revision` rule/formula in the current rule surface. The manuscript mentions deriving implication direct introduction from induction plus revision, and the notes brainstorm revision/UTV ideas, but that is not a checked-in implementation. [docs/nuPLN/nuPLN.tex:L392-L411] [docs/pln-random-notes.txt:L42-L72]
+
+C-7-3: It also does not fix transitive-similarity zero-division because there is no transitive similarity rule in the current repo surface. Source 4 is therefore orthogonal to V7-V9 rather than corrective. [experimental/early-pln/pln/*]
+
+C-7-4: The local bug debt is elsewhere: Modus Ponens still relies on a temporary `0.2` hack, `ImplicationDirectIntroductionEqual.metta` documents that backward unification fails when the left-hand side contains function calls, and `ImplicationDirectIntroductionMatch.metta` documents an interpreter bug causing infinite loops with `let*`. [experimental/early-pln/common/formula/ModusPonensFormula.metta:L7-L14] [experimental/early-pln/pln/equal/ImplicationDirectIntroductionEqual.metta:L54-L65] [experimental/early-pln/pln/match/ImplicationDirectIntroductionMatch.metta:L55-L71]
+
+## 8. Status, TODOs, and open issues
+
+C-8-1: The working tree itself looks like a research notebook more than a stabilization branch. `README.md` emphasizes experiments and writings; `experimental/README.md` calls `early-pln` "probably no longer relevant"; and `docs/pln-random-notes.txt` is exactly what its name implies: raw idea fragments about UTV, revision, distrolets, generator/world assumptions, and composite-predicate evidence. [README.md:L3-L22] [experimental/README.md:L1-L12] [docs/pln-random-notes.txt:L1-L140]
+
+C-8-2: The repo has many unfinished markers. `nuPLN.tex` contains unresolved TODO/NEXT placeholders; the synthesis code/tests contain multiple re-enable/rewrite TODOs; and `TruthValue.metta` still carries constructor-level TODOs. This is not a finished implementation snapshot. [docs/nuPLN/nuPLN.tex:L56-L89] [docs/nuPLN/nuPLN.tex:L213-L213] [docs/nuPLN/nuPLN.tex:L390-L411] [experimental/early-pln/synthesis/*.metta] [experimental/early-pln/common/truthvalue/TruthValue.metta:L16-L18]
+
+C-8-3: Some explicit workarounds reveal toolchain friction rather than rule completeness. `BelieveMe.metta` is a dummy proof filler "to please the type checker when there is no such function available"; `DeductionImplicationDirectIntroductionDTLTest.metta` disables a synthesis test because it takes "over an hour"; and `DeductionDTLTest.metta` keeps a TODO to fix a failing synthesis line. [experimental/early-pln/common/BelieveMe.metta:L1-L4] [experimental/early-pln/pln/dependent-types/DeductionImplicationDirectIntroductionDTLTest.metta:L72-L74] [experimental/early-pln/pln/dependent-types/DeductionDTLTest.metta:L50-L52]
+
+C-8-4: The use-case docs reinforce the "research agenda" reading. `next-token-prediction.md` proposes PLN as a full substitute for LLM next-token prediction, but it immediately pushes key missing machinery out to future work: category support, Dirichlet truth values, predictive implication, sequential conjunction, and attentional/inference-control sophistication. [docs/use-cases/next-token-prediction/next-token-prediction.md:L9-L46] [docs/use-cases/next-token-prediction/next-token-prediction.md:L74-L100] [docs/use-cases/next-token-prediction/next-token-prediction.md:L177-L220]
+
+C-8-5: The most reliable local orientation docs are therefore the conservative ones. `AGENTS.md` correctly warns that there is no root harness and that this is a mirror-style research branch, while `CLAUDE.md` is useful for topology but oversells the implementation surface, and `GEMINI.md` is too generic to distinguish theoretical deliverables from executable rule coverage. [AGENTS.md:L3-L16] [CLAUDE.md:L7-L18] [CLAUDE.md:L50-L67] [GEMINI.md:L3-L22]
+
+## 9. Discovered publications and source leads
+
+C-9-1: `docs/nuPLN/local.bib` is itself a substantial publication payload: it contains 129 BibTeX entries. The actionable wiki implication is that this repo should feed publication reconciliation from the bibliography file directly, not only from the subset currently cited inside `nuPLN.tex`, because the manuscript still contains unresolved `\cite{TODO}` placeholders. [docs/nuPLN/local.bib] [docs/nuPLN/nuPLN.tex:L56-L89]
+
+C-9-2: Directly relevant PLN-adjacent bibliography entries present in `local.bib` include `Goertzel2014EGI2Chapt18`, `Warrell2016`, and `Warrell2022`. These match Claude's reported discoveries and are concrete candidates for `RawData+Publications` reconciliation. [docs/nuPLN/local.bib:L574-L579] [docs/nuPLN/local.bib:L1124-L1129] [docs/nuPLN/local.bib:L1151-L1156]
+
+C-9-3: The bibliography also contains older Geisweiller entries (`Geisweiller2017`, `Geisweiller2018`) that may matter for historical lineage even if they are not the same as the later Temporal PLN paper. [docs/nuPLN/local.bib:L30-L44]
+
+C-9-4: The next-token-prediction use case adds two non-BibTeX publication leads that are not implemented in code here: the external Temporal PLN ResearchGate paper and an old AtomSpace issue on generalizing toward categorical / distributional truth values. [docs/use-cases/next-token-prediction/next-token-prediction.md:L95-L100] [docs/use-cases/next-token-prediction/next-token-prediction.md:L183-L205]
+
+C-9-5: The conjunction-introduction experiments add one more local-only source lead: `PLN_AND_Confidence_Framework.md.pdf`, described in the README as "Ben's document" when discussing equivalence-vs-implication dependency modeling for conjunction introduction. [experimental/truth-value-formula/conjunction-introduction/README.md:L354-L358]
+
+C-9-6: The safest publication reading is therefore: this repo is a discovery source, not yet a cleanly curated citation source. `local.bib` is rich, but the manuscript still under-cites it, and several important conceptual links live only in README/use-case prose. [docs/nuPLN/nuPLN.tex:L56-L89] [README.md:L24-L31] [docs/use-cases/next-token-prediction/next-token-prediction.md:L74-L100]
+
+## 10. Relationship to other PLN repos
+
+C-10-1: This repo explicitly positions itself below `PLN/` in operational maturity. `README.md` says to use `PLN` for production-ready work, which means `pln-experimental2` is not claiming to be the canonical current implementation line. [README.md:L3-L7]
+
+C-10-2: The local docs position `pln-experimental2` as a mirror/forked research branch rather than as an upstream. `AGENTS.md` calls it a near-identical copy of `pln-experimental`, `GEMINI.md` calls it a mirror instance of the research branch, and `CLAUDE.md` calls it a local mirror of `ngeiswei/pln-experimental`, itself a fork of `trueagi-io/pln-experimental`. [AGENTS.md:L3-L16] [GEMINI.md:L1-L22] [CLAUDE.md:L5-L8]
+
+C-10-3: Relative to the practical PLN repos already reviewed, `pln-experimental2` should be treated as a parallel semantic-research branch: it drafts nuPLN theory, explores alternative confidence calculations in Maxima, and keeps a tiny exploratory MeTTa rule set, but it does not present itself as the place where the current executable PLN engine lives. [README.md:L3-L22] [experimental/README.md:L1-L12] [docs/nuPLN/nuPLN.tex:L55-L79]
+
+C-10-4: The only area where it extends beyond Sources 2-3 in executable rule coverage is Implication Direct Introduction plus explicit evidential wrappers. Everything else that feels "larger" than PLN3/PLN mostly lives in manuscript prose, use-case documents, bibliography, and symbolic experiments rather than in deployable inference code. [experimental/early-pln/common/formula/ImplicationDirectIntroductionFormula.metta:L6-L19] [experimental/early-pln/common/truthvalue/EvidentialTruthValue.metta:L17-L61] [docs/nuPLN/nuPLN.tex:L55-L79]
+
+*End of Codex findings.*

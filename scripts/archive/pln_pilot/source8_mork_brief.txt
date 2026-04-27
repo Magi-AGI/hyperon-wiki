@@ -1,0 +1,241 @@
+# MORK (trueagi-io) — Source 8 Extraction Brief (Cross-Model)
+
+Neutral extraction brief for Source 8 of the PLN cluster pilot. Claude, Codex, and Gemini each run independently against the same source snapshot.
+
+**Repo:** `MORK` — `trueagi-io/MORK`. **MeTTa Optimal Reduction Kernel.** High-performance hypergraph processing kernel for Hyperon, written in Rust (Edition 2024, nightly toolchain required). Per README: *"a state-of-the-art graph database and a specialized zipper-based multi-threaded virtual machine"*; targets *"thousands to millions of times"* speedup for symbolic AI bottlenecks. **CONFIRMED: this is the canonical MORK referenced by chaining's benchmark scripts** (`${hypdir}/MORK/target/release/mork run pc-fc.mm2` per `chaining/experimental/metamath/benchmarks/benchmark.sh`).
+
+**Local path:** `E:\GitHub\hyperon reference\MORK\`
+
+**Commit at extraction time:** `4cef6f77c9712ddeef0d55ae751d249f89385e9c` (HEAD = main, 2026-04-19 "Merge pull request #49 from trueagi-io/unification_test_laws"; pulled 2026-04-24, no upstream drift). All three models extract against this exact hash.
+
+**Pre-existing meta-docs (already consulted by orchestrator; agents read first per workflow):**
+- `README.md` (16 lines) — concise high-level pitch + build notes; explicit "thousands to millions of times" speedup goal.
+- `CLAUDE.md` (100 lines) — comprehensive: details architecture (Triemap-based DB, Zipper Abstract Machine ZAM, pattern matching), 7-crate Cargo workspace, build commands.
+- `AGENTS.md` (53 lines) — Codex-side workspace orientation; flags that `default-members = ["kernel/"]` so plain `cargo build` only builds kernel.
+- `GEMINI.md` (57 lines) — high-level component summary; flags **Rust Edition 2024**, **nightly required**.
+
+**External dependency [BLOCKER for builds]**: workspace `Cargo.toml` declares `pathmap = { path = "../PathMap/", version = "0.3.0", ... }`. **PathMap is NOT cloned locally** in `hyperon reference/`. Gemini's earlier claim that PathMap was already in the listing is incorrect. Builds will fail without it. **Agents should not attempt to build**; source-based pass only.
+
+---
+
+## Cluster lineage map (post-Source 7)
+
+```
+Source 1 (PLN book 2008) — theoretical foundation
+
+PLN MeTTa-era line:
+  Source 5 (hyperon-pln, frozen 2023-08-01) → trueagi-io/pln-experimental
+                                                ↓ fork
+                                          ngeiswei/pln-experimental = Source 4
+                                                ↘
+                                          ngeiswei/PLN = Source 2 (PLN3)
+                                                ⇣
+                                          trueagi-io/PLN = Source 3 (PLN/, pln0.9)
+
+C++ tradition:
+  Source 6 (URE, bit-rotting since 2024)
+                                ⇣ explicit handoff
+                          Source 7 (chaining, partial migration + diversification)
+                                       ⇡ benchmarks against MORK (PR #25, 2026-03)
+                                       ⇣
+                          Source 8 (MORK)  ←── THIS PASS — separate code tradition
+                                       Adam Vandervorst lineage (~240 commits)
+                                       Remy Clarke (~104), Luke Peterson (~70)
+                                       Geisweiller has only 1 commit here — NOT a bridge person to MORK.
+```
+
+**Note**: MORK's author lineage is **distinct from the PLN cluster's**. Adam Vandervorst is also visible in the F1R3FLY-io org (MeTTaIL, MacroLoop) and Remy Clarke is in asi-alliance (OmegaClaw-Core). MORK belongs to the **F1R3FLY-io / Hyperon-performance-tooling** ecosystem, not the OpenCog → PLN tradition. This explains why Geisweiller is barely visible here.
+
+---
+
+## Goal
+
+Frame Source 8 as a **code-to-paper bridge audit**. The wiki has an active `RawData+Publications+PLN FactorGraph MORK v1..v3.2` paper series with no extracted code-side reality. Source 7 (chaining) just demonstrated MORK is in the cluster's active codebase via Metamath benchmarks. **Now Source 8 must establish what MORK actually is in code — and what it is NOT — so the eventual paper-bundle extraction (Source 9 likely) can be sharp about implemented-vs-aspirational.**
+
+**Pre-spot-check finding from orchestrator (worth verifying again in agent pass)**: grep across MORK source for `FactorGraph|factor_graph|MessagePass|message_pass|BeliefPropagation|belief_propagation` returned **ZERO matches**. **MORK is a hypergraph processing kernel, not a FactorGraph implementation.** The PLN FactorGraph MORK papers presumably *propose* how to use MORK's primitives for FactorGraph reasoning, but the code does not currently realize those proposals.
+
+---
+
+## Required output sections
+
+Each as numbered, cited claims in `C-<section>-<n>` format. Cite file path + symbol or approximate line.
+
+### §1 — Architecture: what MORK actually is
+
+Read `kernel/src/`, `expr/src/`, `interning/src/`, `frontend/src/` end to end. Document:
+
+- **Zipper Abstract Machine (ZAM)** — the central architectural concept per CLAUDE.md. What's a zipper as cursor, what does multi-threaded mean here, how does the VM step?
+- **Triemap-based graph database** — the storage layer. Compare to AtomSpace.
+- **Pattern matching and unification** — what flavor of unification (Robinson? Higher-order?), how is it implemented?
+- **Space operations** — relational algebra (union, intersection, subtraction). What makes them fast?
+- **CLI subcommands** (per AGENTS.md): `bench`, `test`, `run`, `convert`. What does each do? What's the input format?
+- **Frontend parsers**: CZ2, CZ3, HE (Hyperon Experimental), Rosetta, bytestring, JSON. Why so many?
+
+### §2 — FactorGraph audit (PRIORITY OUTPUT)
+
+The cluster's central question for this source: **does MORK implement FactorGraph reasoning, or just propose primitives that could?**
+
+Specifically:
+- Grep across all `kernel/`, `expr/`, `frontend/`, `interning/`, `experiments/` for: `FactorGraph`, `factor_graph`, `MessagePass`, `message_pass`, `BeliefPropagation`, `belief_propagation`, `marginal`, `marginalize`, `inference`, `bayesian`, `posterior`, `prior`. Document count and locations.
+- Are there probabilistic inference primitives anywhere? (TruthValue equivalents? Bayes operations?)
+- Is there code to compute marginals, joint distributions, or conditional probabilities?
+- If not present in code: is there a research / design document in `experiments/`, `kernel/resources/`, or anywhere mentioning this work as planned?
+
+**Expected outcome**: MORK is a hypergraph processing kernel (zippers + Triemap + parallel VM). It is NOT a probabilistic reasoner. The FactorGraph papers presumably propose *using* MORK primitives. Document this gap precisely.
+
+### §3 — Mass2 (.mm2) format and chaining benchmark interface
+
+`.mm2` files appear 11 times in MORK's tree (at root and in `kernel/resources/`):
+- `kernel/resources/std.mm2`, `decision_tree_learning.mm2`, `ancestor.mm2`, etc.
+
+Document:
+- What is `.mm2` precisely? (CLAUDE.md and AGENTS.md mention "MM2 programs"; relate to Metamath 2 format historically.)
+- What's the language semantics? Is it a domain-specific language for MORK rules, or a Metamath import format?
+- How does `mork run X.mm2` execute these files? (CLI behavior.)
+- Cross-reference with chaining's `experimental/metamath/benchmarks/benchmark.sh` — when chaining benchmarks call `mork run pc-fc.mm2`, what is `pc-fc.mm2` doing?
+
+### §4 — `experiments/` deep dive
+
+4 experimental crates per Cargo.toml:
+- `experiments/eval/` — expression evaluation
+- `experiments/eval-ffi/` — FFI sink/source integration
+- `experiments/eval-examples/` (dylib crate)
+- `experiments/unification_test_laws/` — recent PR #49 (Apr 2026), Prolog-vs-MORK unification correctness comparison
+
+Per AGENTS.md, `experiments/eval-examples/` being a `dylib` matters — changes affect dynamic loading. Document each experiment's intent, key code, and current status.
+
+### §5 — Recent development arc (last 6 months)
+
+Use the §Git-history block. Recent active work:
+- PR #49 (Apr 2026) "Unification laws test" — Prolog-vs-MORK comparison
+- PR #46 (Mar 2026) "Min max sink"
+- PR #45 (Feb 2026) "ZipperInfallibleSubtries trait bounds for PathMap API update"
+- PR #34 (open) "Docker Build Infrastructure and PathMap Integration Updates"
+- PR #32 (Oct 2025) "Grounding and WASM change, add lens sink, refactor query multi"
+- PR #31 (Oct 2025) "Using new pathmap API"
+- PR #28 (Oct 2025) "implemented typed destruct"
+
+Document the visible direction of work. Is it chasing performance, correctness, integration with PathMap, or extending capabilities?
+
+Particularly note PR #48 (CLOSED, NOT merged) "Add sparse tensor primitives with einsum contraction" by Igor Malovitsa — **what was proposed, why was it rejected, and does that signal MORK's intended scope (i.e. NOT a tensor framework)?**
+
+### §6 — `kernel/resources/` checked-in programs
+
+`std.mm2`, `decision_tree_learning.mm2`, `ancestor.mm2`, `big.metta` etc. are checked-in sample programs. Read each briefly. What domain does each cover? Are they:
+- Performance benchmarks for the kernel?
+- Unit tests in Mass2?
+- Worked examples for the wiki/tutorial?
+- Reference implementations of standard logical tasks?
+
+### §7 — PathMap dependency
+
+External dependency at `../PathMap`. NOT cloned locally in `hyperon-reference/`. Agents won't be able to grep PathMap source. But within MORK's own code:
+- How is PathMap used? (Grep for `pathmap::` and `PathMap`.)
+- What are the key APIs? (`Zipper`, `descend_to`, `ZipperInfallibleSubtries`, etc.)
+- Is PathMap MORK's own creation or an upstream dependency? (Check `gxhash = {... git="https://github.com/luketpeterson/gxhash/"}` — Luke Peterson seems to author PathMap-related deps. Cross-reference his commit role in MORK.)
+
+### §8 — Discovered publications and references
+
+Code comments, README, CLAUDE.md, GEMINI.md, AGENTS.md, `kernel/resources/`. Particularly:
+- The MORK wiki at `github.com/trueagi-io/MORK/wiki` is referenced in README. Out of scope (per "no external sources" rule) but worth noting.
+- Any academic citations in code comments?
+- References to PathMap, gxhash, jemalloc, or other crates that constitute the algorithmic lineage?
+
+### §9 — Cluster-level interpretation
+
+Given findings, characterize:
+- **MORK's role in the PLN-cluster narrative**: it's a *speed substrate*, not a *reasoning system*. Used by chaining for performance benchmarks but not as the inference engine.
+- **MORK's role in the Hyperon-platform narrative**: it's the optimization target for the MeTTa interpreter. Symbolic AI's "GPU equivalent" — providing speedups so symbolic AI can scale.
+- **The FactorGraph MORK paper series interpretation**: the papers presumably propose *protocols* for using MORK's primitives (Triemap, ZAM, fast unification) to implement FactorGraph reasoning. Code-side, those protocols are unbuilt.
+- **Open question for Source 9 (papers bundle)**: how detailed are the proposed protocols? Are they implementable as written, or do they assume additional infrastructure (probabilistic primitives, message-passing scaffolding) that doesn't exist yet?
+
+### §10 — Author and contributor map
+
+Per §Git-history (orchestrator-curated), top contributors:
+- Adam Vandervorst (~239 effective)
+- Remy Clarke / ClarkeRemy (~104)
+- Luke Peterson (luketpeterson, ~70)
+- Igor Malovitsa (16)
+- Surafel Fikru, Tim Verhaegen, Paladynee, kabir, charlie derr — recent contributors via PRs
+
+For wiki review of MORK-related cards:
+- **Adam Vandervorst** — primary architect
+- **Remy Clarke** — core contributor; was also involved in `OmegaClaw-Core` (asi-alliance) per cluster context
+- **Luke Peterson** — core contributor; wrote `PathMap` (per `gxhash` git URL pointing at his account)
+
+These are the experts to consult on MORK design intent. Note: **Geisweiller has 1 commit in MORK and is NOT a primary author here** — distinct from the PLN cluster pattern where he was central.
+
+---
+
+## §Git-history context (pre-populated by orchestrator)
+
+Snapshot at extraction hash `4cef6f7`. Curated for agents.
+
+**Commit narrative (last 25 at hash):** Recent activity (Feb-Apr 2026) is dominated by **Remy Clarke** and **Adam Vandervorst** with parallel work streams. Clarke's recent line: float reductions, min/max sink, decision-tree learning examples, unification testing. Vandervorst's recent line: Z3 resource integration, float reduction integration, unification error reporting, ACT (probably Algebraic Cognitive Tools) tests, lens sink, query refactoring. Active to 2026-04-19. **No commits with "FactorGraph", "Bayesian", "MessagePass", or similar in the last 25** — direction is performance + unification + reduction primitives, not probabilistic reasoning.
+
+**Tags:** none (no formal release structure).
+
+**Remote branches (25 visible):** `main`, `coro-paths`, `dangling-debug`, `dangling_paths`, `descend_no_return_flag`, `head_sink_all_dense_nodes`, `journaling_with_state_machine`, `kernel_cleanup_remove_static_ref_issue`, `min_max_sink`, `old_main`, `product_zipper`, `pure_reduce_basic`, `server`, `server_command_expr_migration`, `server_mergehell`, `server_self_ref_with_tmp_maps_hotfix`, `server_self_reference_without_tmp_maps`, **`state_machine_metta_calculus`**, `tutorial_beginnings`, `tutorial_beginnings_charlie_suggestions_2025.12.03`, `unification_test_laws`, `unify-transition-rework`, `use_new_serialize_api`, `wasm_sink_all_dense_nodes`. **README explicitly notes the `server` branch is the way to run MORK as a server** (vs. CLI on master).
+
+**Top authors (full git log):**
+- Adam Vandervorst: 150 + 72 (Adam-Vandervorst) + 17 (Adam V) ≈ **~239 effective** (primary architect)
+- Remy Pierre Bushnell Clarke: 102 + 2 (ClarkeRemy) ≈ **~104**
+- Luke Peterson: 69 + 1 (luketpeterson) ≈ **~70**
+- Igor Malovitsa: 16
+- charlie derr: 2
+- **Nil Geisweiller: 1** — **NOT a primary author here**, distinct from his role across PLN cluster sources 2-7.
+
+**Key PRs (`trueagi-io/MORK`):**
+- **PR #50 (open) "add subtract command"** by Tim Verhaegen — relational algebra extension.
+- **PR #49 (merged 2026-04-19) "Unification laws test"** by ClarkeRemy — Prolog-vs-MORK unification correctness comparison.
+- **PR #48 (CLOSED, not merged) "Add sparse tensor primitives with einsum contraction"** by Igor Malovitsa — **important non-merge: signals MORK does NOT want to be a tensor framework**.
+- PR #46 (merged 2026-03-09) "Min max sink".
+- PR #45 (merged 2026-02-13) "fix: add ZipperInfallibleSubtries trait bounds for PathMap API update" — adapts to PathMap API churn.
+- PR #44 (merged 2026-02-13) "clarification for logic_query test — remove axioms when counting the number of outputs".
+- PR #42 (merged 2025-12-18) "fixed eval not handling multiple calls on the same level correctly".
+- PR #41 (merged 2025-11-26) "Allow root-level destructuring".
+- PR #40 (merged 2025-12-18) "implemented a simple eval test".
+- **PR #34 (open) "Docker Build Infrastructure and PathMap Integration Updates"** by kabir — Docker integration WIP.
+- **PR #32 (merged 2025-10-14) "Grounding and WASM change, add lens sink, refactor query multi"** by Adam-Vandervorst — Grounding + WASM target.
+- PR #31 (merged 2025-10-14) "Using new pathmap API around descend_to" by luketpeterson — PathMap API migration.
+- **PR #28 (merged 2025-10-09) "implemented typed destruct"** by Igor Malovitsa.
+
+**Interpretation:**
+- MORK is **active research-engineering** repo (multi-month development cycles, regular PRs).
+- Direction is **performance primitives, unification correctness, type safety, eval correctness** — NOT probabilistic reasoning, not FactorGraph, not Bayesian.
+- The closure of PR #48 (sparse tensor + einsum) is a strong signal that MORK explicitly chooses NOT to expand into tensor / numerical territory.
+- The `server` branch + the WASM PRs suggest MORK aims to be deployable in multiple modes (CLI, server, WASM target).
+- PathMap API churn (PR #31, #45) shows tight coupling with that dependency.
+
+**Wiki-outreach implication for MORK**: Adam Vandervorst is the primary architect; Remy Clarke and Luke Peterson are co-architects. **Distinct expert circle from the PLN cluster's** (Geisweiller / Hammer / Isaev). For cards about MORK as a Hyperon performance substrate, target Vandervorst. For cards about how PLN/chaining could *use* MORK for FactorGraph reasoning, target Geisweiller (PLN side) + Vandervorst (MORK side) — that intersection is currently unbuilt.
+
+---
+
+## Output file
+
+Write findings to: `E:\GitHub\Magi-AGI\hyperon-wiki\scripts\archive\pln_pilot\source8_mork\findings_<model>.txt`
+
+e.g., `findings_claude.txt`, `findings_codex.txt`, `findings_gemini.txt`. Create the `source8_mork/` subdirectory if missing.
+
+Header must include: model name, extraction date (2026-04-24), commit hash `4cef6f77c9712ddeef0d55ae751d249f89385e9c`, claim counts per section.
+
+If the write is blocked, paste the FULL findings content verbatim in your response.
+
+---
+
+## Rules
+
+- Do NOT consult any other source — no book, no other repos, no wiki MCP, no web. Only files inside `E:\GitHub\hyperon reference\MORK\`.
+- Do NOT attempt to build (PathMap dependency missing; nightly Rust may not be available; agents source-based pass only).
+- Cite file and symbol (or approximate line) for every concrete claim.
+- For FactorGraph audit (§2): grep verbatim, document negative findings as carefully as positive ones.
+- Frame as **code-to-paper bridge audit**: characterize what's implemented, what's primitive-but-not-applied, what's absent.
+- Read these prior reconciliations first for context (do not re-derive their findings):
+  - Source 7 (chaining): `scripts/archive/pln_pilot/source7_chaining/findings_reconciled_crossmodel.txt`
+  - Source 6 (URE): `scripts/archive/pln_pilot/source6_ure2/findings_reconciled_crossmodel.txt`
+  - Especially Source 7 for the chaining→MORK benchmark integration context.
+- C++/Rust language note: this is Rust, not MeTTa. Expect Cargo workspace structure, `mod`/`use`, `impl`, `trait`, `pub fn`, `#[test]`. The Hyperon-MeTTa interpreter is a different codebase; MORK targets it as an optimization layer.
+
+---
+
+*End of Source 8 brief.*

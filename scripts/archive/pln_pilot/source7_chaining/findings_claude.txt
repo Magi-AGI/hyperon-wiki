@@ -1,0 +1,285 @@
+# trueagi-io/chaining — Source 7 Findings (Claude single pass)
+
+**Model:** Claude Opus 4.7 (1M context)
+**Extraction date:** 2026-04-24
+**Repo:** `trueagi-io/chaining` at commit `f2e1b031d11890e45b41d9ecf3de96896ace01a7` (HEAD = main, "Merge pull request #25 from ngeiswei/metamath-mm2", 2026-03-17).
+**Local path:** `E:\GitHub\hyperon reference\chaining\`
+
+**Frame:** This is a **migration audit** answering the cluster's headline question — did URE's Bayesian inference-control stack (BIT + Thompson + Beta + MixtureModel + ControlPolicy + meta-rules + complexity penalty + …) survive into `chaining`, or die with URE?
+
+**Headline answer (verbatim per brief):** **(b) partial / simplified.** A *substantially smaller* subset migrated. The conceptual primitive `thompson-sample` exists; the meta-layered control-rule architecture exists in shape (one-shot pedagogical demo only); BetaDistribution machinery exists in `experimental/common/truthvalue/TruthValue.metta` but is NOT wired into the inference-control experiments. BIT, MixtureModel, ControlPolicy-as-Bayesian-orchestrator, complexity penalty, probabilistic BIT pruning, TraceRecorder, multi-threading, FCStat, AtomSpace-resident config, meta-rule expansion are all **absent**. The repo is more accurately described as "research playground that re-explores some URE concepts in MeTTa from scratch, drops most of URE's machinery, and adds wholly new directions (modal logic, lambda abstraction, evolutionary programming, Metamath benchmarks)."
+
+**Claim counts per section:**
+- §1 Architecture map: 13 claims
+- §2 URE migration audit: 18 claims (the priority section; full per-component table)
+- §3 DTL core: 7 claims
+- §4 PLN integration: 6 claims
+- §5 Notable research tracks: 9 claims
+- §6 Production-vs-research: 4 claims
+- §7 Successor handoff: 4 claims
+- §8 Publications: 5 claims
+- §9 Cluster-level synthesis: 6 claims
+- §10 Author-attribution: 3 claims
+- **Total: 75 cited claims**
+
+---
+
+## §1 — Architecture map (`dtl/` vs `experimental/`)
+
+**C-1-1 [dtl/ scope]** `dtl/` is the closest thing to a reusable module surface. Its tree is exactly: `dtl/utils.metta`, `dtl/forward/{curried,no-curry}.metta`, `dtl/backward/{curried,no-curry}.metta`, `dtl/tests/{test-utils, test-forward-chaining-{curried,no-curry}, test-backward-chaining-{curried,no-curry}}.metta`. Five files of code + five tests. (`dtl/`)
+
+**C-1-2 [dtl/utils.metta scope]** 38 lines total. Defines `add-atom-nodup`, `add-atoms-nodup`, and the `Nat` type (`Z`, `S`, `fromNumber`, `fromNat`). NO truth-value machinery, NO control-flow. This is the *complete* utility surface for `dtl/`. (`dtl/utils.metta:L1-L38`)
+
+**C-1-3 [DTL backward no-curry signature]** `(: syn (-> $a Nat $b $b))` — knowledge-base, max-depth, query, result. 6-line core: base case (`match $kb $query $query`) plus binary/ternary recursive steps. NO truth values, NO Bayesian sampling, NO BIT-style And-Or tree. This is plain dependently-typed proof synthesis, the same algorithm from Source 5's `metta/synthesis/Synthesize.metta`. (`dtl/backward/no-curry.metta:L21-L41`; cf. Source 5 `Synthesize.metta`.)
+
+**C-1-4 [DTL backward curried adds isyn iterative wrapper]** `(: isyn (-> $a Nat Nat $b $b))` — adds an iteration count, calls `syn` then writes results back to `$kb` between iterations via `add-atoms-nodup`. *No control beyond max-depth/iterations.* (`dtl/backward/curried.metta:L33-L47`)
+
+**C-1-5 [DTL forward fcc reuses bc internally]** Comment at `dtl/forward/curried.metta:L31-L34`: *"TODO: Import the curried backward chainer instead of repeating the definition here."* `bc` is duplicated inside `curried.metta:L42-L48`. Forward chaining "unfolds the rules backward" — the fc chainer calls bc with a rule abstraction as the query. (`dtl/forward/curried.metta:L1-L92`)
+
+**C-1-6 [DTL no-curry forward = 21 lines]** Forward chainer in `dtl/forward/no-curry.metta`: 2 recursive cases over binary rules, no max-depth control, no truth values. (`dtl/forward/no-curry.metta:L1-L21`)
+
+**C-1-7 [experimental/ tree size]** 22 numbered subdirectories (excluding `ArgSetChainer/` submodule + 1 README): `backward-chaining/`, `common/`, `converters/`, `curried-chaining/`, `evolutionary-programming/`, `forward-chaining/`, `implicit-argument/`, `inference-control/`, `iterative-chaining/`, `lambda-abstraction/`, `metamath/`, `modal-logic/`, `no-depth/`, `pln/`, `pln-inf-ctl/`, `polyward-chaining/`, `prob-chaining/`, `program-verification/`, `proof-tree/`, `subtyping/`, `sumo/`, `synthesis/`. (Listing under `experimental/`)
+
+**C-1-8 [experimental/common/ contents]** `Maybe.metta`, `In.metta`, `OrderedSet.metta`, `Record.metta`, `EqualityType.metta`, `Num.metta`, `List.metta`, `BelieveMe.metta` plus `truthvalue/` and `formula/` subdirs. The `BelieveMe.metta` file is the same anti-pattern from Source 5. (`experimental/common/`)
+
+**C-1-9 [experimental/common/formula/ identifies as Source-5-derived]** Files: `DeductionFormula.metta`, `DeductionFormulaTest.metta`, `ImplicationDirectIntroductionFormula.metta`, `ModusPonensFormula.metta`. The `DeductionFormula.metta` opens with the same consistency-condition machinery (`smallest-intersection-probability`, `largest-intersection-probability`, `conditional-probability-consistency`) verbatim from Source 5's seed (and forwarded into PLN3 / PLN/). (`experimental/common/formula/DeductionFormula.metta:L1-L54`)
+
+**C-1-10 [experimental/common/truthvalue/ has full Beta-distribution machinery]** `TruthValue.metta` defines `Bl`, `Pr`, `STV`, plus prior-alpha/prior-beta = 0.5 (Jeffreys), max-count = 1e9, lookahead = 1.0, count↔confidence conversions, `inc-pos-count`/`inc-neg-count`, `mode`, `count`, `confidence`, `pos-count`, `neg-count`, **`post-alpha`** (= `prior-alpha + pos-count`), **`post-beta`** (= `prior-beta + neg-count`), **`mean`** (= `α/(α+β)` of posterior). `EvidentialTruthValue.metta` adds `ETV` constructor with same posterior alpha/beta wrappers. *This is the most complete Beta-distribution-aware TV machinery in the entire MeTTa-era PLN cluster — but per §2 it is NOT used by the pln-inf-ctl experiment.* (`experimental/common/truthvalue/TruthValue.metta:L1-L143`; `EvidentialTruthValue.metta:L1-L62`)
+
+**C-1-11 [vs URE BackwardChainer]** URE's `BackwardChainer` is built on `BIT` (And-Or tree) with `expand_bit`/`fulfill_bit`/`reduce_bit` phases (Source 6 §2). DTL's `syn` is a *direct recursive descent* with no shared expansion-pool, no AndBIT structure, no fitness-weighted choice. **Not the same algorithm.** Simpler.
+
+**C-1-12 [DTL test scope]** Five tests: `test-utils.metta`, `test-{forward,backward}-chaining-{curried,no-curry}.metta`. None test inference control or truth-value reasoning. (`dtl/tests/`)
+
+**C-1-13 [DTL imports]** `dtl/` core has zero `import!` of common formulas or truth values. It is a *typed-proof-search* module, intentionally orthogonal to PLN. (Inspection of `dtl/forward/*.metta`, `dtl/backward/*.metta`, `dtl/utils.metta`)
+
+---
+
+## §2 — URE migration audit (PRIORITY OUTPUT)
+
+This is the cross-reference table requested by the brief. Each row: URE component → `chaining` analog → migration status. **Status code: full = full migrate, simp = simplified, drop = dropped.**
+
+| URE component | `chaining` analog | Status | Evidence |
+|---|---|---|---|
+| **`BIT` / `AndBIT` / `BITNode`** | None. The closest is `dtl/backward/curried.metta` `syn` — direct recursion, no And-Or-tree shared structure. | **drop** | C-2-1 |
+| **`BetaDistribution`** | `experimental/common/truthvalue/TruthValue.metta` posterior-alpha/beta machinery (Jeffreys prior, `mean`, `confidence↔count` bijection). Rich enough that mean = α/(α+β) is computed. **But not used by pln-inf-ctl.** | **simp** (machinery exists; not wired up) | C-2-2 |
+| **`ThompsonSampling`** | `pln-inf-ctl/pln-inf-ctl.metta:L737-L742` `thompson-sample`. Verbatim: only handles confidence 0 (uniform) or confidence 1 (return strength). NO Beta-posterior integration, NO `Pi = ∫ pdf_i(x) Π_{j≠i} cdf_j(x) dx / nt`. Comment is explicit: *"For now only confidence of 0 or 1 are supported. This assumption allows us to operate Thompson sampling without requiring a Beta distribution."* | **simp** (function name preserved; algorithm degenerated to uniform-or-constant) | C-2-3 |
+| **`ActionSelection`** (Handle→TV map → ThompsonSampling) | `pln-inf-ctl/pln-inf-ctl.metta` `bc` monolith: collapses estimator outputs, uses `List.maxElementWith EDCall.lt5` to pick **max** estimate (not Thompson-sampled distribution). | **simp** (greedy max instead of distribution-sampled selection) | C-2-4 |
+| **`MixtureModel`** (Universal Operator Induction mixing) | None. No file mentions `MixtureModel`, `Mixture`, `Universal Operator Induction`, `Kolmogorov`, `compressiveness`, or `prior(length) = exp(-cpx_penalty × length)`. | **drop** | C-2-5 |
+| **`ControlPolicy`** (orchestrator combining BIT + Thompson + Mixture) | `experimental/inference-control/inf-ctl-month-bc-cont-xp.metta` `MkControl` is a 5-tuple `(absupd, argupd, bcont, rcont, mcont)` of context-updaters and continuation-predicates. **Conceptually closest** to URE's ControlPolicy *idea* — it is the orchestrator. **But its semantics is "boolean continuation pruning" not "Bayesian rule-weight selection".** Single problem theory in the file; no second-order-distribution Reasoning. The `pln-inf-ctl/pln-inf-ctl.metta` `Control` is a 2-element `(pln-kb, estimator)` that produces a single Number per branch — also conceptually close, also not Bayesian-machinery-grade. | **simp** (skeleton survived, mathematics dropped) | C-2-6 |
+| **Control-rule patterns in separate atomspace** | **YES, present.** `inf-ctl-month-bc-cont-xp.metta:L382-L418` defines `&td-ctl-kb` as a separate atomspace containing `Continue`-typed control rules: `(: RS (TDContinue ...))`, `(: JS (TDContinue ...))`, `(: TS (...))`. The match-continuator runs `bc` against `&td-ctl-kb` to *prove* a `TDContinue` term — recursive use of the chainer to evaluate control rules. **This is the most faithful URE-concept migration.** Pedagogical scale though: 3 control rules hand-written, problem-theory-specific. | **simp** (architecture survives, scale tiny) | C-2-7 |
+| **Complexity penalty + Kolmogorov K(D) heuristic** | None. No file mentions `complexity`, `Kolmogorov`, or `cpx_penalty`. | **drop** | C-2-8 |
+| **Probabilistic BIT pruning `(1-p)^remaining_iter`** | None. The closest is `prob-chaining/prob-chaining.metta` which probabilistically prunes axioms by `(< (random-float &rng 0 1) $pbl)` (`prob-chaining.metta:L67`) — Problog-style sampling, NOT URE's survival-based pruning. | **drop** (BIT-specific pruning not present; different probabilistic mechanism added) | C-2-9 |
+| **`expansion_andbit_weights` survival sampling** | None. (Tied to BIT, which is absent.) | **drop** | C-2-10 |
+| **`TraceRecorder`** (inference-control-learning replay) | None. Grep `trace|TraceRecorder|record` returns only the MeTTa-builtin `trace!` debug primitive. The inference-control-learning replay machinery is NOT here. | **drop** | C-2-11 |
+| **Multi-threaded chainer** (`do_steps_multithread`) | None. All chainers are single-threaded MeTTa programs. | **drop** | C-2-12 |
+| **`FCStat`** (forward-chaining statistics) | None. No statistics tracking infrastructure in any forward chainer. | **drop** | C-2-13 |
+| **`UREConfig` AtomSpace-resident config** | None. The `pln-inf-ctl.metta` uses `!(bind! &seed-search True)` — single-symbol parameter binding, not config-as-atoms. | **drop** | C-2-14 |
+| **Meta-rules** (rule-producing rules) | None. Grep `meta-rule|rule-producing|metaRule|MetaRule` returns zero matches in code. The closest concept is the *control theory's* `Continue`-typed rules being used to prove continuation in a separate atomspace (C-2-7), but those are not "rules that produce rules in the problem theory." | **drop** | C-2-15 |
+| **STI / ECAN source-selection** | None. No attention/importance source-selection mode anywhere. | **drop** | C-2-16 |
+
+**C-2-17 [Verbatim transcription of `thompson-sample`]** Critical for the brief — full source:
+```
+;; Thompson sample from a simple truth value.  For now only confidence
+;; of 0 or 1 are supported.  This assumption allows us to operate
+;; Thompson sampling without requiring a Beta distribution.  Indeed if
+;; the confidence is 0 then it amounts to a uniform sampling, assuming
+;; a flat Bayesian prior that is.  And if the confidence is 1 then we
+;; just return the strength.
+(: thompson-sample (-> PLN.TruthValue Number))
+(= (thompson-sample (PLN.MkSTV $s 0))
+   (random-float &rng 0 1))
+(= (thompson-sample (PLN.MkSTV $s 1))
+   $s)
+```
+(`experimental/pln-inf-ctl/pln-inf-ctl.metta:L730-L742`)
+
+**Comparison vs URE.** URE's `ThompsonSampling.h:41` (Source 6 §2) implements: discretized arm selector `Pi = ∫ pdf_i(x) Π_{j≠i} cdf_j(x) dx / nt` over Beta-posterior-typed arms, with full pdf/cdf integration. The chaining version handles only the two boundary cases (no information, perfect information) — explicitly avoiding the Beta integral. **The function name is migrated; the algorithm is not.** This is the cluster's clearest "name-preserved, content-degenerated" migration.
+
+**C-2-18 [Per-component score]** Counting status codes from the table: **0 full**, **4 simp** (BetaDistribution, ThompsonSampling, ActionSelection, ControlPolicy), **1 simp** (control-rule meta-layer in separate atomspace), **11 drop**. Of 16 evaluated URE features, **5 partial migrations and 11 drops**. The Bayesian-mathematical core (Beta + Thompson over a Mixture + complexity-penalty) is **not** alive at usable form. The architectural skeleton (orchestrator-with-pluggable-control + control-rules-in-atomspace) is alive at one-pedagogical-experiment scale.
+
+---
+
+## §3 — DTL core (`dtl/`)
+
+**C-3-1 [DTL is a typed-proof synthesizer, not a TV-aware reasoner]** `dtl/` files do not import any truth-value module. The chainer signatures `(-> $a Nat $b $b)` (kb, depth, query, result) carry no truth values, no consistency conditions. (`dtl/{forward,backward}/{curried,no-curry}.metta`)
+
+**C-3-2 [DTL backward no-curry algorithm]** Three equations: base case `(syn $kb $_ (: $prf $ccln)) = (match $kb (: $prf $ccln) (: $prf $ccln))`, binary recursive `(syn $kb (S $k) ...) → let* on n-ary rule pattern with two recursive calls on premises`, ternary similar. Hand-coded for arity 2-3. **No And-Or-tree, no shared expansion pool — direct recursive descent with depth limit.** (`dtl/backward/no-curry.metta:L1-L21`)
+
+**C-3-3 [DTL backward curried adds rule abstraction]** `(syn $kb (S $k) (: ($prfabs $prfarg) $ccln))` recurses on **proof abstraction** AND **proof argument** (Curry-Howard): `((: $prfabs (-> $prms $ccln)) (syn $kb $k (: $prfabs (-> $prms $ccln))))`. This is the Source 5 / Source 4 / Roman-Treutlein-style curried backward chainer, now in dtl. (`dtl/backward/curried.metta:L19-L22`)
+
+**C-3-4 [vs URE BackwardChainer]** URE's `BackwardChainer` (Source 6 §2): three-phase `expand_bit() → fulfill_bit() → reduce_bit()`. DTL's `syn`: direct recursion. No equivalence. URE is BIT-style; DTL is PQ-less, BIT-less typed-proof-search.
+
+**C-3-5 [vs Source 3 `lib_pln.metta` Deriver]** PLN/'s `Deriver` is bounded-priority-queue forward chaining (Source 3 reconciliation §2). DTL's forward chainer is *also not PQ-based* — it iterates over collapsed superposition results, then add-atoms-nodup back to space. Different style from both URE BIT and PLN/ PQ-Deriver. (`dtl/forward/curried.metta:L82-L91` `ifcc`)
+
+**C-3-6 [DTL has no truth-value reasoning]** None of the DTL files import `common/truthvalue/`. **DTL is the proof-search layer; truth-value reasoning lives elsewhere.** This is a separation-of-concerns choice.
+
+**C-3-7 [DTL is the production-ish core per repo author intent]** `AGENTS.md:L4-L8` (chaining repo): *"`dtl/` is the closest thing to a reusable module surface."* CLAUDE.md echoes this. Module-import naming `chaining:dtl:backward:curried` confirms it's the only module with formal registration.
+
+---
+
+## §4 — PLN integration in `chaining`
+
+**C-4-1 [experimental/pln/ four-encoding pattern preserved from Source 5]** Subdirs: `dependent-types/`, `entail/`, `equal/`, `match/`. Same four-encoding pattern from `patham9/hyperon-pln` Source 5 §2.1. Each subdir contains `Deduction*.metta` and `ImplicationDirectIntroduction*.metta` files. (Listing of `experimental/pln/`)
+
+**C-4-2 [PLN rule formulas inherited from common/formula]** `experimental/common/formula/DeductionFormula.metta:L1-L54` contains the consistency conditions (`smallest-intersection-probability`, `largest-intersection-probability`, `conditional-probability-consistency`) plus `simple-deduction-strength-formula` and STV-specialized `deduction-formula`. **This file matches Source 5's seed semantically — same consistency structure, STV-specialized version uses `min` confidence aggregation as in Source 5 / Source 2 (PLN3).**
+
+**C-4-3 [vs production PLN/]** Source 3's `PLN/lib_pln.metta` has the multiplicative-confidence pivot (Source 3 §2). The chaining `DeductionFormula.metta` STV-specialized version still uses `min`. **chaining preserves the older, pre-pln0.9 `min`-based form** — not pln0.9's multiplicative variant. (`DeductionFormula.metta:L52` vs Source 3 reconciliation Table §2.2)
+
+**C-4-4 [PLN rule families: deduction + IDI only]** Same narrow rule set as Source 5: `Deduction`, `ImplicationDirectIntroduction`. ModusPonensFormula.metta also exists. No Induction, Abduction, Inversion, Revision in `experimental/pln/`. (Listing of `experimental/pln/dependent-types/`)
+
+**C-4-5 [pln-inf-ctl defines its own PLN, different from experimental/pln/]** `pln-inf-ctl.metta:L608-L725` defines `PLN.TruthValue`, `PLN.MkSTV`, `PLN.Term`, `PLN.Statement`, `𝛩` (theory-proof-theorem ternary predicate), `≞` judgment connector, `PLN.reduce`, `pln-bc`, `EQI`, `CI`. **This is a new, simplified PLN dialect built specifically for the inference-control experiment, NOT importing `experimental/pln/` or `experimental/common/formula/`.** Its rule inventory is just the two introduction rules `EQI` (Existential Quantifier Introduction) and `CI` (Conjunction Introduction). It is completely separate from the production `PLN/`. (`experimental/pln-inf-ctl/pln-inf-ctl.metta:L608-L725, L1431-L1496`)
+
+**C-4-6 [Production PLN/ does not import chaining]** PLN/'s `lib_pln.metta` (Source 3) imports `library lib_import` and `library PLN lib_pln` only. **Confirmed: production PLN does not consume any `chaining` artifact, including pln-inf-ctl.** chaining's PLN inference-control work has not been integrated downstream. (Source 3 reconciliation §3.1)
+
+---
+
+## §5 — Notable research tracks beyond inference control
+
+**C-5-1 [metamath/ — recent major work, the active 2026 direction]** `experimental/metamath/` contains `propositional-calculus.mm`, `propositional-calculus.metta`, `propositional-calculus-reversed-arguments.metta`, `metamath.metta`, `pc-xp.metta`, `demo0.metta`, plus a `benchmarks/` subdir with **MORK vs PeTTa benchmark comparisons** (`pc-bc-fa.{metta,mm2}`, `pc-fc.{metta,mm2}`, `pc-fc-fa.{metta,mm2}`, `benchmark.csv`, gnuplot scripts, pre-generated `plots/`). README documents 1517 propositional theorems imported from set.mm via `mm2metta` converter. (`experimental/metamath/README.md`)
+
+**C-5-2 [MORK reference — first in cluster]** `metamath/benchmarks/README.md` explicitly documents: *"What we have discovered however is that for full forward chaining, MORK greatly outperforms PeTTa. For low solution density backward chaining, PeTTa greatly outperforms MORK."* **This is the first appearance of MORK in any cluster source we have extracted.** It validates the wiki's `RawData+Publications+PLN FactorGraph MORK v3.2` paper series with concrete code experiments — even if just performance measurements of MeTTa interpreters. (`metamath/benchmarks/README.md:L17-L19`)
+
+**C-5-3 [evolutionary-programming/ is reasoning-reframed, single-file]** `evolutionary-programming/evolutionary-programming.metta` + `candidate-generation.metta`. README is one sentence: *"Experiment to see how the backward chainer could be used for evolutionary programming."* No connection to MOSES visible in code. (`experimental/evolutionary-programming/`)
+
+**C-5-4 [modal-logic/ is one-file modal experiment]** `modal-logic/modal-logic.metta`. README: *"the idea I am trying to realize is to be able to change the environment during reasoning, beyond the mere monotonic addition of a variable declaration due to a lambda abstraction."* First chainer extension to non-classical logic in cluster. (`experimental/modal-logic/README.md`)
+
+**C-5-5 [synthesis/ is the Source-5 synthesis engine, parameterized]** `experimental/synthesis/Synthesize.metta`: same algorithm as Source 5 `metta/synthesis/Synthesize.metta`, parameterized by axiom-supplier `(-> $kt)` and rule-supplier `(-> $rt)` rather than a single space. Five rule arities (nullary through quintenary). Unify also present (`Unify.metta`, `UnifyTest.metta` per Source 5 acknowledgment of buggy unification). **Source 5's synthesis engine survived here as the same code.** (`experimental/synthesis/Synthesize.metta:L1-L75`)
+
+**C-5-6 [proof-tree/ is fully-annotated proof tree generator]** `proof-tree/proof-tree.metta` (798 lines) builds curried backward and forward chainers that emit fully annotated proof trees. Includes `curry2`, `curry3` helpers and tree formatting. Different visualization track from URE's `fcs_to_ascii_art`. (`experimental/proof-tree/proof-tree.metta:L1-L40`)
+
+**C-5-7 [program-verification/ is Isabelle-inspired, 6 tests]** Per `program-verification/README.md`: extracted from *Programming and Proving in Isabelle/HOL* by Tobias Nipkow. Tests prove e.g. `2+2=4`, `x+Z=x`, list-reversal involutivity (last not yet succeeding). (`experimental/program-verification/README.md`)
+
+**C-5-8 [sumo/ — SUMO reasoning track, multi-experiment]** `experimental/sumo/` has subdirs `john-carry-flower/`, `located/`, `orientation/`, `route-between/`, plus `rule-base.metta`, `suo-kif-to-metta.sh`, `load-suo-kif.metta`. Requires `hyperon-experimental` compiled with `variable_operator` disabled. (`experimental/sumo/README.md`)
+
+**C-5-9 [ArgSetChainer/ submodule by Roman Treutlein — out of scope per brief]** `.gitmodules` points to a separate repo. Not entered. PR #20 of chaining (2025-07-23) was its addition. (`.gitmodules`)
+
+**Ultra-brief one-liners for orthogonal tracks:**
+- `backward-chaining/`: 5 backward-chainer encodings (Bare Entail / Equality / Bare Entail Match / Equality Match / DTL Equality Match) — survey of representation choices, see `bc-xp.metta`. (`experimental/backward-chaining/README.md`)
+- `forward-chaining/`: 6 forward-chainer encodings (Entail / Bare Entail / Equality / Bare Entail Match / Equality Match / DTL) — same survey style. (`experimental/forward-chaining/README.md`)
+- `curried-chaining/`: combined curried backward + forward chainers (forward goes via backward + rule abstraction unfolding). (`experimental/curried-chaining/README.md`)
+- `polyward-chaining/`: hybrid forward/backward, "between forward/backward and omniward chaining." Single file `pc-xp.metta`. (`experimental/polyward-chaining/README.md`)
+- `iterative-chaining/`: save/reuse intermediary inference subtrees; `ifc-xp.metta` + `ibc-xp.metta`, decomposes large chaining into smaller iterative steps with callback-style result storage. (`experimental/iterative-chaining/README.md`)
+- `prob-chaining/`: Problog-style probabilistic backward chainer with per-axiom probabilities; `pbc` does `random-float < pbl` filtering at base case (NOT URE-style BIT pruning). (`experimental/prob-chaining/prob-chaining.metta:L59-L96`)
+- `lambda-abstraction/`: regular curried bc + extra rule that introduces lambda abstractions. Single file. (`experimental/lambda-abstraction/README.md`)
+- `subtyping/`: `<:` reflexive/transitive/contravariant-input/covariant-output, with explicit and implicit coercion variants. (`experimental/subtyping/README.md`)
+- `program-verification/`: Isabelle-extracted Nat/list theorems via the chainer. (C-5-7 above)
+- `proof-tree/`: 798-line annotated-proof-tree generator. (C-5-6 above)
+- `no-depth/`: depth-free backward chainer using MeTTaLog `limit`; works but loops if limit exceeds available solutions. (`experimental/no-depth/README.md`)
+- `implicit-argument/`: Idris-style implicit arg attempt. One-line README. (`experimental/implicit-argument/README.md`)
+- `converters/`: format converters (curried↔uncurried; dependent↔functional). README empty. (`experimental/converters/README.md`)
+- `sumo/`: SUMO reasoning, see C-5-8.
+
+---
+
+## §6 — Production-vs-research positioning
+
+**C-6-1 [Self-described as experiments]** README.md (16 lines): lists chaining variants and notes Hedra Yusuf's DTL module — *"I don't know how well maintained it is."* **No claim of production status, no version tags.** (`README.md:L1-L20`)
+
+**C-6-2 [No tags / no formal release]** Per brief §Git-history: "Tags: none (no formal release structure)." Confirmed: no `v0.x` tag scheme. Different from PLN/ which has `v0.1..v0.9`. Different from PLN3 / hyperon-pln which are pinned-commit-style.
+
+**C-6-3 [No imports from chaining elsewhere]** PLN/ (Source 3) does not import `chaining`. PLN3 (Source 2) does not import chaining. The chaining repo's pln-inf-ctl does not import production PLN/ either. The repo is a *standalone research playground.*
+
+**C-6-4 [Future direction: Metamath, not inference-control]** Per brief §Git-history: PRs #15 (May 2025) and #16 (May 2025) were the inference-control work. PRs #22 (Feb 2026), #23 (Feb 2026), #25 (Mar 2026) — the most recent merges — are all about Metamath / MORK benchmarks. **The Bayesian-control research direction received ~2 months of work in mid-2025 and has not been touched since.** Source 6's worry that the URE Bayesian stack might have died is partly borne out: it was *attempted* in chaining at limited scale, then abandoned for a different research direction.
+
+---
+
+## §7 — Successor handoff status
+
+**C-7-1 [No URE wiki references in chaining]** Grep `URE|opencog|inference-control-learning` over the entire repo returns:
+- `experimental/inference-control/inf-ctl-month-xp.metta:L4` — comment `;; https://github.com/opencog/pln/tree/master/examples/pln/inference-control-meta-learning`
+- `LICENSE:L608` — boilerplate text
+- All other matches are unrelated (`OPERATE`, etc.). **There is exactly ONE URE-cluster wiki/code reference in the entire chaining repo.** (Grep output)
+
+**C-7-2 [The single URE reference is a meta-learning README link]** That link (`opencog/pln/tree/master/examples/pln/inference-control-meta-learning`) points to the same out-of-tree design-doc location Source 6 §9 flagged as broken-linked from URE. **The chaining repo carries the broken link forward; it does not carry the document content forward.** Migration of design intent without migration of design documentation.
+
+**C-7-3 [No migration notes in any README]** Repo-level README and CLAUDE.md/AGENTS.md/GEMINI.md do NOT cite URE, do NOT mention "successor", do NOT reference `wiki.opencog.org/w/URE`. The handoff signal Source 6 noted as living on `origin/update-readme` of `ngeiswei/ure` ("Add link to Hyperon Chainer in the message about the state of the repo") is *one-directional* — URE points at chaining, but chaining does not advertise itself as the successor.
+
+**C-7-4 [No URE wiki pages migrated]** None of `wiki.opencog.org/w/URE`, `wiki.opencog.org/w/URE_Configuration_Format`, `wiki.opencog.org/w/URE_Control_Policy` (per Source 6 §9) are referenced anywhere in chaining. The wiki documentation tree is also abandoned.
+
+---
+
+## §8 — Discovered publications and references
+
+**C-8-1 [Metamath corpus citation]** `https://us.metamath.org/mpeuni/mmtheorems1.html` and per-axiom links like `ax-1.html`, `ax-2.html`, `ax-3.html`, `ax-mp.html`. References to the Margaris textbook (axioms A1, A2, A3) and Hamilton (rule-1 modus ponens). (`experimental/pln-inf-ctl/{rnd-inf-ctl,pln-inf-ctl}.metta` headers)
+
+**C-8-2 [Problog reference for prob-chaining]** `prob-chaining/README.md:L4` cites Problog and names contributors *"Abdulrahman Omar, Jonathan Warrell, Matt Ikle, Douglas Miles and Mike Duncan"*. Test data attributed to *"https://dtai.cs.kuleuven.be/problog/tutorial/tutslides/01_basic.html"*. (`experimental/prob-chaining/{README.md,prob-chaining.metta:L102}`)
+
+**C-8-3 [Greg Meredith, Ben Goertzel, Alexey Potapov citations in inference-control README]** `inference-control/README.md:L562-L578` cites Alexey Potapov for program specialization, Greg Meredith for "global police" centralization phrase, Ben Goertzel for type-primitives-over-trace ideas. Informal citations, no paper titles. (`experimental/inference-control/README.md`)
+
+**C-8-4 [Tobias Nipkow Isabelle citation]** `program-verification/README.md`: Initially extracted from *Programming and Proving in Isabelle/HOL* by Tobias Nipkow. (`experimental/program-verification/README.md`)
+
+**C-8-5 [SUMO + SUO-KIF] No direct paper cites; references the SUMO/SUO-KIF format and tooling. (`experimental/sumo/README.md`)
+
+**Net-new for wiki publications coverage**: **Limited but nonzero.** Names not previously in cluster: Tobias Nipkow (Isabelle), Abdulrahman Omar / Jonathan Warrell / Matt Ikle / Douglas Miles / Mike Duncan (Problog test contributors), Margaris (textbook). The Greg-Meredith / Ben-Goertzel / Alexey-Potapov references are informal mentions in a README, not formal academic citations. **Probably worth one wiki RawData card per Problog source if the wiki tracks Problog explicitly; otherwise these are informal cross-references and don't need cards.**
+
+---
+
+## §9 — Cluster-level synthesis
+
+**C-9-1 [Migration table — what URE features survived]**
+
+**chaining is the URE successor for:** the *concept* of pluggable Control + control rules in a separate atomspace + Thompson-sample-named branch selection + Beta-distribution-aware TV machinery (in `common/truthvalue/` but unused by inference-control). Conceptually 5 of URE's ~16 features have surviving traces. The architectural skeleton lives; the Bayesian mathematics largely doesn't.
+
+**chaining did NOT preserve from URE:** BIT (And-Or backward inference tree), MixtureModel, complexity penalty + Kolmogorov K(D), `expansion_andbit_weights`, TraceRecorder, multi-threaded chainer, FCStat, AtomSpace-resident UREConfig, meta-rules (rule-producing rules), AttractionLink + intensional inheritance direct introduction, ImplicationScope quantifier instantiation meta-rules, fuzzy-conjunction-introduction, implication-and-lambda-factorization, conditional-direct-evaluation, closed-lambda-introduction, implication-scope-direct-evaluation, ECAN/STI source-selection. **~15 distinct URE features did NOT migrate.**
+
+**chaining adds beyond URE:** modal-logic chaining (PR #12), lambda-abstraction chaining (PR #4), evolutionary-programming reframed as reasoning (PRs #8-#9), Metamath formalism + propositional calculus port (PRs #14, #22), MORK vs PeTTa benchmarks (PR #25), Problog-inspired probabilistic backward chainer (PR #19), `Continue`-typed control-rule meta-layer with separate atomspace (PR #16, the closest thing to a NEW idea relative to URE — URE had control rules, but the chaining demo shows them as *typed* Continue-relations evaluated by a recursive chainer call, which is a Curry-Howard-friendly variant). **6+ wholly new directions.**
+
+**chaining vs production PLN/ (Source 3):** **Disjoint trees.** Production PLN/ is the lib_pln monolith with PQ-Deriver and the multiplicative-confidence pln0.9 pivot. chaining has its own DTL synthesizer, its own `experimental/pln/` four-encoding pattern, its own `pln-inf-ctl/` mini-PLN dialect. Neither imports the other. **chaining is the research-experimental playground; PLN/ is the production-library line.** Two parallel inheritances of Source 5's seed.
+
+**C-9-2 [Cluster headline question — resolution]** *"Did URE's Bayesian inference-control architecture (Thompson sampling, MixtureModel, control-rule meta-layer, BIT) survive the migration to `chaining`, or was it lost?"*
+
+**Answer:** **Mostly lost; conceptually preserved at one-experiment scale.** The Thompson Sampling function name + the control-rules-in-separate-atomspace pattern are the two surviving concepts. Everything else (the *interesting* mathematical machinery — Beta posterior integration, MixtureModel, complexity penalty, BIT, TraceRecorder, meta-rules) is absent. **The MeTTa-era PLN cluster's "no inference control" gap is mostly intact.** A pedagogical inference-control track exists; a production-grade Bayesian-MAB-plus-meta-rules architecture does not.
+
+This makes the Source-6 reconciliation §6 worry concrete: **URE's Bayesian stack effectively died with URE.** chaining's `pln-inf-ctl` is a tiny new experimental seed of a few of the same ideas, not a port.
+
+**C-9-3 [Wiki implication]** When wiki cards describe PLN's inference-control story, the truthful narrative is:
+1. URE (2017-2020) had the Bayesian + BIT + MixtureModel + meta-rule stack (Source 6).
+2. URE bit-rotted starting ~2020 with no replacement (Source 6 §5).
+3. The MeTTa-era PLN production line (PLN3, PLN/) has no inference control beyond confidence-priority queue (Sources 2-3).
+4. **chaining (2025) reattempted a small subset (Thompson-sample boundary cases + control-rule atomspace) at single-experiment scale, then pivoted to Metamath benchmarks.**
+5. **The full URE Bayesian stack did NOT migrate to MeTTa.**
+
+**C-9-4 [URE design doc still broken-linked]** Source 6 noted the `examples/pln/inference-control-learning/README.md` design doc (cited from URE's `ActionSelection.h:75`, `ThompsonSampling.h:69`, `MixtureModel.h:84`) as out-of-tree and broken-linked. **chaining inherited the broken link** (`inf-ctl-month-xp.metta:L4` references the same URL pattern, also broken). The design document for this whole architectural lineage is *still missing* and now both URE and chaining point at it without resolving it.
+
+**C-9-5 [common/formula PLN inheritance]** `experimental/common/formula/DeductionFormula.metta` STV deduction-formula uses `min` confidence aggregation — i.e., **chaining preserves the pre-pln0.9 (Source 5 / Source 2 PLN3) `min`-based form**, NOT the pln0.9 (Source 3 `lib_pln.metta`) multiplicative pivot. So if the formulas in `experimental/pln/dependent-types/DeductionDTL.metta` are byte-identical to those at any one of {Source 5, Source 2 PLN3, Source 3 PLN/}: my read suggests **byte-identical to Source 5 / PLN3, not pln0.9**. (Verbatim `(min $Pc (min $Qc (min $Rc (min $PQc $QRc))))` at `experimental/common/formula/DeductionFormula.metta:L52`.)
+
+**C-9-6 [Cluster-narrative refinement]** chaining vs PLN/ are **co-equal descendants of Source 5 hyperon-pln**, not a sequential lineage. Source 4 (pln-experimental2) is also a Source-5 descendant. The "cluster" is now four parallel Source-5 descendants: Source 2 PLN3 (frozen) → Source 3 PLN/ (production), Source 4 pln-experimental2 (research-1), Source 7 chaining (research-2). URE (Source 6) is a separate ancestor whose "successor" claim by chaining is conceptual rather than substantive.
+
+---
+
+## §10 — Author-attribution check
+
+**C-10-1 [Geisweiller dominates as expected]** Per brief §Git-history estimate (~80% of commits) and per visible PR-author distribution. Inference-control work, PLN-inf-ctl work, modal-logic, Metamath, lambda-abstraction, evolutionary-programming, synthesis are all his. Claude verified by spot-checking author labels in commit messages from the brief.
+
+**C-10-2 [Hedra S Yusuf's DTL is somewhat isolated]** `dtl/` is the closest thing to a stable module surface (per AGENTS.md C-1-13). However, README.md self-flags: *"I don't know how well maintained it is."* PR #5 (2024-08) and PR #6 (2024-09) are her contributions. **The DTL module is structurally isolated** — `dtl/` does not import from `experimental/`; `experimental/` files prefer to redefine `Nat`/`List` rather than import from `dtl/utils.metta`. The two trees evolve independently in the same repo.
+
+**C-10-3 [Roman Treutlein's argset chainer is isolated]** `experimental/ArgSetChainer/` is a git submodule per `.gitmodules`. Not entered (per brief). PR #20 (2025-07-23) added the submodule reference. **No code in the main chaining repo imports or extends ArgSetChainer.** It is a sibling experiment, not an integrated module. The brief's clue about Treutlein being *"the bridge person"* in URE's `rTreutlein-MetaRuleSupport` branch is consistent with the pattern: cross-tradition contributors operate at the fringe rather than central modules.
+
+---
+
+## §11 — Confidence summary and open questions
+
+**Confidence levels:**
+- §2 URE migration audit: **HIGH** — every drop confirmed by negative grep; every "simp" backed by verbatim source. One residual uncertainty: whether the `experimental/common/truthvalue/` Beta-distribution machinery is used by ANY chaining file. My read shows it imports `Num.metta` and is itself imported by `EvidentialTruthValue.metta` — but neither file is imported by `pln-inf-ctl/` or `inference-control/`. Probability the BetaDistribution machinery is unused outside its own tests: ~85%.
+- §1 Architecture map: **HIGH** — all paths and signatures verbatim.
+- §5 Notable research tracks: **MEDIUM** for breadth (one-line each from READMEs without deep-dive); **HIGH** for the MORK reference and Metamath direction.
+- §9 Cluster synthesis: **HIGH** — supported by §1-§7.
+
+**Open questions (worth a follow-up before Source 8):**
+1. **Are the Beta-distribution methods in `experimental/common/truthvalue/TruthValue.metta` ever called?** My grep is "files_with_matches" for `post-alpha|post-beta|mean` — needs deeper trace. If unused, this is dead infrastructure carried from Source 5.
+2. **Does the `inf-ctl-month-bc-cont-xp.metta` control-rules-in-atomspace pattern ever get extended beyond the months-of-the-year toy theory?** I see no other test file using `&td-ctl-kb`-style separate atomspace. Hypothesis: the pattern was demonstrated once and not generalized.
+3. **Is `pln-bc` (the PLN backward chainer in pln-inf-ctl) used as control mechanism in any experiment beyond the Metamath propositional tests?** Tests only target ax-3, mp2, mp2b, a1i.1.
+
+---
+
+## §12 — Wiki implications (informational)
+
+The findings in this file justify these wiki edits when the cluster pilot completes:
+1. `Hyperon AI Algorithms+PLN+PLN Full` (Draft) — incorporate the **MeTTa Inference Control Gap** finding: URE had ~16 inference-control features; production PLN dropped all; chaining's pln-inf-ctl reintroduces 1-2 conceptually at single-experiment scale; the gap is real and persistent.
+2. `RawData+Publications+PLN FactorGraph MORK v3.2` etc. — link to chaining `experimental/metamath/benchmarks/` MORK-vs-PeTTa as the **first concrete code experiment** in the cluster. Currently performance-only; not yet a FactorGraph implementation, but proximate.
+3. Per-repo `chaining/CLAUDE.md` (deferred): add cluster-position paragraph (research playground, not URE successor); flag `pln-inf-ctl/` as Bayesian-machinery-light despite name; note 2026 focus shift to Metamath.
+4. PLN-rule provenance cards (deferred): document that `experimental/common/formula/DeductionFormula.metta` preserves the **pre-pln0.9** `min` confidence form, anchoring chaining as a Source-5-semantics-preserving fork.
+
+---
+
+*End of findings_claude.txt for Source 7 chaining.*

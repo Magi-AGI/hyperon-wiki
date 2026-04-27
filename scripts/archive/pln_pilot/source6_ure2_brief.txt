@@ -1,0 +1,247 @@
+# ure2 (Unified Rule Engine) — Source 6 Extraction Brief (Cross-Model)
+
+Neutral extraction brief for Source 6 of the PLN cluster pilot. Claude, Codex, and Gemini each run independently against the same source snapshot.
+
+**Repo:** `ure2` — `ngeiswei/ure`, a fork of `opencog/ure`. **Legacy C++ Unified Rule Engine.** README explicitly states *"IT IS NO LONGER MAINTAINED. The lead developer walked away. Some unit tests pass. It's slowly bit-rotting."* Recent PR #132 (Geisweiller 2025-03-12) added a link to **Hyperon Chainer** as the successor — explicit handoff signal.
+
+**Local path:** `E:\GitHub\hyperon reference\ure2\`
+
+**Commit at extraction time:** `6f4c6eeba34cf6f17c534abf67cf1274a7ba32b4` (HEAD, "Bug fix incorrect use of API, and remove old deprecated API", 2025-02-02 by Linas Vepštas; pulled 2026-04-24, already up to date). All three models extract against this exact hash.
+
+**Pre-existing meta-docs (already consulted by orchestrator; agents read first per workflow):**
+- `README.md` — declares URE bit-rotting, points users to AtomSpace + term unifier.
+- `CLAUDE.md` — describes structure: `opencog/ure/{ForwardChainer, BackwardChainer, Rule, ControlPolicy, ActionSelection, types}` + Python and Scheme bindings.
+- `AGENTS.md` — mirror of `ure/`; "Bit-rotting", `make check` over `make test`.
+- `GEMINI.md` — explicit note that *"new development has shifted to the [Chaining](https://github.com/trueagi-io/chaining) repository."*
+
+---
+
+## Cluster lineage map (updated through Source 5)
+
+```
+Source 1 (PLN book 2008) ─── theoretical foundation
+Source 5 (patham9/hyperon-pln, frozen 2023-08-01) ─── MeTTa formalization seed
+   ⇡ rename
+trueagi-io/hyperon-pln → trueagi-io/pln-experimental
+                                ⇣ fork
+                          ngeiswei/pln-experimental = Source 4
+                                ↘
+                          ngeiswei/PLN = Source 2 (PLN3)
+                                ⇣
+                          trueagi-io/PLN = Source 3 (PLN/, pln0.9)
+
+────────────── separate code lineage, distinct tradition ──────────────
+
+Source 6 (ngeiswei/ure = ure2)  ←── THIS PASS
+  pre-MeTTa OpenCog Classic. C++ AtomSpace-coupled Unified Rule Engine.
+  Mostly Linas Vepstas (~7500 commits across attribution variants);
+  Geisweiller second; Amen Belayneh 3rd with 314 commits.
+  → bit-rot phase entered ~2024 with PR #131 (Move types from atomspace to URE)
+  → Geisweiller's PR #132 (2025-03-12) explicitly redirects to trueagi-io/chaining as successor
+```
+
+This is a **distinct C++ implementation tradition** — not Hyperon-MeTTa. The relevance to the cluster is *implementation-lineage*: the algorithms in URE (forward/backward chaining, rule-based reasoning, multi-armed bandit control) are conceptual ancestors of the MeTTa-era PQ-Deriver. Some made it across; many didn't.
+
+---
+
+## Goal
+
+Produce a **provenance and abandonment analysis** of URE relative to the MeTTa PLN line. Three priority questions:
+
+1. **What's in URE that the MeTTa line abandoned** — quantifier rules, temporal/causal hooks, distributional TVs, FactorGraph adjacency, intensional/extensional conversions, multideduction, BRGI, OBI, attention/importance — is any of this actually here in C++?
+2. **What's the inference control architecture** — `ActionSelection`, `ThompsonSampling`, `BetaDistribution`, `MixtureModel`, `ControlPolicy`. The MeTTa-era PLN3/PLN/'s simple confidence-priority queue is much narrower than the book's BIT/MAB description; is the missing complexity here?
+3. **Bit-rot diagnostic** — what specifically broke / was disabled / left behind. Multiple commits explicitly disable tests ("Disable backward chainer unit tests. They have bit-rotted.")
+
+---
+
+## Required output sections
+
+Each as numbered, cited claims in the same `C-<section>-<n>` format. Cite file + symbol or approximate line.
+
+### §1 — Architecture map and core C++ surface
+
+`opencog/ure/` directory layout:
+- `Rule.h/cc` — rule representation
+- `ForwardChainer/` and `BackwardChainer/` subdirectories
+- `ActionSelection.h/cc` — control policy / multi-armed bandit
+- `ThompsonSampling.h/cc` — bandit-arm selection algorithm
+- `BetaDistribution.h/cc` and `MixtureModel.h/cc` — Bayesian machinery
+- `UREConfig.h/cc` — configuration
+- `URELogger.h/cc` — logging
+- `URESCM.cc` — Scheme-binding glue
+- `Utils.h/cc` — helpers
+- `types/` — Atomese type definitions for URE
+
+Document for each: what does it implement, how does it relate to similar concepts in the MeTTa line (or note absence)?
+
+### §2 — Inference control: MAB / ControlPolicy / ActionSelection
+
+The 2008 PLN book describes BIT (Backward Inference Tree) with multi-armed bandit pruning + SoftMax selection (Source 1 §4.2-4.3). PLN3/PLN/ replaced this with a simple confidence-priority queue. **Is the full MAB control system here?**
+
+Specifically:
+- Read `ActionSelection.h/cc` end to end. What strategy does it implement?
+- Read `ThompsonSampling.h/cc`. Confirm it's the bandit-arm selector. Compare to book's "SoftMax" framing.
+- Read `BetaDistribution.h/cc` and `MixtureModel.h/cc`. How are these used in selection?
+- Read `ControlPolicy` (referenced in CLAUDE.md, find file).
+- Cross-reference to PLN3/PLN/'s `Deriver.metta` (per Source 2/3 reconciliations) — what's the delta?
+
+This is the most-anticipated finding: **does URE actually implement the book-page-271 BIT+MAB+SoftMax control that the MeTTa line dropped?**
+
+### §3 — Rule representation and rule families
+
+- `Rule.h/cc`: how is a rule structurally represented in URE? Compare to MeTTa S-expression rule patterns in `lib_pln.metta`.
+- `types/`: enumerate the types defined for URE.
+- Are there rule definitions for inference families absent from the MeTTa line? Quantifier rules, temporal/causal, intensional, distributional?
+
+URE was used historically for PLN, Pattern Miner, and Relex2Logic (per README). Look for evidence of each integration.
+
+### §4 — `forwardchainer/` and `backwardchainer/` deep dive
+
+Both subdirectories contain the actual chaining algorithms. Read enough to answer:
+- Is the BIT (Backward Inference Tree) data structure here?
+- Is there a fitness / utility / weight-of-evidence aggregation step that the MeTTa line abandoned?
+- What's the rule-input-filter / output-based-input-filter machinery (book §4.2 C-3-7)?
+- Are the unit tests explicitly disabled? Why?
+
+### §5 — Scheme and Python bindings
+
+- `opencog/scm/` — Scheme bindings. README documents `(use-modules (opencog) (opencog ure))` + `cog-fc` / `cog-bc`. Document the API exposed.
+- `opencog/cython/` — Python bindings. What's the surface?
+- These bindings were **the historical interface for higher-level systems (PLN, Pattern Miner, Relex2Logic) to use URE** — they're the historical analog of how MeTTa code now imports `lib_pln`.
+
+### §6 — Bit-rot diagnostic
+
+The README is explicit: *"It's slowly bit-rotting."* Recent commits include:
+- *"Disable backward chainer unit tests. They have bit-rotted."* (2025-01-25, Linas)
+- *"More fixes for odds-n-ends of bitrot"* (2025-01-24)
+- *"Disable ForwardChainerUTest"* (2024-04-02)
+- *"Remove failing unit tests. Unsupported"* (2024-04-02)
+
+Document:
+- Which specific tests are disabled?
+- What's broken (per the commit messages and source comments)?
+- Are there `TODO` / `FIXME` / `XXX` comments concentrated anywhere?
+- What dependencies have shifted under URE that broke things? (Atomspace API changes are mentioned.)
+
+### §7 — Successor handoff
+
+PR #132 (Geisweiller, 2025-03-12) added *"a link to Hyperon Chainer in message about the state of the repo."* Find that link and the surrounding text in the README or wiki. The successor is presumably `trueagi-io/chaining`. Document:
+- Where exactly does URE point users?
+- Is `trueagi-io/chaining` cloned in our hyperon-reference tree? (Probably yes — was cloned in our earlier mass-clone.)
+- What does Geisweiller's PR #132 message say about why the handoff happened?
+
+### §8 — Branch surface
+
+Active branches signal in-flight work or abandoned directions:
+- `master` (default)
+- `rTreutlein-MetaRuleSupport` — Roman Treutlein's branch. **What does meta-rule support add?**
+- `add-mixture-model-python-binding` — connects to the BetaDistribution/MixtureModel work.
+- `singnet-master` — the SingularityNET fork's master.
+- `update-readme` — likely cosmetic.
+
+For each non-trivial branch, summarize what changes vs `master`.
+
+### §9 — Discovered publications
+
+Every citation in code comments, README, AGENTS.md, GEMINI.md, headers. Particularly:
+- The "URE wiki" referenced in README (`https://wiki.opencog.org/w/URE`) — wiki-only content, can't extract here, but note for follow-up.
+- Any academic papers cited in source comments (likely Goertzel, Geisweiller, possibly NARS).
+
+### §10 — Lineage and successor map
+
+After reading the code, characterize:
+- What ideas in URE survived into MeTTa-era PLN3/PLN/? (Note: very little, per Sources 2-3 findings.)
+- What ideas survived into `pln-experimental2` (Source 4)? (Inference-control experiments PR #37-#41 there reference chaining heuristics — possibly a continuation.)
+- What ideas died with URE? (BIT, MAB, ThompsonSampling, MixtureModel — likely none of these survived.)
+- What ideas migrated to `trueagi-io/chaining` (the successor per PR #132)?
+
+This produces the **abandonment map**: what was lost in the MeTTa-era simplification.
+
+---
+
+## Author profile + wiki-outreach implications
+
+URE is heavily Linas Vepstas (~7500 commits across attribution variants). Key contributors at the extraction hash:
+
+| Author | Commits | Wiki-outreach implication |
+|---|---|---|
+| Linas Vepstas | ~7485 | Primary maintainer; primary authority on URE design intent |
+| Nil Geisweiller | ~3797 | Co-architect; wrote the PLN-URE integration; authored PR #132 handoff |
+| Joel Pitt | 720 | Earlier OpenCog era; mostly historical |
+| Jared Wigmore | 704 | Same |
+| William Ma | 520 | Same |
+| Cosmo Harrigan | 501 | Same |
+| shujingke | 430 | Same |
+| Misgana Bayetta | 375 | Possibly current OpenCog Foundation |
+| Jade O'Neill | 352 | Earlier era |
+| **Amen Belayneh** | **314** | **Confirms our cluster's `amebel` GitHub user is a major URE contributor historically — relevant for any URE-related wiki review even though his recent public repos are empty.** |
+| Sebastian Ruder | 219 | Earlier era |
+| Zhenhua Cai | 193 | Earlier era |
+
+For wiki review of URE-related cards, **Linas Vepstas is the authoritative expert**, with Geisweiller as the secondary expert.
+
+---
+
+## §Git-history context (pre-populated by orchestrator)
+
+Snapshot at extraction hash `6f4c6ee`. Curated for agents.
+
+**Commit narrative (last 25 at hash):** Maintenance-only since 2024-04. Linas Vepstas is the dominant committer. Recent activity:
+- 2025-02-02: *"Bug fix incorrect use of API, and remove old deprecated API"* (Linas) — last commit on master.
+- 2025-01-25: *"Disable backward chainer unit tests. They have bit-rotted."* (Linas)
+- 2025-01-24: *"More fixes for odds-n-ends of bitrot"* + *"Move to here from AtomSpace"* (Linas).
+- 2024-04-02: PR #131 *"Move URE types from atomspace to URE"* — multi-commit bit-rot fix series. *"Remove failing unit tests. Unsupported"*.
+- 2023-09-25: PR #130 *"Replace `make test` by `make check`"*.
+- 2023-11-21: PR #129 *"Redirecting in README.md to the github repo of the term unifier"* (gl-yziquel).
+- 2022-12: PR #127 *"Split out Unify into its own git repo"*.
+
+**Tags:** none. (URE was never released.)
+
+**Remote branches:** `master`, `rTreutlein-MetaRuleSupport`, `add-mixture-model-python-binding`, `singnet-master`, `update-readme`. Note the `singnet-master` branch — possibly the SingularityNET fork's tracking branch.
+
+**Top authors (full git log):**
+- Linas Vepstas: 6065 + 857 (Vepštas) + 563 (linas) ≈ 7485 effective
+- Nil Geisweiller: 3409 + 388 (ngeiswei) ≈ 3797
+- Joel Pitt: 720, Jared Wigmore: 704, William Ma: 520, Cosmo Harrigan: 501, shujingke: 430, Misgana Bayetta: 375, Jade O'Neill: 352, **Amen Belayneh: 314**, Sebastian Ruder: 219, Zhenhua Cai: 193.
+
+**Key PRs (`opencog/ure`):**
+- **#132 (2025-03-12, Geisweiller)** — *"Add link to Hyperon Chainer in message about the state of the repo"* — **the explicit successor-handoff signal**.
+- **#131 (2024-04-02, Linas)** — *"Move URE types from atomspace to URE"* — beginning of "bit-rot phase," types migration as Atomspace API churned.
+- #130 (2023-09-25, Linas) — `make test` → `make check`.
+- #129 (2023-11-21, gl-yziquel) — README redirect to term unifier repo.
+- #127 (2022-12, Linas) — *"Split out Unify into its own git repo"* — modularization.
+- #126 (2022-07, Linas) — *"Explicitly require eager evaluation"*.
+- #117 (2021-10, Linas) — *"Port over to AtomSpacePtr from AtomSpace*"* — pointer-API migration.
+- #114 (2021-09, Linas) — *"Move code from AtomSpace to here"*.
+
+`gh pr list --repo ngeiswei/ure` returns empty — the fork doesn't accept PRs; all PR activity is upstream on `opencog/ure`.
+
+**Interpretation:** URE has been in maintenance-only mode since 2022 (Linas absorbing API churn from AtomSpace). The "bit-rot" framing is from 2024-04. By 2025, even the explicit "successor exists" message went up. **For wiki purposes, URE is a historical artifact** — important for explaining where MeTTa-era PLN's reasoning architecture came from, but not where it's going.
+
+---
+
+## Output file
+
+Write findings to: `E:\GitHub\Magi-AGI\hyperon-wiki\scripts\archive\pln_pilot\source6_ure2\findings_<model>.txt`
+
+e.g., `findings_claude.txt`, `findings_codex.txt`, `findings_gemini.txt`. Create the `source6_ure2/` subdirectory if missing.
+
+Header must include: model name, extraction date (2026-04-24), commit hash `6f4c6eeba34cf6f17c534abf67cf1274a7ba32b4`, claim counts per section.
+
+If the write is blocked, paste the FULL findings content verbatim in your response.
+
+---
+
+## Rules
+
+- Do NOT consult any other source — no book, no other repos, no wiki MCP, no web. Only files inside `E:\GitHub\hyperon reference\ure2\`.
+- Cite file and symbol (or approximate line) for every concrete claim.
+- For `ControlPolicy`, `ActionSelection`, `ThompsonSampling`, `BetaDistribution`, `MixtureModel`: read code, transcribe key class/method signatures verbatim. These are the most-anticipated findings.
+- For `forwardchainer/` and `backwardchainer/`: enumerate files, identify BIT-related code, document control flow.
+- Frame as **provenance + abandonment analysis** vs MeTTa-era line.
+- Flag divergences between this repo's meta-docs and code.
+- C++ heritage: this is not MeTTa. Don't expect S-expressions; expect Atomese (LISP-like representation in C++) plus Scheme APIs.
+
+---
+
+*End of Source 6 brief.*

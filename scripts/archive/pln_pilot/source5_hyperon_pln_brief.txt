@@ -1,0 +1,184 @@
+# hyperon-pln (patham9) — Source 5 Extraction Brief (Cross-Model)
+
+Neutral extraction brief for Source 5 of the PLN cluster pilot. Claude, Codex, and Gemini each run this brief independently against the same source snapshot; results cross-reconciled afterward.
+
+**Repo:** `hyperon-pln` — `patham9/hyperon-pln`, a **frozen 2023 snapshot** of the original `trueagi-io/hyperon-pln` (which was later **renamed** to `trueagi-io/pln-experimental` and continued to evolve there). README's claim of `https://github.com/trueagi-io/hyperon-pln` as the canonical URL now redirects to the renamed `pln-experimental` repo. **In-scope: only `patham9/hyperon-pln`. Out of scope: `hyperon-pln-hansonrobotics/` (a different fork, hansonrobotics org).**
+
+**Local path:** `E:\GitHub\hyperon reference\hyperon-pln\`
+
+**Commit at extraction time:** `0d017c4d154de05fa8234bcf2717c268cf82d791` (HEAD = "Merge pull request #23 from leungmanhin/modus-ponens", 2023-08-01). **Repo is dormant.** All three models extract against this exact hash.
+
+**Pre-existing meta-docs (already consulted by orchestrator; agents read first per workflow):**
+- `README.md` — explicitly calls the project *"Very experimental at this stage."* Names dependent-types as the most advanced approach.
+- `CLAUDE.md` — author-written; correctly identifies the structure, four implementation approaches, the `metta/synthesis/` synthesizer, and the **4-type TV hierarchy: `Bl` (Bool), `Pr` (Number), `PrCnt` (Number, Num), `STV` (Number, Num)** — note `PrCnt` is unique to this frozen state vs. Source 4's repo.
+- `AGENTS.md` — flags that `metta/synthesis/README.md` notes some unifier-related tests are unstable; treat as exploratory.
+
+Ignore stray `tmpclaude-*-cwd` files.
+
+---
+
+## Cluster lineage map (established by Sources 1–4)
+
+```
+2008 PLN book (Source 1)
+   ⇣ heuristic provenance
+opencog/pln Scheme rules (cited in lib_pln comments)
+   ⇣ MeTTa formalization
+patham9/hyperon-pln (Source 5, frozen 2023-08-01)  ←── THIS PASS
+   ⇡ rename of upstream remote
+trueagi-io/hyperon-pln  →  trueagi-io/pln-experimental
+                                ⇣ fork
+                          ngeiswei/pln-experimental
+                          (= pln-experimental2/, Source 4 — extracted 2026-04-24)
+                                ↘ author forks
+                          patham9/PLN  → ngeiswei/PLN  →  trueagi-io/PLN
+                          (= PLN2)      (= PLN3,         (= PLN/, pln0.9, Source 3)
+                                          Source 2)
+```
+
+`patham9/hyperon-pln` is the **theoretical-formalization seed** that the production PLN repos (Sources 2 & 3) and the experimental research repo (Source 4) all cite as provenance for the deduction-formula consistency conditions and the `DeductionDTL.metta` machinery.
+
+---
+
+## Goal
+
+Produce a **provenance map**: which formulas / rules / files in `hyperon-pln` were carried into Sources 2-4, with what modifications. Plus document the unique features of this repo that didn't survive into later branches (synthesis engine? Idris prototyping? PrCnt TV type?).
+
+This is NOT a standalone repo summary. The priority is the **lineage delta** — what's preserved, what's modified, what's abandoned downstream.
+
+---
+
+## Required output sections
+
+Each as numbered, cited claims in the same `C-<section>-<n>` format. Cite file path + symbol or approximate line.
+
+### §1 — Repo structure and the four-encoding pattern
+
+The README and CLAUDE.md describe four implementation approaches: **dependent-types**, **match**, **entail**, **equal**. Document each:
+- Which rules are implemented in each? (Deduction? ModusPonens? ImplicationDirectIntroduction?)
+- What's the methodological/formal difference? (e.g., are `entail` rules expressed via an entailment symbol, while `equal` rules use `=`-rewriting?)
+- How does the dependent-types encoding (claimed "most advanced") differ from the others structurally?
+- Which encoding is the source of `lib_pln.metta`'s `Truth_Deduction` and consistency conditions? (Trace the verbatim file: PLN3 cites `metta/pln/dependent-types/DeductionDTL.metta` — verify this file exists here at `metta/dependent-types/DeductionDTL.metta` and capture verbatim formulas.)
+
+### §2 — Truth-value type hierarchy
+
+CLAUDE.md claims four TV types: `Bl` (Bool), `Pr` (Number), `PrCnt` (Number, Num), `STV` (Number, Num). Source 4 confirmed `Bl` and `Pr` are degenerate STV wrappers. **What is `PrCnt`?**
+- Read `metta/common/truthvalue/TruthValue.metta` verbatim. Transcribe `PrCnt`'s definition.
+- Does `PrCnt` implement evidence accumulation that `Pr` lacks? Is it the "missing link" between `Pr` and `STV`?
+- Was `PrCnt` carried into Source 4's `experimental/early-pln/` tree, or dropped?
+- Cross-check against the brief's lineage map: where does PrCnt appear, where does it disappear?
+
+### §3 — Implemented rules and formula provenance
+
+For each rule present in `metta/`:
+- File location + verbatim formula.
+- Compare to:
+  - **Source 4** (`pln-experimental2/experimental/early-pln/...`) — same rule? same formula? identical encoding?
+  - **Source 3** (`PLN/lib_pln.metta`) — does the production code's deduction/MP formula trace back here?
+  - **Source 2** (`PLN3/src/Formulas.metta` + `Constraints.metta`) — same provenance.
+- Specifically check: the consistency conditions (`smallest-intersection-probability`, `largest-intersection-probability`, `conditional-probability-consistency`) cited from `DeductionDTL.metta` — are they here?
+
+Possibly-present rules to verify: Deduction, ModusPonens, ImplicationDirectIntroduction, anything else.
+
+### §4 — `metta/synthesis/` — the program synthesizer
+
+Per CLAUDE.md and README, the dependent-types approach relies on a generic synthesizer:
+```
+(synthesize $query $depth $axiom $rule)
+```
+
+- Read `metta/synthesis/Synthesize.metta`, `Unify.metta`, and the README in `metta/synthesis/`. Plus the variant experiments.
+- Document the depth-limited search algorithm.
+- How does unification work? Is it a custom unifier or does it use MeTTa builtins?
+- Does the synthesizer support backward chaining, forward chaining, or both?
+- **Critical lineage question**: was this synthesizer carried into Source 4's `experimental/early-pln/` or production PLN/? If not, what does Source 4 use instead?
+- AGENTS.md notes "some unifier-related tests are still unstable" — what's broken?
+
+### §5 — `idris/` directory and the type-theory prototyping
+
+- What's in `idris/StrictlySorted.idr`? (The only Idris file.)
+- Is it a standalone proof? A type-theory experiment? A prototype later ported to MeTTa?
+- Was the Idris work carried into Source 4 (Source 4's commit message `"Remove Idris experiments"` suggests it was, then explicitly deleted on 2025-12-18)?
+- Capture any specific theorems or constructions documented in the Idris file.
+
+### §6 — MeTTa-specific design choices preserved or abandoned
+
+Per Source 4's findings, some semantic choices we're already familiar with:
+- The `0.2` Modus Ponens hack (constant `$notABs = 0.2`, in-code labeled "temporary hack")
+- `min`-based confidence formulas
+- Sorted-evidence-ID double-counting prevention
+
+**Verify each of these is already present in `hyperon-pln`.** This establishes that the choices were made in 2023 and inherited — not invented in pln-experimental2 or PLN/.
+
+PR #23 (the final merge before dormancy) is `"Add comments about the temporary hack in the modus ponens formula"` by leungmanhin — strong signal that the `0.2` hack was actively known and acknowledged. Read leungmanhin's comments verbatim if they're in the source.
+
+### §7 — What was abandoned
+
+Look for things in `hyperon-pln` that did NOT survive into Sources 2/3/4:
+- Idris work (apparently dropped 2025-12 in pln-experimental2)
+- PrCnt TV type (need to verify whether it exists in Source 4's TruthValue.metta)
+- Synthesis engine
+- Any rule families
+- Any test patterns
+
+For each, note where it was last present (or always absent in later sources).
+
+### §8 — Discovered publications
+
+Same rules: every citation in code, comments, README, docs. New publications get added to wiki RawData+Publications coverage. Existing ones — note the citation context.
+
+### §9 — Lineage and relationship
+
+Specific claims to verify:
+- Is `patham9/hyperon-pln` (this repo) a fork of `trueagi-io/hyperon-pln`, or vice versa? (Git remote vs. README disagreement.)
+- The pre-rename `trueagi-io/hyperon-pln` continued evolving as `trueagi-io/pln-experimental` — this repo's HEAD is the snapshot before that divergence.
+- Confirm: does this repo's content match what `pln-experimental2` had at its 2023-08 timeline?
+
+---
+
+## §Git-history context (pre-populated by orchestrator)
+
+Snapshot at extraction hash `0d017c4`. Curated for agents.
+
+**Commit narrative (last 25 at hash):** Final commits cluster around the **Modus Ponens DTL + comments** work by **leungmanhin** (Manhin Leung) merged via PR #23 (2023-08-01). The 2-week window before dormancy: leungmanhin drafted "the Modus Ponens formula and DTL" (2023-07-13), iterated on it (test cleanup, type symbols, comments about "temporary hack"), and Geisweiller merged. Earlier July work was Geisweiller restructuring synthesis experiments via `unify`/`unify*`/`case`/`let*` — culminating in PR #22 "use case instead of let." Activity span in last 25: 2023-06-29 → 2023-08-01.
+
+**Tags:** none.
+
+**Remote branches:** only `origin/main` and `origin/HEAD`. No feature branches (this fork is flat).
+
+**Top authors (visible in commit log; `git shortlog` returned empty in the local clone — likely a config/encoding issue):** Nil Geisweiller (primary committer/merger) and leungmanhin (PR #23 author).
+
+**Key PRs (`gh pr list --repo trueagi-io/hyperon-pln` redirects to `trueagi-io/pln-experimental`'s PRs; `patham9/hyperon-pln` returns empty):**
+- The `trueagi-io/hyperon-pln` URL in the README now redirects post-rename to `trueagi-io/pln-experimental`. PR list at that URL is the same one Source 4 inspected (#46 "Nupln document", #47 "next token prediction", #48 "PLN formalization", #49 "Clean-up + add README.md files...").
+- Pre-rename `hyperon-pln` PRs (visible in author/title) up to PR #23 (leungmanhin Modus Ponens, 2023-08-01).
+
+**Interpretation:** This repo is a **frozen pre-rename snapshot**. Authoritative recent PR history for the same code lineage lives at `trueagi-io/pln-experimental` (Source 4's upstream). For any "what happened next" question, follow the link from this repo into Source 4.
+
+**Wiki-outreach implication:** Manhin Leung (leungmanhin) is the original author of the Modus Ponens DTL formulation and the in-code "temporary hack" comments — relevant expert for questions about MP heuristic provenance. Nil Geisweiller is the dominant author/merger here as well as in Source 4 (471 commits there).
+
+---
+
+## Output file
+
+Write findings to: `E:\GitHub\Magi-AGI\hyperon-wiki\scripts\archive\pln_pilot\source5_hyperon_pln\findings_<model>.txt`
+
+e.g., `findings_claude.txt`, `findings_codex.txt`, `findings_gemini.txt`. Create the `source5_hyperon_pln/` subdirectory if missing.
+
+Header must include: model name, extraction date (2026-04-24), commit hash `0d017c4d154de05fa8234bcf2717c268cf82d791`, claim counts per section.
+
+If the write is blocked, paste the FULL findings content verbatim in your response.
+
+---
+
+## Rules
+
+- Do NOT consult any other source — no book, no other repos, no wiki MCP, no web. Only files inside `E:\GitHub\hyperon reference\hyperon-pln\`.
+- Cite file and symbol (or approximate line) for every concrete claim.
+- For lineage questions: transcribe verbatim formulas/definitions, then state the comparison to Sources 2-4.
+- For Idris file: read it fully (it's a single small file).
+- Frame as **provenance and lineage analysis** wherever applicable. Standalone-repo descriptions are secondary.
+- Flag divergences between this repo's meta-docs and the actual code (per orientation-doc workflow).
+
+---
+
+*End of Source 5 brief.*

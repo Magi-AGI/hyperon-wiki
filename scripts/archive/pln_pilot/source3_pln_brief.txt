@@ -1,0 +1,154 @@
+# PLN (trueagi-io) — Source 3 Extraction Brief (Cross-Model)
+
+Neutral extraction brief for Source 3 of the PLN cluster pilot. Claude, Codex, and Gemini each run this brief independently against the same source snapshot; results cross-reconciled afterward.
+
+**Repo:** `PLN/` — `trueagi-io/PLN`, the **consolidated upstream** whose modular version PLN3 is a fork of. Milestone `pln0.9` (PR #65). Primary artifact is a single `lib_pln.metta` (18.5 KB) replacing the per-file `src/` layout.
+
+**Local path:** `E:\GitHub\hyperon reference\PLN\`
+
+**Commit at extraction time:** `4405956947c4b53c7ff01bd565aa3b114bc970a1` (pulled 2026-04-24; upstream's head is 2026-03-15 merge "PR #65 pln0.9"; no drift since pull). **All three models must extract against this exact hash.**
+
+**Pre-existing meta-docs in the repo:**
+- `README.md`, `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` — author-written orientation; consult first but verify against code.
+
+Ignore stray `tmpclaude-*-cwd` files (leftovers from prior sessions).
+
+---
+
+## Context: this is a DELTA analysis, not a standalone summary
+
+Source 2 (`PLN3/` at commit `55f1751`, extracted 2026-04-24) is fully reconciled at `scripts/archive/pln_pilot/source2_pln3/findings_reconciled_crossmodel.txt`. This Source 3 brief **explicitly builds on Source 2**. The priority output is the delta between `PLN3/` (modular, ngeiswei) and `PLN/` (consolidated, trueagi-io) — not another isolated walkthrough.
+
+**Lineage evidence to keep in mind (Codex noted):** `lib_pln.metta` comments reference the older `hyperon-pln` dependent-types files. Treat this as provenance, NOT as proof that `hyperon-pln/` is the primary current repo — it isn't; it's a separate 2023-dormant DTL formalization project. `PLN/` is the primary current repo.
+
+---
+
+## Goal
+
+Answer: **is `PLN/` just `PLN3` flattened into one file, or does it materially change behavior, rule coverage, or bug state?** Produce an exact delta against Source 2 findings.
+
+---
+
+## Required output sections
+
+Each as numbered, cited claims in the same `C-<section>-<n>` format as prior sources. Cite file + approximate line: `` `lib_pln.metta:L42-58` `` or `` `examples/DeductionRevision.metta` ``.
+
+### §1 — Architecture delta: monolith vs. modular
+
+How does `lib_pln.metta` organize the code that PLN3 had split across `Utils.metta`, `Constraints.metta`, `Formulas.metta`, `Rules.metta`, `Config.metta`, `Deriver.metta`? Is it a literal concatenation, reorganized sections, or a new layout? What about `Translator.metta` (which PLN3 excluded from its build output) — is translator logic inside `lib_pln.metta`, elsewhere, or absent?
+
+Entry points: does `PLN.Init`, `PLN.Derive`, `PLN.Query` still exist in the same form? Is there still a Python shim (`examples/PLN.py` was PLN3's)? What changed about build/test tooling?
+
+### §2 — Rule-level delta
+
+For each of the ~12-13 rules in PLN3, check whether it is present in `PLN/` and what changed:
+- Revision
+- Modus Ponens (asymmetric)
+- Symmetric Modus Ponens
+- Deduction
+- Induction
+- Abduction
+- Inversion (Inheritance + Implication variants)
+- Negation Elimination
+- Equivalence to Implication
+- Transitive Similarity
+- Evaluation Implication
+- Member Deduction
+- Three Evaluation-over-Inheritance ModusPonens variants
+
+For each rule: is the formula identical, refined, or replaced? Did the default constants change (the `c=0.02`, `$snotAB=0.2`, `0.6` inversion discount, etc.)?
+
+Also enumerate **any new rules present in `PLN/` that weren't in PLN3**.
+
+### §3 — PLN3 bug / deviation verification
+
+Source 2 flagged concrete code-level issues in PLN3. For each, determine if `PLN/` fixes, carries, or sidesteps it:
+
+**V7 — Inversion strength bug.** PLN3's `Truth_inversion` returned `(stv $ABs ...)` unchanged — strength was NOT updated via Bayes (`sBA = sAB·sA/sB`). Only a `0.6·cB·cAB` confidence discount was applied. Code comment: *"not according to OpenCOG classic"*. Does `PLN/` fix this?
+
+**V8 — Revision confidence saturation.** PLN3's `Truth_Revision` clamps confidence with `max($c, $c1, $c2)` so it monotonically approaches 1.0. Does `PLN/` still clamp this way, or has revision been re-derived?
+
+**V9 — `TransitiveSimilarity` zero-division.** PLN3's `TransitiveSimilarityStrength` uses raw `/` (not `/safe`) in 4 spots — will crash on `$sA=0`, `$sB=0`, `$sC=0`. Fixed in `PLN/`?
+
+**V10 — `sentence` / `Sentence` capitalization.** PLN3 had this inconsistency bridged only via a Python-injected rewrite in `PLN.py`. Pure-MeTTa tests without the Python shim silently broke. Does `PLN/` have consistent capitalization, or does it still require a shim?
+
+**V11 — Python shim dependency.** Does `lib_pln.metta` require Python-side compilation like PLN3's `PLN.Init` did, or is it self-contained MeTTa?
+
+### §4 — New content: examples not in PLN3
+
+Source 2 noted PLN3 has four examples (`FlyingRaven`, `Robot`, `Smokes`, `Toothbrush`). `PLN/` adds three new ones:
+
+- **`examples/DeductionRevision.metta`** — Gemini specifically flagged this as a potential signal about revised Revision logic. What does it demonstrate? Does it exercise the revision-confidence-saturation issue V8 (and resolve it), or something else entirely?
+- **`examples/Direct.metta`** — what domain does it model? Any connection to direct-introduction rules in `hyperon-pln`?
+- **`examples/RavenInduction.metta`** — what does it test? How does it compare to the FlyingRaven deduction case?
+
+For each new example: cite the inference chain exercised and the TV values expected.
+
+### §5 — Missing-family recovery check (V6 re-run)
+
+Source 2 verified these book-content items are absent from PLN3. For each, check if `PLN/` recovers any of them:
+
+- Concept-geometry deduction (1-D sphere-interval / k-sphere forms)
+- Distributional / matrix TV inference
+- Quantifier rules (ForAll, ThereExists, Existential Generalization, Universal Specification)
+- Temporal/causal rules (PredictiveImplication, SeqAND, DisjointSeqAND, EventualSeqAND, SimAND)
+- Intensional ↔ extensional conversion rules
+- Multideduction
+- Bayes-Net augmentation
+- OBI / BRGI
+- Attention / importance values
+- FactorGraph / MORK-adjacent implementations (particularly important — the wiki has an active `PLN FactorGraph MORK v1..v3.2` paper series with no corresponding code yet)
+- Possible-worlds variable instantiation machinery
+
+### §6 — Canonical current surface
+
+After the delta analysis, describe `PLN/` on its own terms:
+- Real entrypoints (what does a user call?)
+- Module structure inside `lib_pln.metta` (where's the boundary between what-was-Utils, what-was-Formulas, etc.)
+- Test harness (`ruletests/` — which tests pass? `test.sh` structure?)
+- Active vs dead code paths
+- Milestone/status signals (`pln0.9` meaning? any `0.10` or later branches?)
+
+### §7 — Discovered publications
+
+Same rules as Source 2: every citation in code comments, commit messages, or example files. Also cite any cross-repo references (to `opencog/*`, `hyperon-pln`, etc.) that may imply publications. These feed the wiki's `RawData+Publications+*` reconciliation.
+
+### §8 — Lineage and relationship to other PLN repos
+
+Given that `PLN/`, `PLN2/`, `PLN3/`, `hyperon-pln/`, `pln-experimental/`, `pln-experimental2/` all coexist: how do the `lib_pln.metta` comments or code references map the lineage? Does `PLN/` claim precedence over any fork? Is it explicitly marked as canonical, reference, or experimental?
+
+---
+
+## Focus questions (refined from Codex + Gemini)
+
+1. **Packaging vs. semantics.** Is `lib_pln.metta` a structural refactor of PLN3 or does it carry logic changes?
+2. **Bug carryover.** Are the PLN3 V7–V11 issues fixed, carried, or sidestepped?
+3. **DeductionRevision.metta analysis.** Does this new example demonstrate improved Revision confidence handling, or is it orthogonal?
+4. **Coverage recovery.** Does `PLN/` restore any of the book's missing families (quantifiers, temporal, intensional, distributional, FactorGraph/MORK)?
+5. **Canonical positioning.** Is `PLN/` explicitly marked as the current-of-record, or still one version among forks?
+
+---
+
+## Output file
+
+Write findings to: `E:\GitHub\Magi-AGI\hyperon-wiki\scripts\archive\pln_pilot\source3_pln\findings_<model>.txt`
+
+e.g., `findings_claude.txt`, `findings_codex.txt`, `findings_gemini.txt`. Create the `source3_pln/` subdirectory if missing. Markdown formatting inside `.txt` is fine.
+
+Header must include: model name, extraction date (2026-04-24), commit hash `4405956947c4b53c7ff01bd565aa3b114bc970a1`, claim counts per section.
+
+If the write is blocked by any extension-based guardrail, paste the full content verbatim in your response (no word limit).
+
+---
+
+## Rules
+
+- Do NOT consult any other source — no book, no other repos, no wiki MCP, no web. Only files inside `E:\GitHub\hyperon reference\PLN\`.
+- Cite file and symbol (or approximate line) for every concrete claim.
+- Frame findings as **deltas against Source 2 (PLN3)** where applicable, not standalone walkthroughs.
+- Transcribe MeTTa code verbatim when doing V7–V11 bug-carryover checks (paraphrase is insufficient).
+- Flag anything `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` in this repo claim that the code doesn't actually show.
+
+---
+
+*End of Source 3 brief.*

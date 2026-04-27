@@ -1,0 +1,61 @@
+# PLN Book Extraction — Gemini Findings
+
+**Source:** Probabilistic Logic Networks (Goertzel, Iklé, Goertzel, Heljakka — 2008, Springer). Extracted from `publication_texts/json/Probabilistic_Logic_Networks.json`.
+
+**Date received:** 2026-04-24
+**Model:** Gemini (via user)
+
+---
+
+The following is Gemini's independent, deep extraction of the PLN Book, performed to substantiate and cross-check the findings.
+
+## 1. Conceptual & Historical Foundation
+
+- **Integrative Origin:** PLN is explicitly designed to unify multiple schools of uncertain reasoning: Bayesian probability (Jaynes), fuzzy logic (Zadeh), imprecise probabilities (Walley), term logic (Sommers), and NARS (Pei Wang).
+- **AGI Core:** The book positions PLN as the "uncertain inference core" of the Novamente Cognition Engine (NCE) and its open-source sister project, OpenCog.
+- **Divergence from NARS:** While heavily influenced by NARS, PLN rejects the NARS "universal statement" approach to Modus Ponens, opting for its own heuristic formulas.
+
+## 2. Mathematical Foundations & Inference Rules
+
+- **Modus Ponens (The "Error-Prone" Heuristic):**
+  - Formula: `sB = sAB · sA + c · (1 − sA)`
+  - Expert Caveat: The authors explicitly label this as a "simple but highly error-prone heuristic" (Section 5.7). It relies on a "default term probability" parameter `c` (e.g., `c = 0.02`) because the required conditional probability `P(B|¬A)` is typically unknown.
+
+- **Heterogeneous Set Failure (I2M/M2I):**
+  - The rules for moving between Inheritance and Membership (InheritanceToMember, MemberToInheritance) are only semantically valid for cohesive concepts.
+  - Failure Case: They are noted to be "badly wrong" for heterogeneous collections like "Things owned by Izabela" because such sets do not share a common property-geometry (Section 5.8).
+
+- **Consistency Conditions:**
+  - Appendix A details the "consistency conditions" required for PLN deduction (requiring five variables: `sA`, `sB`, `sC`, `sAB`, `sBC`). It confirms that NARS and PLN rules diverge significantly as these term probabilities increase.
+
+## 3. Truth Value Semantics
+
+- **Indefinite Truth Values:** Represented as intervals of probabilities. Chapter 4 and 11 detail how these represent "second-order uncertainty" and "weight of evidence."
+- **Distributional Truth Values:** Advanced truth values that represent a full probability distribution, though the book notes these are more computationally intensive.
+
+## 4. Advanced Theoretical Findings
+
+- **Error Magnification (Chapter 8):**
+  - Uses multivariable calculus (gradients `∇f`) to analyze sensitivity.
+  - The "Chaotic" Finding: Without careful inference control, chains of probabilistic inference lead to "chaotic trajectories" where the output reflects magnified random errors rather than meaningful truth.
+
+- **Quantifier Commutativity Issue:**
+  - The book identifies that in the Indefinite Probability framework, the existential quantifier `∃` (represented by `#`) does not necessarily commute with conjunction (AND).
+  - Admission: The authors defer a thorough study of when these operators "almost" commute to a "future paper" (Section 11.3).
+
+- **Inference Control:** Chapter 13 introduces the "Rule of Choice" and the "inference trail" as mechanisms to prevent combinatorial explosion and "circular inference."
+
+## 5. Verification of Disputes
+
+- **Symmetric MP:** The book defines a "symmetrized version of modus ponens" for "If and only if P, then Q," which is treated similarly to the standard MP heuristic.
+- **Deduction vs. NARS:** Appendix A confirms that 1D concept-geometry and NARS deduction are similar when probabilities are near 0.5 but differ everywhere else.
+
+---
+
+## Advisory Conclusion (from Gemini)
+
+Claude's "internal 3-pass" extraction was highly accurate. Independent review confirms the existence of the "error-prone" MP heuristic, the specific "Izabela" failure case, the "future paper" deferral on quantifiers, and the Chapter 8 "Chaotic Trajectory" analysis. Recommended proceeding to Source 2 (PLN3 Repo) using this verified theoretical baseline.
+
+---
+
+*End of Gemini findings.*

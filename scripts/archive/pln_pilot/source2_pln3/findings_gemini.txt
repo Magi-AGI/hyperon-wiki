@@ -1,0 +1,64 @@
+# PLN3 (ngeiswei fork) — Gemini Extraction Findings
+**Date:** 2026-04-24
+**Commit:** 55f1751d993f71b8a24da03e3aec94ab40789a59
+
+## §1 — Architecture and module map
+- **Module Structure:** PLN3 maintains a modular MeTTa layout. [CLAUDE.md]
+- **Build Order:** `Utils` -> `Constraints` -> `Formulas` -> `Rules` -> `Config` -> `Deriver` -> `PLN.metta`. [build.sh]
+- **Truth Value Representation:** Uses `(stv strength confidence)`. [CLAUDE.md]
+- **Key Modules:**
+  - `src/Constraints.metta`: Probability consistency checks.
+  - `src/Formulas.metta`: Verification of truth value formulas.
+  - `src/Rules.metta`: Core inference rules.
+  - `src/Deriver.metta`: Bounded priority-queue based reasoning engine.
+  - `src/Translator.metta`: Transforms knowledge-base implications into executable rules. [src/Translator.metta]
+
+## §2 — Implemented inference rules and truth-value machinery
+- **Rule Count:** Claims ~11 rules in `CLAUDE.md`. I verified 12 rules in `src/Rules.metta`.
+- **C-2-1: Revision:** Implements `Truth_Revision` using confidence-to-weight (`c2w`) and weight-to-confidence (`w2c`) conversions. [src/Formulas.metta:57]
+- **C-2-2: Modus Ponens:** Implements the book's heuristic formula: `sB = sAB*sA + 0.02*(1-sA)`. [src/Formulas.metta:45]
+- **C-2-3: Symmetric Modus Ponens:** Implements a multiplication form: `sB = sA*sAB + (0.2*(1-sA))*(1+sAB)`. [src/Formulas.metta:50]
+- **C-2-4: Deduction:** Faithful port of the independence-assumption-based formula from the 2008 book. [src/Formulas.metta:3]
+- **C-2-5: Induction & Abduction:** Implements NARS-compared formulas from the book's Appendix A. [src/Formulas.metta:22, 33]
+- **C-2-6: Inversion:** Uses a simplified confidence penalty `0.6` and depends on the target node's confidence. [src/Formulas.metta:80]
+- **C-2-7: Negation Elimination:** Ported from `opencog/pln`. [src/Rules.metta:76]
+
+## §3 — Inference control strategy
+- **Mechanism:** Priority-queue based task selection (`PLN.Derive`) where priority is determined by **Confidence** (`PriorityRank`). [src/Deriver.metta]
+- **Circular Inference Prevention:** Uses **Stamps** (evidence tuples) and a `StampDisjoint` check. [src/Deriver.metta:2]
+- **Space Complexity Control:** Enforces `TaskQueueSize` (20) and `BeliefQueueSize` (200) via `LimitSize`. [src/Deriver.metta:25]
+- **Search Bound:** Default `MaxSteps` is 20. [src/Config.metta:4]
+
+## §4 — Deviations from the 2008 book
+- **Faithfully implemented:** Standard Deduction, Induction, Abduction, and the "error-prone" MP heuristic.
+- **Simplified/Omitted:** No explicit concept-geometry rules, distributional TV matrix deduction, or causal/temporal rules found in `src/`.
+- **Modernized:** `Translator.metta` provides a MeTTa-native way to "engrave" implications into the inference engine as functions.
+- **New:** Integration with `metta-morph` for performance optimization is noted in TODO. [src/Utils.metta:84]
+
+## §5 — Experimental extensions and recent work
+- **TaskReturn & Modularity:** Recent merges (PR #52, #51) align with the `trueagi-io` consolidation effort.
+- **FactorGraph/MORK:** No evidence of MORK or FactorGraph-specific machinery in the source code.
+
+## §6 — Tests, examples, worked inferences
+- **worked Examples:** `examples/Smokes.metta` demonstrates reasoning over social relationships and cancerous attributes using nested implications.
+- **Rule Verification:** `ruletests/RuleTester.metta` provides unit tests for Inversion, Equivalence-to-Implication, and Negation.
+
+## §7 — Status, open issues, TODOs
+- **Confidence Calibration:** `TODO check` on Induction/Abduction confidence formulas. [src/Formulas.metta:31, 43]
+- **Efficiency:** `TODO use efficient native handling` for Unique in `Utils.metta`. [src/Utils.metta:84]
+
+## §8 — Discovered publications
+- **Probabilistic Logic Networks** | Ben Goertzel et al. | 2008 | Cited throughout `src/`.
+- **Non-Axiomatic Reasoning System** | Pei Wang | 1996/2006 | Cited in Appendix A context. [src/Formulas.metta:22]
+
+## Focus Questions Response
+
+1. **MeTTa-fication:** The formulas are **ported verbatim** (e.g., Deduction formula on page 15 of the book is implemented as a MeTTa S-expression in `Formulas.metta`), but the **execution** is MeTTa-fied via `Translator.metta` which converts `(Implication A B)` into a native MeTTa rule definition.
+2. **MORK / FactorGraph:** No citations or implementation details found.
+3. **Consistency enforcement:** **Verified.** `Constraints.metta` implements the Heaviside-based bounds: `smallest-intersection-probability` and `largest-intersection-probability`. `Truth_Deduction` explicitly checks `conditional-probability-consistency` before proceeding. [src/Formulas.metta:10]
+
+## Verification Targets
+- **V1 (Symmetric MP):** Multiplication form confirmed. [src/Formulas.metta:52]
+- **V2 (Constant c):** `c = 0.02` confirmed. [src/Formulas.metta:47]
+- **V3 (Inference Trails):** Evidence-based stamps confirmed. [src/Deriver.metta:42]
+- **V6 (Missing):** Concept-geometry, distributional TV, temporal/causal, and quantifier rules are **absent**.

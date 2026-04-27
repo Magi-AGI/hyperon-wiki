@@ -1,0 +1,269 @@
+# ure2 (Unified Rule Engine, legacy C++ OpenCog Classic) — Cross-Model Reconciled Findings (Source 6, FINAL)
+
+**Source:** `E:\GitHub\hyperon reference\ure2\` → `ngeiswei/ure` at commit `6f4c6eeba34cf6f17c534abf67cf1274a7ba32b4` (HEAD = master, "Bug fix incorrect use of API, and remove old deprecated API", 2025-02-02 by Linas Vepštas; pulled 2026-04-24, no upstream drift).
+
+**Reconciled on:** 2026-04-24
+
+**Inputs:**
+- **Claude** (Opus 4.7 single pass, 117 claims, 47 KB) → `findings_claude.txt`
+- **Codex** (57 claims, 23 KB) → `findings_codex.txt`
+- **Gemini** (concise, ~10 highlights, 4 KB) → `findings_gemini.txt`
+
+Confidence legend:
+- **[X3]** all three models confirmed
+- **[X2]** two models confirmed
+- **[X1]** one model caught it
+- **[VERIFIED]** spot-checked against actual source files
+
+---
+
+## 1. Headline finding: URE was a research **extension** of the 2008 book, abandoned wholesale by the MeTTa line
+
+**[X3]** This is the cluster-level reframing of the entire PLN pilot:
+
+- **Source 1 (book 2008)** describes BIT (And-Or backward inference tree) + multi-armed bandit + SoftMax rule selection.
+- **URE (this source)** implements the BIT, then **goes beyond** the book with: Bayesian Thompson Sampling (proper posterior, not heuristic SoftMax), BetaDistribution per-rule TV→posterior conversion, MixtureModel for combining multiple active control rules in Universal-Operator-Induction style, complexity penalty + Kolmogorov heuristic `K(D) = |D|^(1-c)`, control-rule meta-layer (rules about rules) stored as Atomese in a separate atomspace, and probabilistic BIT pruning via `remove_unlikely_expandable_andbit`.
+- **MeTTa-era PLN line (Sources 2-5)** dropped all of it. Replaced with a simple confidence-priority queue (`PLN.Derive` PQ-based forward chaining; `MaxSteps`, `TaskQueueSize`, `BeliefQueueSize` are the only knobs).
+
+**The MeTTa simplification is far more aggressive than the book itself.** URE was not just an implementation of the 2008 book — it was a research-grade extension of it, and the MeTTa abandonment lost both the extensions AND much of the book-level original. This is the most striking finding of the entire PLN cluster pilot to date.
+
+---
+
+## 2. The Bayesian inference-control architecture (X3 verbatim verification)
+
+URE's full control stack:
+
+| Component | File | Function |
+|---|---|---|
+| **`Rule`** | `opencog/ure/Rule.h:157` | A `BindLink` over `<vars><AndLink<premises>><conclusion>` or with an `ExecutionOutputLink` formula body. Generic Atomese, not specialized C++ rule classes. |
+| **`RuleSet`** | `Rule.h:55-112` | Sorted vector with `expand_meta_rules()` for rule-producing rules. |
+| **`UREConfig`** | `UREConfig.h:46` | **Reads config FROM AtomSpace** (data-driven, not static files) — `URE:maximum-iterations`, `URE:complexity-penalty`, `URE:expansion-pool-size`, etc. |
+| **`BetaDistribution`** | `BetaDistribution.h:40` | TV → Beta posterior via `pos_count = mean × count`. Boost-backed. CDF/PDF helpers. |
+| **`ThompsonSampling`** | `ThompsonSampling.h:41` | Discretized arm selector: `Pi = ∫ pdf_i(x) Π_{j≠i} cdf_j(x) dx / nt`. Doc: "See Section Inference Rule Selection in PLN inference-control-learning README" (out-of-tree). |
+| **`ActionSelection`** | `ActionSelection.h:50` | Handle→TV map wrapped around `ThompsonSampling`. Returns `HandleCounter distribution()` or single `Handle operator()()`. |
+| **`MixtureModel`** | `MixtureModel.h:39` | Combines partial-models via Universal Operator Induction-style mixture. `prior(length) = exp(-cpx_penalty × length)` with Kolmogorov heuristic for un-modeled data. Compressiveness ∈ [0,1] interpolates "no compression" ↔ "perfect compression". |
+| **`BIT` / `AndBIT` / `BITNode`** | `backwardchainer/BIT.h:48-435` | Full And-Or-tree backward inference. Each `AndBIT` is a forward-chaining-strategy candidate; `BITNode` is an or-leaf with rule choices. Includes `fcs_to_ascii_art()` for visualization. |
+| **`ControlPolicy`** | `backwardchainer/ControlPolicy.h:48` | Orchestrator: takes config + BIT + target + optional `_control_as` (atomspace of control rules). Selects rules via Thompson posterior or MixtureModel of control-rule predictions. |
+| **`BackwardChainer`** | `backwardchainer/BackwardChainer.cc` | Three-phase loop: `expand_bit()` → `fulfill_bit()` → `reduce_bit()`. Probabilistic survival pruning when BIT exceeds `max_bit_size`. |
+| **`ForwardChainer`** | `forwardchainer/ForwardChainer.h:51` | Three modes: `do_steps_singlethread`, `do_steps_multithread`, `do_steps_srpi` (Source-Rule Producer). Source-selection enum: `TV_FITNESS / STI / UNIFORM` (STI = ECAN attention). |
+| **`SourceRuleSet`** | `forwardchainer/SourceRuleSet.h:83` | "Expansion Pool" — pairs of (Source, Rule) weighted by 2nd-order TV. Holds its own `ThompsonSampling`. |
+
+**[X3 with Claude verbatim transcription]** The full algorithmic story (Claude C-10-9): *"At each `do_step`, BackwardChainer chooses an AndBIT by `discrete_distribution` weighted by `andbit_fitness × exp(-cpx_penalty × andbit.complexity)`. Within that AndBIT, picks a leaf via `BITNode::operator()()` (anti-fitness weighted: pick the unfit leaf to grow). For that leaf, ControlPolicy considers all valid rules and weights them by `expansion_success_tvs` — computed by either `_default_tvs` fallback or `MixtureModel({active_control_rules}, cpx_penalty, compressiveness)`. The chosen weights become a `BetaDistribution`-typed `HandleTVMap`, fed into `ActionSelection` → `ThompsonSampling::operator()` → returns the chosen rule. Rule expands the AndBIT into a successor (probability `prob` becomes part of successor's `complexity`). BIT is pruned by `discrete_distribution` over `(1-p)^remaining_iterations`."*
+
+---
+
+## 3. Abandonment map (URE → MeTTa-era PLN)
+
+[X3] The complete list of features URE has that the MeTTa-era PLN line (Sources 2-5) abandoned:
+
+| URE feature | Status in MeTTa-era PLN |
+|---|---|
+| BIT (And-Or backward inference tree) | absent (priority queue only) |
+| Beta-Bernoulli posterior over rule TVs | absent |
+| Thompson sampling for rule selection | absent (confidence-priority queue) |
+| Inference Control Rules meta-layer (`_control_as`) | absent |
+| MixtureModel / Universal Operator Induction | absent |
+| Complexity-penalty + Kolmogorov K(D) heuristic | absent |
+| Meta-rules (rule-producing rules) | absent |
+| AttractionLink + intensional-inheritance-direct-introduction rule | absent |
+| ImplicationScope quantifier-instantiation meta-rules | absent |
+| `expansion_andbit_weights` survival-pruning | absent |
+| `TraceRecorder` (for inference-control-learning replay) | absent |
+| Multi-threaded chainer (`do_steps_multithread`) | absent |
+| `FCStat` (forward-chaining statistics tracking) | absent |
+| ECAN/STI source-selection mode | absent |
+| AtomSpace-resident config (`UREConfig` reads from atoms) | absent (MeTTa uses static `Config.metta`) |
+| Fuzzy-conjunction-introduction rule | absent |
+| Implication-and-lambda-factorization rule | absent |
+| Conditional-direct-evaluation rule (TV from data) | absent |
+| Closed-lambda-introduction rule | absent |
+| Implication-scope-direct-evaluation rule | absent |
+| Higher-order-via-lambda machinery | absent |
+
+**~21 distinct features lost** in the migration. Some are control-architecture (Bayesian/MAB), some are rule-family (intensional, quantifier, fuzzy), some are operational (multi-threaded, traceable, AtomSpace-config-able).
+
+**[X3] What MeTTa-era PLN has that URE doesn't:**
+- MeTTa S-expression rule representation (vs Atomese BindLink).
+- MeTTa-native unification through interpreter (vs `opencog/unify` external library).
+- 20+ active feature branches (vs URE master being effectively dead).
+- Active development through 2026 (vs URE bit-rotting since 2024).
+
+---
+
+## 4. Rule families present in URE that were lost downstream
+
+URE has a more substantive rule library than the entire MeTTa-era PLN cluster has produced. Per `tests/ure/rules/` (16 .scm files):
+
+**Implemented in URE, not in MeTTa-era PLN:**
+- `intensional-inheritance-direct-introduction.scm` — **the exact intensional inheritance machinery from book Ch. 5.10**, using `AttractionLink` + pattern-of(X,A) = s(X) × (P(X|A) − P(X|¬A))_+. **Major finding: the book's intensional-extensional treatment lives here in C++ but never made it into MeTTa.** [X3]
+- `fuzzy-conjunction-introduction-rule.scm` — fuzzy logic conjunction with TV. Absent in MeTTa.
+- `implication-instantiation-rule.scm` + `conditional-full-instantiation-meta-rule.scm` + `conditional-partial-instantiation-meta-rule.scm` — **ImplicationScope quantifier instantiation via meta-rules**. The "quantifier rules" we've been tracking as missing are actually here, just expressed via meta-rule expansion rather than dedicated Atomese types. [X3]
+- `implication-scope-direct-evaluation-rule.scm` — direct TV evaluation from data.
+- `closed-lambda-introduction-rule.scm` + `implication-and-lambda-factorization-rule.scm` — higher-order (lambda) machinery.
+- `evidence-based-conditional-direct-evaluation.scm` — **STUBBED, work paused**: comment says *"TODO: resume once GlobNode is supported"* (variadic match, never finished in AtomSpace). Permanent abandonment signal.
+
+**Absent in URE too** (still missing, all three sources verified):
+- Temporal/causal (PredictiveImplication, BeforeLink, AfterLink) — book Ch. 14, never in C++.
+- Distributional TV beyond Beta (no continuous-distribution TV class).
+- FactorGraph / MORK / BRGI / OBI.
+- Explicit ForAll/Exists symbols (handled via ImplicationScope+meta-rules).
+- Causal calculus.
+- ECAN integration beyond the `STI` source-selection-mode hook (the actual attention math lives in the separate `opencog/attention` repo).
+
+---
+
+## 5. Bit-rot diagnostic
+
+[X3] **Concrete decay**, not rhetorical:
+
+**Disabled tests** (`tests/ure/CMakeLists.txt` + subtree CMakeLists):
+- `UREConfigUTest`, `RuleUTest` — commented out at top-level.
+- `ForwardChainerUTest` — disabled because *"it segfaults after 15 seconds when it runs in circleci."*
+- **Entire `backwardchainer/` test subtree** — `ADD_SUBDIRECTORY(backwardchainer)` commented out with note *"Backward chainer code has bit-rotted and unit tests no longer work."*
+- Inside the disabled subdir: `BackwardChainerUTest`, `ControlPolicyUTest`, `BITUTest`, `GradientUTest` are all dead.
+
+**Active tests** (post-bit-rot): only `BetaDistributionUTest`, `ActionSelectionUTest`, `UtilsUTest` — the **mathematical sub-modules**. The actual chainers are not reliably testable.
+
+**Author resignation signal** [X3]: `tests/ure/backwardchainer/CMakeLists.txt:14` (Linas Vepstas): *"Disable BackwardChainerUTest for now... I'm tired of playing this game, as the URE appears to be no longer supported, anyway. Foo."*
+
+**API-churn driver**: AtomSpace neighboring API changes (PR #131 *"Move URE types from atomspace to URE"* 2024-04-02; PR #117 *"Port over to AtomSpacePtr from AtomSpace*"* 2021-10) repeatedly broke things. URE absorbed the churn; nobody added new reasoning capability after ~2020.
+
+**Documentation inconsistency** [X3]: the inner `opencog/ure/README.md` still calls the engine *"rather mature"* and lists only minor missing items, while the root `README.md` and CMake test state describe a much more degraded situation. Worth flagging in any wiki summary that pulls from URE docs.
+
+**[X1 Codex finding worth elevating]**: `opencog/ure/README.md` overstates maturity vs root `README.md` and CMake test state. Wiki cards citing URE docs should never quote the inner README's maturity claims uncritically.
+
+---
+
+## 6. Successor handoff (PR #132) — split signal
+
+**[X3 with Codex providing the missing detail]**: PR #132 (Geisweiller, 2025-03-12, "Add link to Hyperon Chainer in message about the state of the repo") was merged on **upstream `opencog/ure`** but `ngeiswei/ure` (this fork) is at HEAD `6f4c6ee` from 2025-02-02 — **predates the handoff merge**.
+
+The handoff signal is therefore split:
+- **`origin/update-readme` branch** (Codex C-7-2): contains commit `5ed55500e Add link to Hyperon Chainer in the message about the state of the repo`. NOT yet merged to master in this fork.
+- **`GEMINI.md`** (locally added by orientation-doc layer): *"New development has shifted to the [Chaining](https://github.com/trueagi-io/chaining) repository."*
+- **`README.md` at extraction hash**: contains only the bit-rot statement, not the chaining link.
+
+**Successor target**: `https://github.com/trueagi-io/chaining`. Should already be cloned under `hyperon-reference/` from our earlier mass-clone (was a `trueagi-io` org repo). Verification deferred.
+
+**[Open question for cluster-level synthesis]**: did the URE Bayesian control architecture (Thompson sampling, MixtureModel, control-rule meta-layer) migrate to `trueagi-io/chaining`, or did it die with URE? **This is the single highest-priority follow-up**. If it migrated, the MeTTa-era PLN cluster's "no inference control" gap closes. If it died, then the gap is real and the wiki must reflect the loss.
+
+---
+
+## 7. Author attribution (refinement of Source 6's prior framing)
+
+[X3 unanimous]:
+
+| Author | Role | Commits (extraction-hash log) | Wiki-outreach implication |
+|---|---|---|---|
+| **Linas Vepstas** | Long-term maintainer, API churn-absorber | ~7,485 effective (across attribution variants) | Authoritative on URE design intent + the "why URE died" narrative |
+| **Nil Geisweiller (ngeiswei)** | **Author of the entire Bayesian control architecture** — every relevant file's copyright says *"Author: Nil Geisweiller"* | ~3,797 | **THE primary expert** for inference-control / Bayesian / MAB material in the wiki |
+| Joel Pitt | Earlier OpenCog era | 720 | Historical |
+| Jared Wigmore | Same | 704 | Historical |
+| William Ma | Same | 520 | Historical |
+| Cosmo Harrigan | Same | 501 | Historical |
+| Misgana Bayetta | Possibly current OpenCog Foundation | 375 | TBD |
+| **Amen Belayneh** | **Confirmed major URE contributor (314 commits)** despite his GitHub `amebel` having 0 public repos today | 314 | **Surprise expert candidate for URE-related wiki review** — the user's "Amen" reference is real |
+| Sebastian Ruder | Earlier era | 219 | Historical |
+
+**Cross-tradition contributors** (people active in both the C++ URE tradition AND MeTTa-era PLN):
+- **Roman Treutlein**: URE branch `rTreutlein-MetaRuleSupport` + Source 3 PR #57 (lib_pln queue dedup port). Single contributor active in both traditions.
+- **Nil Geisweiller**: Author of all URE Bayesian code (2017-2020 era) AND author of `ngeiswei/PLN` and `ngeiswei/pln-experimental` MeTTa-era forks. **The bridge person between traditions.** If anyone knows where the abandoned URE features went, it's him.
+
+---
+
+## 8. Branches (Codex's verified detail)
+
+[X2 Codex + Claude]:
+- `origin/master` — HEAD `6f4c6ee` (2025-02-02), the bit-rotting state.
+- `origin/rTreutlein-MetaRuleSupport` — Roman Treutlein's branch. Hypothesis (Claude C-8-2 + Codex C-8-5): adds proper BIT-internal meta-rule expansion to address the long-standing `BackwardChainerUTest.cxxtest:696` TODO and `opencog/ure/README.md:106` known limitation. Branch contents not directly diffed.
+- `origin/add-mixture-model-python-binding` — tip `aea0d0b32 Start adding python binding for mixture model`. Unfinished extension exposing `MixtureModel` to Python. Never landed in master.
+- `origin/singnet-master` — SingularityNET fork tracking. Tip is `9a9cdccb6 Merge pull request #28 from ngeiswei/merge-opencog-to-singnet` — merge maintenance, not new direction.
+- `origin/update-readme` — tip `5ed55500e Add link to Hyperon Chainer...` — the handoff branch (still unmerged in this fork).
+
+**[X2 Claude + Codex]**: ThompsonSampling.h, SourceRuleSet.h, etc. carry copyright lines *"Copyright (C) 2018,2020 SingularityNET Foundation"* — significant URE control-architecture work was done under SNET sponsorship (2018-2020 era).
+
+---
+
+## 9. Discovered publications and references
+
+[X3] No academic papers in code comments. URE references are entirely to wiki documentation:
+
+| Reference | Location |
+|---|---|
+| `wiki.opencog.org/w/Probabilistic_logic_networks` | README.md:9 |
+| `wiki.opencog.org/w/Pattern_miner` | README.md:10 |
+| `wiki.opencog.org/w/Category:RelEx2Logic` | README.md:11 |
+| `wiki.opencog.org/w/AtomSpace` | README.md:16,32,35 |
+| `wiki.opencog.org/w/URE` | README.md:87 (primary documentation hub) |
+| `wiki.opencog.org/w/URE_Configuration_Format` | UREConfig.h:37 |
+| `wiki.opencog.org/w/URE_Control_Policy` | opencog/ure/README.md:23 |
+
+**[X1 Claude]**: `examples/pln/inference-control-learning/README.md` — referenced from `ActionSelection.h:75`, `ThompsonSampling.h:69`, `MixtureModel.h:84`. **Out-of-tree** (lives in the historical `opencog/opencog` meta-repo, not in `ure/`). **This is the design document for URE's Bayesian inference-control architecture** — important provenance reference, currently inaccessible from this clone. Worth tracking down separately for the wiki.
+
+**[X1 Codex C-9-4]**: The cited `inference-control-learning` README is **not present at the referenced path** in this clone. Documentation gap — the design doc is broken-linked.
+
+**Implicit reference** [X1 Claude]: `types/atom_types.script:5` says *"See the book on PLN by Goertzel etal. to understand what these are all about."* — implicit Source 1 citation.
+
+**Net new for wiki publications coverage**: zero new academic papers. The URE wiki pages (above) are the primary "publications" but they're not papers — they're the design specification. Worth treating as informal sources that should be referenced from wiki cards but don't need RawData+Publications cards.
+
+---
+
+## 10. Wiki implications + cluster synthesis
+
+### 10.1 For the cluster narrative
+Once we close all sources, the wiki's `Hyperon AI Algorithms+PLN+PLN Full` should incorporate:
+
+1. **URE as the historical research extension of the 2008 book** — Bayesian Thompson + MixtureModel + control rules + AtomSpace-resident config — went *beyond* the book's BIT+SoftMax description.
+2. **The MeTTa-era PLN line abandoned this entire layer.** Replaced with a simple confidence-priority queue. ~21 distinct features lost.
+3. **The successor `trueagi-io/chaining`** may or may not preserve URE's Bayesian control. **Open question; resolution requires examining that repo.**
+4. **Intensional inheritance is implementable** (per URE's `intensional-inheritance-direct-introduction.scm`) — the book's Ch. 5.10 machinery exists here in C++ Atomese form. Wiki should note: "implemented historically in URE, lost in MeTTa transition."
+5. **Quantifier instantiation is implementable** via ImplicationScope + meta-rules (per URE's `conditional-full-instantiation-meta-rule.scm`). Wiki should note same.
+
+### 10.2 For per-repo orientation docs
+Per the workflow, after this reconciliation:
+- `ure2/CLAUDE.md` (mine to update): surgical update — add wiki-implication paragraph (URE was extension not just impl), note the specific file→file abandonment map.
+- `ure2/AGENTS.md` (Codex's surgical update): add bit-rot test inventory; note the inner README maturity overstatement.
+- `ure2/GEMINI.md`: per Gemini's own self-check, no major changes needed (already correctly identifies as legacy).
+- `ure2/CLAUDE.md`-specifically: flag the broken-link `inference-control-learning/README.md` reference and the unmerged successor handoff in `origin/update-readme`.
+- Hold `hyperon-wiki/CLAUDE.md` cluster-close refresh until PLN cluster fully done.
+
+### 10.3 Wiki publications additions
+- **No new RawData+Publications cards needed** from this source.
+- Worth checking whether wiki has cards for the URE wiki pages (`wiki.opencog.org/w/URE`, etc.) — these are design specs and should probably exist as references somewhere in the wiki tree even if not as RawData entries.
+
+### 10.4 Bug-carryover continued
+Sources 2-5's V7-V11 list (Truth_inversion strength, Truth_Revision clamp, TransitiveSimilarity zero-div, sentence/Sentence cap, Python shim) are **unrelated** to URE's bug surface. URE has its own distinct bit-rot inventory (§5 above). The two trees of issues are disjoint because the migration was a complete reimplementation, not a port.
+
+---
+
+## 11. Workflow assessment
+
+**Cross-model triangulation at Source 6**:
+- All three converged tightly. No factual disputes; no Gemini attribution drift this round.
+- Codex caught a key detail Claude missed: PR #132 lives on a separate `origin/update-readme` branch, not in master — explaining why README.md doesn't have the chaining link. Claude flagged the absence but didn't have the branch-level mechanism. Codex closed that loop.
+- Claude's level of detail on the Bayesian control machinery was the deepest (transcribed verbatim formulas, line-cited).
+- Gemini contributed the cleanest framing of the "MeTTa Gap" abandonment.
+
+**Disk-space incident**: agent reportedly "blocked" by full E: drive but actually completed writing ~47 KB findings file just before being killed by orchestrator. False alarm, no rerun needed. **Lesson**: when checking on a stalled agent, examine the output file timestamp and size periodically (not just once early on) before issuing TaskStop — the agent may be writing in bursts.
+
+**Source 6 declared complete.** Per the per-repo orientation-doc workflow, `ure2/CLAUDE.md` surgical update is the next deferred step before moving to Source 7.
+
+---
+
+## 12. Proposed Source 7
+
+After URE, the highest-leverage next sources are:
+
+1. **`trueagi-io/chaining`** — the URE successor per PR #132. Resolves the standing question of whether the Bayesian control architecture migrated or died. Almost certainly worth doing before publications.
+
+2. **PLN FactorGraph / MORK paper series** — from wiki's `RawData+Publications+PLN FactorGraph MORK v3.2` etc. Theoretical content not yet implemented anywhere we've examined.
+
+3. **`patham9/PLN` (`PLN2/`)** — patham9's mirror of the same `55f1751` commit as Source 2. Almost certainly redundant (same content as PLN3 minus ngeiswei's later commits); confirm-or-skip pass would be quick.
+
+**Recommend Source 7 = `trueagi-io/chaining`** — it directly resolves the "did the abandoned features migrate?" question that this Source 6 reconciliation surfaces as critical. The publication series and PLN2 verification can come after.
+
+**Alternative**: jump to PLN FactorGraph/MORK papers immediately — both Codex and Gemini suggested this earlier. The advantage: closes the "wiki has FactorGraph papers but no FactorGraph code" gap; wiki content for the active research direction.
+
+---
+
+*End of cross-model reconciled findings for Source 6.*

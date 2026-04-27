@@ -1,0 +1,300 @@
+Chapter 5: First-Order Extensional Inference — Rules and Strength Formulas 
+Abstract   In this chapter we launch into the “meat” of PLN: the specific PLN in-ference rules, and the corresponding truth-value formulas used to determine the strength of the conclusion of an inference rule from the strengths of the premises. Inference rules and corresponding truth-value strength formulas comprise a large topic; in this chapter we deal with a particular sub-case of the problem: first-order extensional inference. 
+5.1 Introduction Recall that first-order inference refers to inference on relationships between terms (rather than on predicates, or relationships between relationships), and that extensional inference refers to inference that treats terms as denoting sets with members (as opposed to intensional inference, which treats terms as denoting enti-ties with properties). These first-order extensional rules and truth-value formulas turn out to be the core PLN rules truth-value formulas, in the sense that most of the rules and formulas for handling higher-order and/or intensional inference and/or weight of evidence are derived as re-interpretations of the first-order exten-sional rules and associated strength formulas. Higher-order inference, intensional inference, and weight of evidence formulas are handled separately in later chap-ters. 
+5.2 Independence-Assumption-Based PLN Deduction In this section we present one version of the PLN strength formula for first-order extensional deduction (abbreviated to “deduction” in the remainder of the chapter). First we give some conceptual discussion related to this inference for-mula; then we provide the algebraic formula. The formula itself is quite simple; however it is important to fully understand the concepts underlying it, because it embodies simplifying assumptions that introduce errors in some cases. We will also be reviewing an alternate strength formula for first-order extensional deduc-tion, in a later section of this chapter, which mitigates these errors in certain circumstances. 
+
+Probabilistic Logic Networks                                                                               64 Conceptually, the situation handled by the first-order extensional deduction formula is depicted in the following Venn diagram:   
+First-order extensional deduction, as well as the related inference forms we call induction and abduction in PLN, may be cast in the form: Given information about the size of some regions in the Venn diagram, make guesses about the size of other regions. 
+5.2.1  Conceptual Underpinnings of PLN Deduction In this subsection, as a preliminary to presenting the PLN inference formulas in detail, we will discuss the concepts underlying PLN in a more abstract way, using simple inference examples to demonstrate what it is we really mean by “probabil-istic deduction.” This conceptual view is not needed for the actual calculations in-volved in PLN, but it’s essential to understanding the semantics underlying these calculations, and is also used in the proof of the PLN deduction formula. Let’s consider some simple examples regarding Subset relationships. Suppos-ing, in the above diagram, we know Subset A B <.5> Subset B C <.5> What conclusions can we draw from these two relationships? What we want is to derive a relation of the form Subset A C <tv> from the two given premises. When we do this however, we are necessarily doing probabilistic, estimative inference, not direct truth-value evaluation. To see why, suppose B is a set with two elements; e.g., B = {x1,x2} so that Member x1 B <1> Member x2 B <1> 
+
+
+65       Chapter 5: First Order Extensional Inference   Let’s consider two of the many possible cases that might underlie the above Sub-set relationships:   Case 1 (A!B and B!C are identical)       A = C = {x1, x3} B = {x1,x2} In this case, direct truth-value evaluation yields Subset A C <1>  Case 2 (A!B and B!C are disjoint)           A = {x1, x3} B = {x1, x2} C = {x2, x4} In this case, direct truth-value evaluation yields Subset A C <0>   
+A = C 
+x1 x3 x2 
+B 
+A  
+x1 x3 x2 
+B 
+x4 
+C 
+
+Probabilistic Logic Networks                                                                               66 The problem is that, just given the two premises Subset A B <.5> Subset B C <.5> we don’t know which of the two above cases holds – or if in fact it’s a completely different situation underlying the Subset relationships. Different possible situa-tions, underlying the same pair of Subset relationships, may result in completely different truth-values <tv> for the conclusion Subset A C <tv> So no exact computation of the truth-value of the conclusion is possible. In-stead, all that’s possible is an estimate of the truth-value of the latter, obtained by averaging over possible situations consistent with the two given premises. The PLN deduction strength formula to be given below is merely an efficient way of carrying out this averaging, in an approximate way. We will derive theorems giving compact formulas for the expected (average) truth-values to be obtained as the answer to the above deduction problem. We ap-proach this averaging process in two ways. First, we derive inference formulas for an “independence-based PLN,” in which we average over all possible sets satisfy-ing given premises. Later, we introduce a more general and more realistic “con-cept-geometry” approach. In the concept-geometry approach, we restrict attention to only those sets having particular shapes. The idea here is that concepts tend to be better approximated by these shapes than by random sets.  One important point regarding PLN inference is that the evidence sets used to compute the truth-values of two premises need not be overlapping. We can freely combine two relationships that were derived based on different sets of observa-tions. This is important because many real-world cases fit this description. For in-stance, when a person reasons Inheritance gulls birds Inheritance birds fly |- Inheritance gulls fly it may well be the case that the two premises were formed based on different sets of evidence. The gulls that were observed to be birds may well be different from the birds that were observed to fly. A simple example of non-overlapping evidence, related to our above Subset example with the sets A, B, and C, is: Case 3 (non-overlapping evidence sets)  A = {x1, x4, x7, x8} B = {x1, x2, x3, x4, x5, x6} C = {x2, x3, x4}  In this case, direct truth-value evaluation yields 
+
+67       Chapter 5: First Order Extensional Inference    Subset A C <.25> Now, suppose that truth-value estimates for the two relations  Subset A B <.5> Subset B C <.5>  were obtained as follows: Subset A B <.5> was derived by observing only {x1, x7}, whereas Subset B C <.5> was derived by observing only {x2, x6}  In Case 3, the two premise Subsets were derived based on completely different sets of evidence. But the inference rules don’t care; they can make their estimates anyway. We will present this “not caring” in a formal way a little later when we discuss the weight of evidence rules for first-order inference. Now let’s step through the basic logic by which PLN deals with these examples of inference involving Subsets, with all their concomitant subcases. Basically, as noted above, what PLN does is to estimate the outcome of an average over all pos-sible cases. The PLN formulas carry out this estimation in a generally plausible way, based on the information available. More formally, what does this mean? First we’ll present a slight simplification, then un-simplify it in two stages. In addition to these simplifications, we will also assume a strength-only representation of truth-values, deferring consideration of more complex truth-value types until later. In the simplified version what PLN says in this example is, basically: Let’s as-sume a universe U that is a finite size Usize. Let V denote the set of all triples of sets {A, B, C} in this universe, such that Subset A B <.5> Subset B C <.5> holds. For each triple in V, we can compute the value s so that Subset A C <s> The average of all these strength-estimates is the estimated truth-value strength of the Subset. Note that this average includes cases where A!B and B!C have no overlap at all, cases where A!B and B!C are identical, cases where A and C are identical – all possible cases given the assumed finite universe U and the con-straints posed by the premise Subsets. If the two premise Subsets are drawn from different evidence sets, this doesn’t matter – the degree of evidence-set overlap is 
+
+Probabilistic Logic Networks                                                                               68 just one among many unknown properties of the evidence sets underlying the premise truth-values. Now, how is this picture a simplification? The first way is that we haven’t in-troduced all the potentially available information. We may have knowledge about the truth-values of A, B, and C, as well as about the truth-values of the Subset rela-tionships. In fact, this is the usual case. Suppose that sA, sB, and sC are the strengths of the truth-values of the Atoms A, B, and C. In that case, we can redefine the set V specified above; we can define it as the set of all triples of sets {A, B, C} so that |A| = sA Usize |B| = sB Usize |C| = sC Usize Subset A B <.5> Subset B C <.5> hold. Here Usize is the “universe size,” the size of the total space of entities under consideration. We can then compute the truth-value of  Subset A C <tv> as the average of the estimates obtained for all triples in V.  Next, the other way in which the above picture is a simplification is that it as-sumes the strength values of the premises (and the strength values of the Atoms A, B, and C) are exactly known. In fact, these will usually be estimated values; and if we’re using indefinite truth-values, distributional truth-values, or confidence-bearing truth-values, knowledge about the “estimation error” may be available. In these cases, we are not simply forming a set V as above. Instead, we are looking at a probability distribution V over all triples {A, B, C} where A, B, and C are subsets of U, and the quantities |A| (determined from sA = A.TruthValue.strength) |B| (determined from sB = B.TruthValue.strength) |C| (determined from sC = C.TruthValue.strength) (Subset A B).TruthValue.strength (Subset B C).TruthValue.strength are drawn from the probability distributions specified by the given truth-values. We will deal with this uncertainty below by doing a sensitivity analysis of the PLN inference formulas, estimating for each formula the error that may ensue from uncertain inputs, and discounting the weight of evidence associated with the conclusion based on this estimated error. Finally, one technical point that comes up in PLN is that the quantitative results of truth-value estimates depend on the finite universe size Usize that is assumed. This parameter is also called the “context size.” Basically, the smaller Usize is, the more speculative the inferences are. In the example given above, the minimum us-able Usize is Usize = |U| = |A| + |B| + |C|. This parameter setting is good if one wants to do speculative inductive or abductive inference. If one wants to minimize error, at cost of also minimizing creativity, one should set Usize as large as possi-
+
+69       Chapter 5: First Order Extensional Inference   ble. Using the PLN formulas, there is no additional computational cost in assum-ing a large Usize; the choice of a Usize value can be based purely on the desired inferential adventurousness. The semantics of the universal set will be discussed further in a later subsection. 
+5.2.2  The Independence-Assumption-Based Deduction Rule Now we proceed to give a heuristic derivation of one of the two truth-value strength formulas commonly associated with the PLN deduction rule. In this infer-ence rule, we want to compute the “strength” sAC of the relationship Subset A C <sAC> which we interpret as  
+! sAC=PCA()=PA"C()PA() 
+given the data: 
+! 
+sAB=PBA()sBC=PCB()sA=PA()sB=PB()sC=PC() 
+Essentially, that means we want to guess the size of the Venn diagram region A!C given information about the sizes of the other regions A, B, C, A!B, B!C.  As illustrated in the above example, in the following discussion we will some-times use the notation: • sij’s are strengths of Subset relationships (e.g., Subset i j <sij >) • si’s are strengths of terms (i.e., i <si >) This notation is handy for the presentation of algebraic relationships involving Atom strengths, a situation that often arises with PLN. We will also use Nij and Ni to denote relationship and term “counts” respectively, and dij and dj to denote rela-tionship and term “weights of evidence.”  
+
+Probabilistic Logic Networks                                                                               70 Whenever the set of values 
+! sA, sB, sC, sAB, sBC { } is consistent (i.e., when it corresponds to some possible sets A, B, and C) then the PLN deduction strength formula becomes  
+! sAC=sABsBC+1"sAB()sC"sBsBC( )1"sB (2.1) 
+Here we will give a relatively simple heuristic proof of this formula, and then (more tediously) a fully rigorous demonstration. As we shall see a little later, formulas for inductive and abductive reasoning in-volve similar problems, where one is given some conditional and absolute prob-abilities and needs to derive other, indirectly related ones. For induction, one starts with sBA, sBC, sA, sB, sC and wishes to derive sAC. For abduction, one starts with sAB, sCB, sA, sB, sC and wants to derive sAC. The inference formulas involving similarity relations may be similarly formulated. 
+5.2.2.1 Heuristic Derivation of the Independence-Assumption-Based Deduction Rule The heuristic derivation that we’ll give here relies on a heuristic independence assumption. The rigorous derivation given afterward replaces the appeal to an in-dependence assumption with an averaging over all possible worlds consistent with the constraints given in the premises. But of course, even the rigorous proof em-bodies some a priori assumptions. It assumes that the only constraints are the ones implicitly posed by the truth-values of the premise terms and relationships, and that every possible world consistent with these truth-values is equally likely. If there is knowledge of probabilistic dependency, this constitutes a bias on the space of possible worlds, which renders the assumption of unbiased independence inva-lid. Knowledge of dependency can be taken into account by modifying the infer-ence formula, in a way that will be discussed below. The danger is where there is a dependency that is unknown; in this case the results of inference will not be accu-rate, an unavoidable problem. Assume we’re given P(A), P(B), P(C), P(B|A), P(C|B), defined relative to some universal set U. We want to derive P(C|A); i.e., the formula for P(C|A) = sAC, which was cited above. We begin the derivation by observing that 
+! PCA()=PC"A()PA(). 
+Because P(A) is assumed given, we may focus on finding P(C!A) in terms of the other given quantities. 
+
+71       Chapter 5: First Order Extensional Inference   We know 
+! PC"A()=PB()PC"A()B( )+PU#B()PC"A()U#B( ). This follows because in general 
+! 
+PB()PXB()+PU"B()PXU"B()=PB()PX#B()PB()+PU"B()PX#U"B()( )PU"B()=PX#B()+PX#U"B()( )=PX#B()+PX()"PX#B()[ ]=PX(). 
+So we can say, for instance, 
+! 
+PC"A()B( )=PC"A"B( )PB()=PC"B()"A"B()( )PB()=C"B()"A"B()B.  
+Now, we can’t go further than this without making an independence assumption. But if we assume C and A are independent (in both B and U-B), we can simplify these terms. To introduce the independence assumption heuristically, we will introduce a “bag full of balls” problem. Consider a bag with N balls in it, b black ones and w white ones. We are going to pick n balls out of it, one after another, and we want to know the chance p(k) that k of them are black. The solution to this problem is known to be the hypergeometric distribution. Specifically,  
+()bNbNpkknkn!"#"#"#=$%$%$%!&'&'&'. 
+The mean of this distribution is: 
+
+Probabilistic Logic Networks                                                                               72 
+! mean=bnN. How does this bag full of balls relate to our situation? We may say: • Let our bag be the set B, so N=|B|.  • Let the black balls in the bag correspond to the elements of the set A!B, so that b=|A!B|  • The white balls then correspond to elements of B-A.  • The n balls we are picking are the elements of the set C!B, so n=|C!B|.  This probabilistic “bag full of balls” model embodies the assumption that A and C are totally independent and uncorrelated, so that once B and A are fixed, the chance of a particular subset of size |C!B| lying in A!B is the same as the chance of that element of C lying in a randomly chosen set of size |A!B|. This yields the formula: 
+! bnN=A"BC"BB 
+which is an estimate of the size  
+! C"B()"A"B(). So if we assume that A and C are independent inside B, we can say 
+! 
+PC"A()B( )=C"B()"A"B()B=A"BC"BB2=PAB()PCB(). 
+Similarly, for the second term, by simply replacing B with U-B and then doing some algebra, we find 
+
+73       Chapter 5: First Order Extensional Inference   
+! 
+PC"A()U#B()( )=PAU#B()( )PCU#B()( )=A"U#B()C"U#B()U#B2=PA()#PA"B()[ ]PC()#PA"B()[ ]1#PB()[]2 .  
+So altogether, we find 
+! 
+PC"A()=PB()PC"A()B( )+PU#B()PC"A()U#B()( )=PB()PAB()PCB()+1#PB()[]PA()#PA"B()[ ]PC()#PC"B()[ ]1#PB()[]2  
+and hence 
+! 
+PCA()=PC"A()PA()=PAB()PCB()PB()PA()+1#PA"B()[ ]PC()#PC"B()[ ]1#PB()=PBA()PCB()+1#PBA()[ ]PC()#PC"B()[ ]1#PB()=PBA()PCB()+1#PBA()[ ]PC()#PB()PCB()[ ]1#PB() . 
+Note that in the above we have used Bayes’ rule to convert 
+! PAB()=PBA()PA()PB(). 
+We now have the PLN deduction formula expressed in terms of conditional and absolute probabilities. In terms of our above-introduced notation for term and rela-tionship strengths, we may translate this into: 
+
+Probabilistic Logic Networks                                                                               74 
+! sAC=sABsBC+1"sAB()sC"sCsBC( )1"sB 
+which is the formula mentioned above. 
+5.2.2.2 PLN Deduction and Second-Order Probability We now give a formal proof of the independence-assumption-based PLN de-duction formula. While the proof involves a lot of technical details that aren’t conceptually critical, there is one aspect of the proof that sheds some light on the more philosophical aspects of PLN theory: this is its use of second-order prob-abilities. We first define what it means for a set of probabilities to be consistent with each other. Note that, given specific values for sA = P(A) and sB = P(B), not all values in the interval [0,1] for sAB = P(B|A) necessarily make sense. For example, if 
+! PA()=0.6=PB(), then the minimum value for P(A!B) = 0.2 so that the minimum value for P(B|A) is 0.2/0.6 = 1/3. Definition: We say that the ordered triple ()ABBAsss,, of probability values 
+! sA=PA(), 
+! sB=PB(), and 
+! sAB=PBA() is consistent if the probabilities satisfy the following condition: 
+!!"#$$%&''!!"#$$%&(+ABABABAssssss,1min1,0max. 
+Definition: The ordered triple of subsets (A, B, C) for which the ordered tri-ples ()ABBAsss,, and
+! sB,sC,sBC( ) are both consistent, we shall call fully con-sistent subset-triples. We will prove: Theorem 1 (PLN Deduction Formula)  Let U denote a set with |U| elements. Let Sub(m) denote the set of subsets of U containing m elements. Let (A, B, C) be a fully consistent subset-triple. Further suppose that each of the values sA, sB, sC,sAB, and sBC divides evenly into |U|. Next, define 
+! fx()=PPCA()=xA"SubUsA(),B"SubUsB(),C"SubUsC(),PBA()=sAB,PCB()=sBC[ ] Then, where E() denotes the expected value (mean), we have 
+
+75       Chapter 5: First Order Extensional Inference   
+! Efx()[]=sAC=sABsBC+1"sAB()sC"sBsBC( )1"sB . 
+This theorem looks at the space of all finite universal sets U (all “sample spaces”), and with each U it looks at all possible ways of selecting subsets A, B, and C out of U. It assumes that this size of U is given, and that certain absolute and conditional probabilities regarding A, B, and C are given. Namely, it assumes that P(A), P(B), P(C), P(B|A) and P(C|B) are given, but not P(C|A). For each U, it then looks at the average over all A, B, and C satisfying the given probabilities, and asks: If we average across all the pertinent (A, B, C) triples, what will P(C|A) come out to, on average? Clearly, P(C|A) may come out differently for different sets A, B, and C satisfying the assumed probabilities. But some values are more likely than others, and we’re looking for the mean of the distribution of P(C|A) values over the space of acceptable (A, B, C) triples. This is a bit different from the usual elementary-probability theorems in that it’s a second-order probability: we’re not looking at the probability of an event, but rather the mean of a probabil-ity over a certain set of sample spaces (sample spaces satisfying the initially given probabilistic relationships).  In spite of the abstractness induced by the use of second-order probabilities, the proof is not particularly difficult. Essentially, after one sets up the average over pertinent sample spaces and does some algebra, one arrives at the same sort of hy-pergeometric distribution problem that was used in the heuristic derivation in the main text. The difference, however, is that in this proof there is no ad-hoc independence assumption; rather, the independence comes out of the averaging process automatically because on average, approximate probabilistic independ-ence between terms is the rule, not the exception. Proof of Theorem 1 (PLN Deduction Formula): The way the theorem is stated, we start with a set U of |U| elements, and we look at the set of all subset-triples {A, B, C} fulfilling the given constraints. That is, we are looking at subset-triples (A,B,C) for which the Predicate constr defined by 
+! constrA,B,C()=A"SubUsA() AND B"SubUsB() AND C"SubUsC()AND PBA()=sAB AND PCB()=sBC   
+evaluates to True. Over this set of subset-triples, we’re computing the average of P(C|A). That is, we’re computing 
+
+Probabilistic Logic Networks                                                                               76 
+! Efx()[]=1M PCA()A,B,C(): constrA,B,C()" where M denotes the number of triples (A,B,C) so that constr(A,B,C). Following the lines of our heuristic derivation of the formula, we may split this into two sums as follows: 
+! Efx()[]=1MPC"A()PA()A,B,C(): constrA,B,C()#=1MPC"A()B()PB()PA()A,B,C(): constrA,B,C()# + PC"A()U$B()( )PU$B()PA()A,B,C(): constrA,B,C()#% & ' ' ( ) * * . 
+After going this far, the heuristic derivation then used probabilistic independence to split up P((C!A)|B) and P(C!A)|(U-B) into two simpler terms apiece. Follow-ing that, the rest of the heuristic derivation was a series of straightforward alge-braic substitutions. Our task here will be to more rigorously justify the use of the independence assumption. Here we will not make an independence assumption; rather, the independence will be implicit in the algebra of the summations that are “summations over all possible sets consistent with the given constraints.” We will use formal methods analogous to the heuristic independence assumption, to reduce these sums into simple formulas consistent with the heuristic derivation.  We will discuss only the first sum here; the other one follows similarly by sub-stituting U-B for B. For the first sum we need to justify the following series of steps: 
+! 
+1M PC"A()B( )PB()PA()A,B,C(): constrA,B,C()#=1M PC"A"B( )PA()A,B,C(): constrA,B,C()#=1M PC"B()"A"B()( )PA()A,B,C(): constrA,B,C()#=1M PC"B()PA"B()PB()PA()A,B,C(): constrA,B,C()#=1M PCB()PAB()PB()PA()A,B,C(): constrA,B,C()#  
+The final step is the elegant one. It follows because, over the space of all triples (A,B,C) so that constr(A,B,C) holds, the quantities P(C|B) and P(B|A) are constant 
+
+77       Chapter 5: First Order Extensional Inference   by assumption. So they may be taken out of the summation, which has exactly M terms. The difficult step to justify is the third one, where we transform 
+! PC"B()"A"B()( ) into 
+! PC"B()PA"B()PB(). This is where the algebra of the summations is used to give the effect of an independence assumption. To justify this third transformation, it suffices to show that 
+! 
+PC"B()"A"B()( )#PC"B()PA"B()PB()PA()A,B,C(): constrA,B,C()$ =0. 
+We will do this by rewriting the sum as 
+! 
+PC"B()"A"B()( )#PC"B()PA"B()PB()PA()$ % & & & & ' ( ) ) ) ) A,C():constrA,B,C()*$ % & & & & ' ( ) ) ) ) B+SubUsB()* =0. 
+Note that the term P(A) is constant for all (A,B,C) satisfying constr(A,B,C), so it may be taken out of the summation and effectively removed from consideration, yielding 
+! PC"B()"A"B()( )#PC"B()PA"B()PB()$ % & ' ( ) A,C():constrA,B,C()*$ % & & ' ( ) ) B+SubUsB()* =0. 
+We will show that this is true by showing that the inner summation itself is always zero; i.e., that for a fixed B, 
+! PC"B()"A"B()( )#PC"B()PA"B()PB()$ % & ' ( ) A,C():constrA,B,C()* =0 (2.2) 
+In order to demonstrate Equation 2.2, we will now recast the indices of summa-tion in a different-looking but equivalent form, changing the constraint to one that makes more sense in the context of a fixed B.  Given a fixed B, let’s say that a pair of sets (A1, C1) is B-relevant iff it satisfies the relationships A1=A!B C1=C!B 
+
+Probabilistic Logic Networks                                                                               78 for some triple (A,B,C) satisfying constr(A,B,C).  We now observe that the pair (A1,C1) is B-relevant if it satisfies the constraint predicate 
+! constr1A1,C1;B()=A1"B AND C1"B AND A1=AsAB AND C1=BsBC The constraint for |C1| comes from the term in the former constraint constr stating 
+! PCB()=sBC For, we may reason 
+! PCB()=PC"B()PB()=PC1()PB()=sBC 
+! PC1()=PB()sBC 
+! C1=BsBC Similarly, to get the constraint for |A1|, we observe that  
+! PBA()=PA"B()PA()=PA1()PA()=sAB 
+so that 
+! A1=AsAB. Given a fixed B, and a specific B-relevant pair (A1,C1), let EQ(A1, C1;B) de-note the set of pairs (A,C) for which constr(A,B,C) and 
+! A1=A"BC1=C"B 
+Now we will recast Equation 2.2 above in terms of A1 and C1. Equation 2.2 is equivalent to  
+! PA1"C1()#PA1()PC1()PB()$ % & ' ( ) A,C()*EQA1,C1;B( )+A1,C1():constr1A1,C1;B( )+ =0. 
+
+79       Chapter 5: First Order Extensional Inference   Because the inner sum is the same for each pair (A,C)! EQ(A1,C1;B), and because 
+! K"EQA1,C1() is the same for each B-relevant pair (A1,C1), we can rewrite this as 
+! KPA1"C1()#PA1()PC1()PB()$ % & ' ( ) $ % & & ' ( ) ) A1,C1():constr1A1,C1;B( )* =0 
+or just 
+! PA1"C1()#PA1()PC1()PB()$ % & ' ( ) A1,C1():constr1A1,C1;B( )* =0.  (2.3) 
+We now have a somewhat simpler mathematics problem. We have a finite set B, with two subsets A1 and C1 of known sizes. Other than their sizes, nothing about A1 and C1 is known. We need to sum a certain quantity 
+! Q"PA1#C1()$PA1()PC1()PB() 
+over all possibilities for A1 and C1 with the given fixed sizes. We want to show this sum comes out to zero. This is equivalent to showing that the average of Q is zero, over all A1 and C1 with the given fixed sizes.  Now, the second term of Q is constant with respect to averaging over pairs (A1,C1), because 
+! PA1()PC1()PB()=A1C1BU 
+which is independent of what the sets A1 and C1 are, assuming they have fixed sizes. So the average of the second term is simply 
+! A1C1BU. We will rewrite Equa-tion 2.3 as  
+! L"1M1 1M2 PA1#C1()C1:constr1A1,C1;B()$% & ' ( ) * A1+B:A1=AsAB$ =A1C1BU (2.4) 
+where  
+
+Probabilistic Logic Networks                                                                               80 • M1 is the number of A1’s that serve as part of a B-relevant pair (A1,C1) with any C1; i.e., the number of terms in the outer sum; • M2 is the number of C1’s that serve as part of a B-relevant pair (A1,C1) for some specific A1; i.e., the number of terms in the inner sum. Note that M2 is independent of the particular set A1 under consideration; and that M = M1 M2. To show (2.4), it suffices to show that for a fixed A1, 
+! 1M2 PA1"C1()C1:constr1A1,C1;B( )# =A1C1BU (2.5) 
+To see why this suffices observe that, by the definition in (2.4), if (2.5) held, we’d have 
+! L"1M1 A1C1BU# $ % & ' ( A1)B:A1=AsAB*. 
+But the expression inside the sum is constant for all A1 being summed over (because they all have 
+! A1=AsAB), and the number of terms in the sum is M1, so that on the assumption of (2.4) we obtain the result 
+! L"A1C1BU. 
+which is what (2.3) states. So, our task now is to show (2.5). Toward this end we will use an equivalent form of (2.4); namely 
+! 1M2 A1"C1=A1C1BC1:constr1A1,C1;B( )#  (2.6) 
+(the equivalence follows from P(A1!C1) = |A1!C1|/|U|). To show (2.6) we can use some standard probability theory, similar to the independence-assumption-based step in the heuristic derivation. We will model the left-hand side of (2.6) as a “bag full of balls” problem. Consider a bag with I balls in it, I black ones and w white ones. We are going to pick n balls out of it, one after another, and we want to know the chance p(k) that k of them are black. The solution to this problem is known to be the hypergeometric distribution, as given above, with mean bn/N. How does this bag full of balls relate to (2.6)? Simply: 
+
+81       Chapter 5: First Order Extensional Inference   • Let our bag be the set B, so N=|B|.  • Let the black balls in the bag correspond to the elements of the set A1, so that b=|A1|  • The white balls then correspond to B minus the elements in A1.  • The n balls we are picking are the elements of the set C1, so n=|C1|.  This yields the formula: 
+! bnN=A1C1B. 
+What the mean of the hypergeometric distribution gives us is the average of 
+! A1"C1 over all I1 with the given size constraint, for a fixed A1 with the given size constraint.  But what Equation 5 states is precisely that this mean is equal to 
+! A1C1B. So, going back to the start of the proof, we have successfully shown that 
+! PC"A()B( )PB()=PCB()A,B,C():constrA,B,C()# PBA(). 
+It follows similarly that ()()()()()()()() ()()ABUPBUCPBPBUACPCBAconstrCBA !!=!"#,,:,, . 
+The algebraic transformations made in the heuristic derivation then show that 
+! 
+Efx()[]=1M PCA()A,B,C{}: constrA,B,C()"=PCB()PBA()+PCU#B()( )PU#B()A( )PU#B()  
+! =PBA()PCB()+1"PBA()( )PC()"PB()PCB()( )1"PB()  
+which, after a change from P to s notation, is precisely the formula given in the theorem. Thus the proof is complete. QED 
+
+Probabilistic Logic Networks                                                                               82 Next, to shed some light on the behavior of this formula, we now supply graphical plots for several different input values. These plots were produced in the Maple software package. Each plot will be preceded by the Maple code used to generate it. To make the Maple code clearer we will set Maple inputs in bold text; e.g., diff(dedAC(rB,rC,sAB,sBC),rC); and Maple outputs through displayed text such as 
+ Recall that in order to apply the deduction rule, the triple
+! A,B,C() of subsets of a given universal set must be fully consistent. In Maple, this consistency condi-tion takes the form consistency:= (sA, sB, sC, sAB, sBC) -> (Heaviside(sAB-max(((sA+sB-1)/sA),0))-Heaviside(sAB-min(1,(sB/sA))))*(Heaviside(sBC-max(((sB+sC-1)/sB),0))-Heaviside(sBC-min(1,(sC/sB)))); where Heaviside(x) is the Heaviside unit step function defined by Heaviside(x)=!"#$<0 if,10 if,0xx The deduction strength formula then becomes dedAC := (sA, sB, sC, sAB, sBC) -> sAB * sBC + (1- sAB)*(sC-sB*sBC)/(1-sB)* consistency(sA,sB,sC,sAB,sBC);  The result of this treatment of the consistency condition is that when the consis-tency condition indicates inconsistency, the result of the inference comes out as zero.  Graphically, this means that the graphs look flat (0 on the z-axis) in certain regions – these are regions where the premises are inconsistent.  We now supply a sampling of graphs for the deduction strength formula for several representative values for 
+! sA,sB,sC,sAB,sBC ( ). Note here that the discon-tinuities come from enforcing the consistency conditions.  
+
+83       Chapter 5: First Order Extensional Inference   plot3d(dedAC(0.1,0.1,0.4,sAB,sBC),sAB=0..1,sBC=0..1,numpoints=400, resolution = 400, axes=BOXED, labels=[sAB,sBC,dedAC]); 
+ plot3d(dedAC(0.1,0.1,0.8,sAB,sBC),sAB=0..1,sBC=0..1,numpoints=400, resolution = 400, axes=BOXED, labels=[sAB,sBC,dedAC]); 
+ 
+
+Probabilistic Logic Networks                                                                               84 plot3d(dedAC(0.1,0.1,.95,sAB,sBC),sAB=0..1,sBC=0..1,numpoints=800, reso-lution = 400, axes=BOXED, labels=[sAB,sBC,dedAC]); 
+   plot3d(dedAC(0.1,0.2,0.1,sAB,sBC),sAB=0..1,sBC=0..1,numpoints=800, resolution = 400, axes=BOXED, labels=[sAB,sBC,dedAC]); 
+  
+
+85       Chapter 5: First Order Extensional Inference   plot3d(dedAC(0.1,0.6,0.5,sAB,sBC),sAB=0..1,sBC=0..1,numpoints=800,axes=BOXED, labels=[sAB,sBC,dedAC]); 
+    plot3d(dedAC(0.1,0.9,0.4,sAB,sBC),sAB=0..1,sBC=0..1,numpoints=800,labels=[sAB,sBC,sAC],axes=BOXED); 
+  
+
+Probabilistic Logic Networks                                                                               86 5.2.2.3 Deduction Accounting for Known Dependencies Next, we present a minor variant of the above deduction strength formula. The heuristic inference formula derivation given earlier relies on an independence as-sumption, and the more rigorous derivation given just above assumes something similar, namely that all possible worlds consistent with the input strength values are equally likely. This is arguably the best possible assumption to make, in the case where no relevant evidence is available. But what about the case where addi-tional relevant evidence is available? A couple of workarounds are possible here. The concept geometry approach proposed in a later section presents a solution to one aspect of this problem – the fact that in some cases the independence assumption is systematically biased in a certain direction, relative to reality. But that doesn’t address the (quite common) case where, for a particular relationship of interest, some partial dependency in-formation is available.  For instance, what if one wishes to reason Subset A B Subset B C |- Subset A C and one knows that A!B and C!B are not independent. Perhaps there exist con-junctions corresponding to these two compounds (these will be introduced more rigorously later on, but the basic idea should be clear), and perhaps there is an Equivalence or ExtensionalEquivalence relationship between these two Predicates, such as ExtensionalEquivalence <.6>  AND A B  AND C B indicating a significant known dependency between the two conjuncts. In this case the deduction formula, as presented above, is not going to give accurate results. But one can easily create alternate PLN formulas that will do the trick. In the heuristic deduction formula derivation given above, the key step was where an independence assumption was used to split up the right-hand side of 
+! PC"A()B( )=PC"B()"A"B()( )PB() . 
+In the case where ( A AND B AND C) <.6> is known, however, one doesn’t need to use the independence assumption at all. Instead one can simply substitute the value .6 for the expression 
+! PC"B()"A"B()( ), obtaining the deduction formula 
+
+87       Chapter 5: First Order Extensional Inference   
+! .6PB()PA()+1"PBA()( )PC()"PB()PCB()( )1"PB() . 
+If we also had the knowledge (A AND C AND (NOT B) ) <.3> then we could simplify things yet further and use the formula 
+! .6PB()PA()+.31"PB()()PA(). 
+The principle illustrated in these examples may be used more generally. If one is given explicit dependency information, then one can incorporate it in PLN via appropriately simplified inference formulae. As will be clear when we discuss al-ternate inference rules below, the same idea works for induction and abduction, as well as deduction. 
+5.3 The Optimal Universe Size Formula Now we return to the question of the universe-size parameter U. It turns out that if one has information about a significant number of “triple intersection prob-abilities” in a context, one can calculate an “optimal universe size” for PLN de-duction in that context. The deduction rule estimates 
+! PCA()=PBA()PCB()+P¬BA()PC¬B() where nA = |A|, nAC = |A !C|, etc., this means 
+! nACnA=nABnBCnAnB+nA,¬BnB,¬CnAn¬B 
+The second term can be expanded 
+! nA,¬Bn¬B,CnAn¬B=nA"nAB( )nC"nBC( )nAnU"nB() 
+where nU is the size of the universe. 
+
+Probabilistic Logic Networks                                                                               88 On the other hand, with triple intersections, one can calculate 
+! nAC=nABC+nA,¬B,C. It’s interesting to compare this with the formula 
+! nAC=nABnBCnB+nA"nAB( )nC"nBC( )nU"nB 
+derived from multiplying the deduction rule by nA. Clearly the k’th term of each formula matches up to the k’th term of the other formula, conceptually. Setting the second terms of the two equations equal to each other yields a for-mula for nU, the universe size. We obtain 
+! 
+nA,¬B,C=nA"nAB( )nC"nBC( )nU"nBnAC"nABC( )=nA"nAB( )nC"nBC( )nU"nBnU=nB+nA"nAB( )nC"nBC( )nAC"nABC( )    
+For example, suppose nA=nB=nC=100, nAC = nAB = nBC = 20, nABC = 10 Then, 
+! nU=100+80"8010=740 is the correct universe size. The interesting thing about this formula is that none of the terms on the right side demand knowledge of the universe size – they’re just counts, not probabili-ties. But the formula tells you the universe size that will cause the independence assumption in the second term of the deduction formula to come out exactly cor-rectly! Now, what use is this in practice? Suppose we know triple counts nABC for many triples (A,B,C), in a given context. Then we can take the correct universe sizes corresponding to these known triples and average them together, obtaining a good estimate of the correct universe size for the context as a whole.  We have tested this formula in several contexts. For instance, we analyzed a large corpus of newspaper articles and defined P(W), where W is a word, as the percentage of sentences in the corpus that the word W occurs in at least once. The 
+
+89       Chapter 5: First Order Extensional Inference   Subset relationship strength from W to V is then defined as the probability that, if V occurs in a sentence, so does W; and the triple probability P(W & V & X) is de-fined as the percentage of sentences in which all three words occur. On this sort of data the universe size formula works quite well in practice. For instance, when the correct universe size – the number of sentences in the corpus – was around 650,000, the value predicted by the formula, based on just a few hundred triples, was off by less than 20,000. Naturally the accuracy can be increased by estimating more and more triples. If one uses a concept geometry approach to modify the deduction rule, as will be discussed later, then the universe size calculation needs to be modified slightly, with a result that the optimal universe size increases. 
+5.4 Inversion, Induction, and Abduction “Induction” and “abduction” are complex concepts that have been given vari-ous meanings by various different thinkers. In PLN we assign them meanings very close to their meanings in the NARS inference framework. Induction and abduc-tion thus defined certainly do not encompass all aspects of induction and abduc-tion as discussed in the philosophy and logic literature. However, from the fact that a certain aspect of commonsense induction or abduction is not encompassed completely by PLN induction or abduction, it should not be assumed that PLN it-self cannot encompass this aspect. The matter is subtler than that.  For instance, consider abductive inference as commonly discussed in the con-text of scientific discovery: the conception of a theory encompassing a set of ob-servations, or a set of more specialized theories. In a PLN-based reasoning system, we suggest, the process of scientific abduction would have to incorporate PLN ab-duction along with a lot of other PLN inference processes. Scientific abduction would be achieved by means of a non-inferential (or at least, not entirely inferen-tial) process of hypothesis generation, combined with an inferential approach to hypothesis validation. The hypothesis validation aspect would not use the abduc-tion rule alone: executing any complex real-world inference using PLN always in-volves the combination of a large number of different rules. Given the above deduction formula, the definition of induction and abduction as defined in PLN is a simple matter. Each definition involves a combination of the deduction rule with a single use of the “inversion formula,” which is simply Bayes’ rule. Inversion consists of the inference problem: Given P(A), P(B), and P(A|B), find P(B|A). The solution to this is: 
+
+Probabilistic Logic Networks                                                                               90 
+! 
+PBA()=PAB()PA()PB()sAB=sBAsAsB  
+which is a simple case of Bayes rule. Induction consists of the inference problem: Given P(A), P(B), P(C), P(A|B) and P(C|B), find P(C|A) . Applying inversion within the deduction formula, we obtain for this case: 
+! PCA()=PAB()PCB()PB()PA()+1"PAB()PB()PA()# $ % % & ' ( ( PC()"PB()PCB()1"PB()# $ % % & ' ( (  
+or 
+! 
+sAC=sBAsBCsBsA+1"sBAsBsA# $ % & ' ( sC"sBsBC1"sB# $ % & ' (  In Maple notation, the induction formula indAC := (sA, sB, sC, sBA, sBC) -> sBA * sBC * sB / sA + (1 - sBA * sB / sA) *(sC - sB * sBC)/(1-sB)*(Heaviside(sBA-max(((sA+sB-1)/sB),0))-Heaviside(sBA-min(1,(sA/sB))))*(Heaviside(sBC-max(((sB+sC-1)/sB),0))-Heaviside(sBC-min(1,(sC/sB)))); is depicted for selected input values in the following figures: 
+
+91       Chapter 5: First Order Extensional Inference   plot3d(indAC(0.1,0.1,0.1,sBA,sBC),sBA=0..1,sBC=0..1,numpoints=800, resolution = 400, labels=[sBA,sBC,indAC],axes=BOXED); 
+  plot3d(indAC(0.4,0.1,0.1,sBA,sBC),sBA=0..1,sBC=0..1,numpoints=800, resolution = 400, labels=[sBA,sBC,indAC],axes=BOXED); 
+ 
+
+Probabilistic Logic Networks                                                                               92 Next, abduction consists of the inference problem: Given P(A), P(B), P(C), P(B|A) and P(B|C), find P(C|A). In this case we need to turn P(B|C) into P(C|B), using inversion. We then obtain: 
+! PCA()=PBA()PBC()PC()PB()+PC()1"PBA()[ ]1"PBC()[ ]1"PB()  
+or  
+! 
+sAC=sABsCBsCsB+sC(1"sAB)(1"sCB)1"sB  
+In Maple notation, the formula for abduction is given by abdAC:=(sA,sB,sC,sAB,sCB)->(sAB*sCB*sC/sB+(1-sAB)*(1-sCB)*sC/(1-sB))*(Heaviside(sAB-max(((sA+sB-1)/sA),0))-Heaviside(sAB-min(1,(sB/sA))))*(Heaviside(sCB-max(((sB+sC-1)/sC),0))-Heaviside(sCB-min(1,(sB/sC)))); We display here plots for two sets of representative inputs: plot3d(abdAC(.1, .1, .1, sAB, sCB), sAB = 0 .. 1, sCB = 0 .. 1, numpoints = 800, resolution = 400, labels = [sAB, sCB, sAC], axes = BOXED); 
+ 
+
+93       Chapter 5: First Order Extensional Inference    plot3d(abdAC(0.1,0.9,0.4,sAB,sCB),sAB=0..1,sCB=0..1,numpoints=800,labels=[sBA,sBC,sCA],axes=BOXED); 
+ 
+5.5 Similarity Next we show how inference rules involving Similarity and associated sym-metric logical relationships can be derived from the PLN rules for asymmetric logical relationships. The main rule here is one called “transitive similarity,” which is stated as follows: 
+Transitive Similarity Let simAB, simBC, and simAC represent the strengths of the Similarity relation-ships between A and B, between B and C, and between A and C, respectively. Given simAB, simBC, sA, sB, and sC, the transitive similarity formula for calculating simAC then takes the form: 
+
+Probabilistic Logic Networks                                                                               94 
+! 
+simAC= 11deductionT1,T2()+1deductionT3,T4()"1 
+where 
+! 
+T1=1+sBsA" # $ % & ' simAB1+simABT2=1+sCsB" # $ % & ' simBC1+simBCT3=1+sBsC" # $ % & ' simBC1+simBCT4=1+sAsB" # $ % & ' simAB1+simAB
+ 
+and deduction(T1,T2) and deduction(T3,T4) are calculated using the independence-based deduction formula. That is, for example, 
+! deduction(T1,T2)=T1T2+(1"T1)(sC"sBT2)/(1"sB) The proof of the transitive similarity formula, to be given just below, contains the information needed to formulate several other rules for manipulating Similar-ity relationships, as well:  2inh2sim Given sAC and sCA, estimate simAC: 
+! simAC=11sAC+1sCA"1 
+ 
+
+95       Chapter 5: First Order Extensional Inference   inh2sim Given sAC , sA and sC, estimate simAC: 
+! 
+simAC=11+sAsC" # $ % & ' sAC(1 
+sim2inh Given simAB, sA and sB, estimate sAB 
+! sAB=1+sBsA" # $ % & ' simAB1+simAB 
+Proof of the Transitive Similarity Inference Formula Assume one is given P(A), P(B), P(C), and 
+! 
+simAB=A"BA#B=PA"B()PA#B()simBC=C"BC#B=PC"B()PC#B() 
+and one wishes to derive  
+! simAC=A"CA#C=PA"C()PA#C() 
+We may write 
+
+Probabilistic Logic Networks                                                                               96 
+! 
+simAC=PA"C()PA#C()=PA"C()PA()+PC()$PA"C()1simAC=PA()+PC()$PA"C()PA"C()PA()PA"C()+PC()PA"C()$PA"C()PA"C()=1PCA()+1PAC()$1 
+So it suffices to estimate P(C|A) and P(A|C) from the given information. (The two cases are symmetrical, so solving one gives on the solution to the other via a sim-ple substitution.) Let’s work on P(C|A) = P(C!A)/P(A). To derive this, it suffices to estimate P(B|A) and P(C|B) from the given information, and then apply the deduction rule. To estimate P(B|A), look at 
+! PBA()=A"BA=simABA#BA 
+We thus need to estimate |A"B|/|A|, which can be done by 
+! A"BA=A+B#A$BA=1+BA#PBA(). 
+We have the equation 
+! 
+PBA()=simAB1+BA"PBA()# $ % & ' ( PBA()1+simAB( )=simAB1+BA# $ % & ' ( sAB=PBA()=simAB1+BA# $ % & ' ( 1+simAB( ). 
+A similar calculation gives us 
+
+97       Chapter 5: First Order Extensional Inference   
+! sBC=PCB()=simBC1+CB" # $ % & ' 1+simBC( ) 
+with the deduction rule giving us a final answer via 
+! sAC  = sAB sBC  + (1-sAB) ( sC - sB sBC ) / (1- sB ). Similarly, we may derive P(A|C) from 
+! sCA  = sCB sBA  + (1-sCB) ( sA - sB sBA ) / (1- sB ) where 
+! sCB=PBC()=1+BC" # $ % & ' simBC1+simBC 
+! sBA=PAB()=1+AB" # $ % & ' simAB1+simAB. 
+We thus obtain 
+! simAC=11sAC+1sCA"1. 
+5.5.1  Graphical Depiction of Similarity Inference Formulas Next we give a visual depiction of the transitive similarity inference, and re-lated, formulas. The required formulas are: 2inh2sim := (sAC,sCA) -> 1/( 1/sAC + 1/sCA - 1);   
+
+Probabilistic Logic Networks                                                                               98 sim2inh := (sA,sB,simAB) -> (1 + sB/sA) * simAB / (1 + simAB) *(Heaviside(simAB-max(((sA+sB-1)),0))-Heaviside(simAB-min(sA/sB,(sB/sA))));  inh2sim := (sAC,sCA) -> 1/( 1/sAC + 1/sCA - 1);  simAC := (sA, sB, sC, simAB, simBC) -> inh2sim( sim2inh(sB,sC,simBC), sim2inh(sA,sB,simAB)); where, as before, multiplication by the term Heaviside(simBC-max(((sB+sC-1)),0))-Heaviside(simBC-min(sB/sC,(sC/sB))) represents a consistency condition on the three inputs sB, sC, and simBC. The transitive similarity rule then looks like:  plot3d(simAC(.2, .2, .2, simAB, simBC), simAB = 0 .. 1, simBC = 0 .. 1, axes = BOXED, labels =[simAB, simBC, simAC],numpoints=400, resolution=400);!
+! 
+
+99       Chapter 5: First Order Extensional Inference   plot3d(simAC(.6, .2, .2, simAB, simBC), simAB = 0 .. 1, simBC = 0 .. 1, axes = BOXED, labels =[simAB, simBC, simAC],numpoints=400, resolution=400); 
+! plot3d(simAC(.8, .1, .1, simAB, simBC), simAB = 0 .. 1, simBC = 0 .. 1, axes = BOXED, labels =[simAB, simBC, simAC],numpoints=400, resolution=400);!
+ 
+
+Probabilistic Logic Networks                                                                               100 Next, a graphical depiction of the sim2inh rule is as follows: plot3d(sim2inh(.2,sC,simBC),sC=0..1, simBC=0..1,axes=BOXED, num-points=800, resolution =800); 
+  plot3d(sim2inh(.5,sC,simBC),sC=0.. 1,simBC=0.. 1, axes=BOXED, num-points=800, resolution=800); 
+ 
+
+101       Chapter 5: First Order Extensional Inference   A visualization of the inverse, inh2sim rule is: plot3d(inh2sim(sAC,sCA), sAC=0.01 ..1, sCA=0 ..1, axes=boxed); !
+ 
+5.6 PLN Deduction via Concept Geometry Now we return to the foundational issues raised in the derivation of the deduc-tion formula above. Recall that the derivation of the deduction formula involved an independence assumption, which was motivated conceptually in terms of the process of “averaging over all possible worlds.” The question that naturally arises is: how realistic is this process? The somewhat subtle answer is that the averaging-over-possible-worlds process seems the best approach (though certainly not per-fectly accurate) in the case of deduction of sAC with no prior knowledge of sAC, but can be modified to good effect in the case where there is incomplete prior knowl-edge regarding the truth-value sAC. In the case where there is incomplete prior knowledge of sAC, the deduction formula may

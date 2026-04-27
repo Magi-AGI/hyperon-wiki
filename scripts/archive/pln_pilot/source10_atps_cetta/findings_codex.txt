@@ -1,0 +1,210 @@
+Model: Codex
+Extraction date: 2026-04-25 (Codex run; Source 10 brief dated 2026-04-24)
+Source: ai-agents + CeTTa adjacent-tree reality check
+ai-agents commit: b7ab8fb87e740996638ded66b733d4d4d049af03 (2026-04-20, "PLN ++")
+CeTTa commit: cd744d579b57750142212ed97df6e8c718991320 (2026-04-23, "separate pathmap runtime-stats lane from normal backend tests")
+Method: source-based pass only; no builds/tests run
+Claim counts: s1=5, s2=9, s3=9, s4=8, s5=4, s6=8, s7=5, s8=5, s9=1 table, s10=4, s11=5, s12=4
+
+Summary
+- Source 10 resolves the Source 9 dispute as: PROTOTYPE-ALMOST-COMPLETE-WITH-GAP.
+- The Python selector line is real in ai-agents.
+- The formal Lean bridge line is real in ai-agents.
+- The CeTTa MeTTa runtime-support line is real and active.
+- The exact PeTTa runtime selector files cited by PLN-kNN-NB are absent in this local corpus.
+- The reported benchmark numbers are not locally reproducible from this checkout because the dataset, pooled dependency JSONL, and PeTTa selector .metta files are missing.
+
+1. ai-agents top-level architecture
+
+C-1-1. ai-agents is not a narrow PLN repository. Its top level includes AIrxiv, atps, c-projects, hyperon, isabelle, lean-projects, megalodon, metta-tools, mizar-projects, private-ref, Ramsey36, tests, and tools. PLN-relevant material is concentrated in atps/ and lean-projects/mettapedia/.
+
+C-1-2. The atps/ directory is the adjacent executable line for PLN premise selection. It contains Python selectors and evaluation scripts, and its README explicitly frames the work as "Premise selection experiments using Probabilistic Logic Networks on the extended MPTP 5k dataset."
+
+C-1-3. lean-projects/mettapedia/ is the formal-proof line. It contains the PLN-kNN-NB paper source, theorem modules, conformance artifacts, and many additional .tex papers.
+
+C-1-4. ai-agents/hyperon/ is not the cited PeTTa tree. In this checkout the cited hyperon/PeTTa/demos/ path is absent; the brief's scope check found only hyperon/metamath/ and hyperon/translators/.
+
+C-1-5. This repo should be described as a multi-formalism benchmark/formalization workspace by Zarathustra Goertzel, not as a production Hyperon PLN repo.
+
+2. atps/scripts Python selectors
+
+C-2-1. The PLN selector scripts exist. atps/scripts includes select_pln_mixture_local_nb.py, select_pln_knn_prior_nb_opt.py, select_pln_knn.py, select_pln_nb.py, select_pln_normal_nb.py, select_pln_partitioned_nb.py, select_pln_rule.py, select_pln_enhanced.py, and select_pln_best_draft.py.
+
+C-2-2. select_pln_mixture_local_nb.py is intentionally pure Python. Its header says it implements a staged selector: local prior experts, hplus-style pooling, tensor composition with likelihood-only NB evidence, and posterior-strength ranking.
+
+C-2-3. select_pln_mixture_local_nb.py hardcodes the dataset root to /home/zar/claude/atps/datasets/extended_mptp5k at line 35 and sets DEFAULT_DEPS_FILE to deps/pooled_train_deps_allruns.jsonl at line 40.
+
+C-2-4. select_pln_mixture_local_nb.py implements the advertised mixture pipeline as Python functions:
+- normalize_to_total at line 70 preserves strength while setting evidence mass.
+- local_prior_by_mixture_bins starts at line 209.
+- likelihood_evidence_by_nb_scores starts at line 306 and uses MaSh NB-derived likelihood evidence.
+- score_problem starts at line 374.
+- CLI arguments start at line 488, including top-k=256, deps-file, bin-edges 4,16,64,256, weak-negative parameters, likelihood total, and rank mode.
+
+C-2-5. select_pln_knn_prior_nb_opt.py is a PeTTa-calling optimized selector. It sets COMBINED_SELECTOR = "demos/pln_knn_prior_nb_selector_opt.metta" at line 54, defines run_petta_batch_jobs at line 236, and prepares per-problem batched jobs for PeTTa execution.
+
+C-2-6. select_pln_knn.py similarly points at COMBINED_SELECTOR = "demos/pln_knn_selector.metta" at line 51 and has run_petta at line 227. This makes the missing demos/ .metta files a real execution gap for this branch.
+
+C-2-7. The MaSh baselines are real and source-faithful enough to compare. mash_nb_scorer.py describes itself as "MaSh internal Naive Bayes scoring" and defines mash_nb_score at line 67. mash_knn_scorer.py defines compute_recommendations at line 78 and score_all_axioms at line 158.
+
+C-2-8. The benchmark-driving infrastructure is present but not self-contained. atps/README.md lists E-prover evaluation commands, run_eprover.py, and expected dataset paths; local Test-Path checks for atps/datasets/extended_mptp5k and pooled_train_deps_allruns.jsonl returned false.
+
+C-2-9. The Python side is implemented enough to call "adjacent executable line" for the pure-Python mixture selector, but not enough to call the entire PLN-kNN-NB stack reproducible from this checkout.
+
+3. lean-projects/mettapedia Lean theorems
+
+C-3-1. The headline NB theorem is real. Mettapedia/Logic/PLNBayesNetInference.lean:290 defines:
+`theorem toStrength_nbEvidence_eq_nbPosterior`
+with statement that BinaryEvidence.toStrength of nbEvidence equals nbPosterior over prior and likelihood evidence. The proof body at lines 296-298 is `classical`, `unfold`, and `simp`.
+
+C-3-2. The headline kNN theorem is real. Mettapedia/Logic/PremiseSelectionKNN_PLNBridge.lean:125 defines:
+`theorem PLN_hplusPos_eq_knnRelevance`
+with statement that `(plnKnnEvidence ...).pos = knnRelevanceENN ...`. The proof at line 130 delegates to `plnKnnEvidence_pos_eq_knnRelevanceENN`.
+
+C-3-3. A targeted search for `sorry` in the key theorem files PLNBayesNetInference.lean, PremiseSelectionKNN_PLNBridge.lean, and PremiseSelectionBestPLNDraft.lean returned no matches. This does not prove the whole Lean tree is sorry-free, but the two headline bridges are not placeholder theorems.
+
+C-3-4. EvidenceClass.lean declares the abstract evidence type-class layer. It states the key insight that PLN quantale structure is on evidence, not truth values, and defines EvidenceType at line 53, SequentialEvidence at line 61, InterpretableEvidence at line 72, and BinaryContext at line 99.
+
+C-3-5. EvidenceKind.lean defines an EvidenceKind enum at line 34 for epistemic classification of evidence sources, including structured expert judgment and model-derived evidence.
+
+C-3-6. EvidenceModel.lean is an applied SUMO repair evidence model. It defines EvidenceAtom at line 131 and BinEvNat at line 289, tying heterogeneous source evidence into binary evidence counts.
+
+C-3-7. PLNWorldModelGeneric.lean generalizes the binary world-model interface. It defines AdditiveWorldModel at line 38, extract_add' at line 50, GMQueryEq at line 57, queryObservationCount at line 85, and bridges the generic interface back to BinaryWorldModel at line 119.
+
+C-3-8. PainEvidenceWM.lean is a concrete evidence-driven ontology repair proof of concept. It defines SourceItem at line 60, painEvidence at line 66, aggregate at line 124, multiple by-decide ranking theorems at lines 134-190, and an AdditiveWorldModel instance at line 262.
+
+C-3-9. The Lean side is not just paper prose. It contains formal theorem statements and domain-specific proof artifacts that are linked to the PLN-kNN-NB claims.
+
+4. PLN-kNN-NB.tex paper source
+
+C-4-1. PLN-kNN-NB.tex exists at lean-projects/mettapedia/papers/PLN-kNN-NB.tex and matches the Source 9 RawData card's content and benchmark claims.
+
+C-4-2. The paper cites the exact rule-layer path hyperon/PeTTa/lib/lib_pln_xi.metta at line 57 and the selector layer hyperon/PeTTa/demos/pln_*_selector*.metta plus atps/scripts/select_pln_mixture_local_nb.py at lines 60-61.
+
+C-4-3. The paper cites hyperon/PeTTa/pln_inference/pln_evidence.metta at line 92 and again around lines 664-666. This exact path is absent in ai-agents.
+
+C-4-4. The paper cites the theorem names toStrength_nbEvidence_eq_nbPosterior and PLN_hplusPos_eq_knnRelevance at lines 385-387. Those theorems are present in Lean as C-3-1 and C-3-2.
+
+C-4-5. The paper's targeted 30s top-256 follow-up reports MaSh NB and PLN mixture-local tied on E at 327/800, with Vampire at 184/800 for MaSh NB and 182/800 for PLN mixture-local. The table is at PLN-kNN-NB.tex:639-642.
+
+C-4-6. The paper says the discrete selectors use the current PeTTa-side libraries and tests at lines 659-727, including hyperon/PeTTa/demos/pln_*_selector*.metta and hyperon/PeTTa/tests/test_lib_pln_xi_rules.metta. Those files were not found in the local scoped repos.
+
+C-4-7. The paper is a real source document in ai-agents, not merely a wiki extraction artifact.
+
+C-4-8. The paper's implementation claims split across real and absent components: Python script present, Lean theorem present, PeTTa library and PeTTa demo selectors absent.
+
+5. Runtime conformance artifacts
+
+C-5-1. lean-projects/mettapedia/artifacts/conformance/maple_court_simple.metta imports ../../hyperon/PeTTa/pln_inference/pln_evidence at line 11. That import target is absent in this checkout.
+
+C-5-2. maple_court_simple.metta is nevertheless important because it shows the intended conformance pattern: PeTTa evidence operations are asserted against the Lean evidence semantics. The file tests evidence-hplus, evidence-toStrength, commutativity, zero evidence, and multi-step revision.
+
+C-5-3. The conformance artifact is proof-carrying in intent but not locally runnable as-is because the imported PeTTa pln_evidence path is missing.
+
+C-5-4. CeTTa supplies a replacement-adjacent runtime support line for the same evidence concepts, but it is not located at the path cited by the ai-agents conformance files.
+
+6. CeTTa runtime libraries
+
+C-6-1. CeTTa/lib contains lib_pln.metta, lib_wmpln.metta, lib_wmpln_evidence.metta, mork.metta, metamath.metta, and related runtime support libraries.
+
+C-6-2. CeTTa/lib/lib_pln.metta is a compatibility shim for the upstream Hyperon/PLN lib_pln surface. It defines the pln0.9-style rule surface: Truth_Deduction at line 143, Truth_Induction at line 161, Truth_Abduction at line 171, Truth_ModusPonens at line 183, Truth_SymmetricModusPonens at line 188, Truth_Revision at line 195, Truth_Negation at line 206, Truth_inversion at line 209, and TransitiveSimilarity / evaluation implication later.
+
+C-6-3. CeTTa/lib/lib_pln.metta keeps the production-style priority queue / derivation surface: PLN.Config.MaxSteps=100 at line 387, TaskQueueSize=10 at line 390, BeliefQueueSize=100 at line 393, PriorityRank at line 423, PLN.Derive at line 450, and PLN.Query at line 487.
+
+C-6-4. CeTTa/lib/lib_wmpln.metta is nearly the same size as lib_pln.metta and carries the same rule/deriver structure, but it imports lib_wmpln_evidence at line 488. This makes it the World-Model PLN wrapper over the production-like PLN rule surface.
+
+C-6-5. CeTTa/lib/lib_wmpln_evidence.metta implements the evidence carrier layer. It declares Evidence at line 27, evidence-hplus at line 60, evidence-revision alias at lines 64-65, evidence-tensor at line 73, evidence-power at line 93, evidence-toStrength at line 106, evidence-toConfidence at line 119, and evidence-toSTV at line 131.
+
+C-6-6. lib_wmpln_evidence.metta explicitly states in comments that Evidence counts form the quantale and STV is a view, matching the Lean formalization. It also admits a simplification: evidence-deduction delegates to Truth_Deduction and says full evidence-level deduction would need marginal probabilities.
+
+C-6-7. CeTTa/lib/mork.metta is not a FactorGraph implementation. It is a MORK-facing helper surface with explicit constructors, mutation/query operations, ACT import/export, and zipper/product-zipper APIs. It reinforces Source 8's finding that MORK is a substrate layer.
+
+C-6-8. CeTTa is a real runtime-support repo for World-Model PLN and MORK-facing execution, but it does not contain the cited PeTTa selector files or lib_pln_xi.metta.
+
+7. CeTTa pln_portable and bio_wmpln tests
+
+C-7-1. CeTTa/tests/support/pln_portable/pln_evidence.metta exists, but it is only a compatibility wrapper importing lib_wmpln. It is not the same file path or content as the cited hyperon/PeTTa/pln_inference/pln_evidence.metta.
+
+C-7-2. CeTTa has biomedical World-Model PLN regression tests, including test_bio_wmpln_checkpoint_petta_top.metta, test_bio_wmpln_checkpoint_petta_flat.metta, test_bio_wmpln_pathway_route_regression.metta, and related regression tests.
+
+C-7-3. test_bio_wmpln_checkpoint_petta_top.metta exercises seed-target, contextual-target, disease-hyp, and supported-drug-hyp backward chaining against &bio-wmpln-kb and &bio-wmpln-rb.
+
+C-7-4. test_bio_wmpln_pathway_route_regression.metta explicitly tests pathway-mediated disease and drug support routes, including CRP/GLUL-style cases and a negative direct-route count.
+
+C-7-5. These tests show a real biomedical WM-PLN application surface in CeTTa. They are not evidence that PLN-kNN-NB's premise selector stack is complete, but they broaden the adjacent-tree reality: CeTTa is not only a library dump.
+
+8. Cited-but-missing files
+
+C-8-1. lib_pln_xi.metta is cited in PLN-kNN-NB.tex:57 and atps/README.md:115. It is not present at ai-agents/hyperon/PeTTa/lib/lib_pln_xi.metta, and no scoped search found an actual lib_pln_xi.metta file in ai-agents or CeTTa.
+
+C-8-2. pln_knn_prior_nb_selector_opt.metta is referenced by select_pln_knn_prior_nb_opt.py via COMBINED_SELECTOR = "demos/pln_knn_prior_nb_selector_opt.metta" at line 54 and by PLN-kNN-NB.tex around line 276. It is absent because the demos directory is absent.
+
+C-8-3. pln_knn_selector.metta is referenced by select_pln_knn.py via COMBINED_SELECTOR = "demos/pln_knn_selector.metta" at line 51 and by atps/README.md:39. It is absent for the same reason.
+
+C-8-4. hyperon/PeTTa/demos/ is cited by atps/README.md:44 and PLN-kNN-NB.tex:60, but Test-Path for ai-agents/hyperon/PeTTa/demos returned false.
+
+C-8-5. hyperon/PeTTa/pln_inference/pln_evidence.metta is cited by PLN-kNN-NB.tex:92 and imported by maple_court_simple.metta:11, but Test-Path for ai-agents/hyperon/PeTTa/pln_inference/pln_evidence.metta returned false.
+
+9. Three-way classification
+
+| Component | Production PLN line | Adjacent executable line | Formal-proof line | Status |
+|---|---|---|---|---|
+| PLN/PLN3 kNN/NB selector support | absent | not applicable | not applicable | ABSENT from production |
+| Confidence-priority PLN Deriver | present in PLN/; mirrored by CeTTa lib_pln | present in CeTTa lib_pln/lib_wmpln | not the proof target here | IMPLEMENTED, narrow |
+| select_pln_mixture_local_nb.py | absent | present in ai-agents/atps/scripts | paper cites it | IMPLEMENTED as pure Python selector |
+| select_pln_knn.py | absent | present, but calls missing demos/pln_knn_selector.metta | paper/README cite it | PARTIAL |
+| select_pln_knn_prior_nb_opt.py | absent | present, but calls missing demos/pln_knn_prior_nb_selector_opt.metta | paper cites it | PARTIAL |
+| MaSh baselines | absent | present in mash_nb_scorer.py / mash_knn_scorer.py | benchmark paper cites | IMPLEMENTED, dataset missing |
+| toStrength_nbEvidence_eq_nbPosterior | absent | not runtime | present in PLNBayesNetInference.lean | FORMALIZED |
+| PLN_hplusPos_eq_knnRelevance | absent | not runtime | present in PremiseSelectionKNN_PLNBridge.lean | FORMALIZED |
+| Maple Court conformance | absent | present but import path missing | intended Lean-to-PeTTa bridge | PARTIAL |
+| CeTTa evidence runtime | absent from PLN/ | present in lib_wmpln_evidence.metta | mirrors Lean semantics | IMPLEMENTED, adjacent |
+| lib_pln_xi.metta | absent | absent | cited by paper | MISSING |
+| PeTTa demos selectors | absent | absent in scoped checkout | cited by paper | MISSING |
+| Benchmarks 327/800 | absent | claims in README/paper; data missing | not theorem | NOT REPRODUCIBLE LOCALLY |
+
+10. Resolution: IMPLEMENTED vs PROTOTYPE
+
+C-10-1. Claude's Source 9 "IMPLEMENTED" label was too strong if it meant end-to-end reproducible runtime from the current corpus. Critical PeTTa selector files and benchmark inputs are missing.
+
+C-10-2. Codex's Source 9 "PROTOTYPE / EXPERIMENTAL" label was conservative but incomplete. Source 10 verifies substantial real implementation: pure-Python mixture selector, kNN/NB Python drivers, MaSh baselines, Lean bridge theorems, conformance artifacts, CeTTa evidence runtime, and biomedical WM-PLN tests.
+
+C-10-3. The best label is PROTOTYPE-ALMOST-COMPLETE-WITH-GAP:
+- present: Python orchestration, key Lean proofs, CeTTa evidence runtime, CeTTa PLN runtime, conformance intent, benchmark claims.
+- missing: lib_pln_xi.metta, PeTTa demos selectors, cited PeTTa pln_evidence path, dataset/deps artifacts for reproducing reported numbers.
+
+C-10-4. For wiki status fields, avoid both "fully implemented" and "paper-only." Use: "adjacent prototype with verified Python + Lean + CeTTa components, but missing cited PeTTa selector layer and unreproducible local benchmark inputs."
+
+11. Repository roles in cluster narrative
+
+C-11-1. Production PLN line: PLN/ and PLN3 remain narrow production-style MeTTa PLN libraries with confidence-priority derivation and no kNN/NB selector stack.
+
+C-11-2. ai-agents: adjacent benchmark and formalization workspace. It contains atps Python orchestration, the PLN-kNN-NB paper source, Mettapedia Lean proofs, and many other formalism tracks.
+
+C-11-3. CeTTa: adjacent runtime-support workspace. It contains a C/MeTTa runtime surface plus lib_pln, lib_wmpln, lib_wmpln_evidence, mork.metta, and biomedical WM-PLN tests.
+
+C-11-4. The source set now has three parallel code traditions:
+- Geisweiller / trueagi production PLN line.
+- Zarathustra Goertzel ai-agents + CeTTa adjacent realization/formalization line.
+- Vandervorst / Clarke / Peterson MORK substrate line.
+
+C-11-5. There is still no evidence that the adjacent realization line is imported into production PLN/PLN3. The integration story is ecosystem-level, not a single codebase.
+
+12. Discovered publications and references
+
+C-12-1. ai-agents/lean-projects/mettapedia/papers contains many new paper sources beyond Source 9, including nuPLN.tex, xiPLN.tex, wm-pln-book_v3.tex, world-model-calculus.tex, mork-mm2-pathmap-formalization.tex, markov-definetti-formalization.tex, mq-calculus-lean-formalization.tex, governance-deontic-logic.tex, process-calculi.tex, and several Knuth-Skilling / OSLF / MeTTa papers.
+
+C-12-2. The Wm Pln Book V3 TeX sources are present: wm-pln-book_v3.tex and wm-pln-book_v3_oruzi.tex.
+
+C-12-3. PLN-kNN-NB.tex is a direct source for the Source 9 RawData card and should be preferred for future extraction over OCR or wiki chunk output.
+
+C-12-4. The paper directory justifies a separate formal-proof/source-literature pass. It is broader than Source 10's implementation-status question.
+
+Wiki implications
+- Update PLN kNN NB status from Source 9's tentative PROTOTYPE to "adjacent prototype, nearly complete but missing cited PeTTa selector layer."
+- Treat ai-agents and CeTTa as material PLN-adjacent sources, not scratch repositories.
+- Add CeTTa to the PLN cluster map as the runtime support line for World-Model PLN experiments.
+- Do not claim the 327/800 benchmark is locally reproducible unless the dataset/deps and PeTTa selectors are found.
+- Add a follow-up source for the missing PeTTa selector files or for determining whether they were never committed.
+
+End of findings.

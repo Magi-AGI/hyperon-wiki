@@ -1,0 +1,256 @@
+# PLN Book Pilot — Cross-Model Reconciled Findings (Source 1, FINAL)
+
+**Source:** Probabilistic Logic Networks (Goertzel, Iklé, Goertzel, Heljakka — 2008, Springer). Extracted from `publication_texts/json/Probabilistic_Logic_Networks.json` (`full_text` = 574,626 chars, word_count 87,451).
+
+**Reconciled on:** 2026-04-24
+
+**Inputs:**
+- **Claude** (internally reconciled from 3 parallel sub-agents, 189/158/158 claims) → `findings_reconciled.txt`
+- **Codex** (62 targeted claims with source-verification focus) → `findings_codex.txt`
+- **Gemini** (conceptual survey + dispute verification, ~25 points) → `findings_gemini.txt`
+
+Confidence legend:
+- **[X3]** all three models independently confirmed
+- **[X2]** two models confirmed; third silent
+- **[X1]** single model (Claude-internal triangulation treats this as a Claude singleton; Codex or Gemini singleton is noted)
+- **[RESOLVED]** disputed across Claude's internal passes, resolved by Codex+Gemini source verification
+
+---
+
+## 1. Disputes resolved by cross-model source verification
+
+These are the four formula/content disputes Claude's internal triangulation surfaced. All are now resolved by Codex (and confirmed by Gemini where noted).
+
+### 1.1 [RESOLVED] Consistency-condition lower bound — denominator is `sA`
+**Resolution (Codex C-2-2, Gemini verification):** The Maple-form consistency condition in Ch. 5 §5.2.2.2 ~p. 82 uses:
+`max((sA+sB-1)/sA, 0) ≤ sAB ≤ min(1, sB/sA)`
+
+Claude agents 1 and 2 were correct (denominator `sA`); Claude agent 3 was a transcription error (`sB`).
+
+### 1.2 [RESOLVED] Symmetric Modus Ponens — multiplication form
+**Resolution (Codex C-2-8, Gemini verification):** Ch. 5 §5.7.2 ~p. 112 algebraic reduction:
+`sB = sA · simAB + c · (1 − sA) · (1 + simAB)`
+
+Claude agents 2 and 3 were correct (multiplication); Claude agent 1 division by `(1+simAB)` was a derivation error.
+
+### 1.3 [RESOLVED] Inverse-approximation coefficients — two sub-tables, both real
+**Resolution (Codex C-1-8, Gemini verification):** Ch. 4 §4.5.1.2 ~p. 61-62 presents **two coefficient tables**:
+- **Full k-dependent table:** `A_{111} = -0.00875486, …, B_{222} = -0.071902027` (Claude agents 2 and 3)
+- **Simplified k-independent approximation:** `A11 = -2.922447948, …, B22 = -0.107482534` (Claude agent 1)
+
+Not a contradiction. The simplified form is for general use; the k-indexed form is for high-precision implementations. Wiki citations should say which table a coefficient comes from.
+
+### 1.4 [RESOLVED — genuine source bug] Biconditional rendering p. 210
+**Resolution (Codex C-2-15, Gemini verification):** The source-text page 210 contains **both**:
+- `(P ⇔ Q) ≡ (¬P ∨ Q)` — this is *implication* (`P ⇒ Q`), not biconditional
+- `(P ⇔ Q) ≡ (¬P ∨ ¬Q)` — this is *NAND*, classically wrong
+
+And separately the correct form: `(P ⇔ Q) ≡ (P ⇒ Q) ∧ (Q ⇒ P)`.
+
+Gemini: "A confirmed OCR/Source Bug." Codex: "should be treated as a source-text problem rather than a valid transformation rule." Both rendering errors are present in the extracted text — likely OCR damage of `↔` / `⇒` glyphs, though the possibility of a genuine typographical error in the original 2008 book is not ruled out.
+
+**Wiki implication:** never cite or reproduce these two erroneous equivalences. Cite only the implication-pair form.
+
+---
+
+## 2. Unanimous cross-model findings (all three models independently surfaced)
+
+### 2.1 [X3] URE and ECAN are not mentioned in the 2008 PLN book
+
+All three models confirm. The book's integrative architecture is exclusively the Novamente Cognition Engine (NCE). Attention is handled via NCE "importance" values (short/long-term). Any wiki card attributing URE or ECAN machinery to the PLN book cites post-2008 Hyperon-era work, not this book.
+
+### 2.2 [X3] Modus Ponens is the authors' own "very bad" heuristic
+`sB = sAB·sA + c·(1 − sA)`, `c ≈ 0.02`. Gemini: "simple but highly error-prone heuristic." Codex: "very bad / highly error-prone, but still better than the obvious trivial alternatives." Only used as fallback when term-logic deduction can't apply.
+
+### 2.3 [X3] M2I / I2M are badly wrong for heterogeneous sets
+Cohesion is a prerequisite. All three models cite the book's "Things owned by Izabela" failure case (Ch. 5 §5.8 ~p. 113).
+
+### 2.4 [X3] Combinatorial explosion in inference control is explicitly unsolved
+Book's own admission: pruning heuristics only work for "fairly simple inferences." Integration with pattern mining, evolutionary learning, attention allocation is *required* (not optional) for general use.
+
+### 2.5 [X3] Constant-extraction from ∃ violates classical logic under indefinite TVs
+`∃x: G ∧ F(x) ≠ G ∧ ∃x F(x)` in general. Book defers resolution to a "future paper" (Ch. 11 §11.3). Concrete counterexample given.
+
+### 2.6 [X3] Causal inference requires Novamente importance values
+Distal cause vs. enabling condition distinction is not a pure-PLN phenomenon. Gemini: "chapter will merely scratch the surface." Codex confirms importance/attention language lives at Novamente level only. All three: mentions of ECAN-style attention are from post-2008 re-attribution.
+
+### 2.7 [X3] Induction can't be globally rescued by any universe-size choice
+Ch. 8 §8.1. System must abandon a single global "space of events." Gemini: confirmed. Codex C-5-5: "forces abandonment of a single global space of events."
+
+### 2.8 [X3] Chapter 8 error-magnification produces chaotic trajectories
+Gradient analysis `|∇f| < 1` required for error to attenuate. Without careful inference control, long probabilistic chains replace meaningful signal with magnified random error. Gemini: "chaotic trajectories." Codex: "effectively consume the available precision bits." Claude (A3 only internally, now cross-validated): 10 steps at magnification 2 erases 10 bits of precision.
+
+### 2.9 [X3] Frame problem is side-stepped, not solved
+Probabilistic persistence + contextual default reasoning, not crisp circumscription. All three models confirm.
+
+### 2.10 [X3] PLN is "evolving," not final
+Book's explicit positioning. Authors anticipate further refinement or replacement of components.
+
+---
+
+## 3. Cross-model consensus on core technical content
+
+Organized by section. These claims are in Claude's reconciled doc and corroborated by Codex/Gemini.
+
+### 3.1 Truth-value semantics
+
+- **SimpleTV `<s, w>`** and dual **count form `<s, N>`** with `w = N/(N+k)` — [X3].
+- **IndefiniteTV `<[L,U], b, k>`** — default representation in current practice; semantics "probability `b` that after `k` more observations the ordinary probability lies in `[L,U]`" — [X3].
+- `b = 1` → Walley-style imprecise probabilities; `b < 1` is what keeps intervals narrow under chaining — [X3].
+- **DistributionalTV**: under discretization, deduction = matrix multiplication, inversion = matrix inversion — [X3].
+- **Walley interval form** `[m/(n+k), (m+k)/(n+k)]` — [X3].
+- **Beta-binomial conversion theorem** with uniform prior — [X3].
+- **Inverse-function approximation** `n = -ln(b/A)/B` with two coefficient sub-tables — [X3, with §1.3 resolution].
+- **No formal error-analysis** for the inverse coefficients — acknowledged book gap — [X3].
+- **Context macro**: `Context C R A B <t> ≡ R (A∧C) (B∧C) <t>` — [X3].
+- **Universe size** smaller → more speculative; larger → less error; no extra computational cost to large `|U|` — [X3].
+- **Quantifiers use third-order probabilities** — envelope of envelopes — [X3].
+
+### 3.2 Rule taxonomy (first-order core)
+
+- **Deduction** (independence): `sAC = sAB·sBC + (1 − sAB)·(sC − sB·sBC)/(1 − sB)` — [X3]. Provably biased for cohesive sets (underestimates).
+- **Inversion / Bayes**: `sAB = sBA·sA/sB` — [X3].
+- **Induction** (= Inversion ∘ Deduction): `sAC = sBA·sBC·sB/sA + (1 − sBA·sB/sA)·(sC − sB·sBC)/(1 − sB)` — [X3].
+- **Abduction**: `sAC = sAB·sCB·sC/sB + sC·(1 − sAB)·(1 − sCB)/(1 − sB)` — [X3].
+- **Concept-geometry deduction** (cohesive sets): 1-D form `sAC = sAB·sBC / min(1, sAB + sBC)`; corrects independence underestimation — [X3].
+- **Consistency conditions** enforced via Heaviside multipliers; deduction returns 0 outside — [X3, resolved §1.1].
+- **Term-probability inference**: `sB = sA·sAB/sBA` (Bayes rearrangement) — [X3].
+
+### 3.3 Rule taxonomy (conversions, Booleans, HOI)
+
+- **M2I / I2M**: preserve strength, decrease confidence; cohesion required — [X3].
+- **Revision** (simple): `s = w1·s1 + w2·s2`, `n = n1 + n2 − c·min(n1, n2)` — [X3].
+- **Revision c-parameter drift**: with `c > 0`, iterated revision drifts strengths to 1; no general tuning algorithm — [X3].
+- **Distributional revision** with indefinite TVs: mix second-order distributions, re-extract quadruple — [X3].
+- **Boolean extensional operators** `ANDExt`, `ORExt`, `MINUSExt`; **intensional** `ANDInt`, `ORInt`; **mixed** `ANDMix`, `ORMix` — [X3] (less depth in Gemini).
+- **AND, OR, NOT** probability formulas (independence assumption for AND) — [X3].
+- **Higher-order Boolean transforms** on p. 210 — [X3, with §1.4 audit flag].
+- **SatisfyingSet operator** reduces HOI to FOI — [X2: Claude, Codex; Gemini implicit].
+- **Variable Instantiation** rule (cohesion required) — [X2: Claude, Codex].
+- **Combinators** (B, C, I, S) for variable-free forms — [X2: Claude, Codex].
+
+### 3.4 Rule taxonomy (quantifiers, intensional, temporal)
+
+- **Quantifier rules** (Existential Gen, Universal Spec, Quantifier Exchange) hold under indefinite TVs — [X3].
+- **Constant-extraction from ∃ fails** — [X3, see §2.5].
+- **Fuzzy quantifiers** via sliding `[LPC, UPC]` (AlmostAll = [0.9, 0.99], AFew = [0.05, 0.1]) — [X2: Claude, Codex].
+- **Intensional deduction** = convert to extensional, run ordinary deduction, convert back — [X3].
+- **Intensional inheritance** via pattern-sets — [X3].
+- **Pattern-intensity** `IN(F,G) = [c(G) − c(F)]+ · ASSOC(F,G)` — [X2: Claude, Codex].
+- **Temporal relationships**: SeqAND, DisjointSeqAND, EventualSeqAND, SimAND, SimOR — [X3 with varying depth].
+- **PredictiveImplication**: `Implication P(S) [SeqAND(P,Q)<T>](S)` — [X3].
+- **EventualPredictiveImplication** (no interval): `starve → die` type — [X3].
+- **PredictiveChain** — [X2: Claude, Codex].
+- **Causal filter** via Intensional PredictiveImplication (rooster/dawn example) — [X2: Claude, Codex].
+
+### 3.5 Rule taxonomy (large-scale, Ch. 9)
+
+- **Multideduction** (batch rule with inclusion-exclusion factor ε) — [X2: Claude-A1/A2, Codex].
+- **Batch Reasoning Graph** (BRGI): DAG optimization, quality `c·N + (1-c)·T/N` — [X3].
+- **Bayes-Net Augmentation**: convert rules to data table, run structure learning + belief propagation — [X2: Claude-A2, Codex].
+- **OBI (Optimization-Based Inference)**: stochastic local search for approximately consistent atom set — [X2: Claude-A2, Codex].
+- **Trail-Free Inference**: iterate pattern-mining + SP-protocol + revision — [X1: Claude-A2 only].
+
+### 3.6 Inference control
+
+- **Forward / backward chaining** with probabilistic twists — [X3].
+- **BIT (Backward Inference Tree)** evolutionary interpretation: genotype = atoms+rules, fitness = weight-of-evidence — [X3].
+- **Rule input filter + output-based-input filter** distinction — [X3].
+- **Multi-armed bandit pruning** with SoftMax selection `u = F^a / E^b` — [X3].
+- **A-priori heuristics**: solution-space restrictiveness + rule priority — [X3].
+- **Interdependent-argument pruning** (shared-variable cloning) — [X2: Claude, Codex].
+- **Forward-chaining "interestingness"** `u = I^c · d^a / E^b` — [X2: Claude, Codex].
+- **Inference trails** (bounded length, ~10–20 entries) — [X3].
+- **Rule of Choice** 4-option fallback — [X2: Claude, Codex]; Gemini mentions Rule of Choice without detail.
+- **Default inference at control level, not rule level** — [X3]. Penguin/bird worked examples: Claude/Codex.
+- **Termination** on weight-of-evidence threshold, not first-path — [X2: Claude, Codex].
+
+### 3.7 Implementation
+
+- **Novamente Cognition Engine (NCE)** target; **OpenCog** sister project — [X3].
+- **Billions-of-premises scale target** — [X3] (stated, not proven).
+- **Weighted directed hypergraph** KR — [X3].
+- **Atom type hierarchy** — [X3 with varying depth].
+- **Hypothetical atoms**, **Context macro**, **HOS vs HOJ** — [X2: Claude, Codex].
+- **BioLiterate PubMed application** — [X1: Claude] (Codex didn't focus; Gemini absent).
+- **AGISim Fetch learning** (try/can/done axioms) — [X1: Claude] (Codex didn't focus; Gemini absent).
+- **Normalization optional**; **EquivalenceLink → 2 ImplicationLinks** preprocessing — [X3].
+- **Retry mechanism** for BIT is critical engineering item — [X2: Claude, Codex].
+- **Interval-width multipliers / count multipliers** for I2M/M2I — [X1: Claude].
+
+---
+
+## 4. Model-unique captures (worth noting but lower confidence)
+
+### From Claude (internal triangulation)
+- Chapter 8 error-magnification numeric gradient analysis — initially A3 only, now cross-validated at concept level by Codex and Gemini.
+- Complete concept-geometry `G(A,B,C)` formula structure (A1 only).
+- ExecutionOutput / ExOut tautology and elimination rules (A1 only).
+- Full multideduction formula with inclusion-exclusion factor ε (A1, A2 only).
+- BioLiterate numeric inference trace (A1, A2 only).
+- AGISim Fetch handle IDs and specific rule shorthands (A1, A2, A3).
+- Appendix A NARS/PLN formula table detail (A1, A3).
+
+### From Codex
+- OBI "stochastic local search" framing with "overlapping subset optimization" variant — explicit algorithmic detail.
+- Clear "cannot do this standalone" framing: "PLN inside NCE, not as a standalone theorem prover."
+- Explicit framing of error-analysis absence for inverse coefficients as "a stated theoretical gap" (§5-C-5-6).
+
+### From Gemini
+- Historical/integrative framing (Jaynes, Zadeh, Walley, Sommers, Wang lineage) — none of the others highlighted this breadth.
+- The "NARS and PLN are similar near 0.5, diverge elsewhere" observation — cleaner framing than Claude's chapter-detailed version.
+- "Chaotic trajectories" terminology for Chapter 8 — matches book language directly.
+
+---
+
+## 5. Directly actionable items for wiki card edits
+
+Based on cross-model consensus + dispute resolutions, the following concrete changes apply to `Hyperon AI Algorithms+PLN+PLN Full` (Draft) and `Hyperon AI Algorithms+PLN` (Published, via `+AI` child).
+
+### 5.1 Must correct or flag (X3 unanimous)
+1. **URE / ECAN attribution**: audit all references; anything citing the 2008 book for ECAN or URE is incorrect.
+2. **Modus Ponens**: present with the authors' own "very bad / highly error-prone" caveat visible.
+3. **M2I / I2M cohesion caveat**: with the "Things owned by Izabela" concrete failure case.
+4. **Induction global-|U| impossibility**: structural result with wiki-level significance.
+5. **Constant-extraction from ∃ failure**: cite as a real indefinite-probability limitation, not an implementation bug.
+6. **Causal inference framework**: explicit call-out that distal cause vs. enabling condition requires Novamente importance, not PLN alone.
+7. **Combinatorial explosion admission**: book's own explicit statement should be quoted.
+
+### 5.2 Must add depth (likely missing from current cards)
+8. **Indefinite TV mechanics**: three-level probability hierarchy, Monte Carlo `n1 × n2` sampling, `b < 1` rationale.
+9. **Optimal Universe Size Formula** with empirical validation (~3% error on 650K-sentence corpus).
+10. **Concept-geometry deduction** as the alternative to independence-based for cohesive sets.
+11. **Rule of Choice** four-option fallback hierarchy.
+12. **BIT evolutionary interpretation** and multi-armed bandit pruning.
+13. **Default inference as a control-level heuristic**, with the penguin/bird worked example.
+14. **Chapter 8 error-magnification / chaotic-trajectories** result.
+15. **Frame-problem approach**: probabilistic persistence, not circumscription.
+16. **Ch. 9 large-scale alternatives**: Multideduction, BRGI, Bayes-Net Augmentation, OBI as engineering modes.
+
+### 5.3 Must add source-correctness caveats
+17. **p.210 Boolean transforms**: never reproduce the erroneous equivalences. Cite only the implication-pair form.
+18. **Inverse-approximation coefficients**: always specify which sub-table (k-dependent vs k-independent) a coefficient came from.
+
+### 5.4 Flag as open in the wiki
+19. Revision §5.10.3–5.10.5 not integrated with indefinite TVs.
+20. Pattern-intensity complexity function choice left to implementer.
+21. Mixed extensional/intensional inheritance weighting has no principled default.
+
+---
+
+## 6. Pilot workflow assessment (for cross-model triangulation)
+
+**Intra-Claude triangulation (3 sub-agents)** produced a rich detail catalog and surfaced 4 formula disputes that would not have been visible from a single pass. Duration ~40 min/agent in parallel.
+
+**Cross-model triangulation (Claude + Codex + Gemini)** resolved all 4 disputes by source verification and added model-unique framings (Codex's engineering framing, Gemini's historical framing). The cross-model step:
+- confirmed all X3 unanimous findings with high confidence;
+- identified Claude-only claims worth re-verifying;
+- exposed a genuine source-text bug (p. 210 biconditional).
+
+**Cost vs. value:** the combined ~2–3 hours of wall clock and ~6× the tokens of a single Claude pass produced an extraction substantially more trustworthy than any single model could have. Recommended pattern for all subsequent high-stakes sources. For lower-stakes sources (small auxiliary repos, peripheral publications), single-model passes should suffice.
+
+**Source 1 declared complete.** Unblocked: Source 2 (`PLN3` ngeiswei fork).
+
+---
+
+*End of cross-model reconciled findings for Source 1.*

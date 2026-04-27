@@ -1,0 +1,232 @@
+# PLN3 Pilot — Cross-Model Reconciled Findings (Source 2, FINAL)
+
+**Source:** `E:\GitHub\hyperon reference\PLN3\` — mirror of `ngeiswei/PLN` (fork of `trueagi-io/PLN`), modular MeTTa implementation.
+
+**Commit at extraction:** `55f1751d993f71b8a24da03e3aec94ab40789a59` (clone snapshot 2026-01-12; shallow local mirror with no subsequent commits visible).
+
+**Reconciled on:** 2026-04-24
+
+**Inputs:**
+- **Claude** (Opus 4.7 single pass, 84 claims + V1–V6, 42 KB) → `findings_claude.txt`
+- **Codex** (74 claims, 24 KB) → `findings_codex.txt`
+- **Gemini** (concise, ~30 points, 5 KB) → `findings_gemini.txt`
+
+Confidence legend:
+- **[X3]** all three models independently confirmed
+- **[X2]** two models confirmed; third silent
+- **[X1]** single model caught it — flagged for awareness
+
+---
+
+## 1. Highest-signal cross-model deltas (book vs. PLN3)
+
+### 1.1 [X3] PLN3 is a compact STV-only subset, NOT a broad port of the 2008 book
+All three models independently: truth-value machinery is uniformly `(stv strength confidence)` — no IndefiniteTruthValue, no DistributionalTruthValue, no count form, no second-order TVs. The 2008 book's three-tier TV hierarchy (Simple → Indefinite → Distributional) is collapsed to one level.
+
+### 1.2 [X3] Inference control is forward-chaining beam search, NOT BIT / BC / MAB
+`src/Deriver.metta` implements a bounded priority queue with confidence as the sole ranking metric. `PLN.Query` runs `PLN.Derive` forward from the KB and filters the closure for the queried term — **it does not synthesize sub-goals**. No backward chaining, no BIT expansion, no multi-armed bandit scoring, no interestingness metric, no Rule of Choice fallback hierarchy. The book's elaborate control theory is replaced by 3 config knobs: `MaxSteps=20, TaskQueueSize=20, BeliefQueueSize=200`.
+
+### 1.3 [X3] Book → PLN3 rule coverage is ~12–13 of ≥60
+Rules implemented: Revision, ModusPonens, SymmetricModusPonens, Deduction, Induction, Abduction, Inversion (Inheritance & Implication), Negation Elimination, Equivalence-to-Implication (both directions), Transitive Similarity, Evaluation Implication, Member Deduction, plus 3 Evaluation-over-Inheritance ModusPonens bridges.
+
+Absent from PLN3 (all [X3] verified): concept-geometry deduction, distributional / matrix TV inference, quantifier rules (ForAll, ThereExists), temporal/causal rules (PredictiveImplication, SeqAND, EventualSeqAND), intensional↔extensional conversion rules, multideduction, Bayes-Net augmentation, OBI, BRGI, attention-value machinery, Context links as first-class citizens, possible-worlds variable instantiation machinery.
+
+### 1.4 [X3] No FactorGraph / MORK / M0RK references anywhere in PLN3
+Zero occurrences, repo-wide. The wiki's active `RawData+Publications+PLN FactorGraph MORK v3.2` paper series is **not yet embodied** in this code. The closest external integration is `metta-morph` (a MeTTa compiler, not MORK) used offline by `examples/PLN.py` for KB pre-compilation.
+
+### 1.5 [X3] Recent work is structural, not higher-order rule recovery
+Visible commit line (Negation, TaskReturn, Modularity — PRs #54/#52/#51 per the brief) focuses on Translator expansion, agenda-state-return API, and modularization. There is no visible effort to recover the missing PLN families (quantifiers, temporal, intensional, distributional).
+
+---
+
+## 2. Source 1 → Source 2 verification targets (V1–V6, resolved)
+
+### V1 — Symmetric Modus Ponens formula
+**[X3 resolved]** — Multiplication form confirmed in code. `Truth_SymmetricModusPonens` (`src/Formulas.metta:50-55`):
+```
+(= (Truth_SymmetricModusPonens (stv $sA $cA) (stv $sAB $cAB))
+   (let* (($snotAB 0.2)
+          ($cnotAB 1.0))
+         (stv (+ (* $sA $sAB) (* (* $snotAB (negate $sA)) (+ 1.0 $sAB)))
+              (min (min $cAB $cnotAB) $cA))))
+```
+Algebraically: `sB = sA·sAB + snotAB·(1-sA)·(1+sAB)` with `snotAB = 0.2`.
+
+**New data point from code (Claude + Codex)**: the constant is **0.2**, not the book's 0.02. The variable is **named `$snotAB`** (background `s(¬A→B)`), *not* the default-term-probability `c`. This is a semantic distinction not made in Source 1 — the book uses `c=0.02` for MP's "default background probability of ¬A", while PLN3 uses a *different* constant for a *different* role in symmetric MP. Worth calling out in the wiki.
+
+### V2 — Default term probability `c`
+**[X3 resolved]** — Asymmetric MP uses `c=0.02` hardcoded (`src/Formulas.metta:45-48`). Not configurable in `Config.metta`. Faithful to the book's Ch. 5 §5.7.1 heuristic.
+
+### V3 — Inference trails
+**[X3 resolved]** — Stamps implemented as integer-ID tuples, `StampDisjoint` check before premise pairing, sorted-union merge on derivation. **Length is NOT bounded in-stamp** — the book's ~10-20-atom bound is not enforced directly; effective bound is indirect via `MaxSteps=20`.
+
+### V4 — Revision count drift
+**[X2, Claude + Codex consensus; Gemini silent]** — Revision **strength** drift toward 1 is NOT present (weighted-mean keeps strength bounded by premises). However, Claude uniquely caught: revision **confidence** drift IS present via `max($c, $c1, $c2)` clamp combined with w2c roundtrip — revising twice with same evidence monotonically pushes confidence toward 1.0. `StampDisjoint` *should* prevent double-counting in practice, but the clamp bypasses proper w2c arithmetic.
+
+### V5 — CLAUDE.md rule list completeness
+**[X3 resolved]** — CLAUDE.md's 11-rule list is **accurate but incomplete**. Actual surface is a strict superset, omitting:
+- Member Deduction (`src/Rules.metta:112-116`)
+- Three Evaluation-over-Inheritance ModusPonens variants (`src/Rules.metta:56-74`)
+- The fact that Negation *Introduction* is translator-generated, not a runtime rule
+
+### V6 — Book features absent from PLN3
+**[X3 resolved]** — all of the following are absent, grep-verified across all three models:
+concept-geometry deduction · distributional/matrix TV · intensional ↔ extensional conversion rules · temporal rules (PredictiveImplication, SeqAND, DisjointSeqAND, EventualSeqAND, SimAND) · quantifier rules (ForAll, ThereExists, Existential Gen, Universal Spec) · multideduction · BRGI · OBI · Bayes-Net augmentation · attention/importance values · FactorGraph · MORK.
+
+---
+
+## 3. Code-level deviations from the 2008 book
+
+Organized by category — every claim is at least [X2].
+
+### 3.1 Faithfully implemented
+- **Deduction formula** [X3] — `Truth_Deduction` (`src/Formulas.metta:5-20`) reproduces the independence-based formula with `sB→1` short-circuit; consistency guard from `src/Constraints.metta`.
+- **Induction and Abduction strength formulas** [X3] — verbatim from book Appendix A. Both carry `;confidence TODO check` comments in the code.
+- **Asymmetric Modus Ponens** [X3] — `sB = sA·sAB + 0.02·(1-sA)`, book cite `5.7.1 p. 111`.
+- **Consistency-condition enforcement** [X3] — `conditional-probability-consistency` in `src/Constraints.metta` enforces `max(0, (sA+sB-1)/sA) ≤ sAB ≤ min(1, sB/sA)` with denominator `sA` (confirming Source 1's resolution). Uses `trueagi-io/hyperon-pln DeductionDTL.metta` as upstream citation.
+- **Revision structure** [X3] — `w = c/(1-c)` weighting idiom from book §5.10.2.
+
+### 3.2 Simplified or ad-hoc
+- **Inversion does NOT update strength** [X1 Claude + X1 Codex — actually X2] — `Truth_inversion` (`src/Formulas.metta:80-83`) returns `(stv $ABs ...)` unchanged, with only a `0.6·cB·cAB` confidence discount. Code comment explicitly admits *"not according to OpenCOG classic"*, *"is weaker"*. **Significant deviation from book's Bayes inversion `sBA = sAB·sA/sB`.** Wiki should flag this.
+- **Revision confidence clamp** [X2 Claude + Codex] — `max(c, c1, c2)` makes revision confidence monotonically non-decreasing. Combined with `Truth_w2c` roundtrip this saturates to 1.0 after a few rounds (the `StampDisjoint` check is the only guard against this pathology on overlapping evidence).
+- **Evaluation-over-Inheritance rules** [X3] — three surface rewrites in `Rules.metta:56-74` use `Truth_ModusPonens` directly rather than modeling satisfying-set probabilities.
+- **Equivalence→Implication hack** [X3] — short-circuits to `ABs` when `ABs·ABc > 0.99`; comment says explicitly *"Hack to work around the lack of distributional TV"*.
+- **Evaluation Implication** [X3] — compressed into `simpleDeductionStrength` + two `0.9` confidence penalties; not the book's rigorous higher-order derivation.
+
+### 3.3 Modernized
+- **Rule application via MeTTa S-expression unification** [X3] — patterns like `(|- ((Inheritance $A $B) $T1) ((Inheritance $B $C) $T2))` replace the book's explicit BC/FC control structures with native MeTTa pattern matching. Formulas themselves remain numerical computations, not emergent-from-structure.
+- **Translator.metta pre-expansion** [X3] — nested `Implication (Implication A B) C` and negated implications are pre-expanded at `PLN.Init` time into pre-composed `Truth_ModusPonens` / `Truth_Negation` / `Truth_Identity` pipelines. This is compile-time partial evaluation; the book handles nesting via BIT expansion at inference time.
+- **Priority-queue beam** [X3] — simplifies the book's MAB + inference-trail control to stamp-bounded beam search with priority = confidence only.
+
+### 3.4 New or extension relative to book
+- **Rule-guard whitelists** [X3] — `SyllogisticRuleGuard` (accepts Inheritance, Implication) and `SymmetricModusPonensRuleGuard` (accepts Similarity, IntentionalSimilarity, ExtensionalSimilarity) explicitly type-restrict rule applicability. Book handles this semantically, not via explicit guards.
+- **Python-registered `PLN.Init`** [X2 Claude + Codex] — `examples/PLN.py` is a thin Python shim registering a MeTTa atom that drives the offline build + `metta-morph` compilation. Book doesn't discuss this integration surface; it's Hyperon-era engineering.
+- **Pair-return derivation API** [X1 Codex] — `PLN.Derive` returns `($Tasks $Beliefs)` (both queues), supporting iterative/resumable use; matches commit `fd9e83b` "also return task in derive so reasoning can later easily continue".
+
+---
+
+## 4. Code-level bugs and issues identified
+
+### 4.1 [X1 Claude] sentence / Sentence capitalization inconsistency
+`src/Deriver.metta` expects capital `Sentence` in `PriorityRank` / `PriorityRankNeg`; many KB initializers and some tests use lowercase `sentence`. The bridge rule `(= (sentence $A $B) (Sentence $A $B))` is injected only by `PLN.py:51` at runtime — pure-MeTTa invocations without the Python shim will not apply the bridge. `ruletests/test.sh` copies `PLN.py` to the test directory but does **not** invoke the Python hook. Latent pure-MeTTa test bug.
+
+### 4.2 [X1 Claude] TransitiveSimilarity uses raw `/` (not `/safe`) in 4 spots
+`TransitiveSimilarityStrength` (`src/Formulas.metta:95-101`) will crash on `$sA=0`, `$sB=0`, or `$sC=0`. All existing examples/tests use non-zero concept strengths, masking the bug.
+
+### 4.3 [X3] `CLAUDE.md` undercounts implemented rules
+The 11-rule list is a strict subset; Member Deduction and the three Evaluation bridges are implemented but undocumented. No meta-doc mentions `Translator.metta`'s exclusion from `PLN.metta`.
+
+### 4.4 [X3] Unfinished TODO markers
+- `;confidence TODO check` on Induction and Abduction confidence formulas (`src/Formulas.metta:31, 43`).
+- `TODO use efficient native handling` on `Unique` helper in `src/Utils.metta:84`, pending `metta-morph PR #27`.
+- `"Hack to work around the lack of distributional TV"` in `Truth_equivalenceToImplication` — effectively a known-issue comment.
+
+---
+
+## 5. Discovered publications (combined across models)
+
+Citations found inside PLN3 source comments:
+
+| Title / repo | Author / year | Cited where | Card status |
+|---|---|---|---|
+| *Probabilistic Logic Networks* | Goertzel, Iklé, Goertzel, Heljakka (2008) | `Constraints.metta:1`, `Formulas.metta:3, 22, 33, 45, 57, 90` | **✓ already in wiki** as RawData+Publications+... (Source 1) |
+| `opencog/pln` Scheme rules (wip/*.scm) | OpenCog project | 11 file refs across Rules.metta & Formulas.metta | Repo reference, not a paper |
+| `trueagi-io/hyperon-pln DeductionDTL.metta` | trueagi-io | `Constraints.metta:2`, `Formulas.metta:4` | Repo reference, not a paper |
+| `trueagi-io/metta-morph PR #27` | trueagi-io | `Utils.metta:84` | Tooling PR |
+| NARS (Non-Axiomatic Reasoning System) | Pei Wang | implicit — `Formulas.metta:22` cites book's Appendix A which compares to NARS | **TODO: verify RawData+Publications+NARS coverage** |
+
+**Net effect on the wiki's RawData+Publications+* coverage:** no *new* publications discovered beyond what Source 1 already surfaced. The primary citation graph from code is inward (into OpenCog/hyperon-pln) and to the 2008 book.
+
+**Action item (per feedback_discovered_publications memory):** verify that NARS has adequate RawData coverage on the wiki before the PLN cluster closes. No other publications require stubs.
+
+---
+
+## 6. Actionable items for wiki card edits
+
+These are concrete updates that can now be made to the PLN cards once the full cluster is processed. Do not edit yet — wait for the remaining PLN cluster sources (URE, hyperon-pln, pln-experimental2, etc.) to reconcile.
+
+### 6.1 For `Hyperon AI Algorithms+PLN+PLN Full` (Draft, direct-edit)
+- **Current implementation reality section**: Document that PLN3 (the current modular MeTTa fork) implements ~12 rules (not the book's >60), uses STV-only truth values, and has forward-chaining beam search (not BIT/BC/MAB).
+- **Rule inventory**: List the 11-13 actually-present rules, distinguishing faithful ports (Deduction, Induction, Abduction, asymmetric MP, Revision structure, Consistency conditions) from simplified/ad-hoc (Inversion, Evaluation-over-Inheritance, Revision-confidence clamp).
+- **Missing-relative-to-book section**: Explicit list of missing content (concept-geometry, quantifiers, temporal/causal, intensional conversions, distributional TV, MAB control, MORK/FactorGraph).
+- **MeTTa-fication discussion**: Formulas are ported verbatim as S-expressions; rule application uses MeTTa pattern-matching; Translator.metta pre-expansion is new.
+- **Known deviations to flag**: Inversion doesn't update strength; Revision confidence is monotonically non-decreasing; Symmetric MP uses `snotAB=0.2` (semantically distinct from book's `c=0.02`).
+
+### 6.2 For `Hyperon AI Algorithms+PLN+AI` (child of Published, to be created)
+Will aggregate findings from the full PLN cluster. For Source 2 specifically:
+- Propose updating the Published card's summary to reflect that "current PLN" = MeTTa-era subset, not 2008-book-full.
+- Propose adding a "MeTTa implementation status" paragraph.
+- Hold for cluster-wide reconciliation before drafting the actual `+AI` child content.
+
+### 6.3 Supplementary: per-repo orientation docs (per `project_repo_orientation_docs` memory)
+PLN3 already has CLAUDE.md / AGENTS.md / GEMINI.md (they're the template). No orientation work needed for this repo. All three have documented gaps worth amending when the orientation pass runs:
+- CLAUDE.md's rule list is incomplete (see V5).
+- No meta-doc mentions `Translator.metta` is excluded from build.sh output.
+- No meta-doc mentions `sentence`/`Sentence` capitalization bridge.
+
+---
+
+## 7. Workflow assessment (for Source 2)
+
+**Cross-model coverage:** all three models converged on structural facts (STV-only, forward-chaining, rule count, absence of MORK/FactorGraph). Claude was deepest (42 KB, 84 claims + detailed V-verifications); Codex was targeted and git-aware (24 KB, commit-level citations); Gemini was concise (5 KB, high-level). No formula disputes arose at code level — unlike Source 1's four-way dispute list, the repo was clean to read.
+
+**Single-pass Claude proved sufficient.** The repo's self-documentation plus three-model triangulation caught everything worth catching. No escalation to internal 3-agent Claude was needed — the "low-confidence after first cross-model" trigger didn't fire.
+
+**Most-valuable Claude-unique contributions** (beyond cross-model consensus):
+- Inversion strength-preservation deviation (critical for wiki accuracy)
+- Revision confidence-drift bug (subtle, likely important)
+- sentence/Sentence capitalization bug (actionable)
+- TransitiveSimilarity division-by-zero risk
+
+**Most-valuable Codex-unique contribution**: concise git-commit-to-feature mapping (PR #54 = Negation; PR #52 = TaskReturn API; PR #51 = Modularity). Transparent "did not run build.sh due to sandbox" limitation note.
+
+**Most-valuable Gemini-unique contribution**: NARS-citation connection (implicit book reference worth promoting to explicit wiki cross-reference).
+
+**Source 2 declared complete.** Unblocked: Source 3.
+
+---
+
+## 8. Proposed next source
+
+Options for Source 3 in the PLN cluster, in rough priority order:
+
+1. **`hyperon-pln`** (trueagi-io) — the *consolidated* upstream that PLN3 is a modular fork of. Should contain the `lib_pln.metta` single-file version plus potentially more recent work than PLN3's Aug 2025 snapshot. **Highest priority** because it's the "canonical current" and PLN3's Translator/consistency code is explicitly borrowed from here.
+2. **`ure` / `ure2`** — Unified Rule Engine (OpenCog classic, ure2 is ngeiswei's fork). **Medium priority**; legacy C++ but conceptually foundational.
+3. **`pln-experimental` / `pln-experimental2`** (ngeiswei) — experimental branches. **Medium priority**; may contain the missing rule families or FactorGraph/MORK work.
+4. **`chaining-3`** (ngeiswei) — forward/backward chaining infrastructure. **Lower priority**; complements ure rather than replacing it.
+5. **`tv-toolbox2`** (ngeiswei) — truth-value toolbox. **Lower priority**; utility.
+6. **Publications**: `Publications+Guiding PLN with Attention Allocation`, `Publications+Deep Learning Perception with PLN`, `RawData+Publications+PLN FactorGraph MORK v3.2` — should probably come **after** the core implementation repos so extraction agents can map theory claims to code.
+
+**Recommend Source 3 = `hyperon-pln`** — highest leverage because (a) it's the canonical current implementation and (b) it will reveal the modular-vs-consolidated delta relative to PLN3, plus any rules/features PLN3 is missing.
+
+---
+
+## 9. Git-history context (retroactive backfill)
+
+Snapshot at extraction hash `55f1751`.
+
+**Commit narrative (last 25 at hash):** Sole committer in the window is **Patrick Hammer** (pure-attribution 64 commits; also committed as "Anonymous <patham9@gmail.com>" for 47 more — effectively 111 total). Final active phase (Aug 2025) was a 2-week compressed push with 5 merged PRs:
+- PR #54 "Improved negation handling" (2025-08-15)
+- PR #52 "Return task in PLN.Derive" (2025-08-07) — the TaskReturn API exposing pausable reasoning
+- PR #51 "Modularity: Expose PLN.Derive too" (2025-08-07)
+- PR #50 "Improved deriver" (2025-08-05)
+- PR #48 EffectiveInferenceControl with "use safe division, more flexible parameter handling" (2025-08-02)
+
+Intent signals in commit messages: *"bounded priority queue deriver"*, *"also return task in derive so reasoning can later easily continue"*, *"automated test script added"*, *"use safe division"*.
+
+**Tags:** none visible in this fork.
+
+**Remote branches:** only `origin/main` (flat — no feature branches on this fork).
+
+**Top authors (at extraction hash):**
+- Patrick Hammer: 64 (+ 47 as "Anonymous" same-email) = 111 effective
+- Robert Wünsche: 31
+- PtrMan / pisaev1: 1 each
+
+**PRs:** `gh pr list --repo ngeiswei/PLN --state all` returns empty. This fork does not accept its own PRs; all PR activity happens upstream on `trueagi-io/PLN`. PR numbers referenced here (#48, #50, #51, #52, #54) are from the upstream issue tracker.
+
+**Interpretation:** `PLN3` is Patrick Hammer's personal mirror of `trueagi-io/PLN` frozen at the pre-consolidation state (`55f1751`). No original PR-level intent lives here; all intent reading must target the upstream repo. As Source 3 established, this same commit `55f1751` is the parent of PLN/'s current head — `PLN3` is literally "`PLN/` minus the pln0.9 consolidation."
+
+---
+
+*End of cross-model reconciled findings for Source 2.*

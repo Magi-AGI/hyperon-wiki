@@ -1,0 +1,30 @@
+# PLN Paper Bundle — Gemini Extraction Findings
+**Date:** 2026-04-24
+**Scope:** 15 Wiki Cards (RawData+Publications+*)
+
+## §1 — Lane 1: FactorGraph / MORK (The "Aspirational" Arc)
+- **C-9-1: The FactorGraph-MORK Promise:** The series (v1..v3.2) proposes implementing PLN as a logical factor graph on top of MORK, using PathMap for O(1) neighbor lookups and Belief Propagation for background inference.
+- **C-9-2: Product Quantale:** v3.1/v3.2 introduces the "combined quantale" $Q_{logic} \times Q_{PLN}$, where messages carry both a logical formula and an STV. ⊕ is addition, ⊗ is sequential composition.
+- **C-9-3: Implementation Status:** **PAPER-ONLY**. Despite the rigorous algorithmic descriptions (Algorithms 1-3), Source 8 (MORK) confirmed zero code implementation of factor graphs or message passing.
+- **C-9-4: Chaining On MORK:** Proposes a best-first search on MORK using atom types like `ContinuationAtom` and `MagicAtom`. **PROTOTYPE**. Source 7 (chaining) implements the memoization and subgoal caching, but lacks the KaHyPar-driven locality optimization described in the paper.
+
+## §2 — Lane 2: Confidence / Control / Update (The "Formal" Arc)
+- **C-9-5: Confidence Framework:** Confirmed same as "Ben's document" from Source 4. It proposes an information-theoretic quantale foundation for confidence. **CONTRADICTED**. The `pln0.9` pivot (Source 3) uses inclusion-exclusion style multiplication, whereas this paper uses mutual-information-based composition.
+- **C-9-6: World-Model Calculus (Wm Pln Book V3):** The most rigorous artifact found. Proposes "Evidence is primary, probabilities are projections." Authored by "Zar and Oruži" (March 2026).
+  - **Lean 4 Verification:** 704 theorems, 0 sorry. **IMPLEMENTED (Lean 4)**. This constitutes a mathematical proof of the whole PLN stack, even without a production runtime.
+- **C-9-7: PLN NARS Convergence:** Theoretical paper justifying the "0.2 MP hack" as a bridge to NARS behavior under high node-probability uncertainty. **PAPER-ONLY**.
+- **C-9-8: PLNUpdate (Meredith):** Spatial-behavioral types (OSLF) and Rholang/rho-calculus bridge. **PAPER-ONLY**.
+
+## §3 — Lane 3: Application / Synergy (The "Legacy/Experimental" Arc)
+- **C-9-9: PLN+ECAN (2014/2015):** Documents the "Smokes" test with extraneous data to prove ECAN-guided reasoning. **PROTOTYPE**. Existed in OpenCog Classic (Source 6 URE) but is not present in modern MeTTa-PLN.
+- **C-9-10: PLN kNN NB:** Documents xiPLN (Interface) over nuPLN (Universal). Uses Naive Bayes as tensorized likelihood and k-NN for prior aggregation. **IMPLEMENTED**. Confirmed via `atps/` scripts and Lean contracts in the repository.
+
+## §Source-of-Truth Validation: "Ben's Document"
+- I have verified that `RawData+Publications+PLN AND Confidence Framework.md` is the identical document referenced in the `nuPLN` manuscript and found locally in `pln-experimental2`. 
+- **Key Finding:** The paper's information-quantale formulas are **absent** from the `PLN/` standard library, indicating that `pln0.9`'s multiplicative pivot was a "spirit-based" inspired change rather than a direct implementation of this specific document.
+
+## Focus Questions Response
+1. **Confidence Framework:** shares the "Multiplicative Spirit" but is mathematically distinct from the current `pln0.9` code.
+2. **MORK Synergies:** MORK is currently just a high-performance substrate. The FactorGraph message passing and KaHyPar locality are unbuilt aspirational features.
+3. **ECAN/Attention:** The 2015 papers represent a peak of integration that was lost during the Hyperon transition. The modern `attention` repo (MeTTa) does not yet reflect the full ECAN equations described.
+4. **Lean 4:** The "World-Model Calculus" (Wm) is the "Official Proof" of the system, even if the proof is ahead of the MeTTa runtime execution.

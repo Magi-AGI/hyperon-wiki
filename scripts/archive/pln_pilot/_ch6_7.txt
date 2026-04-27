@@ -1,0 +1,179 @@
+Chapter 6: First-Order Extensional Inference with Indefinite Truth-Values Abstract   In this chapter we exemplify the use of indefinite probabilities in a va-riety of PLN inference rules (including exact and heuristic ones).  
+6.1 Inference Using Indefinite Probabilities In this chapter we show how the inference rules described above can be applied when truth-values are quantified as indefinite probabilities, rather than as individ-ual probabilities or (probability, weight of evidence) pairs. We outline a general three-step process according to which a PLN inference formula, defined initially in terms of individual probabilities, may be evaluated using indefinite probabili-ties.  We will first present these three steps in an abstract way; and then, in the fol-lowing section, exemplify them in the context of specific probabilistic inference formulas corresponding to inference rules like term logic and modus ponens de-duction, Bayes’ rule, and so forth.  In general, the process is the same for any inference formula that can be thought of as taking in premises labeled with probabilities, and outputting a con-clusion labeled with a probability. The examples given here will pertain to single inference steps, but the same process may be applied holistically to a series of in-ference steps, or most generally an “inference tree/DAG” of inference steps, each building on conclusions of prior steps.  Step One in the indefinite probabilistic inference process is as follows. Given intervals 
+! Li,Ui[] of mean premise probabilities, we first find a distribution from the “second-order distribution family” supported on
+! L1i,U1i[]"Li,Ui[], so that these means have 
+! Li,Ui[] as (100!bi)% credible intervals. The intervals 
+! L1i,U1i[] either are of the form 
+! mn+k,m+kn+k" # $ % & ' , when the “interval-type” parameter associated with the premise is asymmetric, or are such that both of the intervals 
+! L1i,Li[] and 
+! Ui,U1i[] each have probability mass bi /2, when interval-type is symmetric.  Next, in Step Two, we use Monte Carlo methods on the set of premise truth-values to generate final distribution(s) of probabilities as follows. For each prem-ise we randomly select n1 values from the (“second-order”) distribution found in Step One. These n1 values provide the values for the means for our first-order dis-tributions. For each of our n1 first-order distributions, we select n2 values to repre-sent the first-order distribution. We apply the applicable inference rule (or tree of 
+
+Probabilistic Logic Networks                                                                               132 
+ 
+inference rules) to each of the n2 values for each first-order distribution to generate the final distribution of first-order distributions of probabilities. We calculate the mean of each distribution and then – in Step Three of the overall process – find a (100!bi)% credible interval, 
+! Lf,Uf[], for this distribution of means. When desired, we can easily translate our final interval of probabilities, 
+! Lf,Uf[], into a final, 
+! sf,nf,bf() triple of strength, count, and credibility levels, as outlined above. Getting back to the “Bayesianism versus frequentism” issues raised in Chapter 4, if one wished to avoid the heuristic assumption of decomposability regarding the first-order plausibilities involved in the premises, one would replace the first-order distributions assumed in Step Two with Dirac delta functions, meaning that no variation around the mean of each premise plausibility would be incorporated. This would also yield a generally acceptable approach, but would result in overall narrower conclusion probability intervals, and we believe would in most cases represent a step away from realism and robustness. 
+6.1.1  The Procedure in More Detail We now run through the above three steps in more mathematical detail. In Step One of the above procedure, we assume that the mean strength values follow some given initial probability distribution
+! gis() with support on the interval
+! L1i,U1i[]. If the interval-type is specified as asymmetric, we perform a search until we find values k2 so that 
+! gis()ds=bLiUi" , where 
+! Li=mini+k2 and 
+! Ui=mi+k2ni+k2. If the interval-type is symmetric, we first ensure, via parameters, that each first-order distribution is symmetric about its mean si, by setting 
+! Li=si"d, 
+! Ui=si+d and performing a search for d to ensure that 
+! gis()ds=bLiUi" . In either case, each of the intervals 
+! Li,Ui[] will be a (100!b)% credible interval for the distribution
+! gis(). We note that we may be able to obtain the appropriate credible intervals for the distributions
+! gis() only for certain values of b. For this reason, we say that a value b is truth-value-consistent whenever it is feasible to find (100!b)% credible inter-vals of the appropriate type. In Step Two of the above procedure, we create a family of distributions, drawn from a pre-specified set of distributional forms, and with means in the intervals 
+! Li,Ui[]. We next apply Monte Carlo search to form a set of randomly chosen “premise probability tuples”. Each tuple is formed via selecting, for each premise of the inference rule, a series of points drawn at random from randomly chosen 
+
+133 Chapter 6: Extensional Inference with Indefinite Truth Values 
+ 
+distributions in the family. For each randomly chosen premise probability tuple, the inference rule is executed. And then, in Step Three, to get a probability value 
+! sf for the conclusion, we take the mean of this distribution. Also, we take a credible interval from this final distribution, using a pre-specified credibility level 
+! bf, to obtain an interval for the conclusion 
+! Lf,Uf[]. 
+6.2 A Few Detailed Examples  In this section we report some example results obtained from applying the in-definite probabilities approach in the context of simple inference rules, using both symmetric and asymmetric interval-types. Comparisons of results on various inference rules indicated considerably supe-rior results in all cases when using the symmetric intervals. As a result, we will report results for five inference rules using the symmetric rules; while we will re-port the results using the asymmetric approach for only one example (term logic deduction). 
+6.2.1  A Detailed Beta-Binominal Example for Bayes’ Rule First we will treat Bayes’ rule, a paradigm example of an uncertain inference rule -- which however is somewhat unrepresentative of inference rules utilized in PLN, due to its non-heuristic, exactly probabilistic nature. The beta-binomial model is commonly used in Bayesian inference, partially due to the conjugacy of the beta and binomial distributions. In the context of Bayes’ rule, Walley develops an imprecise beta-binomial model (IBB) as a special case of an imprecise Dirichlet model (IDM). We illustrate our indefinite probabili-ties approach as applied to Bayes’ rule, under the same assumptions as these other approaches. We treat here the standard form for Bayes’ rule: 
+! PAB()=PA()PBA()PB(). Consider the following simple example problem. Suppose we have 100 gerbils of unknown color; 10 gerbils of known color, 5 of which are blue; and 100 rats of known color, 10 of which are blue. We wish to estimate the probability of a ran-domly chosen blue rodent being a gerbil. The first step in our approach is to obtain initial probability intervals. We ob-tain the following sets of initial probabilities shown in Tables 1 and 2, correspond-ing to credibility levels b of 0.95 and 0.982593, respectively. 
+
+Probabilistic Logic Networks                                                                               134 
+ 
+ Table 1. Intervals for credibility level 0.90 EVENT [L,U]  [L1, U1] G 
+! 1021,1221" # $ % & ' =[.476190, 0.571429] [0.419724, 0.627895] 
+R 
+! 821,1221" # $ % & '  =[0.380952, 0.571429]  [0.26802, 0.684361] 
+B|G [0.3, 0.7]  [0.0628418, 0.937158] B|R [0.06, 0.14]  [0.0125683, 0.187432]  Table 2. Intervals for credibility level 0.95 EVENT [L, U]  [L1, U1] G 
+! 1021,1221" # $ % & ' =[.476190, 0.571429]  [0.434369, 0.61325] R 
+! 821,1221" # $ % & '  =[0.380952, 0.571429]  [0.29731, 0.655071] 
+B|G [0.3, 0.7]  [0.124352, 0.875649] B|R [0.06, 0.14]  [0.0248703, 0.17513]  We begin our Monte Carlo step by generating
+! n1 random strength values, cho-sen from Beta distributions proportional to
+! xks"11"x()k1"s()"1 with mean values of 
+! s=1121 for P(G); 
+! s=1021 for P(R); 
+! s=12 for
+! PBG(); and 
+! s=110 for 
+! PBR(), and with support on [L1, U1]. Each of these strength values then serves, in turn, as pa-rameters of standard Beta distributions. We generate a random sample of 
+! n2 points from each of these standard Beta distributions. We next apply Bayes’ theorem to each of the 
+! n1n2 quadruples of points, gen-erating 
+! n1 sets of sampled distributions. Averaging across each distribution then gives a distribution of final mean strength values. Finally, we transform our final distribution of mean strength values back to (s, n, b) triples. 
+
+135 Chapter 6: Extensional Inference with Indefinite Truth Values 
+ 
+6.2.1.1 Experimental Results Results of our Bayes’ rule experiments are summarized in Tables 3 and 4.  Table 3. Final probability intervals and strength values for P(G|B) using initial b-values of 0.90 CREDIBILITY LEVEL INTERVAL 0.90 [0.715577, 0.911182] 0.95 [0.686269, 0.924651]  Table 4. Final probability intervals and strength values for P(G|B) using initial b-values of 0.95 CREDIBILITY LEVEL INTERVAL 0.90 [0.754499, 0.896276] 0.95 [0.744368, 0.907436] 
+6.2.1.2 Comparisons to Standard Approaches It is not hard to see, using the above simple test example as a guide, that our in-definite probabilities approach generalizes both classical Bayesian inference and Walley’s IBB model. First note that single distributions can be modeled as enve-lopes of distributions with parameters chosen from uniform distributions. If we model P(B) as a uniform distribution; P(A) as a single beta distribution and 
+! PBA() as a single binomial distribution, then our method reduces to usual Baye-sian inference. If, on the other hand, we model P(B) as a uniform distribution; P(A) as an envelope of beta distributions; and 
+! PBA() as an envelope of binomial distributions, then our envelope approach reduces to Walley’s IBB model. Our envelope-based approach thus allows us to model P(B) by any given family of dis-tributions, rather than restricting us to a uniform distribution. This allows for more flexibility in accounting for known, as well as unknown, quantities. To get a quantitative comparison of our approach with these others, we mod-eled the above test example using standard Bayesian inference as well as Walley’s IBB model. To carry out standard Bayesian analysis, we note that given that there are 100 gerbils whose blueness has not been observed, we are dealing with 
+! 2100 
+
+Probabilistic Logic Networks                                                                               136 
+ 
+“possible worlds” (i.e., possible assignments of blue/non-blue to each gerbil). Each of these possible worlds has 110 gerbils in it, at least 5 of which are blue, and at least 5 of which are non-blue. For each possible world w, we can calculate the probability that drawing 10 gerbils from the population of 110 existing in world W yields an observation of 5 blue gerbils and 5 non-blue gerbils. This probability may be written
+! PDH(), where D is the observed data (5 blue and 5 non-blue gerbils) and H is the hypothe-sis (the possible world W). Applying Bayes’ rule, we have 
+! PHD()=PDH()PH()PD(). Assuming that 
+! PH() is constant across all possible worlds, we find that
+! PHD() is proportional to
+! PDH(). Given this distribution for the possible values of the number of blue gerbils, one then obtains a distribution of possible values 
+! Pgerbilblue( ) and calculates a credible interval. The results of this Bayesian approach are summa-rized in Table 5  Table 5. Final Probability Intervals for P(G|B) CREDIBILITY LEVEL INTERVAL 0.90 [0.8245614035, 0.8630136986] 0.95 [0.8214285714, 0.8648648649]  We also applied Walley’s IBB model to our example, obtaining (with k=10) the interval 
+! 23232886,24532886" # $ % & ' , or approximately [0.43007, 0.88465]. In comparison, the hybrid method succeeds at maintaining narrower intervals, albeit at some loss of credibility. With a k-value of 1, on the other hand, Walley’s approach yields an interval of [0.727811, 0.804734]. This interval may seem surprising because it does not in-clude the average given by Bayes’ theorem. However, it is sensible given the logic of Walley’s approach. In this approach, we assume no prior knowledge of P(G) and we have 10 new data points in support of the proposition that 
+! PGB() is 55/65. So we assume beta distribution priors with s=0 and s=1 for the “endpoints” of P(G) and use n=10 and p=11/13 for the binomial distribution for 
+! PGB(). The density function thus has the form 
+! fx()=xks1"x()k1"s()xnp1"x()n1"p()xks1"x()k1"s()xnp1"x()n1"p()dx01#  
+
+137 Chapter 6: Extensional Inference with Indefinite Truth Values 
+ 
+Now for s=1 and the value of the learning parameter k=1, the system with no prior knowledge starts with the interval [1/3, 2/3]. With only 10 data points in sup-port of p=11/13 and prior assumption of no knowledge or prior p=1/2, Walley’s method is (correctly according to its own logic) reluctant to move quickly in sup-port of p=11/13, without making larger intervals via larger k-values. 
+6.2.2  A Detailed Beta-Binominal Example for Deduction  Next we consider another inference rule, term logic deduction, which is more in-teresting than Bayes’ rule in that it combines probability theory with a heuristic independence assumption. The independence-assumption-based PLN deduction rule, as derived in Chapter 5, has the following form for “consistent” sets A, B, and C:  
+! sAC=sABsBC+1"sAB()sC"sBsBC( )1"sB where 
+! sAC=PCA()=PA"C()PA() assuming the given data 
+! sAB=PBA(), 
+! sBC=PCB(), 
+! sA=PA(), 
+! sB=PB(), and 
+! sC=PC().  Our example for the deduction rule will consist of the following premise truth-values. In Table 6, we provide the values for [L,U], and b, as well as the values corresponding to the mean s and count n. In the following sets of examples we as-sumed k=10 throughout.  Table 6. Premise truth-values used for deduction with symmetric intervals Premise s [L,U] [L1, U1] A 11/23 [10/23, 12/23]![0.434783, 0.521739] [0.383226, 0.573295] B 0.45 [0.44, 0.46] [0.428142, 0.471858] AB 0.413043 [0.313043, 0.513043] [0.194464, 0.631623] BC 8/15 [7/15, 9/15] ! [0.466666, 0.6] [0.387614, 0.679053]  
+
+Probabilistic Logic Networks                                                                               138 
+ 
+We now vary the premise truth-value for variable C, keeping the mean sC con-stant, in order to study changes in the conclusion count as the premise width [L,U] varies. In Table 7, b = 0.9 for both premise and conclusion, and sC = 0.59. The fi-nal count nAC is found via the inverse Bernoulli function approach of Chapter 4.  Table 7. Deduction rule results using symmetric intervals Premise C Conclusion AC [L,U] [L1, U1] sAC [L,U] nAC [0.44, 0.74] [0.26213, 0.91787] 0.575514 [0.434879, 0.68669] 11.6881 [0.49, 0.69] [0.37142, 0.80858] 0.571527 [0.47882, 0.65072] 18.8859 [0.54, 0.64] [0.48071, 0.69929] 0.571989 [0.52381, 0.612715] 42.9506 [0.58, 0.60] [0.56814, 0.61186] 0.571885 [0.4125, 0.6756] 10.9609  For comparison of using symmetric intervals versus asymmetric, we also tried identical premises for the means using the asymmetric interval approach. In so do-ing, the premise intervals [L, U] and [L1, U1] are different as shown in Tables 8 and 9, using b = 0.9 as before.  Table 8. Premise truth-values used for deduction with asymmetric intervals Premise s [L,U] [L1, U1] A 11/23 [0.44, 0.52] [0.403229, 0.560114] B 0.45 [0.44, 0.462222] [0.42818, 0.476669] AB 0.413043 [0.38, 0.46] [0.3412, 0.515136] BC 8/15 [0.48, 0.58] [0.416848, 0.635258]  Table 9. Deduction rule results using symmetric intervals Premise C Conclusion AC [L,U] [L1, U1] sAC [L,U] nAC [0.40, 0.722034] [0.177061, 0.876957] 0.576418 [0.448325, 0.670547] 13.683 [0.45, 0.687288] [0.28573, 0.801442] 0.577455 [0.461964, 0.661964] 15.630 [0.50, 0.652543] [0.394397, 0.725928] 0.572711 [0.498333, 0.628203] 26.604 [0.55, 0.617796] [0.526655, 0.600729] 0.568787 [0.4125, 0.6756] 10.961 
+
+139 Chapter 6: Extensional Inference with Indefinite Truth Values 
+ 
+6.2.3  Modus Ponens Another important inference rule is modus ponens, which is the form of deduc-tion standard in predicate logic rather than term logic. Term logic deduction as de-scribed above is preferable from an uncertain inference perspective, because it generally supports more certain conclusions. However, the indefinite probabilities approach can also handle modus ponens; it simply tends to assign conclusions fairly wide interval truth-values. The general form of modus ponens is A A ! B |- B To derive an inference formula for this rule, we reason as follows. Given that we know P(A) and P(B|A), we know nothing about P(B|¬A). Hence P(B) lies in the interval  
+! 
+Q,R[]=PA and B(),1"PA()"PA and B()( )[ ]=PBA()PA(),1"PA()+PBA()PA()[ ]. 
+For the modus ponens experiment reported here we used the following prem-ises: For A we used 
+! L,U[],b=1023,1223" # $ % & ' ,0.9; and for A ! B we used <[L,U],b>=<[0.313043,0.513043],0.9>. We proceed as usual, choosing distribu-tions of distributions for both P(A) and P(B|A). Combining these we find a distri-bution of distributions [Q,R] as defined above. Once again, by calculating means, we end up with a distribution of [Q,R] intervals. Finally, we find an interval [L,U] that contains (100!b)% of the final [Q,R] intervals. In our example, our final [L,U] interval at the b = 0.9 level is [0.181154, 0.736029]. 
+6.2.4 Conjunction Next, the AND rule in PLN uses a very simple heuristic probabilistic logic formula:
+! PA AND B( )=PA()PB(). To exemplify this, we describe an ex-periment consisting of assuming a truth-value of <[L, U], b>=<[0.4, 0.5], 0.9> for A and a truth-value of <[L, U], b>=<[0.2, 0.3], 0.9> for B. The conclusion truth-value for P(A AND B) then becomes <[L,U],b>=<[0,794882, 0.123946], 0.9>. 
+                                                             
+
+Probabilistic Logic Networks                                                                               140 
+ 
+6.2.5  Revision Very sophisticated approaches to belief revision are possible within the indefi-nite probabilities approach; for instance, we are currently exploring the possibility of integrating entropy optimization heuristics as described in (Kern-Isberner, , 2004) into PLN for this purpose (Goertzel, 2008). At present, however, we treat revision with indefinite truth-values in a manner analogous to the way we treat them with simple truth-values. This approach seems to be effective in practice, al-though it lacks the theoretical motivation of the entropy minimization approach. Suppose D1 is the second-order distribution for premise 1 and D2 is the sec-ond-order distribution for D2. Suppose further that n1 is the count for premise 1 and n2 is the count for premise 2. Let w1 = n1/(n1+n2) and w2 = n2/(n1+n2), and then form the conclusion distribution D = w1 D1 + w2D2. We then generate our <[L,U],b,k> truth-value as usual. As an example, consider the revision of the following two truth-values  <[0.1, 0.2], 0.9, 20> and <[0.3, 0.7], 0.9, 20>. Calculating the counts using the inverse function discussed in Chapter 4 gives count values of 56.6558 and 6.48493 respectively. Fusing the two truth-values yields <[0.13614, 0.233208], 0.9, 20> with a resulting count value of 52.6705. The inclusion of indefinite probabilities into the PLN framework allows for the creation of a logical inference system that provides more general results than Bay-esian inference, while avoiding the quick degeneration to worst-case bounds in-herent with imprecise probabilities. On more heuristic PLN inference rules, the indefinite probability approach gives plausible results for all cases attempted, as exemplified by the handful of examples presented in detail here. What we have done in this chapter is present evidence that the indefinite prob-abilities approach may be useful for artificial general intelligence systems – first because it rests on a sound conceptual and semantic foundation; and second be-cause when applied in the context of a variety of PLN inference rules (represent-ing modes of inference hypothesized to be central to AGI), it consistently gives in-tuitively plausible results, rather than giving results that intuitively seem too indefinite (like the intervals obtained from Walley’s approach, which too rapidly approach [0,1] after inference), or giving results that fail to account fully for prem-ise uncertainty (which is the main issue with the standard Bayesian or frequentist first-order-probability approach). 
+
+141                                                                                  
+Chapter 7: First-Order Extensional Inference with Distributional Truth-Values 
+Abstract   In this chapter we extend some of the ideas of the previous chapters to deal with a different kind of truth-value, the “distributional truth-value,” in which the single strength value is replaced with a whole probability distribution. We show is that if discretized, step-function distributional truth-values are used, then PLN deduction reduces simply to matrix multiplication, and PLN inversion re-duces to matrix inversion. 
+7.1 Introduction The strength formulas discussed above have concerned SimpleTruthValues and IndefiniteTruthValues. However, the PLN framework as a whole is flexible regarding truth-values and supports a variety of different truth-value objects. In this chapter we extend some of the ideas of the previous sections to deal with a different kind of truth-value, the “distributional truth-value,” in which the single strength value is replaced with a whole probability distribution. In brief, what we show is that if discretized, step-function distributional truth-values are used, then PLN deduction reduces simply to matrix multiplication, and PLN inversion re-duces to matrix inversion.  Other extensions beyond this are of course possible. For instance, one could ex-tend the ideas in this chapter to a SecondOrderDistributionalTruthValue, consist-ing of a completely-specified second-order probability distribution (as opposed to an indefinite probability, which is a sketchily specified, compacted second-order probability distribution). But these and additional extensions will be left for later work. Before launching into mathematics, we will review the conceptual basis for “distributional truth-values” by elaborating an example. Given a “man” Atom and a “human” Atom, suppose we’ve observed 100 humans and 50 of them are men. Then, according to the SimpleTruthValue approach, we may say  Subset man human < 1> Subset human man <.5>  
+
+Probabilistic Logic Networks 142 What this says is: All observed examples of “man” are also examples of “human”; half of the examples of “human” are also examples of “man.”  The limitations of this simple approach to truth-value become clear when one contrasts the latter of the two relationships with the relation  Subset human ugly <.5>  Suppose that from listening to people talk about various other people, an AI sys-tem has gathered data indicating that roughly 50% of humans are ugly (in terms of being called ugly by a majority of humans talking about them). The difference be-tween this observation and the observation that 50% of humans are men is obvi-ous:  • In the case of man-ness, nearly 50% of humans totally have it, and nearly 50% of humans totally don’t have it; intermediate cases are very rare • In the case of ugliness, it’s not the case that nearly 50% of humans are not at all ugly whereas nearly 50% are totally ugly. Rather there is a spectrum of cases, ranging from no ugliness to absolute ugliness, with the majority of people close to the middle (just barely uglier than av-erage, or just barely less ugly than average).  In the language of statistics, man-ness has a bimodal distribution, whereas ug-liness has a unimodal distribution. Taking this difference in underlying distribu-tion into account, one can do more refined inferences. 
+ExampleofUnimodalDistribution  
+ExampleofBimodalDistribution
+
+143 Chapter 7: Distributional Truth Values From examples like this, one arrives at the idea of “distributional truth-values” – TruthValue objects that contain not only a strength value (reflecting the mean of a truth-value distribution) but a better approximation to an entire probability dis-tribution reflecting the truth-value of an entity. We have experimented with both StepFunctionTruthValue and PolynomialTruthValue objects, two specific imple-mentations of the notion of distributional truth-values. The “distributions” involved are functions 
+! f:0,1[]2"0,1[], where for ex-ample, if  Subset A C <f,w>  then  
+! fx,y()=t means  
+! PMember Q C <y>Member Q C <x>( )=t, and w represents the weight-of-evidence. In practice, one cannot look at the full space of distributions f, but must choose some finite-dimensional subspace; and as noted above, we have explored two pos-sibilities: polynomials and step functions. Polynomials are more elegant and in principle may lead to more efficient computational algorithms, but the inference formulas are easier to work out for step functions, and the implementation com-plexity is also less for them, so after some preliminary work with polynomials we decided to focus on step function distributional approximations.  
+7.2 Deduction and Inversion Using Distributional Truth-Values Now we give some mathematics regarding PLN inference with distributional truth-values, assuming discretized, step-function distributional truth-values. The mathematical framework used here is as follows. Consider three Terms, A, B and C, with Term probability distributions denoted by vectors 
+! pA, 
+! pB, 
+! pC where, e.g.,  
+  ! pA=p1A,p2A,K,pnA( )piA=PAi()   The event Ai is defined as 
+
+Probabilistic Logic Networks 144  
+! ti,A<PA()"ti+1,A  where   ! t1,A=0,t2,A,K,tn,A=1( ) is a (not necessarily equispaced) partition of the unit interval.  It may often be useful to set the partition points so that   
+! PiA"1n#1  for all i. Note that, if one follows this methodology, the partition points will gen-erally be unequal for the different Terms in the system. This is not problematic for any of the inference mathematics we will use here. In fact, as we’ll see, deduction works perfectly well even if the number of partition points is different for different Terms. However, inversion becomes problematic if different Terms have different numbers of partition points; so it’s best to assume that n is a constant across all Terms. Next, define the conditional probability 
+! PCA() by the matrix 
+! PAC, where   
+! Pi,jAC=PCjAi()  So long as A and C have the same number of partition points, this will be a square matrix. Given this set-up, the deduction rule is obtained as follows.   Theorem.  Assume Ai and Cj are independent in Bk for all i, j, k. Then 
+! PAC=PABPBC. Proof.   The theorem follows from the key equation  
+! PCjAi()=PCjBk()PBkAi()k=1n"  which we formally demonstrate in a moment. This equation, after a change of no-tation, is   
+! Pi,jAC=Pi,kABPk,jBCk=1n"  which according to the definition of matrix multiplication means 
+
+145 Chapter 7: Distributional Truth Values  
+! PAC=PABPBC  Now, the key equation is demonstrated as follows. We know  
+! PCjAi()=PCj"Bk()Ai( )=PCj"Bk"Ai( )k=1n#PAi()k=1n#   Assuming Cj and Ai are independent in Bk , we have  
+! PCjAi()=PCjBk()PAi"Bk()PAi()=PCjBk()k=1n#k=1n# PBkAi()  The critical step in here is the independence assumption  
+! PCj"Bk"Ai( )=PCjBk()PAi"Bk()  To see why this is true, observe that the assumption “Ai and Cj are independent in Bk” implies 
+! Cj"Bk"Ai=PCjBk()Ai"Bk.  Dividing both sides by N, the size of the implicit universal set, yields the desired equation, completing the proof. QED  Next, the inversion rule is obtained from the equation  
+! PB=PABPA  (which is obvious, without any independence assumptions), which implies  
+! PA=PAB()"1PB  Thus, if a relationship (SubsetRelationship A B) has distributional TruthValue PAB, it follows that the relationship (SubsetRelationship B A) should have distribu-tional TruthValue (PAB)-1. In other words, PLN inversion is matrix inversion.  Note that no term probabilities are used in any of these formulas. However, term probabilities can be derived from the distributional TruthValues. Specifi-cally, the term probability for A is the expected value of the distributional truth-value for A. 
+
+Probabilistic Logic Networks 146 Also, note that the inversion formula has error magnification problems due to the fact that the matrix inversion formula involves division by a determinant. And, in the unlikely case where the determinant of PAB is zero, the inversion formula fails, though one may use matrix pseudoinverses (Weisstein, 2008) and probably still obtain meaningful results. Continuous versions of the equations may also be derived, by shrinking the partition in the above formulas.  
+7.3 Relationship between SimpleTruthValue and DistributionalTruthValue Inference Formulas In the case where n=2, one can obtain something quite similar (but not identi-cal) to the SimpleTruthValue formulas by setting the partition interval t1,A for the Term A so that  
+! meanPA()()=Pt1,A<PA()"t2,A=1( )  and doing something similar for the Terms B and C. In this case one has, e.g.,  
+! PA()=PA(),1"PA()( ).  Regardless of how one sets the t1 values, one can obtain fairly simple formulas for the 2-partition-interval case. One has, e.g.,  
+! PAB=PB1A1()PB1A2()PB2A1()PB2A2()" # $ $ % & ' '   or equivalently  
+! PAB=PB1A1()PB1A2()1"PB1A1()1"PB1A2()# $ % % & ' ( (   And for the inversion formula, one has  
+! DetPAB()=PB1A1()"PB1A1()PB1A2()"PB1A2()+PB1A2()PB1A1()=PB1A1()"PB1A2()   
+
+147 Chapter 7: Distributional Truth Values so that inversion is only degenerate when 
+! Pt1,B<PB()( ) is independent of whether “
+! t1,A<PA()” is true or not. The inversion formula is then given by  
+! PB1A1()"PB1A2()[ ]PAB()"1=1"PB1A2()"PB1A2()"1+PB1A1()PB1A1()# $ % % & ' ( (   Note that here, as in general,  
+! PAB()"1#PBA  even though both  
+! PA=PAB()"1PBPA=PBAPB 
+ hold. This is not surprising, as many different 2D matrices map a particular 1D subspace of vectors into another particular 1D subspace (the subspace here being the set of all 2D vectors whose components sum to 1). The term most analogous to ordinary PLN-FOI inversion is   
+! 
+PB1()=PAB()"111PA1()+PAB()"112PA2()=1"PB1A2()( )PA1()"PB1A2()PA1()PB1A1()"PB1A2()  
+ Note that we are inverting the overall PAB matrix without inverting the individ-ual entries; i.e., because 
+! PAB()"1#PBA we do not get from this an estimate of 
+! PA1B1(). The term of the deduction formula that is most analogous to PLN-FOI deduc-tion is given by  
+! P11AC=PPC()>t1,CPA()>t1,A( )=PC1B1()PB1A1()+PC1B2()PB2A1()   which is similar, but not equal, to the FOI formula  
+! sAC=PCB()PBA()+PC¬B()P¬BA(). 
+
+Probabilistic Logic Networks 148  
+
+149  
