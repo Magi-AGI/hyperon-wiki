@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  structural-specs:
+    name: Structural specs (no DB)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+
+      - name: Run mod specs
+        run: bundle exec rspec spec/mod/ --format progress
+
+  rendering-specs:
+    name: Rendering specs (MySQL)
+    runs-on: ubuntu-latest
+    if: false  # enable once spec/views/ is populated
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: decko_test
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    env:
+      DATABASE_URL: mysql2://root:root@127.0.0.1/decko_test
+      RAILS_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+
+      - name: Set up database
+        run: bundle exec rake db:create db:migrate
+
+      - name: Seed test deck
+        run: bundle exec decko seed
+
+      - name: Run view specs
+        run: bundle exec rspec spec/views/ --format progress
