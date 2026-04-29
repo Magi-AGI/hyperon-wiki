@@ -1,0 +1,244 @@
+# Source 1 - Classic OpenPsi Baseline - Codex Findings
+
+Pilot: OpenPsi / Motivation cluster
+Model lane: Codex
+Brief: scripts/archive/openpsi_pilot/source1_classic_baseline_brief.txt
+Target repo: E:\GitHub\hyperon reference\opencog-singnet
+Audit commit: b31c7e3b9beab7a458c84117f3b654a03ca9ffe2
+Scope: opencog/openpsi/ at the pinned commit, with narrow supporting checks in cython/tests/history where the brief requested them.
+
+Method:
+- Read-only historical audit. No checkout of the pinned commit and no mutation of the reference repo.
+- Used git show / git grep / git log -S against b31c7e3 and selected history commits.
+- Did not run the OpenCog build or test suite.
+- Applied the ECAN-cluster standing rules: grep both Scheme and C++ API layers; use pickaxe before "dead code" classification.
+
+## Executive Summary
+
+C1-1. Classic OpenPsi at b31c7e3 is a real C++/Scheme runtime subsystem, not a paper stub. It has a C++ rule/cache/satisfiability/implication layer, a Scheme component loop, a Scheme action-selector layer, demand/goal utilities, and a separate dynamics/modulator/SEC updater surface.
+
+C1-2. The default action-selection loop is not STI-weighted. A new component gets an action selector that executes `psi-get-satisfiable-rules`, and `psi-step` executes all rules returned by `psi-select-rules`; see opencog/openpsi/main.scm:54-59 and opencog/openpsi/main.scm:185-209.
+
+C1-3. There is a Scheme helper for STI-weighted rule scoring: `rule-sca-weight = confidence x mean x cog-av-sti`. It is defined at opencog/openpsi/action-selector.scm:57-64, and it is the only OpenPsi-local `cog-av-sti` hit at b31c7e3.
+
+C1-4. The STI helper is not wired into the default loop and has no packaged caller in `opencog/openpsi/` at b31c7e3. Repo grep finds `rule-sca-weight` and `pick-from-weighted-list` only in `action-selector.scm` definitions, while the default selector path is `psi-get-satisfiable-rules`; see opencog/openpsi/action-selector.scm:67-118, opencog/openpsi/main.scm:54-59, and opencog/openpsi/rule.scm:254-270.
+
+C1-5. Therefore the ECAN Source 4 phrase "OpenPsi weights rules by STI" should be narrowed for Source 1: Classic OpenPsi exposes an STI-weighted selector helper and optional AttentionBank dependency, but the b31c7e3 default runtime path is satisfiability-based, not STI-weighted.
+
+C1-6. OpenPsi is not directly coupled to PLN or URE chaining in this source tree. The only active URE import found in the OpenPsi source is `demand.scm` importing `(opencog ure)`; no `ForwardChainer`, `BackwardChainer`, `cog-fc`, or `cog-bc` call appears in `opencog/openpsi/` at b31c7e3. See opencog/openpsi/demand.scm:20 and grep results for C1-40 to C1-43 below.
+
+C1-7. OpenPsi does have conceptual PLN ancestry. The README says the rule structure was chosen because it allows PLN-style uncertain reasoning, and `psi-context-weight` cites a PLN conjunction formula. These are design/API references, not runtime invocation of the PLN engine; see opencog/openpsi/README.md:48-60 and opencog/openpsi/rule.scm:274-300.
+
+C1-8. The dynamics subsystem is runtime-shaped but experimental. It has a loop, callbacks, event detection, interaction rules, decay, modulators, SECs, and emotion placeholders, but comments and hardcoded parameters indicate a research/prototype state; see opencog/openpsi/dynamics/updater.scm:1-30, opencog/openpsi/dynamics/updater.scm:40-65, opencog/openpsi/dynamics/updater.scm:181-199, and opencog/openpsi/dynamics/updater.scm:374-441.
+
+C1-9. Strongest volatility finding: documentation and exported API drifted from implementation. `openpsi.scm` exports `psi-get-all-weighted-satisfiable-rules` and `psi-action-weight`, but grep at b31c7e3 finds no definitions in `opencog/openpsi/`; the README also describes an older demand/action-selector API not present in current code. See opencog/openpsi/openpsi.scm:24-31 and opencog/openpsi/README.md:105-126.
+
+C1-10. Tradition placement: Classic OpenPsi is best treated as the OpenCog Classic motivation/action-selection subsystem in the Attention/Motivation tradition. It is adjacent to ECAN through optional AttentionBank/STI helpers and adjacent to PLN through rule/truth-value concepts, but it is not a PLN runtime and not a direct URE chainer.
+
+## A. Architecture Inventory
+
+### A1. File surface
+
+C1-11. The pinned tree contains 27 `opencog/openpsi/` files: README/CMake, four C++ class pairs (`OpenPsiImplicator`, `OpenPsiRules`, `OpenPsiSCM`, `OpenPsiSatisfier`), seven top-level Scheme files, and ten dynamics files. This matches the brief inventory and was verified by `git ls-tree -r --long b31c7e3 -- opencog/openpsi`.
+
+C1-12. The module entry point is `openpsi.scm`: it defines `(opencog openpsi)`, imports AtomSpace/execution/logger modules, exports Scheme and C++ primitives, loads `libopenpsi`, and then loads utilities, rule, action-selector, and main in that order. See opencog/openpsi/openpsi.scm:10-64.
+
+C1-13. The C++ extension exposes Scheme primitives for action execution status, categories, context/action/goal accessors, implication, rule creation, rule predicate, and satisfiability. See opencog/openpsi/OpenPsiSCM.cc:39-73.
+
+C1-14. The Python/Cython binding is present outside `opencog/openpsi/` at `opencog/cython/opencog/openpsi.pyx` and `openpsi.pxd`; it loads `(opencog openpsi)` on first construction and wraps rule creation, categories, goal creation, component creation, run/halt, and action selector assignment. See opencog/cython/opencog/openpsi.pyx:16-36, opencog/cython/opencog/openpsi.pyx:64-88, and opencog/cython/opencog/openpsi.pxd:1-39.
+
+### A2. Rule structure and storage
+
+C1-15. C++ rule structure is `ImplicationLink TV (AndLink context action) goal`. This is documented in the header and materialized in `OpenPsiRules::add_rule`; see opencog/openpsi/OpenPsiRules.h:36-47 and opencog/openpsi/OpenPsiRules.cc:35-52.
+
+C1-16. `OpenPsiRules::add_rule` constructs a cached PatternLink query from the context for satisfiability checking. It special-cases a single SatisfactionLink context for Ghost, otherwise wraps the context in an AndLink/PatternLink. See opencog/openpsi/OpenPsiRules.cc:54-76.
+
+C1-17. OpenPsi rules must be in the C++ cache/index to be considered valid; merely declaring a structurally similar atom in the AtomSpace is not enough. The header explicitly says structured but unindexed rules are not considered rules. See opencog/openpsi/OpenPsiRules.h:49-60.
+
+C1-18. Category indexing is static-ish and not learning-oriented: the header says recategorization is assumed not to happen dynamically for now. See opencog/openpsi/OpenPsiRules.h:143-149.
+
+C1-19. The code retains historical ontology naming concerns: comments say `OpenPsi:` prefixes may hurt interoperability and should be replaced by graph relationships. See opencog/openpsi/OpenPsiRules.h:136-141.
+
+### A3. Satisfiability and implication
+
+C1-20. `OpenPsiImplicator::check_satisfiability` clears any previous cache entry for the query body, marks the pattern as seen, runs PatternLink satisfaction with `OpenPsiSatisfier`, and returns crisp TRUE/FALSE depending on whether a grounding landed in the cache. See opencog/openpsi/OpenPsiImplicator.cc:38-63.
+
+C1-21. The boolean returned by the PatternLink search is explicitly not used because not all context types are handled by the callback. This is a runtime caveat in the C++ code. See opencog/openpsi/OpenPsiImplicator.cc:56-62.
+
+C1-22. `OpenPsiImplicator::imply` requires satisfiability to have been checked first. If a grounding exists, it instantiates the action and marks `action-executed` true; otherwise it marks false and returns undefined. See opencog/openpsi/OpenPsiImplicator.cc:65-93.
+
+C1-23. Action selection, not implication, is responsible for deciding what action to take. `imply` refuses to re-check satisfiability and says this responsibility belongs to the action selector. See opencog/openpsi/OpenPsiImplicator.cc:86-90.
+
+C1-24. `OpenPsiSatisfier::grounding` caches the first usable non-variable grounding and returns true. It explicitly does not handle separated component patterns, QuoteLink-like cases, or all `no_search` cases. See opencog/openpsi/OpenPsiSatisfier.cc:41-88.
+
+C1-25. The Scheme documentation agrees that satisfiability is currently crisp TRUE/FALSE, with weighted/probabilistic satisfiability only a later design point. See opencog/openpsi/openpsi.scm:157-170.
+
+### A4. Component loop and action selection
+
+C1-26. Components are described as mind-agent-like entities whose activities are defined by OpenPsi rules and action selectors. See opencog/openpsi/main.scm:31-35.
+
+C1-27. A component stores an action selector, loop flag, loop count, and a defined predicate loop in AtomSpace values. See opencog/openpsi/main.scm:38-88.
+
+C1-28. The default component action selector is `(GroundedSchema "scm: psi-get-satisfiable-rules")` over the component. This is the decisive default-loop evidence. See opencog/openpsi/main.scm:54-59.
+
+C1-29. `psi-run` starts a Guile thread that repeatedly evaluates the component loop, and a comment states the design assumes at most 100 steps/sec and may become a bottleneck. See opencog/openpsi/main.scm:91-114.
+
+C1-30. `psi-run-continue?` sleeps 10 ms every loop and has a FIXME that this is an obvious scheduling hack. See opencog/openpsi/main.scm:128-140.
+
+C1-31. `psi-step` increments loop count, calls `psi-select-rules`, and `par-map`s `psi-imply` over the returned rules. See opencog/openpsi/main.scm:185-213.
+
+C1-32. `psi-select-rules` executes the component's stored selector via `cog-execute!`, flattens ListLink/SetLink wrappers, and returns the resulting psi-rules. See opencog/openpsi/action-selector.scm:121-153.
+
+C1-33. C++ tests cover Scheme `psi-select-rules` and `psi-step` behavior, but they exercise satisfiable-rule selection, not STI-weighted selection. See tests/openpsi/OpenPsiSCMUTest.cxxtest:147-184 and tests/openpsi/OpenPsiSCMUTest.cxxtest:187-247.
+
+C1-34. The Python binding has a `set_action_selector` method that can set a component selector to a Python grounded schema. It is a generic extension hook and does not install STI weighting by itself. See opencog/cython/opencog/openpsi.pyx:64-73.
+
+C1-35. The Python `test_run_openpsi` test is skipped due to OpenCog issue 3532 at b31c7e3, so the Python loop wrapper should not be treated as fully green from this audit. See tests/cython/openpsi/openpsi_test.py:80-113.
+
+### A5. Goals, demands, and weights
+
+C1-36. Demands are represented as ConceptNodes inheriting from an OpenPsi demand node, with demand values stored in truth-value strength; comments warn that two conflicting storage approaches exist and can cause hard-to-find bugs. See opencog/openpsi/demand.scm:8-20 and opencog/openpsi/demand.scm:87-126.
+
+C1-37. Goals store current goal value and desired goal value as FloatValues, and `psi-urge` is `desired - current`. See opencog/openpsi/rule.scm:75-129.
+
+C1-38. `psi-context-weight` evaluates each context atom and returns a TV whose strength is the product of means and confidence is the minimum confidence. It cites a PLN conjunction formula and includes TODOs about using SequentialAndLink or caching. See opencog/openpsi/rule.scm:274-300.
+
+C1-39. The README's default-selector description is stale relative to code: it describes demand-associated weighted random selection, but b31c7e3 code assigns the default selector to all satisfiable rules for the component. Compare opencog/openpsi/README.md:105-139 with opencog/openpsi/main.scm:54-59 and opencog/openpsi/rule.scm:254-270.
+
+### A6. Dynamics / emotion / SEC subsystem
+
+C1-40. The dynamics updater is its own loop-like subsystem for modulators and parameters, not the same loop as `psi-step`. Its header says it executes rules when trigger entities change, with `psi-updater-run`/`psi-updater-halt` as the public use path. See opencog/openpsi/dynamics/updater.scm:1-30.
+
+C1-41. Dynamics config is hardcoded in the file: logging, verbose, single-step, sensitivity, max strength multiplier, expression-loop delay, and decay rate. See opencog/openpsi/dynamics/updater.scm:38-65.
+
+C1-42. `psi-updater-init` collects interaction rules, extracts monitored entities from change predicates, gathers modulators/SECs for logging, and records event timestamps. See opencog/openpsi/dynamics/updater.scm:114-177.
+
+C1-43. Each updater step detects events, detects changed monitored entities, evaluates all interaction rules, triggers delayed expression callbacks, decays modulators/SECs toward baselines, updates previous values, and resets event values. See opencog/openpsi/dynamics/updater.scm:181-199 and opencog/openpsi/dynamics/updater.scm:374-441.
+
+C1-44. Interaction rules are PredictiveImplication atoms from a change predicate to an ExecutionOutputLink calling `adjust-psi-var-level`. See opencog/openpsi/dynamics/interaction-rule.scm:9-39 and opencog/openpsi/dynamics/interaction-rule.scm:51-108.
+
+C1-45. `adjust-psi-var-level` computes a normalized alpha from trigger change, rule strength, and dynamics sensitivity, then applies an exponential curve with hardcoded slope 10000. An older tanh formula is commented out. See opencog/openpsi/dynamics/updater.scm:450-567.
+
+C1-46. Events are external-input oriented: an outside callback sets occurrence timestamps, and an event is set to value 1 for a single loop step. See opencog/openpsi/dynamics/event.scm:7-35 and opencog/openpsi/dynamics/event.scm:39-67.
+
+C1-47. Modulators include arousal, positive/negative valence, resolution-level, selection-threshold, securing-threshold, and goal-directedness, all initialized to 0.5. See opencog/openpsi/dynamics/modulator.scm:17-45 and opencog/openpsi/dynamics/modulator.scm:63-76.
+
+C1-48. SECs include novelty, goal-relevance, pleasantness, outcome-probability, surprise, agent-and-intention, control, power, adjustment, and standards, all initialized to 0.5 for agent-state defaults. See opencog/openpsi/dynamics/sec.scm:17-58 and opencog/openpsi/dynamics/sec.scm:79-98.
+
+C1-49. Emotion representation is minimal: `psi-create-emotion` creates a ConceptNode, puts it under the emotion node, and initializes value 0. See opencog/openpsi/dynamics/emotion.scm:4-21.
+
+## B. ECAN / STI Coupling
+
+C1-50. The only `cog-av-sti` occurrence within `opencog/openpsi/` at b31c7e3 is in `rule-sca-weight`. That function returns confidence x mean x STI for a rule. See opencog/openpsi/action-selector.scm:57-64.
+
+C1-51. `action-selector.scm` loads `(opencog attention-bank)` only if the module resolves; this makes the OpenPsi module loadable without AttentionBank installed. See opencog/openpsi/action-selector.scm:9-13.
+
+C1-52. The optional AttentionBank load was introduced by commit f091e9d0d979f415a0da92299c59914a38deabae (2018-05-14, Amen Belayneh), whose commit message says the module may not be installed for developers using AtomSpace before opencog/atomspace PR 1664.
+
+C1-53. `rule-sca-weight` and `cog-av-sti` were introduced into this action-selector lineage by commit e5bae708fa5b1e6a5a18ef6c2e4ca6a40f981d98 (2017-11-08/09, Amen Belayneh), "Cleanup openpsi action-selector functions", replacing older action-selector code.
+
+C1-54. That same e5bae708 diff removed/comment-cleaned older default-selector code that explicitly described dead code and an old `psi-default-action-selector`. It is the historical pivot where much older demand/action selector machinery was simplified.
+
+C1-55. At b31c7e3, no caller of `rule-sca-weight` or `pick-from-weighted-list` was found outside their definitions in `opencog/openpsi/action-selector.scm`. Supporting grep also found no tests/examples invoking them inside `tests/openpsi` or `tests/cython/openpsi`.
+
+C1-56. `openpsi.scm` does not export `rule-sca-weight`, `rule-sc-weight`, `pick-from-weighted-list`, or `sort-by-weight`; it exports only `psi-set-action-selector!`, `psi-action-selector`, and `psi-select-rules` from `action-selector.scm`. See opencog/openpsi/openpsi.scm:19-23.
+
+C1-57. The README states that STI is only future weight semantics: `STIcga = short-term-importance` with "Present value = 1". This confirms the code-level finding that the default rule-weight surface is not using STI at b31c7e3. See opencog/openpsi/README.md:141-162.
+
+C1-58. The broader b31c7e3 repo has real ECAN consumers outside this Source 1 scope, notably Ghost using `cog-av-sti`/`cog-af`; however, inside `opencog/openpsi/` the only direct ECAN read is the helper in C1-50.
+
+C1-59. No `cog-set-sti!`, `cog-af`, `cog-bind-af`, C++ `AttentionBank`, C++ `AttentionValue`, `getSTI`, or `setSTI` hit was found inside `opencog/openpsi/`, its Cython wrapper, or OpenPsi tests at b31c7e3.
+
+C1-60. Classification for ECAN coupling in Source 1: PRESENT-AS-OPTIONAL-HELPER / NOT-DEFAULT-RUNTIME. It is stronger than pure paper coupling but weaker than the earlier broad phrase "OpenPsi weights rules by STI."
+
+## C. PLN / URE Coupling
+
+C1-61. No `ForwardChainer`, `BackwardChainer`, `cog-fc`, or `cog-bc` usage was found in `opencog/openpsi/` at b31c7e3.
+
+C1-62. The only active URE module import in the OpenPsi source is `demand.scm` importing `(opencog ure)`. This file uses GetLinks and sorting around demands, but the audited source does not call URE chainer APIs. See opencog/openpsi/demand.scm:17-20 and opencog/openpsi/demand.scm:37-79.
+
+C1-63. The `opencog ure` import likely reflects historical module dependency after the rule-engine-to-URE rename rather than active chaining integration. Commit 0acdb0e77 ("Rename rule-engine by ure") changed many Scheme imports across PLN/examples/openpsi, including `opencog/openpsi/demand.scm`.
+
+C1-64. `OpenPsiRules.h` mentions `opencog::UREConfig` only as an analogous indexing approach that could be followed; the implemented path leaves rule declarations explicitly chosen by developers/agents/modules. See opencog/openpsi/OpenPsiRules.h:49-60.
+
+C1-65. README rule documentation says ImplicationLink was chosen because it allows PLN to be employed for uncertain contexts. This is a conceptual compatibility statement, not a runtime call into PLN. See opencog/openpsi/README.md:48-60.
+
+C1-66. `psi-context-weight` is the strongest direct PLN-formula borrowing: it cites a PLN conjunction rule and computes product/min context TV aggregation. It remains a local helper, not a call to PLN. See opencog/openpsi/rule.scm:274-300.
+
+C1-67. `openpsi.scm` docs state that current satisfiability returns TRUE/FALSE and later may return weighted/probabilistic values. This supports classifying the PLN relationship as planned/conceptual rather than implemented uncertain reasoning. See opencog/openpsi/openpsi.scm:157-170.
+
+C1-68. Classification for PLN/URE coupling in Source 1: NO DIRECT RUNTIME COUPLING. OpenPsi is adjacent to URE/PLN through module imports, comments, and truth-value idioms; it does not invoke the legacy URE chainer or PLN rule engine in the pinned OpenPsi tree.
+
+## D. Tradition Placement
+
+C1-69. OpenPsi should be placed in the Motivation/OpenPsi branch of the OpenCog Classic ecosystem, not under the Production PLN or ECAN-runtime branch. Its core abstraction is demand/goal/action rule selection with optional component action selectors.
+
+C1-70. Its ECAN relationship is an optional AttentionBank/STI weighting seam, not an ECAN currency economy. It reads no rent, wages, diffusion, Hebbian, AF membership, or AttentionBank update APIs inside `opencog/openpsi/`.
+
+C1-71. Its PLN relationship is rule/truth-value compatibility, not Local-Rule PLN execution. The local rule structure is `context + action -> goal`, not PLN deduction/induction/abduction rule application.
+
+C1-72. For the wiki's cluster map, Source 1 supports adding OpenPsi as an "Attention and Motivation" lineage that intersects Tradition 2 (historical ECAN/OpenCog control) via STI hooks, but it should not be described as ECAN-PLN integration.
+
+C1-73. The strongest practical bridge to broader OpenCog applications is likely Ghost/robot behavior, not PLN. This is out of Source 1 scope, but grep at b31c7e3 shows Ghost calling `psi-set-action-selector!` and using STI/AF APIs outside OpenPsi.
+
+## E. Volatility / Archaeology Flags
+
+C1-74. The action-selector API was heavily simplified in e5bae708. The diff removed large old commented/dead selector code and introduced the modern helper layout including `rule-sca-weight`.
+
+C1-75. AttentionBank became optional in f091e9d0. This is a strong signal that by 2018 the OpenPsi module had to tolerate AtomSpace installations without the AttentionBank module.
+
+C1-76. TruthValue accessor churn occurred on 2018-06-29: c6cffde50 changed `cog-tv-mean`/`cog-tv-confidence` to `cog-mean`/`cog-confidence`, and b2745ec91 reverted the action-selector file to the older accessors. The final b31c7e3 file uses direct `cog-confidence`/`cog-mean` on the rule. See opencog/openpsi/action-selector.scm:47-64.
+
+C1-77. Satisfiability/cache code was volatile in 2019. `git log -S satisfiability_cache -- opencog/openpsi` shows multiple June 2019 commits by Alexander Scherbatiy moving cache ownership and check behavior; final b31c7e3 state has `check_satisfiability` in `OpenPsiImplicator` and cache writes in `OpenPsiSatisfier`.
+
+C1-78. `OpenPsiImplicator::check_satisfiability` still has a multithreaded-access TODO at b31c7e3. See opencog/openpsi/OpenPsiImplicator.cc:41-50.
+
+C1-79. The README is materially stale relative to code. It references functions (`psi-select-rules-per-demand`, `psi-add-action-selector`, `psi-action-selector-set!`) that are not present in the b31c7e3 `action-selector.scm`/`main.scm` implementation. See opencog/openpsi/README.md:105-126.
+
+C1-80. The module exports stale or missing symbols: `openpsi.scm` exports `psi-get-all-weighted-satisfiable-rules` and `psi-action-weight`, but grep at b31c7e3 found no definitions in `opencog/openpsi/`. See opencog/openpsi/openpsi.scm:24-31.
+
+C1-81. The dynamics subsystem has a dependency-volatility marker from commit 9d28bac0f9084ac0a126e9f85e76a983d2e82e2c (2019-07-16, Linas Vepstas), whose message says "Many users of this obsolete file..." and changes `interaction-rule.scm` to import `(opencog attention)` for `PredictiveImplication`. Final b31c7e3 uses that import at opencog/openpsi/dynamics/interaction-rule.scm:41.
+
+C1-82. Dynamics updater code is explicitly prototype-grade in comments: hardcoded config should move to config, output logging is crude, and single-step mode "didn't seem to work well." See opencog/openpsi/dynamics/updater.scm:23-30, opencog/openpsi/dynamics/updater.scm:46-65, and opencog/openpsi/dynamics/updater.scm:437-441.
+
+C1-83. C++ OpenPsi tests are wired in CMake (`OpenPsiRulesUTest`, `OpenPsiImplicatorUTest`, `OpenPsiSCMUTest`), but this audit did not execute them. See tests/openpsi/CMakeLists.txt:1-10.
+
+C1-84. The Cython OpenPsi run test is skipped at b31c7e3, which should temper any claim that the Python surface was fully operational at the audit commit. See tests/cython/openpsi/openpsi_test.py:80-113.
+
+## Answer Matrix Against Brief Questions
+
+A1 architecture inventory: C1-11 through C1-14.
+A2 action selection architecture: C1-26 through C1-35.
+A3 rule firing / Implicator / Satisfier: C1-15 through C1-25.
+A4 demand/goal layer: C1-36 through C1-39.
+A5 dynamics/emotion/modulator/SEC: C1-40 through C1-49.
+A6 Python binding: C1-14, C1-34, C1-35, C1-84.
+
+B1 ECAN/STI coupling surface: C1-50 through C1-60.
+B2 action-selector default vs STI helper: C1-2 through C1-5, C1-55 through C1-57.
+B3 optional AttentionBank path: C1-51, C1-52, C1-75.
+B4 broader ECAN consumers outside Source 1: C1-58, C1-73.
+
+C1 PLN/URE direct coupling: C1-61 through C1-68.
+C2 conceptual PLN relationship: C1-65 through C1-67.
+C3 rule-engine/URE rename history: C1-62, C1-63.
+
+D1 tradition placement: C1-69 through C1-73.
+D2 wiki narrative correction: C1-5, C1-60, C1-72.
+
+E1 volatility flags: C1-74 through C1-84.
+E2 stale docs/API flags: C1-79, C1-80.
+E3 build/test caveats: C1-83, C1-84.
+
+## Reconciliation Watchpoints for Claude/Gemini
+
+C1-85. If another lane reports "OpenPsi weights rules by STI", reconcile against the caller evidence: `rule-sca-weight` is present and historical, but the default component selector is `psi-get-satisfiable-rules`, and no packaged caller of `rule-sca-weight` was found at b31c7e3.
+
+C1-86. If another lane reports "no ECAN coupling", reconcile against the helper evidence: `rule-sca-weight` does read `cog-av-sti`, and action-selector.scm optionally loads `(opencog attention-bank)`.
+
+C1-87. If another lane treats the README as authoritative for weighted action selection, prefer code over README. The README is stale in multiple places at b31c7e3.
+
+C1-88. If another lane treats `(opencog ure)` import as OpenPsi-URE integration, require a concrete chainer/API call. This audit found only the module import plus conceptual UREConfig analogy.
+
+C1-89. If another lane elevates OpenPsi dynamics to production emotion runtime, check Source 4 Hanson/fork archaeology. Source 1 shows a runtime-shaped dynamics subsystem but also hardcoded parameters, TODOs, crude logging, and no Hanson-specific integration in this scoped audit.
+

@@ -1,0 +1,238 @@
+# Source 3 -- OpenPsi Papers / Foundations -- Cross-Model Reconciliation
+
+**Cluster:** OpenPsi / Motivation pilot, Source 3 of 4
+**Source target:** Foundational and lineage papers cited by the OpenPsi codebase (2011 AGI-11 Cai/Goertzel/Geisweiller, 2013 EAAI Cai/Goertzel/Zhou et al., 2011 Cognitive Systems Research Cai/Goertzel/Zhou/Zhang/Jiang/Yu, MetaMo One, MetaMo Two)
+**Reconciliation date:** 2026-04-28 (orchestrator-written immediately after Codex extraction-pass close; Gemini extraction completed 2026-04-28 prior to Codex)
+
+**Models reconciled:**
+- **Codex single-pass** -- `findings_codex.txt` (78 numbered claims `C3-1` through `C3-78`, ~12 KB; per-equation paper-vs-code verification using both wiki RawData reads (IDs 3168, 3552, 3761, 3763, 3828, 3829) and local code reads with `git show`/`git grep` against canonical hyperon-openpsi `3b356c5`).
+- **Gemini single-pass** -- `findings_gemini.txt` (forwarded inline by user, ~3.5 KB; tabular formula-vs-code verification of 5 prominent equations + tradition decision + MetaMo/LLM anchor + volatility flag).
+- **Orchestrator cross-checks** -- direct `git grep` against canonical for eq (11) absence and `git show` for eq (5)/(8) denominator structure to settle V3-1 dissent.
+
+**Coverage note:** Two-model + orchestrator-cross-check, same shape as Sources 1-2. Both models converged on paper identity, the 2013 EAAI paper presence in chunks 3828/3829, and most equation literal-matches. They diverged on equation count and tradition placement (V3-1 below). The V3-1 dissent is a "Gemini correct on what it checked, but incomplete" pattern -- Codex's deeper formula-by-formula audit found 1 absent + 2 divergent equations Gemini did not surface.
+
+**Brief:** `scripts/archive/openpsi_pilot/source3_papers_brief.txt` (corrections applied 2026-04-28 per Codex review: mojibake purged, web-retrieval rule made orchestrator-only, methodology rule #8 added "do NOT trust code comments as source attribution").
+
+---
+
+## Cross-model consensus (both Codex and Gemini agree)
+
+### Paper identity (A1-A4) -- V2-2 RESOLVED
+
+- **The 2013 video-games paper is `RawData+Publications+Openpsi Zhenhua+chunk-1` (ID 3828) + chunk-2 (ID 3829)**, mislabeled by an inherited Mattermost filename. Verbatim from chunk-1 position 72: *"OpenPsi: A novel computational affective model and its application in video games -- Zhenhua Cai, Ben Goertzel, Changle Zhou, Deheng Huang, Shujing Ke, Gino Yu, Min Jiang -- Engineering Applications of Artificial Intelligence 26 (2013) 1-12 -- DOI 10.1016/j.engappai.2012.07.013"*. Orchestrator-verified via `find_in_card` 2026-04-28.
+- **No external web retrieval was needed.** The "2013 video-games paper" was on the wiki all along under the misleading "Openpsi Zhenhua" RawData label.
+- **`RawData+Publications+OpenPsi Cognitive Model` (ID 3168) is a DIFFERENT 2011 paper**: "Realizing Doerner's Psi Cognitive Model in the OpenCog Integrative AGI Architecture" -- Cai/Goertzel/Geisweiller, AGI-11 LNAI Springer. Conceptual integration paper, NOT the formula source.
+- **`Publications+PSI Affective Dynamics` (ID 3096) is a 2011 Cognitive Systems Research paper** with a Markdown stub but NO RawData full text in scope -- equation verification against this paper is not possible from current corpus.
+- **MetaMo One (ID 3552)** = "MetaMo: A Robust Motivational Framework for Open-Ended AGI" by Goertzel/Lian. Formal/category-theoretic theory paper. Not an equation source.
+- **MetaMo Two (IDs 3761/3763 -- duplicates)** = "Embodying Abstract Motivational Principles in Concrete AGI Systems: From MetaMo to Open-Ended OpenPsi" by Goertzel/Lian. Architecture-level positioning of OpenPsi as appraisal/comonad layer. Not an equation source either.
+
+**Cluster-narrative impact:** V2-2 dissent ("2011 vs 2013 paper") is fully resolved. Both citations target the same 2013 paper -- Gemini's "2011" framing was wrong; Codex's verbatim code-comment "2013" framing was correct. The corpus-resident text is the canonical formula source.
+
+### Equation literal-matches (B1-B5) -- consensus on the high-prominence 5
+
+Both models agree these MeTTa code passages are LITERAL matches to 2013 paper formulas:
+
+| 2013 Paper Eq | Mechanism | MeTTa Code (file:line at `3b356c5`) | Status |
+|:-:|---|---|---|
+| Eq (1) | Demand satisfaction piecewise (with random terms) | `main/demand/demand.metta:154-168` | **LITERAL** -- random terms paper-faithful, NOT engineered noise |
+| Eq (2) | `fuzzy_equal(x,t,a) = 1/(1+a*(x-t)^2)` | `psi-utilities/psi_utils.metta:2-4` | **LITERAL** |
+| Eq (10) | Activation = `S_comp/(S_comp+0.5) * S_en/(S_en+0.05)` | `main/mind-agents/modulator-updater/modulator-updaters.metta:1-5` | **LITERAL** |
+| Eq (12) | Securing threshold = `S_cert/(S_cert+0.05) * S_int^3` | `main/mind-agents/modulator-updater/modulator-updaters.metta:8-12` | **LITERAL** (formula) |
+| Eq (13) | Selection threshold = `fuzzy_equal(S_comp, 1, 15)` | `main/mind-agents/modulator-updater/modulator-updaters.metta:15-18` | **LITERAL** |
+
+### Classic-baseline divergence (C2-C3 cross-cluster comparison)
+
+Both models agree the **Classic OpenPsi C++/Scheme baseline at `b31c7e3` did NOT implement the 2013 paper's modulator equations literally**. Classic's `dynamics/updater.scm` used:
+- Slope-based exponential scaling: `new = (slope^(a*x) - 1) / (slope^a - 1)`
+- Hardcoded slope 10000
+- Older `tanh` formula commented out
+
+This is **distinct** from the 2013 paper's fractional-helper formulas. The MeTTa port commit `01936f1` (2026-02-24, Mahider-n) "align activation, securing, resolution, and selection formulas with OpenPsi paper (eq. 10-13)" was a **paper-facing repair** moving away from the Classic surrogate -- the opposite pattern from ECAN MeTTa port (which faithfully preserved Classic surrogates).
+
+**This is a Source-1-relevant retroactive finding** that Source 1 did NOT excavate (Source 1 audited Classic OpenPsi but did not surface the slope-based exponential as a paper-divergent surrogate). Document for cluster-close synthesis or Source 4 pickup.
+
+### MetaMo + LLM anchor (D1-D3)
+
+- **MetaMo One** is theory/category-theoretic; references concrete OpenPsi as a sequel-paper grounding. Not the formula source.
+- **MetaMo Two** positions OpenPsi as appraisal/comonad layer, MAGUS as decision/goal layer, integrated into Hyperon/PRIMUS. References Cai 2011/2013 as concrete OpenPsi root.
+- **Curious-agent's hybrid LLM+MeTTa pattern is engineering-side, NOT paper-derived.** Closest paper-level analog is the 2013 paper's `MonitorChangesMindAgent` "heuristic hints" concept -- structural inspiration, not literal realization. Codex C3-57: "best classified as Hyperon-era engineering / application wrapper, not a literal OpenPsi or MetaMo paper implementation."
+- **Repo-level LLM hook** at `psi-utilities/miner.metta:11-18` confirms LLM integration is a deliberate architectural pattern, not just a curious-agent feature.
+
+### MeTTa Two duplicate confirmation (Codex-only)
+
+Codex C3-53: IDs 3761 and 3763 are duplicates of the same MetaMo Two paper from different Mattermost source filenames. Cluster-close should de-duplicate.
+
+---
+
+## Cross-model dissent (V3-N)
+
+### V3-1 -- Equation-count and tradition placement (CRITICAL DISSENT)
+
+**The headline reconciliation question. Determines whether OpenPsi MeTTa port qualifies as Tradition 6 (paper-faithful) or remains a hybrid sub-branch.**
+
+**Gemini section 2/3:**
+> "The MeTTa port (Source 2) is **LITERAL** in its mapping of the 2013 paper formulas, whereas the Classic C++ baseline (Source 1) was **DIVERGENT**." [Five-equation table covering Eqs (1), (2), (10), (12), (13).]
+> "Verdict: **Tradition 6 (Paper-Faithful Re-implementation).**"
+
+**Codex C3-4 / C3-5 / C3-43 / C3-46 / C3-47 / C3-72:**
+> "Core equation verdict: the MeTTa port is **partly** paper-literal, not completely paper-literal."
+> "Tradition verdict: classify the current MeTTa port as **HYBRID / PAPER-LEANING REIMPLEMENTATION**, not full 'Tradition 6' yet."
+> "If counted strictly across paper equations (1)-(13): literal (1, 2, 6, 7, 9, 10, 12, 13), divergent (5, 8), absent (11), not checked/irrelevant to MeTTa helper question (3, 4)."
+
+**[Claude orchestrator, repo-verified]** Three orchestrator-side checks against canonical `3b356c5`:
+
+**Check 1: eq (11) resolution_level absence in active modulator updater.**
+
+```
+$ git -C hyperon-openpsi grep -n "resolution\|sqrt" -- "main/mind-agents/modulator-updater/modulator-updaters.metta"
+[NO MATCHES]
+```
+
+Verified ABSENT. The active modulator updater computes activation, securing-threshold, and selection-threshold but does NOT recompute resolution-level from activation. Paper eq (11) `resolution_level = 1 - sqrt(activation)` is unimplemented in the active updater.
+
+**Check 2: eq (5) certainty demand denominator.**
+
+`git show HEAD:main/mind-agents/demand-updater/demand-updaters.metta` lines 40-55 verbatim:
+
+```metta
+; Certainity demand updater
+(: CertaintyDemandUpdater (-> Expression Number  Number))
+(= (CertaintyDemandUpdater $lst  $ts)
+
+    (let* (
+            ($summation (sum-fuzzy-new $lst $ts ))
+            ($object-num (size-atom $lst))
+            ($rand (rand-float))
+            ($x (exp (* -0.05  $object-num)))
+        )
+    (/ (+ $summation $rand)
+        (+ 1 (* $x (+ 1  $object-num)))))
+)
+```
+
+Code denominator: `(+ 1 (* $x (+ 1 $object-num)))` = `1 + exp(-0.05*n) * (1+n)`.
+Paper denominator (per Codex C3-20 paper text): `(1 + exp(-0.05*n)) * (n+1)`.
+
+These are NOT algebraically equal:
+- Paper:  `(1 + e) * (1+n)` = `1+n + e + en`
+- Code:   `1 + e*(1+n)` = `1 + e + en`
+
+Difference: paper has `+n` term that code lacks. **DIVERGENT confirmed.**
+
+**Check 3: eq (8) affiliation demand denominator.**
+
+`git show HEAD:main/mind-agents/demand-updater/demand-updaters.metta` lines 57-69 verbatim:
+
+```metta
+; Affiliation Demand Updater
+(: AffiliationDemandUpdater (-> Expression  Number Number))
+(= (AffiliationDemandUpdater  $lst  $d-max)
+    (let* (
+            ($summation (sum-fuzzy-near $lst $d-max ))
+            ($friend-num (size-atom $lst))
+            ($rand (rand-float))
+            ($x (exp (* -0.1  $friend-num)))
+        )
+    (/ (+ $summation $rand)
+        (+ 1 (* $x (+ 1  $friend-num))))
+))
+```
+
+Same parenthesization as eq (5). **DIVERGENT confirmed.**
+
+**Resolution: Codex's HYBRID / PAPER-LEANING verdict is correct.** Gemini's "Tradition 6 fully paper-faithful" verdict is **incomplete** -- Gemini verified the 5 most prominent equations (which are literal) but did NOT check:
+- Whether eq (11) resolution_level is implemented (Codex found ABSENT)
+- Whether the denominators of eqs (5) and (8) are algebraically equivalent to the paper (Codex found DIVERGENT due to parenthesization)
+- Whether `modulatorUpdaterAgent` supplies time-varying state to `SecuringThresholdHelper` (Codex C3-42 found `certanity=0.5, integrity=0.5` hardcoded -- formula-literal but state-feed partial)
+
+**Reconciled equation tally:**
+
+| Status | Eqs | Code locations |
+|---|---|---|
+| **LITERAL** | (1), (2), (6), (7), (9), (10), (12), (13) | demand.metta:154-168; psi_utils.metta:2-4; demand-updaters.metta:8-14, 17-23, 72-76; modulator-updaters.metta:1-5, 8-12, 15-18 |
+| **DIVERGENT** (parenthesization) | (5), (8) | demand-updaters.metta:41-52 (certainty); 57-69 (affiliation) |
+| **ABSENT** (no implementation) | (11) | modulator-updaters.metta -- not in active updater |
+| **STRUCTURAL** (table-aligned) | (14)-(17) | feeling-updaters.metta:47-68, 83-96, 107-185, 188-230 |
+| **PARTIAL** (formula literal, state feed hardcoded) | (12) caller | modulator-updaters.metta:20-23 hardcodes certanity=0.5, integrity=0.5 |
+| **NOT CHECKED** | (3), (4) | target-range update equations -- different formula family, not the modulator-helper question |
+
+**Reconciled tradition status: HYBRID / PAPER-LEANING REIMPLEMENTATION.** Classic OpenPsi (Source 1) was Tradition-2-style surrogate-faithful. Hyperon-era MeTTa port (Source 2) is **substantially paper-corrected** -- 8 of 11 paper-relevant equations are literal, 4 of 4 modulator-helper formulas are literal -- but is **NOT cleanly paper-faithful**: 1 paper equation absent, 2 paper equations have parenthesization-bug-style divergence in denominators, and at least 1 caller (modulatorUpdaterAgent) hardcodes inputs the paper treats as state. **Avoid declaring Tradition 6** until these gaps close. Adopt Codex's wording for cluster narrative: *"OpenPsi MeTTa is a paper-leaning active reimplementation in the motivation/OpenPsi lineage, with several literal 2013-paper formula repairs, but still partial and hybrid."*
+
+### V3-2 -- Demand-updater eqs. 6/7/9 literal status (Codex-only finding, no dissent)
+
+Codex C3-22-C3-29 verified that demand-updater equations (6) `fuzzy_new`, (7) `competence`, and (9) `fuzzy_near` are LITERAL paper matches in `demand-updaters.metta:8-14, 72-76, 17-23`. Gemini did not include these in the 5-equation table but did not contradict them. **No dissent; documenting as Codex-only completeness.**
+
+### V3-3 -- Emotion equations (14)-(17) classification
+
+Codex C3-38-C3-39 classifies the feeling-updater as **STRUCTURAL MATCH** (not literal) to paper equations (14)-(17): same indicator categories H/L/M/EL/EH/U, same Table 2 framework, but not strict line-for-line code-vs-paper. Gemini did not address. **No dissent; documenting as Codex's reclassification of (14)-(17).** Future cluster-close reconciliation may want to verify whether STRUCTURAL or LITERAL.
+
+---
+
+## Methodology rule reinforcement (Source 3 V3-1 driven)
+
+The V3-1 pattern -- Gemini correct on what it checked but incomplete -- reinforces the brief's methodology rule #8 (do not trust code comments as source attribution) AND adds an implicit corollary:
+
+**Implicit corollary: equation-presence verification must be exhaustive across all paper-relevant equations, not selective.** Gemini verified 5 of the 11 paper-relevant equations (Eqs 1, 2, 10, 12, 13 -- the most prominent ones). Codex verified 11 of the 11 (plus the absent eq 11). Selective verification on the most-prominent formulas missed the parenthesization-bug-style divergences in eqs (5)/(8) and the absence of eq (11) entirely.
+
+For Source 4 (Hanson) and future cluster-pilot equation work: agents must enumerate the full set of paper equations relevant to the audit subset, then check each one. "We checked the main equations" is not equivalent to "we checked all paper equations."
+
+---
+
+## Open questions for Source 4 (Hanson / fork archaeology)
+
+(Aggregated from Codex C3-74/C3-75 + V3-1 implications.)
+
+1. **Did Hanson/older OpenCog OpenPsi implement eq (11) resolution_level?** If yes, the Hyperon-era MeTTa port REGRESSED on that equation specifically while paper-aligning others. If no, the absence dates to early OpenPsi history and was not introduced in Hyperon transition.
+2. **Did Hanson/older OpenCog OpenPsi have the eqs (5)/(8) denominator parenthesization with the paper's `(1 + exp(...)) * (n+1)` structure?** If yes, the MeTTa port introduced a new bug; if no, the bug existed throughout and was inherited.
+3. **Hardcoded certainty/integrity = 0.5 in `modulatorUpdaterAgent`** -- does Hanson have a parallel hardcoding pattern, or did Hanson supply time-varying state? Per Gemini's preserved Source 4 subgoal: examine whether Hanson had a more runtime-functional emotion/dynamics subsystem.
+4. **Discovered Source 1 retroactive item:** Classic OpenPsi's slope-based exponential `(slope^(a*x)-1)/(slope^a-1)` in `dynamics/updater.scm` (Gemini's discovery) was not surfaced in Source 1 reconciliation. Should be acknowledged as Source-1-relevant retroactive context in Source 4 or cluster-close synthesis.
+
+## Open questions for cluster-close
+
+1. **Wiki edit: relabel "Openpsi Zhenhua" RawData parent.** Codex C3-9 / C3-76: cluster-close edit should correct the misleading "Openpsi Zhenhua" RawData label with an editorial note or a properly-named Publications card pointing to chunks 3828/3829 (e.g., `Publications+OpenPsi Computational Affective Model` or `Publications+OpenPsi Video Games`).
+2. **Wiki edit: deduplicate MetaMo Two cards (IDs 3761 and 3763).** Codex C3-53.
+3. **Wiki edit: add 2011 Cognitive Systems Research paper RawData** if equation verification against that paper becomes relevant for any future Source. Currently a source-text gap (Codex C3-61 / C3-3).
+4. **Wiki narrative: do NOT use the phrase "paper-faithful Tradition 6" without explicit qualification.** Use "paper-leaning hybrid reimplementation in the motivation/OpenPsi lineage" or similar.
+
+---
+
+## Cluster-position summary (Source 3)
+
+1. **2013 paper identified.** Codex's `feed-back-loop.metta:139-140` verbatim citation was 100% correct. The paper has been on the wiki all along under the misleading "Openpsi Zhenhua" RawData label (chunks 3828, 3829). No external retrieval needed.
+
+2. **Equation tally (paper-vs-code at canonical `3b356c5`):**
+   - 8 paper equations LITERAL: (1), (2), (6), (7), (9), (10), (12), (13).
+   - 2 paper equations DIVERGENT (parenthesization): (5), (8).
+   - 1 paper equation ABSENT: (11) resolution_level.
+   - 4 emotion equations STRUCTURAL: (14)-(17).
+   - 1 PARTIAL state-feed: eq (12) caller hardcodes inputs paper treats as state.
+   - 2 NOT CHECKED: (3), (4) target-range updates (different formula family).
+
+3. **Tradition placement: HYBRID / PAPER-LEANING REIMPLEMENTATION.** Substantially paper-corrected versus Classic baseline, but NOT cleanly paper-faithful. AVOID "Tradition 6" label without explicit qualification. Reconciled wording: *"OpenPsi MeTTa is a paper-leaning active reimplementation in the motivation/OpenPsi lineage, with several literal 2013-paper formula repairs, but still partial and hybrid."*
+
+4. **Cross-cluster comparison locked.** ECAN MeTTa port preserved Classic surrogates (Tradition 2 sub-branch). OpenPsi MeTTa port shed Classic surrogates and adopted paper formulas where it could -- a different pattern, but incomplete.
+
+5. **Curious-agent LLM-hybrid is engineering-side**, not paper-derived. The 2013 paper's `MonitorChangesMindAgent` "heuristic hints" concept is the closest paper-level analog (inspiration, not literal). Repo-level `query_llm` hook at `psi-utilities/miner.metta:11-18` is a deliberate Hyperon-era architectural pattern.
+
+6. **MetaMo papers position OpenPsi architecturally** but do not provide the formulas the MeTTa port implements. MetaMo One is theoretical; MetaMo Two is integration-architectural; both reference the 2013 EAAI paper as the OpenPsi formula root.
+
+7. **New methodology corollary (V3-1 driven):** equation-presence verification must enumerate all paper-relevant equations exhaustively, not selectively. Selective verification on prominent formulas misses parenthesization-bugs and absence-of-equations.
+
+8. **Source 1 retroactive note:** Classic OpenPsi's slope-based exponential in `dynamics/updater.scm` is a paper-divergent surrogate (Gemini-discovered) that Source 1 did not surface. Document at cluster-close.
+
+---
+
+## Reconciliation result
+
+Source 3 reconciled. One V3-N dissent:
+- **V3-1** (Tradition placement): both lanes correct on what they checked, but Gemini's verification was incomplete. Codex's broader sweep + orchestrator verification on eq (11) absence and eqs (5)/(8) denominators settles in favor of HYBRID / PAPER-LEANING REIMPLEMENTATION. AVOID "Tradition 6" label.
+
+V2-2 (paper identity 2011 vs 2013) and V2-3 (Tradition placement deferral) are both fully resolved at Source 3. Source 4 (Hanson/fork archaeology) carries forward the eq (11) / eqs (5)+(8) / hardcoded-state questions to determine whether these gaps are Hyperon-era MeTTa-port introductions or inherited from older OpenCog history.
+
+**No wiki edits performed in this reconciliation pass.** Cluster-pilot edit phase deferred until Source 4 closes. Wiki-edit backlog (relabel "Openpsi Zhenhua", dedupe MetaMo Two) tracked at cluster-close.
+
+**No repo file edits performed** (read-only access to all paper RawData and to canonical hyperon-openpsi).
+
+---
+
+*End of Source 3 reconciliation. OpenPsi cluster pilot Source 3 extraction phase CLOSED. Awaiting cluster-narrative review before launching Source 4 (Hanson / fork archaeology).*

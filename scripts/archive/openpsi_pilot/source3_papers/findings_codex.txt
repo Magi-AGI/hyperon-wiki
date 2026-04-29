@@ -1,0 +1,216 @@
+# Source 3 - OpenPsi papers / foundations - Codex findings
+
+Pilot: OpenPsi / motivation cluster
+Source target: foundational and lineage papers cited by OpenPsi code
+Date: 2026-04-28
+Agent: Codex
+Mode: read-only extraction; no wiki writes; no web browsing; no target-repo edits
+
+Files/cards read:
+- Brief: scripts/archive/openpsi_pilot/source3_papers_brief.txt
+- Gemini lane: scripts/archive/openpsi_pilot/source3_papers/findings_gemini.txt
+- Wiki RawData ID 3168: RawData+Publications+OpenPsi Cognitive Model
+- Wiki RawData ID 3828: RawData+Publications+Openpsi Zhenhua+chunk-1
+- Wiki RawData ID 3829: RawData+Publications+Openpsi Zhenhua+chunk-2
+- Wiki RawData ID 3761: RawData+Publications+MetaMo Two
+- Wiki RawData ID 3763: RawData+Publications+MetaMo Two (1)
+- Wiki RawData ID 3552: RawData+Publications+AGI 25 METAMO One
+- Wiki Draft cards 7364, 7367; Markdown card 3096
+- Local code at E:/GitHub/hyperon reference/hyperon-openpsi, HEAD 3b356c5
+- Local Classic baseline snippets from E:/GitHub/hyperon reference/opencog-singnet at b31c7e3
+
+Executive summary
+=================
+
+C3-1. The "2013 video-games paper" is not a missing external source. It is present on the wiki under a misleading RawData name: `RawData+Publications+Openpsi Zhenhua+chunk-1` (ID 3828) and chunk 2 (ID 3829). The paper title is "OpenPsi: A novel computational affective model and its application in video games", by Zhenhua Cai, Ben Goertzel, Changle Zhou, Deheng Huang, Shujing Ke, Gino Yu, and Min Jiang, Engineering Applications of Artificial Intelligence 26 (2013) 1-12, DOI 10.1016/j.engappai.2012.07.013.
+
+C3-2. `RawData+Publications+OpenPsi Cognitive Model` (ID 3168) is a different 2011 AGI paper: "OpenPsi: Realizing Doerner's 'Psi' Cognitive Model in the OpenCog Integrative AGI Architecture", by Zhenhua Cai, Ben Goertzel, and Nil Geisweiller. It is the conceptual OpenCog/OpenPsi integration precursor, not the source of equations (1)-(17).
+
+C3-3. The wiki card `Publications+PSI Affective Dynamics` (ID 3096) is only a Markdown stub for a 2011 Cognitive Systems Research paper and has no RawData full text available in this scoped pass. It should not be used for equation verification until source text is retrieved.
+
+C3-4. Core equation verdict: the MeTTa port is partly paper-literal, not completely paper-literal. It literally implements the 2013 paper's demand satisfaction equation (1), fuzzy_equal equation (2), modulator equations (10), (12), and (13), plus demand-updater equations (6), (7), and (9). It does not implement resolution equation (11) in the current modulator updater, and its certainty/affiliation demand-updater denominators diverge from paper equations (5) and (8).
+
+C3-5. Tradition verdict: classify the current MeTTa port as HYBRID / PAPER-LEANING REIMPLEMENTATION, not full "Tradition 6" yet. It clearly differs from the ECAN pattern by deliberately re-literalizing several paper formulas, but the missing resolution equation, hardcoded certainty/integrity, and denominator mismatch in two demand-updater equations prevent a clean "paper-faithful reimplementation" classification.
+
+C3-6. Gemini's strong "5 literal equations" finding is correct for the formulas it listed, but incomplete. It did not account for equation (11) or the denominator mismatch in equations (5) and (8). These are reconciliation-critical.
+
+A. Paper identity disambiguation
+================================
+
+C3-7. ID 3828 chunk 1 begins with the exact 2013 title, authors, journal, received/accepted dates, keywords, and abstract. It is the direct paper named by the code comment at `main/feed-back-loop/feed-back-loop.metta:139-140`.
+
+C3-8. ID 3829 chunk 2 contains the tail of the 2013 paper and references. It confirms the paper's acknowledgments and reference list, including Bach, Doerner, Lewis, OpenCogBot, and game/NPC emotion-modeling references.
+
+C3-9. The "Openpsi Zhenhua" RawData label is a wiki naming problem, not a paper-identity problem. The card title should be corrected or cross-linked at cluster-close to make clear that it is the 2013 Engineering Applications of Artificial Intelligence paper.
+
+C3-10. ID 3168 is not the same as ID 3828/3829. ID 3168 is AGI-11, with authors Cai/Goertzel/Geisweiller; ID 3828/3829 is the 2013 EAAI paper with the larger Cai/Goertzel/Zhou/Huang/Ke/Yu/Jiang author list.
+
+C3-11. ID 3168 contains high-level OpenCog compatibility claims: OCP memory types include PLN and ECAN; cognitive schematics are represented as Context and Procedure implying Goal; planning is integrated with PLN/MOSES/hillclimbing; OpenPsi maps Psi motivation into OpenCog. It does not provide the numeric equations implemented by the MeTTa modulator updater.
+
+C3-12. The 2013 paper's Section 4.3 is the local source for the formulas implemented in MeTTa. It defines demand satisfaction equations (1)-(2), target-range update equations (3)-(4), demand-level equations (5)-(9), modulator equations (10)-(13), and emotion-intensity equations (14)-(17).
+
+C3-13. The code comments "Ben's Paper" and "OpenPsi ... Video Games ... (2013)" are verified for the formulas in `demand.metta`, `demand-updaters.metta`, and `modulator-updaters.metta`, but only after direct comparison against ID 3828. The comments alone should not have been treated as evidence.
+
+C3-14. No new external publication needs to be fetched for the 2013 video-games paper. The needed source text is already present as RawData chunks 3828 and 3829.
+
+B. Equation verification
+========================
+
+C3-15. Paper equation (1), demand satisfaction, is present in ID 3828 Section 4.3. In normalized ASCII, it is:
+`S_d(L,min_l,max_l,a) = fuzzy_equal(L,min_l,a) if L < min_l; 0.9 + 0.1 random(0,1) if L > max_l; 0.8 + 0.2 random(0,1) otherwise.`
+
+C3-16. MeTTa `calculateDemandSatisfaction` is a literal semantic match to paper equation (1). Code lines: `main/demand/demand.metta:154-168`. It uses `0.8 + 0.2 * random(0,1)` inside range, `fuzzy_equal current min alpha` below min, and `0.9 + 0.1 * random(0,1)` above max.
+
+C3-17. The random terms in `calculateDemandSatisfaction` are paper-literal, not engineered noise. The 2013 paper explicitly includes random(0,1) in equation (1).
+
+C3-18. Paper equation (2), fuzzy_equal, is:
+`fuzzy_equal(x,t,a) = 1 / (1 + a * (x - t)^2)`.
+
+C3-19. MeTTa `fuzzy_equal` is a literal match to paper equation (2): `(/ 1 (+ 1 (* $a (* (- $x $t) (- $x $t)))))` at `psi-utilities/psi_utils.metta:2-4`.
+
+C3-20. Paper equation (5), certainty demand level, is:
+`L_certainty = (sum_i fuzzy_new(t_i,t_s) + random(0,1)) / ((1 + exp(-0.05*object_num)) * (object_num + 1))`.
+
+C3-21. MeTTa `CertaintyDemandUpdater` is not a literal match to paper equation (5). Code lines: `main/mind-agents/demand-updater/demand-updaters.metta:41-52`. The code denominator is `1 + exp(-0.05*object_num) * (object_num + 1)`, because it computes `(+ 1 (* $x (+ 1 $object-num)))`. The paper denominator is `(1 + exp(...)) * (object_num + 1)`. Classification: DIVERGENT DENOMINATOR / likely parenthesization bug or OCR/code transcription drift.
+
+C3-22. Paper equation (6), fuzzy_new, is:
+`fuzzy_new(t_i,t_s) = 2 / (1 + exp(0.002*(t_s - t_i)))`.
+
+C3-23. MeTTa `fuzzy-new` is a literal match to paper equation (6): `(/ 2 (+ 1 (exp (* 0.002 (- $ts $ti)))))` at `main/mind-agents/demand-updater/demand-updaters.metta:8-14`.
+
+C3-24. Paper equation (7), competence, is:
+`L_competence = n_s / (n_s + n_f^(3/2))`.
+
+C3-25. MeTTa `CompetenceDemandUpdater` is a literal match to paper equation (7): `(/ $plan-done-number (+ $plan-done-number (pow-math $plan-failed-number 1.5)))` at `main/mind-agents/demand-updater/demand-updaters.metta:72-76`.
+
+C3-26. Paper equation (8), affiliation, is:
+`L_affiliation = (sum_i fuzzy_near(d_i,d_max) + random(0,1)) / ((1 + exp(-0.1*friend_num)) * (friend_num + 1))`.
+
+C3-27. MeTTa `AffiliationDemandUpdater` is not a literal match to paper equation (8). Code lines: `main/mind-agents/demand-updater/demand-updaters.metta:57-69`. The code denominator is `1 + exp(-0.1*friend_num) * (friend_num + 1)`, not `(1 + exp(...)) * (friend_num + 1)`. Classification: DIVERGENT DENOMINATOR / same issue as equation (5).
+
+C3-28. Paper equation (9), fuzzy_near, is:
+`fuzzy_near(d_i,d_max) = 1 / (1 + 0.00015*(d_i - d_max))`.
+
+C3-29. MeTTa `fuzzy-near` is a literal match to paper equation (9): `(/ 1 (+ 1 (* 0.00015 (- $di $dmax))))` at `main/mind-agents/demand-updater/demand-updaters.metta:17-23`.
+
+C3-30. Paper equation (10), activation, is:
+`activation = S_competence/(S_competence + 0.5) * S_energy/(S_energy + 0.05)`.
+
+C3-31. MeTTa `ActivationHelper` is a literal match to paper equation (10): `main/mind-agents/modulator-updater/modulator-updaters.metta:1-5`.
+
+C3-32. Paper equation (11), resolution_level, is:
+`resolution_level = 1 - sqrt(activation)`.
+
+C3-33. I found no current MeTTa implementation of paper equation (11) in `main/mind-agents/modulator-updater/modulator-updaters.metta`. Repo grep for resolution/sqrt shows resolution-level is stored and used by feeling-updater, but not recomputed by the modulator updater from activation. Classification: ABSENT from the active modulator updater.
+
+C3-34. Paper equation (12), securing_threshold, is:
+`securing_threshold = S_certainty/(S_certainty + 0.05) * S_integrity^3`.
+
+C3-35. MeTTa `SecuringThresholdHelper` is a literal formula match to paper equation (12): `main/mind-agents/modulator-updater/modulator-updaters.metta:8-12`. However, `modulatorUpdaterAgent` currently supplies hardcoded certainty and integrity values (see C3-42).
+
+C3-36. Paper equation (13), selection_threshold, is:
+`selection_threshold = fuzzy_equal(S_competence, 1, 15)`.
+
+C3-37. MeTTa `SelectionThresholdHelper` is a literal match to paper equation (13): `main/mind-agents/modulator-updater/modulator-updaters.metta:15-18`.
+
+C3-38. Paper equations (14)-(17) define emotion intensity and fuzzy low/high functions. The MeTTa feeling updater is structurally aligned: it computes emotion intensities from modulator indicator tables and uses fuzzy_equal/less/greater thresholds. Code: `main/mind-agents/feeling-updater/feeling-updaters.metta:47-68`, `83-96`, `107-185`, and per-emotion updater definitions at `188-230`.
+
+C3-39. The feeling updater is not a strict line-for-line implementation of equations (14)-(17), but it is a strong structural match. It uses the same indicator categories H/L/M/EL/EH/U and a table comparable to the paper's Table 2. Classification: STRUCTURAL MATCH.
+
+C3-40. `normalizeWithSpecificRange` is applied after the modulator helper formulas at `modulator-updaters.metta:28,30,32`. The normalization function returns the input unchanged if it is already in range [a,b], otherwise maps via sigmoid (`psi-utilities/normalization.metta:18-20`). For demand satisfaction values in [0,1], it is usually no-op; for out-of-range test values it changes paper semantics.
+
+C3-41. The modulator-updater tests use out-of-domain values, e.g. `SecuringThresholdHelper 4 0.8` expects 60.235... (`main/mind-agents/modulator-updater/tests/modulator-updaters-test.metta:21-23`). This verifies helper algebra, not end-to-end paper-domain behavior.
+
+C3-42. Hardcoded values are a partial-implementation marker. `modulatorUpdaterAgent` sets `$certanity 0.5` and `$integrity 0.5` at `main/mind-agents/modulator-updater/modulator-updaters.metta:20-23`, then passes them into SecuringThresholdHelper at line 29. The paper treats certainty and integrity as demand satisfactions/state values, not constants. Classification: FORMULA LITERAL, STATE FEED PARTIAL.
+
+C3-43. The equation-literal score, if counted strictly across paper equations (1)-(13), is: literal (1,2,6,7,9,10,12,13), divergent (5,8), absent (11), not checked/irrelevant to MeTTa helper question (3,4 target-range updates). This is stronger paper fidelity than ECAN but weaker than "all formulas literal."
+
+C. Tradition placement
+======================
+
+C3-44. The MeTTa port is not a faithful Classic-surrogate port in the ECAN sense. Commit 01936f1 explicitly changed modulator helper formulas to match the 2013 paper, and those helpers are active in runtime loops. This is a meaningful paper-facing repair.
+
+C3-45. The Classic baseline at b31c7e3 has a different dynamics mechanism. `opencog/openpsi/dynamics/updater.scm` uses `adjust-psi-var-level` with a slope-based exponential curve `(slope^(a*x)-1)/(slope^a-1)`, hardcoded slope 10000, and an older tanh formula commented out. This is not the 2013 paper's equations (10)-(13). Classic dynamics are therefore DIVERGENT for this formula family.
+
+C3-46. The MeTTa port did not fully recover paper semantics. Missing equation (11), hardcoded certainty/integrity, and divergent denominators in equations (5) and (8) are enough to block a full "paper-faithful Tradition 6" classification.
+
+C3-47. Best classification for cluster-close wording: "OpenPsi MeTTa is a paper-leaning active reimplementation in the motivation/OpenPsi lineage, with several literal 2013-paper formula repairs, but still partial and hybrid."
+
+C3-48. If the cluster map needs labels, avoid assigning a sixth tradition number until after Source 4 Hanson/fork archaeology. Use a sub-branch phrase such as "Hyperon-era OpenPsi MeTTa port: paper-leaning reimplementation" under the OpenPsi/motivation cluster.
+
+C3-49. Difference from ECAN is real. metta-attention replicated Classic C++ pragmatic surrogates. hyperon-openpsi contains a 2026 paper-alignment commit and code that more closely follows the 2013 OpenPsi paper than the Classic dynamics updater does.
+
+C3-50. Probable reason for difference: the OpenPsi equations are compact, available in a single 2013 paper, and easy to encode in MeTTa helpers. ECAN's 2009 economy equations involve system-wide currency conservation, STI/LTI bank behavior, and multi-agent dynamics, making faithful runtime porting harder.
+
+D. MetaMo trajectory and LLM anchor
+===================================
+
+C3-51. MetaMo One (RawData ID 3552) is the abstract theory paper "MetaMo: A Robust Motivational Framework for Open-Ended AGI" by Ben Goertzel and Ruiting Lian. It explicitly says a sequel paper grounds MetaMo in concrete architectures like OpenPsi and MAGUS. It is formal/category-theoretic and not an OpenPsi equation source.
+
+C3-52. MetaMo Two (RawData ID 3761 / duplicate-ish ID 3763) is "Embodying Abstract Motivational Principles in Concrete AGI Systems: From MetaMo to Open-Ended OpenPsi", by Ben Goertzel and Ruiting Lian. It positions OpenPsi as the appraisal/comonad side and MAGUS as the decision/goal side.
+
+C3-53. IDs 3761 and 3763 appear to be duplicates of the same MetaMo Two paper from different Mattermost file names. The first several thousand characters match title, authors, abstract, and opening sections.
+
+C3-54. MetaMo Two positions OpenPsi as a lightweight appraisal layer drawing on Bach's MicroPsi and Doerner's PSI, integrated into Hyperon/PRIMUS via modulators and goal/motivation machinery. It references Cai et al. 2011/2013-style OpenPsi work in its references as the concrete OpenPsi root.
+
+C3-55. MetaMo Two does not provide the low-level equations used in the current MeTTa modulator-updater beyond high-level appraisal/decision equations. It is not the source of equations (1)-(13).
+
+C3-56. MetaMo Two does provide a research-assistant application framing and a PLN inference-control application framing. It says OpenPsi-style appraisal updates modulators from novelty/conduciveness/risk, and MAGUS scores actions or inference tasks by goals, modulators, and relevance. This is architecture-level, not code-level.
+
+C3-57. I found no local paper anchor for an LLM-driven "correlation matcher" controlling OpenPsi. The curious-agent code's `generateResponse` and `correlation_matcher` path is best classified as Hyperon-era engineering / application wrapper, not a literal OpenPsi or MetaMo paper implementation.
+
+C3-58. The closest paper-level conceptual anchor for curious-agent is MetaMo's "online/research assistant" application framing, not an LLM-control formula. The 2013 OpenPsi paper mentions MonitorChangesMindAgent pushing heuristic hints into AtomSpace, but that is only an inspiration-level analogy for LLM summaries/correlation matching.
+
+C3-59. `psi-utilities/miner.metta:11-18` and curious-agent `main.metta:32-40` show LLM integration is a repo-level pattern, but Source 3 paper evidence does not make it paper-derived.
+
+D3. Discovered-publications inventory
+=====================================
+
+C3-60. The "2013 video-games paper" is not missing as RawData; it is missing as a properly named Publications card. Cluster-close should create or rename/cross-link a title-level card, e.g. `Publications+OpenPsi Video Games` or `Publications+OpenPsi Computational Affective Model`, pointing to RawData chunks 3828/3829.
+
+C3-61. The 2011 Cognitive Systems Research paper `Publications+PSI Affective Dynamics` has a Markdown stub but no RawData full text in the scoped wiki cards. This remains a source-text gap if future work needs that exact paper.
+
+C3-62. MetaMo One and MetaMo Two are already represented in wiki RawData/stub cards. No new MetaMo paper ingestion is needed for this Source 3 question.
+
+E. Cross-cluster questions
+==========================
+
+C3-63. The 2011 AGI paper (ID 3168) is the strongest source for OpenPsi's conceptual compatibility with PLN and ECAN. It places PLN under declarative memory, ECAN under attentional memory, and says OCP planning can use PLN, MOSES, or hillclimbing. These are architecture-compatibility statements, not evidence of runtime integration.
+
+C3-64. The 2011 AGI paper also states that goal dynamics uses STI: top-level goals can receive STI to nominate procedures or pass to subgoals. This is conceptual ECAN/OpenPsi coupling at the paper level, consistent with Classic's optional STI seam, but not evidence that current MeTTa OpenPsi implements STI.
+
+C3-65. The 2013 EAAI paper uses OpenCog/AtomSpace as substrate and describes six mind agents, but its formula sections do not propose ECAN currency dynamics or PLN inference control. The implemented MeTTa formulas are motivation/modulator formulas, not ECAN/PLN formulas.
+
+C3-66. MetaMo Two reintroduces motivation-driven PLN inference control at the architecture level. It is a 2025 Hyperon-era proposal, not evidence that Classic OpenPsi had executable PLN coupling.
+
+C3-67. For ECAN/OpenPsi coupling, Source 1 V1-1 remains the code-ground truth: Classic OpenPsi had an optional action-selector seam and unused STI helper; Ghost installed its own runtime STI selector. Source 3 adds that the paper-level architecture expected STI/ECAN compatibility but does not prove active OpenPsi runtime consumption.
+
+Reconciliation-critical deltas versus Gemini
+============================================
+
+C3-68. Agree with Gemini: ID 3828 is the 2013 video-games paper; the raw card name is misleading.
+
+C3-69. Agree with Gemini: equations (1), (2), (10), (12), and (13) are literal in the MeTTa code paths Gemini cited.
+
+C3-70. Disagree/extend Gemini: paper equation (11), resolution_level = 1 - sqrt(activation), is absent from current `modulator-updaters.metta`. The code stores and uses resolution-level elsewhere but does not recompute it from activation in the active updater.
+
+C3-71. Disagree/extend Gemini: demand-updater equations (5) and (8) have a parenthesization/denominator mismatch in code. The paper denominator is `(1+exp(...))*(n+1)`; the code implements `1+exp(...)*(n+1)`.
+
+C3-72. Disagree with an unqualified "Tradition 6" verdict. The correct classification is hybrid/paper-leaning unless the reconciliation chooses to define Tradition 6 as "substantially paper-corrected but still partial." I recommend avoiding that expansion.
+
+C3-73. Agree with Gemini that Classic OpenPsi dynamics diverged from the 2013 paper's fractional helper formulas. The slope-based exponential in `dynamics/updater.scm` is a strong Classic-surrogate contrast.
+
+Open questions
+==============
+
+C3-74. Source 4 Hanson/fork archaeology should check whether early Hanson/OpenCog OpenPsi ever implemented the 2013 paper equations more literally than the b31c7e3 Classic baseline, especially equation (11) resolution and equations (5)/(8) demand updater denominators.
+
+C3-75. Source 4 should also check whether the hardcoded certainty/integrity values in the MeTTa modulator updater are temporary scaffolding, a deliberate simplification, or a mismatch inherited from a fork.
+
+C3-76. Cluster-close wiki edit should correct the misleading "Openpsi Zhenhua" label with an editorial note or a proper Publications card for the 2013 EAAI paper.
+
+C3-77. If wiki wording says "paper-faithful", qualify it: "several core 2013 OpenPsi formulas are literal, but implementation remains partial; resolution is missing from updater and two demand-updater denominators diverge."
+
+C3-78. No tests were run in this pass. Findings are from RawData card reads, local code reads, grep, and `git show`/`git grep` style inspection.
+
+End of Codex Source 3 findings.

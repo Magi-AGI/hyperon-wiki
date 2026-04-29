@@ -1,0 +1,61 @@
+# Source 2 — OpenPsi MeTTa Port Family — Gemini Findings
+
+**Cluster:** OpenPsi / Motivation pilot, Source 2 of 4
+**Source targets:**
+- **2a — Canonical:** `iCog-Labs-Dev/hyperon-openpsi.git` @ `3b356c5e51d4490b587351721a8cd4187da5817a` (`dev` branch)
+- **2b — Glicerico fork:** `glicerico/hyperon-openpsi.git` @ `db7592124d31d69f9281ae1d15f4ce8eb6b422ae` (`dev` branch)
+- **2c — Zariuq fork:** `zariuq/hyperon-openpsi.git` @ `3b356c5...` (in sync with canonical)
+
+**Persistence date:** 2026-04-27 (orchestrator-saved verbatim from Gemini's inline-forwarded report at Source 2 cluster-pass close)
+**Brief:** `scripts/archive/openpsi_pilot/source2_metta_port_family_brief.txt`
+
+---
+
+## Verbatim findings (per Gemini's forwarded report)
+
+I've confirmed that the MeTTa port has modernized the OpenPsi architecture, using spaces and unification while adopting paper-faithful formulas in `modulator-updaters.metta` and `demand.metta`. The Glicerico fork introduces a `stimulus` parameter, but ECAN/STI coupling remains absent across all repositories. I've also identified a hybrid Python-MeTTa loop in the Curious Agent use case and mapped the A* planner's heuristic. I am now ready to synthesize my final report.
+
+### Gemini Report: Source 2 (OpenPsi MeTTa Port Family)
+
+**1. Architecture Inventory (A1-A6)**
+**Status:** Modernized and Expanded.
+- **Modular Reorganization:** Reorganized into `main/` (demand, emotion, rules, mind-agents, modulator), `psi-utilities/`, and `use-cases/`.
+- **Action Planner Proliferation:** Includes 5 variants: v1 (Greedy), v2 (Hill Climbing), aStar, thompson-sampling, and ts-ucb.
+- **Rule Representation:** Retains `IMPLICATION_LINK` with `AND_LINK` context, but implemented using MeTTa spaces and unification (`rule.metta`).
+- **Satisfiability Cache:** Modernized using MeTTa spaces (`implicator.metta:106`).
+
+**2. ECAN/STI Coupling (B1-B4)**
+**Status:** ABSENT / LOST.
+- **Repo-wide Audit:** grep for `STI`, `cog-av-sti`, and `AttentionBank` returned zero functional results in the MeTTa code.
+- **Action Selector Seam:** While the `psi-set-action-selector!` seam survives conceptually (used in `curious-agent/main.metta`), it is not used for ECAN integration. It now bridges to Python/LLM or different planner variants.
+
+**3. Paper-Faithfulness vs. Tradition 2 (C1-C4)**
+**Status:** Divergent / Transitioning to Tradition 6 (Paper-Faithful).
+- **Verified Formula Alignment:** Commit `01936f1` aligned modulator helpers with paper equations 10–13.
+- **ActivationHelper:** Verified at `modulator-updaters.metta:2`: `(c / (c + 0.5)) · (e / (0.05 + e))`.
+- **DemandSatisfaction:** Verified at `demand.metta:158`, implementing the non-linear piecewise function from the 2011 paper.
+- **Conclusion:** Unlike the ECAN MeTTa port (Tradition 2), OpenPsi is actively moving closer to the original 2011 paper math, making it a "Tradition 6" candidate.
+
+**4. Use Case Analysis (D1-D3)**
+- **Curious Agent:** Hybrid Python-MeTTa loop using LLMs for "correlation matching" between summaries and rules (`curious-agent/main.metta:28`).
+- **Ping-Pong:** Pure MeTTa implementation using urge-value dynamics to drive state transitions (`ping-pong.metta`).
+- **A\* Planner:** Uses a heuristic based on the absolute distance between current goal value and desired goal value (`aStar-action-planner.metta:15`).
+
+**5. Fork Divergence (F1-F3)**
+- **Glicerico Fork:** Verified `stimulus` parameter addition in `ActivationHelper` and `SecuringThresholdHelper`.
+- **Zariuq Fork:** Structurally identical to canonical at fetch time.
+
+**6. Transition Narrative**
+The MeTTa port has shed the Classic C++ implementation details (callbacks/wrappers) in favor of native MeTTa idioms (spaces/unification) and is actively "re-literalizing" the paper math that was simplified or surrogate-heavy in Tradition 2.
+
+---
+
+## Note from orchestrator (Codex framing caution carried into reconciliation)
+
+Codex's review of the Source 2 brief flagged: *"Treat the 'Tradition 6' hypothesis as a question, not a likely outcome, until the eq. 10-13 implementation is traced through callers and tests. Formula presence alone is not enough; require caller-analysis plus use-case execution path, same V1-1 rule."*
+
+This caution applies directly to Gemini's section 3 (Paper-Faithfulness vs. Tradition 2) — Gemini verified that the formulas are present at specific file:line locations (`modulator-updaters.metta:2`, `demand.metta:158`) but did not document the call chain from a use-case entry point (e.g., curious-agent's loop) through to those formulas. Reconciliation will require either Codex's caller-analysis confirmation or orchestrator-side verification before declaring the Tradition 6 placement.
+
+---
+
+*End of Gemini Source 2 findings (forwarded verbatim). Awaiting Codex's extraction pass before reconciliation.*

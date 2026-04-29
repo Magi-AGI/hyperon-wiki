@@ -88,7 +88,7 @@ A four-source content pass over the ECAN/Attention cluster (2026-04-26), execute
 
 2. **Executable PLN-attention coupling existed historically and was deliberately removed in late OpenCog Classic.** The 2014 Harrigan et al. paper "Guiding Probabilistic Logical Inference with Nonlinear Dynamical Attention Allocation" described ECAN as a control layer for PLN. The only realized executable hook in OpenCog history was a narrow URE forward-chainer STI source-selection mechanism: wired by Misgana Bayetta in commit `0a0b09912` (2016-03-09), unwired by Nil Geisweiller in commit `0b744dbab` (2018-10-23) with the comment "An attentionbank is needed in order to get the STI...", finalized in `5a5b7785d`. **This is a late-OpenCog Classic deliberate decoupling, not a Hyperon-era regression.** Current MeTTa-PLN has no attention-layer integration.
 
-3. **Broader-OpenCog ECAN consumers existed at the pre-split monorepo snapshot but none survived as functioning ECAN integrations.** Verified consumers at `b31c7e3b9beab7a458c84117f3b654a03ca9ffe2` (the last commit before the 2019-09-06 AttentionBank removal `318c0b4cb`): OpenPsi action-selection via Scheme `cog-av-sti` rule weighting (`action-selector.scm:63`); Ghost dialogue using STI/AttentionalFocus in matcher and schemas; NLP fuzzy matching gated AF-only via `bank->atom_is_in_AF`; Python web API surfacing AttentionValue. None preserved as functioning integrations across the AttentionBank removal; no documented MeTTa equivalents in the current Hyperon ecosystem.
+3. **Broader-OpenCog ECAN consumers existed at the pre-split monorepo snapshot but none survived as functioning ECAN integrations.** Status at `b31c7e3b9beab7a458c84117f3b654a03ca9ffe2` (the last commit before the 2019-09-06 AttentionBank removal `318c0b4cb`): **Ghost** dialogue installed an STI-weighted action-selector at `opencog/ghost/matcher.scm:117-130, 284` (`strength × context × sti × urge` formula); **NLP fuzzy matching** gated AF-only via `bank->atom_is_in_AF`; **Python web API** (`apiatomcollection.py`) surfaced AttentionValue read/write. **OpenPsi** is more nuanced — it provided the configurable action-selector seam (`psi-set-action-selector!`) and an unused STI helper `rule-sca-weight` at `opencog/openpsi/action-selector.scm:57-64`, but Ghost supplied the actual runtime STI-weighted selector. OpenPsi is an ECAN-coupling enabler, not itself confirmed as a default executable ECAN consumer (see OpenPsi cluster pilot Source 1 V1-1, 2026-04-27). None preserved as functioning integrations across the AttentionBank removal; no documented MeTTa equivalents in the current Hyperon ecosystem.
 
 ### Wiki-edit audit (ECAN cluster pilot, 2026-04-26)
 
@@ -104,6 +104,40 @@ A four-source content pass over the ECAN/Attention cluster (2026-04-26), execute
 | 4 | Hyperon AI Algorithms+ECAN+AI+tag | 7420 | Pointer (`ai_generated`) |
 
 Total: 8 cards touched. All verified post-write via `get_card`.
+
+## OpenPsi / Motivation Cluster Pilot — what it is
+
+A four-source content pass over the OpenPsi/motivation cluster (2026-04-27 → 2026-04-28), under the same cross-model triangulation protocol established by the PLN pilot (Claude orchestrator + Codex + Gemini reviewers, with reconciliation across all three). Per-source briefs, per-model findings, and cross-model reconciliations live at `scripts/archive/openpsi_pilot/source*/`. **OpenPsi cluster pilot extraction is closed for this iteration; editorial/orientation cleanup remains.**
+
+### Cluster-narrative-deciding findings
+
+1. **The 2013 Cai et al. EAAI paper is the canonical mathematics source** for the OpenPsi cluster (equations 1–17). The 2011 AGI-11 paper (Cai/Goertzel/Geisweiller) is the conceptual precursor without the formal equations. The wiki held the 2013 paper under a non-canonical RawData title (`+Openpsi Zhenhua`, derived from the lead author's given name); a Markdown stub was created at `Publications+OpenPsi A Novel Computational Affective Model` and the RawData parent annotated with editorial metadata. No rename of the RawData parent or chunks was performed.
+
+2. **The MeTTa OpenPsi port (`iCog-Labs-Dev/hyperon-openpsi`) is a paper-leaning HYBRID reimplementation, not strict-literal "Tradition 6".** Equation tally vs the 2013 paper: **8 LITERAL** (eqs 1, 2, 6, 7, 9, 10, 12, 13), **2 DIVERGENT** (eqs 5, 8 — denominator parenthesization), **1 ABSENT** (eq 11 — resolution_level), **4 STRUCTURAL** (eqs 14–17). Several modulator inputs (notably certainty and integrity) are hardcoded to `0.5` rather than driven by time-varying perceptions. **The label "Tradition 6" must NEVER appear without the "PAPER-LEANING HYBRID" qualifier** — Source 3 verdict, reaffirmed at Source 4 V4-2 after a Gemini relapse.
+
+3. **The OpenPsi cluster has THREE practical lineages but only TWO mathematical traditions.**
+   - **Tradition 2 (Classic surrogate)**: upstream `opencog/openpsi/` Scheme + C++ — primary contributors Amen Belayneh + Linas Vepstas + Eddie Monroe (upstream). The 819-line slope-exponential surrogate `(slope^(a*x)-1) / (slope^a-1)` at `opencog/openpsi/dynamics/updater.scm` was contributed by Amen Belayneh in commit `48ee8a0bc` (2017-07-24).
+   - **Tradition 6 [PAPER-LEANING HYBRID]**: `iCog-Labs-Dev/hyperon-openpsi` MeTTa port — partial paper recovery, primary contributor Mahider-n (commit `01936f1` 2026-02-24 explicitly aligns activation/securing/resolution/selection formulas with the 2013 paper).
+   - **Hanson dialogue/robotics runtime branch (no math tradition number)**: Sophia stack via `hansonrobotics/ros-behavior-scripting` and `opencog/loving-ai-ghost` — a runtime/application branch over Classic OpenPsi, NOT a separate mathematical tradition. Demands are satisfied by hardcoded constant TVs (e.g., `face-demand-satisfied (stv 1 1)`); the production runtime explicitly disables ECAN/STI via the supported Ghost API.
+
+4. **The executable ECAN-attention coupling lifecycle is now reconstructed as a 9-event sequence (2016-03 → 2020-09) across THREE subsystems**: URE forward-chainer (hook wired `0a0b09912` 2016-03-09 Misgana Bayetta; unwired `0b744dbab` 2018-10-23 Nil Geisweiller; arg removed `5a5b7785d` 2019-01-08), OpenPsi default action-selector (STI path added `8ab0e8f81` 2016-05-10 Amen Belayneh; removed `9f2697859` 2016-11-24 Linas Vepstas; reintroduced as uncalled helper `e5bae708f` 2017-11-08 Amen Belayneh), and Loving AI Ghost runtime (STI explicitly disabled `51a413e7` 2018-06-06 DevHEAD; Scheme-runner inheritance `6ec13879` 2020-09-21 leungmanhin); plus the AttentionBank monorepo removal `318c0b4cb` 2019-09-06 Linas Vepstas. **This extends the ECAN cluster pilot finding #2** (which surfaced only the URE hook). All three executable paths were deliberately decoupled by 2019. The V4-1 finding propagated as an addendum to ECAN cards 7100, 7096, 3057, 4751, 7419 in the same edit pass.
+
+5. **MetaMo / LLM anchoring (Curious Agent) is engineering-side innovation, not paper-faithful realization.** The Curious Agent's LLM-summary correlation matching is INSPIRED by the 2013 paper's `MonitorChangesMindAgent` "heuristic hints" concept (Section 4.3 of the paper) but is an engineering structuralization using modern LLM capabilities, not a literal port.
+
+### Wiki-edit audit (OpenPsi cluster pilot, 2026-04-28)
+
+| Card | ID | Intent |
+|---|---|---|
+| Hyperon AI Algorithms+ECAN+ECAN Full+Development and Historical Context | 7100 | V4-1 addendum: 9-event executable-coupling lifecycle reconstruction |
+| Hyperon AI Algorithms+ECAN+ECAN Full+System Interfaces and Implementation | 7096 | PLN bullet expanded to two narrow executable hooks + Loving AI Ghost reference |
+| Publications+Guiding PLN with Attention Allocation | 3057 | New H3 section: OpenPsi 2016-05/2016-11 lifecycle + Hanson runtime branch |
+| Implementation Families+Attention and Motivation | 4751 | Hanson runtime branch under Motivation lineage; Lost-coupling Gap expanded to 9-event lifecycle |
+| Hyperon AI Algorithms+ECAN+AI | 7419 | V4-1 supplementary appended to finding #2 |
+| RawData+Publications+Openpsi Zhenhua | 3827 | Editorial-metadata block prepended (canonical citation, no rename) |
+| Publications+OpenPsi A Novel Computational Affective Model | 7426 (new) | Markdown stub for 2013 EAAI paper; equation index + cluster-pilot Curated Excerpts |
+| Publications+OpenPsi A Novel Computational Affective Model+tag | 7427 (new) | Pointer (`ai_generated`) |
+
+Total: 8 cards touched (5 ECAN-cluster carrying the V4-1 addendum + 3 new/annotated OpenPsi-specific). All verified post-write via `get_card`.
 
 ## File-system audit (extraction archive)
 
@@ -135,6 +169,17 @@ Source 11 reconciliation is the canonical synthesis. Sources 1-10 reconciliation
 - Source 4: `singnet/opencog` fork of pre-split monorepo @ `b31c7e3` (last commit before 2019-09-06 AttentionBank removal)
 
 Source 4 V0-1 reconciliation (OpenPsi coupling) is the canonical disambiguator for whether broader-OpenCog ECAN consumers existed; Source 3 V0-1 reconciliation (URE STI source-selection lifecycle) is the canonical disambiguator for the historical-vs-Hyperon-era framing of executable PLN-attention coupling.
+
+### OpenPsi cluster pilot
+
+`scripts/archive/openpsi_pilot/` contains the per-source brief + per-model findings + cross-model reconciliation for sources 1-4:
+
+- Source 1: `opencog-singnet/opencog/openpsi/` @ `b31c7e3` (Classic OpenPsi at the pre-split monorepo snapshot — same baseline as ECAN Source 4)
+- Source 2: `iCog-Labs-Dev/hyperon-openpsi` @ `3b356c5` (MeTTa OpenPsi port family) + `glicerico/hyperon-openpsi` @ `db75921` fork + `zariuq/hyperon-openpsi` mirror
+- Source 3: 2013 Cai et al. EAAI paper (canonical mathematics, eqs 1-17) + 2011 AGI-11 paper (conceptual precursor)
+- Source 4: `hansonrobotics/opencog` @ `aec9b1f` + `hansonrobotics/ros-behavior-scripting` @ `9cc2cde` + `opencog/loving-ai-ghost` @ `4c170ce` + `leungmanhin/loving-ai-ghost` @ `534c569` (Hanson dialogue/robotics runtime branch archaeology)
+
+Source 4 V4-1 reconciliation (caller-analysis time-indexing) is the canonical record for the OpenPsi default-selector STI path 2016-05/2016-11 lifecycle that the ECAN cluster pilot did not surface. Source 3 reconciliation (HYBRID/PAPER-LEANING) is the canonical record for the MeTTa port's incomplete paper recovery (8 LITERAL / 2 DIVERGENT / 1 ABSENT). The 2014 Harrigan ECAN-PLN paper had its executable-realization timeline retroactively extended at `Publications+Guiding PLN with Attention Allocation` (ID 3057) on 2026-04-28.
 
 ## Source-text gaps remaining
 
@@ -187,6 +232,14 @@ These rules emerged during the cluster pilot and apply to subsequent wiki/code e
 - A token list of just C++ symbols (`AttentionBank | AttentionValue | get_sti | get_lti`) misses Scheme-side consumers. Always include the Scheme/MeTTa equivalents (`cog-av-sti`, `cog-av-lti`, `cog-stimulate`, `cog-confidence`, `cog-mean`, etc.) when grepping legacy OpenCog for API consumption.
 - Source 4 V0-1 case study: Gemini classified OpenPsi as NO-COUPLING via C++-only grep at `b31c7e3`. Codex found `(* (cog-confidence RULE) (cog-mean RULE) (cog-av-sti RULE))` at `action-selector.scm:63` — a real STI consumer. Verified directly. The C++/Scheme dual-layer rule is mandatory for any legacy-OpenCog audit.
 
+### Caller-analysis must be time-indexed
+- "Called/uncalled" claims about a function must include the commit/date snapshot at which the analysis was performed. The same function can have callers at one snapshot and not at another. Pickaxe the function definition's lifecycle (when added → when removed from callers → when reintroduced as helper) before classifying.
+- OpenPsi Source 4 V4-1 case study: Source 1's "rule-sca-weight has zero callers" finding is correct at the 2019 singnet `b31c7e3` snapshot but is INCORRECT at the 2016 Hanson `aec9b1f` master snapshot — where the OpenPsi default action-selector at `action-selector.scm:121-127, 170-176` routed through the same STI-weighted helper conditional on `cog-af-boundary`. Three commits define the lifecycle: `8ab0e8f81` (Amen Belayneh, 2016-05-10) wires the conditional default STI path; `9f2697859` (Linas Vepstas, 2016-11-24) removes it; `e5bae708f` (Amen Belayneh, 2017-11-08) reintroduces the formula as a helper definition only.
+
+### Bidirectional fork-divergence checks
+- "Forward divergence" (fork has feature X) and "behind upstream" (fork is missing feature Y) can BOTH be true. Always run `git log A..B` AND `git log B..A` AND `git diff A..B --shortstat` AND grep both directions before labeling a fork as a divergent tradition.
+- OpenPsi Source 2 V2-1 case study (MeTTa port `glicerico` fork): forward divergence (added stimulus parameter) AND behind upstream (5,634 net lines behind canonical) were both true. OpenPsi Source 4 generalization (V4-2, codebase-staleness corollary): a stale fork that has not pulled upstream changes is NOT equivalent to "an isolated tradition" — it may simply be a frozen snapshot of a particular upstream era. Hanson's `opencog` master at `aec9b1f` had ZERO Hanson-only OpenPsi commits and was strictly behind upstream by 4,052 lines (the entire `dynamics/` subsystem). Confirm with `git log fork ^upstream/master -- <subdir>` and `git diff upstream/master..fork -- <subdir>` before assigning a tradition number.
+
 ---
 
 ## Claude-specific references
@@ -201,20 +254,22 @@ Claude memory at `C:\Users\Lake\.claude\projects\E--GitHub-Magi-AGI-hyperon-wiki
 - `feedback_published_card_edits.md` — Draft vs Published edit protocol
 - `feedback_pickaxe_for_dead_code.md` — git pickaxe before "dead code" / "never implemented" claims (ECAN Source 3 V0-1)
 - `feedback_ecan_audit_token_list.md` — OpenCog audits must cover both C++ and Scheme/MeTTa API layers (ECAN Source 4 V0-1)
+- `feedback_bidirectional_fork_divergence.md` — bidirectional fork-divergence + codebase-staleness corollary (OpenPsi Source 2 V2-1, generalized at Source 4 V4-2)
+- `project_openpsi_cluster_pilot_2026_04_28.md` — OpenPsi cluster pilot summary + key SHAs + archive paths
+- `project_user_loving_ai_ghost_history.md` — user has 18 commits in `leungmanhin/loving-ai-ghost`; defer to user recollection on Ghost/OpenPsi/STI design intent
 - `reference_wiki_mcp_quirks.md` — wiki MCP operational quirks
 - `project_repo_orientation_docs.md` — orientation-doc workflow
 - `project_wiki_quality_bar.md` — Ben Goertzel approval bar
 
-For multi-model continuity, the canonical record lives in this repo at `scripts/archive/pln_pilot/` and `scripts/archive/ecan_pilot/` (extraction archives) and in the wiki itself (cards listed in the audit tables above).
+For multi-model continuity, the canonical record lives in this repo at `scripts/archive/pln_pilot/`, `scripts/archive/ecan_pilot/`, and `scripts/archive/openpsi_pilot/` (extraction archives) and in the wiki itself (cards listed in the audit tables above).
 
 ---
 
 ## What's next (post-pilot work)
 
-The PLN cluster pilot extraction is closed; editorial cleanup is in progress. The ECAN/Attention cluster pilot extraction is also closed (2026-04-26). Other clusters remain (each its own multi-source pilot):
+The PLN cluster pilot extraction is closed; editorial cleanup is in progress. The ECAN/Attention and OpenPsi/Motivation cluster pilots are also closed (2026-04-26 and 2026-04-28 respectively). Other clusters remain (each its own multi-source pilot):
 
 - Perception / Neural-Symbolic (incl. 2013 FISHGRAM retrieval)
 - MeTTa runtime (`hyperon-experimental`, `MeTTa-IL`, `PeTTa`, MORK production angle)
 - Hyperon DAS / atomspace
-- OpenPsi / motivation (note: ECAN pilot Source 4 already established that pre-2019 OpenPsi consumed `cog-av-sti`; the OpenPsi cluster will need its own Tradition-2-extension treatment)
-- Cross-org sweeps (asi-alliance, fetchai, F1R3FLY-io, Rejuve, hansonrobotics, Xcceleran-do, gitlab.com/nunet)
+- Cross-org sweeps (asi-alliance, fetchai, F1R3FLY-io, Rejuve, Xcceleran-do, gitlab.com/nunet) — note: `hansonrobotics/*` was substantively covered by the OpenPsi cluster pilot Source 4 (2026-04-28); residual non-OpenPsi-touching Hanson repos may need a separate sweep

@@ -1,0 +1,112 @@
+# OpenPsi Pilot Source 4 -- Codex Findings
+
+Target: Hanson Robotics fork archaeology across `opencog-hansonrobotics`, `ros-behavior-scripting-hansonrobotics`, `loving-ai-ghost`, `loving-ai-ghost-leungmanhin`, with secondary checks in TinyCog / epistemics.
+
+Audited locally from `E:\GitHub\hyperon reference\...` on 2026-04-28. Read-only pass; no repo edits and no wiki writes.
+
+## Headline
+
+C4-1. The Hanson lineage is not a paper-faithful OpenPsi mathematics tradition. It is a dialogue/robotics runtime tradition layered over Classic OpenPsi and Ghost. The key surprise is that `hansonrobotics/opencog` master preserves an older upstream OpenPsi snapshot where the default selector can call STI-weighted rule selection; this is earlier than the 2019 Source-1 baseline where `rule-sca-weight` is an uncalled helper. But the Sophia/Loving-AI runtime direction moves away from ECAN: ROS behavior uses OpenPsi as a behavior-loop authority with no STI customization, and Loving AI Ghost explicitly disables STI weighting.
+
+C4-2. Hypothesis verdict: H1 is true for the frozen 2016 OpenPsi substrate, but H2 is true for the later Hanson dialogue runtime. More precisely: Hanson consumed the Classic surrogate stack, including an early default ECAN/STI branch in OpenPsi, but its robot/dialogue layers did not pursue paper-equation faithfulness and eventually disabled or bypassed ECAN/STI in Ghost-facing runtime scripts.
+
+## Repo A -- `hansonrobotics/opencog`
+
+C4-3. Repo A is a stale upstream snapshot, not a Hanson-specific OpenPsi fork. `git log master ^upstream/master -- opencog/openpsi/` returns no commits, and `git diff --shortstat master..upstream/master -- opencog/openpsi/` reports `28 files changed, 4052 insertions(+), 967 deletions(-)`. The direction matters: relative to Hanson master, upstream later added 4052 lines and removed 967 lines in `opencog/openpsi/`.
+
+C4-4. The brief's pre-loaded "zero caller" expectation is false for Hanson master. In `opencog/openpsi/action-selector.scm`, the default selector calls the STI-weighted helper when the attentional-focus boundary is not degenerate: lines 121-127 call `(most-important-weighted-atoms (psi-get-all-satisfiable-rules))` when `(cog-af-boundary)` is not 0 or 1. The per-demand path does the same at lines 170-176. The helper itself is `most-important-weighted-atoms` in `opencog/openpsi/utilities.scm:78-90`, with weight `(* (tv-conf a-stv) (tv-mean a-stv) sti)`.
+
+C4-5. That default selector is active in the old OpenPsi loop. `opencog/openpsi/main.scm:50-91` defines `psi-step`; lines 81-88 iterate over demands and call `(psi-select-rules-per-demand d)`, and `action-selector.scm:188-206` routes to `psi-default-action-selector-per-demand` when no custom action selector exists. Therefore this is not merely a dead helper in Hanson master.
+
+C4-6. The STI default branch is not a Hanson innovation. `git show --no-patch 8ab0e8f81` identifies Amen Belayneh's 2016-05-10 commit "add importance into the utility function"; that commit is contained in both `master` and `upstream/master` and adds `most-important-weighted-atoms` with the STI formula. `git log master ^upstream/master -- opencog/openpsi/` still returns zero Hanson-only OpenPsi commits.
+
+C4-7. The later upstream line removed this default STI branch before the Source-1 baseline. `git show --no-patch 9f2697859` is Linas Vepstas, 2016-11-24, "General cleanup of the action selector"; its diff removes the `cog-af-boundary` conditional / `most-important-weighted-atoms` path and leaves `(most-weighted-atoms (psi-get-weighted-satisfiable-rules demand))`. `git show --no-patch e5bae708f` is Amen Belayneh, 2017-11-08, "Cleanup openpsi action-selector functions"; `upstream/master:opencog/openpsi/action-selector.scm:53-59` reintroduces `rule-sca-weight` as `strength * confidence * STI`, but `git grep` on `upstream/master` shows only the definition, not a runtime caller.
+
+C4-8. Repo A does not contain the 2017+ dynamics buildout on master. `git ls-tree -r master opencog/openpsi | rg "dynamics|updater"` has no matches. The later upstream history contains `opencog/openpsi/dynamics/updater.scm`, but only on `upstream/master`.
+
+C4-9. The Classic slope-exponential surrogate is upstream-only relative to Hanson master. In `upstream/master:opencog/openpsi/dynamics/updater.scm`, lines 450 and 472-550 define `adjust-psi-var-level`, set `slope 10000`, and implement `(slope^(a*x) - 1) / (slope^a -1)` via `(expt slope (* alpha current-value))`. `git log upstream/master -S "slope" -- opencog/openpsi/dynamics/updater.scm` points to `48ee8a0bc` (Amen Belayneh, 2017-07-24, "Create (opencog openpsi dynamics) guile module"). That commit is contained only in `remotes/upstream/master`, not Hanson master.
+
+C4-10. Q1: Hanson master did not implement paper equation (11) `resolution_level` as a formula. `git log --all -S "resolution-level" -- opencog/openpsi` finds commits including `2e040bf8b` (Eddie Monroe, 2016-06-30), `98a2bce6e` (Eddie Monroe, 2016-07-14), and `48ee8a0bc` (Amen Belayneh, 2017-07-24), but these are interaction/dynamics variable additions, not a literal resolution-equation implementation. The concrete later ROS-side rule at `3b2d91b:src/psi-dynamics.scm:203-207` says arousal decreases resolution and goal-directedness via `psi-create-interaciton-rule`, but still not equation (11).
+
+C4-11. Q2: no Hanson-side evidence for the paper's equation (5)/(8) parenthesization was found. Pickaxe tokens `n_f`, `S_comp`, `S_cert`, `S_int`, `S_en`, `sqrt`, `0.00015`, and `0.002` produced no meaningful OpenPsi implementation hits in Repo A. `n_s` hits are satisfiability/cache false positives (`8918107c4`, `c441fd2fa`, `368d4dc63`, `d0b14cb58`, `1d34295bd`, `bcbe01901`, `242c20818`), not demand-satisfaction numerator/denominator code.
+
+C4-12. Q3: time-varying affective state exists in Eddie Monroe's later upstream/ROS branch work, not in Hanson master and not as the MeTTa paper-formula state variables. `3b2d91b:src/psi-dynamics.scm:34-79` defines a `psi-expression-callback` reading arousal and positive/negative valence, driving expressions, and setting `psi-happy` to `pos-valence * arousal`. Lines 200-235 create OpenPsi dynamics rules such as power-to-arousal and loud-noise-to-arousal. This is real time-varying affective state, but it is a robotics/dynamics layer, not a recovered literal equation (5)/(8)/(11) implementation.
+
+C4-13. Eddie Monroe's later OpenPsi dynamics commits landed on upstream, not Hanson master. For representative commits `c32c318b2` ("add emotion.scm"), `a6caa8264` ("add decay toward baseline for psi vars"), and `8c6bf454a` ("i think its actually working now"), `git branch -a --contains` shows only `remotes/upstream/HEAD -> upstream/master` and `remotes/upstream/master`.
+
+## Repo B -- `ros-behavior-scripting-hansonrobotics`
+
+C4-14. Repo B uses OpenPsi as an active behavior-loop authority, not as a vestigial dependency. `src/btree-psi.scm:4-8` describes "Sophia OpenPsi behavior action selection"; lines 37-40 import `opencog exec`, `eva-model`, `eva-behavior`, and `opencog openpsi`; lines 48-53 load `psi-behavior.scm` and expose `(run)` as `(psi-run)`; line 92 calls `(run)` by default.
+
+C4-15. `src/psi-behavior.scm` defines actual OpenPsi rules. Lines 44-47 create face and speech demands; lines 60-117 define multiple `psi-rule` forms for interaction requests, arrivals, departures, visible people, speech states, listening states, and keep-alive behavior; lines 121-136 define the `psi-prefix-str` loop with `psi-step`, `psi-run-continue?`, ROS liveness, and recursive continuation.
+
+C4-16. Repo B does not customize OpenPsi's action-selector seam. `rg` over `src/` finds no `psi-set-action-selector`, `psi-action-selector`, `cog-av-sti`, `rule-sca-weight`, or `ghost-set-sti-weight`. Therefore Sophia's Repo-B runtime depends on whatever OpenPsi default selector is installed in the linked OpenCog, rather than installing a Hanson-specific ECAN/STI selector.
+
+C4-17. Repo B's direct code does not consume ECAN/STI. Repo-wide `rg` for `cog-av-sti`, `sti-weight`, and `ghost-set-sti-weight` in `src/` returns no runtime hits. OpenPsi is used for rules and loop control, not for explicit AttentionValue / ECAN currency logic.
+
+C4-18. Repo B had an upstream-only `psi-dynamics.scm` branch that confirms a robotics affective-state layer. Commit `3b2d91bed` (Eddie, 2016-11-29, "add-to-load-path and add rules") contains `src/psi-dynamics.scm`; lines 34-79 register an expression callback over arousal and valence, while lines 200-235 create interaction rules connecting power, arousal, resolution-level, goal-directedness, dialog sentiment, speech, and loud noise. Commit `93858d327` (Linas Vepstas, 2017-06-16, "Remove dead code.") removes that file. Both commits are only on `remotes/upstream/master`.
+
+C4-19. TinyCog provides a later Hanson-adjacent event bridge from OpenPsi dynamics into Ghost, but again not paper equations. `TinyCog-hansonrobotics/README.md:133-139` says non-speech triggered actions use OpenPsi's dynamic module to indirectly trigger Ghost rules. `behavior/interaction-rules.scm:17-67` defines face/smile/saliency antecedent/consequent functions; lines 73-112 create `psi-create-general-rule` rules whose consequents call `test-ghost`. `behavior/behavior.scm:21-34` includes `events.scm` and `interaction-rules.scm`, line 45 runs `ghost-run`, and line 49 comments out `(psi-updater-run)`. This is an event-to-Ghost bridge, not the OpenPsi 2011 equation layer.
+
+## Repos C/D -- Loving AI Ghost
+
+C4-20. Repo C (`opencog/loving-ai-ghost`) explicitly disables AF-only mode and STI weighting in the shell runner. `bin/run.sh:13-15` opens CogServer Scheme and executes `(ghost-af-only #f) (ghost-set-sti-weight 0)` before loading Loving AI Ghost topic files. `git blame -L 15,15 bin/run.sh` attributes that line to `51a413e7` by DevHEAD on 2018-06-06. `git show --no-patch 51a413e7` gives the commit message: "update run script to not use ECAN and feedback when rules are loaded".
+
+C4-21. Repo D (`leungmanhin/loving-ai-ghost`) preserves the same decoupling in Scheme form. `bin/run.scm:1` imports `(opencog openpsi)` and `(opencog ghost)`, line 3 sets `(ghost-af-only #f)`, line 4 sets `(ghost-set-sti-weight 0)`, and line 15 runs `(ghost-run)`. `git blame -L 1,4 bin/run.scm` attributes the Scheme runner to `6ec13879` by leungmanhin on 2020-09-21; `git show --no-patch 6ec13879` says "Add a run script in Scheme".
+
+C4-22. The semantics of `(ghost-set-sti-weight 0)` are unambiguous in the Ghost engine. In `opencog/opencog/ghost/matcher.scm:113-131`, rule weight multiplies strength, context, STI, and urge, but the STI factor is `1` when `sti-weight` is not greater than zero. Lines 135-138 likewise skip the positive-STI acceptance requirement when `sti-weight` is zero. Lines 264-268 use all `psi-get-rules` when `ghost-af-only?` is false. Therefore the Loving AI settings remove both AF-only selection and STI as a weighting/filtering factor.
+
+C4-23. Ghost still uses OpenPsi's action-selector seam. `opencog/opencog/ghost/matcher.scm:281-284` installs the Ghost selector via `(psi-set-action-selector! ghost-component (ExecutionOutput (GroundedSchema "scm: ghost-find-rules") (List)))`. Thus Loving AI Ghost decouples from ECAN/STI, not from OpenPsi entirely.
+
+C4-24. `ghost-set-sti-weight` is a supported experimental runtime control, not a hack unique to Loving AI. `opencog/opencog/ghost/test.scm:297-304` defines the setter; `opencog/opencog/ghost/README.md:217-222` documents changing selector weights and shows `(ghost-set-sti-weight 0.5)`. Loving AI's `0` setting is therefore a deliberate configuration choice using a public control.
+
+C4-25. Loving AI Ghost includes STI test/demo scripts, but they are not production run-path evidence. `test-scripts/STI-schema-test.ghost` contains stimulation and max/min STI helper use, while the production runners in Repo C and Repo D set `ghost-set-sti-weight 0` before loading dialogue files.
+
+## Cross-Hanson paper-equation scan
+
+C4-26. Cross-Hanson pickaxe did not find an independent paper-equation implementation outside OpenPsi's upstream dynamics line. Scanned repositories included `epistemics-hansonrobotics`, `TinyCog-hansonrobotics`, `ros-behavior-scripting-hansonrobotics`, `opencog-hansonrobotics`, `loving-ai-ghost`, and `loving-ai-ghost-leungmanhin` for `resolution_level`, `resolution-level`, `expt`, `tanh`, `sqrt`, `S_comp`, `S_int`, `S_cert`, `S_aff`, `S_en`, `n_s`, `n_f`, `0.00015`, and `0.002`. Meaningful results were limited to upstream OpenPsi/dynamics and ROS `psi-dynamics.scm`; TinyCog / epistemics hits were README/config/coordinate/timing false positives.
+
+C4-27. `TinyCog-hansonrobotics` is useful for runtime tradition placement, not equation recovery. Its `behavior/updater.scm:6-9` explicitly describes temporary demo code updating detector globals; lines 21-94 poll face/smile/saliency detectors and update hash tables. `behavior/functions.scm:23-37` includes a toy `is-happy` function derived from `psi-loop-count`, not OpenPsi equation state.
+
+## Answers to Source-4 questions
+
+C4-28. Q1 answer: no literal equation (11) resolution implementation found in Hanson master or Hanson runtime repos. There is a resolution-level dynamics variable/rule in later upstream/ROS work (`3b2d91b:src/psi-dynamics.scm:203-207`), but it is a qualitative interaction rule, not paper equation (11).
+
+C4-29. Q2 answer: no equation (5)/(8) paper parenthesization found in Hanson repos. No meaningful `n_s`, `n_f`, `sqrt`, `S_comp`, `S_cert`, `S_int`, or exact numerator/denominator structure surfaced in code archaeology.
+
+C4-30. Q3 answer: yes, Hanson-adjacent runtime work supplies time-varying affective state, but through robotics/dynamics variables rather than the exact paper formulas. Evidence: `3b2d91b:src/psi-dynamics.scm:34-79`, `:200-235`, TinyCog `behavior/events.scm:14-21` and `:73-75`, and TinyCog `behavior/updater.scm:21-94`.
+
+C4-31. Q4 answer: no, Hanson master never contained the 819-line `dynamics/updater.scm` slope-exponential surrogate. It appears in upstream OpenCog via `48ee8a0bc` and later; it is absent from Hanson master.
+
+C4-32. Q5 answer: the STI-disabling rationale is explicit in Repo C history. Commit `51a413e7` by DevHEAD, 2018-06-06, says "update run script to not use ECAN and feedback when rules are loaded" and blames `bin/run.sh:15` for `(ghost-af-only #f) (ghost-set-sti-weight 0)`. Repo D carries that policy forward into `bin/run.scm:4` via `6ec13879` by leungmanhin, 2020-09-21.
+
+C4-33. Q6 answer: `ros-behavior-scripting` uses OpenPsi as active runtime authority, not merely as vestigial import. `btree-psi.scm:53` maps `run` to `psi-run`; `psi-behavior.scm:60-117` registers `psi-rule`s; `psi-behavior.scm:125-136` wires the loop through `psi-step`. But it does not install a custom action-selector or explicit ECAN/STI weighting.
+
+C4-34. Q7 answer: Eddie Monroe's major OpenPsi dynamics work is upstream-only from the perspective of Hanson master. Representative commits `c32c318b2`, `a6caa8264`, `8c6bf454a`, and the ROS `3b2d91b`/`93858d3` pair are contained only in `remotes/upstream/master`, not the Hanson master branch.
+
+C4-35. Q8 answer: no Hanson-flavored paper-equation implementation outside `opencog/openpsi/` was found. The closest non-OpenPsi artifacts are TinyCog event-to-Ghost bridges and ROS expression/dynamics callbacks; these are runtime integration code, not equation implementations.
+
+## Cluster narrative implications
+
+C4-36. Source 4 requires a correction to the Source 1 V1-1 "OpenPsi enabler-not-default" framing: that framing is correct for the 2019 pre-split / Source-1 baseline, but not for the older 2016 Hanson master snapshot. In 2016, OpenPsi's default selector still contained an STI-weighted path gated by `cog-af-boundary`; by late 2016/2017, upstream refactors converted STI into helper/comment residue, matching Source 1.
+
+C4-37. The OpenPsi cluster has at least three practical lineages, but only two mathematical traditions:
+
+- Classic surrogate lineage: upstream/OpenCog and Hanson 2016 snapshots, with pragmatic selector/dynamics code and temporary ECAN/STI default coupling.
+- Hanson/Ghost robotics runtime lineage: OpenPsi and Ghost as behavior/dialogue runtime, affective-state callbacks, and explicit ECAN/STI disabling in Loving AI.
+- MeTTa OpenPsi line: paper-leaning HYBRID reimplementation from Source 2/3.
+
+The Hanson/Ghost lineage does not need a new paper-math tradition number; it is a runtime/application branch over Classic OpenPsi, with a documented ECAN-decoupling policy.
+
+C4-38. The ECAN cluster's "deliberate decoupling" narrative is strengthened, but with an added event. We already had the 2018 URE STI hook unwiring. Source 4 adds a second explicit decoupling event in Ghost/Loving AI: `51a413e7` (2018-06-06) says the run script was updated "to not use ECAN and feedback when rules are loaded." Additionally, upstream OpenPsi's late-2016/2017 action-selector cleanup removed the older default STI selector path.
+
+C4-39. Methodology lesson: caller-analysis must be time-indexed. Current-HEAD caller analysis at the 2019 Source-1 baseline correctly classified `rule-sca-weight` as uncalled, but the older Hanson 2016 snapshot had a different call graph where the STI helper sat on the default path. For future archaeology, "called/uncalled" claims should always include the commit/date snapshot.
+
+## Confidence / residual risks
+
+C4-40. High confidence: Repo A diff direction, default STI selector in Hanson master, later upstream-only dynamics/updater, Loving AI STI disabling history, ROS behavior OpenPsi runtime use, and absence of explicit STI customization in Repo B.
+
+C4-41. Medium confidence: cross-Hanson absence of paper-equation implementations outside OpenPsi. The scan covered the named local Hanson-flavored repos and relevant tokens, but proprietary/private Hanson runtime code outside the local clone set could exist.
+
+C4-42. Reconciliation risk: Gemini may frame Hanson as its own "Tradition 3" due to robot/dialogue application depth. My recommendation is not to make it a mathematical tradition; call it the Hanson/Ghost robotics runtime branch under Classic/OpenPsi, because I found runtime integration and ECAN decoupling, but no independent paper-equation implementation.
+

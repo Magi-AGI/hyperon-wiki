@@ -1,0 +1,43 @@
+# Source 1 — Classic OpenPsi Baseline — Gemini Findings
+
+**Cluster:** OpenPsi / Motivation pilot, Source 1 of 4
+**Source target:** `opencog-singnet/opencog/openpsi/` at `b31c7e3b9beab7a458c84117f3b654a03ca9ffe2`
+**Persistence date:** 2026-04-27 (orchestrator-saved verbatim from Gemini's inline-forwarded report at Source 1 cluster-pass close)
+**Brief:** `scripts/archive/openpsi_pilot/source1_classic_baseline_brief.txt`
+
+---
+
+## Verbatim findings (per Gemini's forwarded report)
+
+I've confirmed that `(opencog atom-types)` was the "obsolete file" mentioned in commit `9d28bac0`, with its users migrated to `(opencog nlp)` or `(opencog attention)`. I also verified that commit `f091e9d0` introduced conditional module loading for `(opencog attention-bank)` to support transition phases. My analysis of `OpenPsiImplicator.cc`, `OpenPsiRules.cc`, and `action-selector.scm` is complete, and I am now ready to synthesize my findings.
+
+### Gemini Report: Source 1 (OpenPsi Classic Baseline)
+
+**1. Architecture Inventory (A1-A6)**
+**Status:** Hybrid Scheme/C++ with logic split by role.
+- **Scheme Core:** `action-selector.scm` (selection), `main.scm` (loop orchestration), `dynamics/` (modulators, emotions).
+- **C++ Execution:** `OpenPsiImplicator.cc` (instantiation), `OpenPsiRules.cc` (indexing and PatternLink construction), `OpenPsiSatisfier.cc` (satisfiability check).
+- **Rule Engine:** Rules are stored as ImplicationLink with an AndLink context, triggered via PatternLink (mapped in `OpenPsiRules::add_rule`).
+
+**2. ECAN/STI Coupling (B1-B4)**
+**Status:** Strong Runtime Coupling (2017-2018 peak).
+- **Verified Formula:** `action-selector.scm:63` explicitly weights rules by `(* (cog-confidence RULE) (cog-mean RULE) (cog-av-sti RULE))`.
+- **Commit `f091e9d0` (2018):** Verified the addition of `(resolve-module '(opencog attention-bank) #:ensure #f)` across `ghost.scm` and `action-selector.scm`, marking the start of making the AttentionBank optional for development flexibility.
+- **GHOST Integration:** `ghost/stimulation.scm` actively uses `cog-stimulate` on word perception hooks.
+
+**3. PLN/URE Coupling (C1-C3)**
+**Status:** Minimal/Indirect.
+- No direct usage of `PLN::Query` or core URE chainers was found in the OpenPsi C++ layer.
+- Coupling existed primarily through the shared boolean parameter `URE:attention-allocation`, which remained an inactive placeholder (0) in most configurations.
+
+**4. Volatility & Technical Debt (E1-E3)**
+- **Obsolete File:** Commit `9d28bac0` identified `(opencog atom-types)` as the obsolete file, with logic moved to `(opencog nlp)` and `(opencog attention)`.
+- **Satisfiability Cache:** `OpenPsiImplicator::check_satisfiability` (line 33) performs a cache-erase-on-every-call (`_satisfiability_cache.erase(query_body)`), confirming high-volatility/thrashing in the satisfiability path.
+- **MindCloud Copyrights:** C++ files (Implicator, Rules, SCM) carry 2017 MindCloud copyrights, indicating a significant contribution period from that entity.
+
+**5. Tradition Placement**
+**Lineage:** Tradition 2 (Classic OpenCog). OpenPsi served as a mid-tier motivational and action-selection layer that bridged the high-level GHOST dialogue with the low-level ECAN currency economy, before being modularized out in 2019.
+
+---
+
+*End of Gemini Source 1 findings (forwarded verbatim).*

@@ -1,0 +1,240 @@
+# OpenPsi Cluster Pilot -- Source 3 Brief: Papers / Foundations
+
+**Cluster:** OpenPsi / Motivation pilot, Source 3 of 4
+**Source target:** Foundational and lineage papers cited by the OpenPsi codebase
+**Brief author:** Claude orchestrator (Opus 4.7 1M context)
+**Brief date:** 2026-04-28
+**Audit type:** Read-only paper-anchoring pass -- equation verification and citation disambiguation; no working-tree modifications, no wiki writes from extraction agents
+
+---
+
+## Why this source -- cluster context
+
+Source 2 reconciliation (`scripts/archive/openpsi_pilot/source2_metta_port_family/findings_reconciled_crossmodel.txt`) identified two open V2-N items that require paper-anchoring to resolve:
+
+- **V2-2:** Codex's verbatim code citation (`feed-back-loop.metta:139-140`) names a **2013 paper** -- *"OpenPsi: A Novel Computational Affective Model and its Application in Video Games by Goertzel, Ben et al. (2013)"*. Gemini's report refers to a **2011 paper**. Both citations may target different formulas in the codebase. Source 3 must disambiguate.
+- **V2-3:** Tradition placement decision (Tradition 6 paper-faithful re-implementation vs. provisional sub-branch under Tradition 2 motivation cluster). Both Source 2 lanes left this provisional pending Source 3 paper verification.
+
+Source 2 also produced four equation-verification questions for Source 3:
+
+1. Verify the MeTTa modulator-updater formulas match the cited paper's eq. 10-13.
+2. Verify `calculateDemandSatisfaction` (`demand.metta:150-168`) is paper-literal, paper-inspired, or engineered.
+3. Verify demand-updater formulas (`demand-updaters.metta:1-76`) are paper-literal.
+4. Determine whether the LLM/correlation-matcher path in curious-agent should be considered an OpenPsi extension, an application wrapper, or a separate neural/LLM integration layer (deferred from Source 2; partially addressable from paper context if MetaMo papers describe LLM-OpenPsi boundary).
+
+---
+
+## Source target details -- paper inventory
+
+### Wiki cards already on hand (orchestrator-pre-scoped 2026-04-28)
+
+| ID | Card | Type | Notes |
+|---|---|---|---|
+| 3093 | `Publications+OpenPsi Cognitive Model` | Markdown stub | **2011 AGI-11 paper** "Realizing Doerner's Psi Cognitive Model in the OpenCog Integrative AGI Architecture" by Cai/Goertzel/Geisweiller. PDF: http://goertzel.org/OpenPsi_agi_11.pdf |
+| 3168 | `RawData+Publications+OpenPsi Cognitive Model` | RawData | **Full text** of the 2011 AGI-11 paper (25,777 chars). Equation extraction feasible. |
+| 3096 | `Publications+PSI Affective Dynamics` | Markdown stub | **2011 Cognitive Systems Research paper** "Dynamics of a Computational Affective Model Inspired by Doerner's PSI Theory" by Cai/Goertzel/Zhou/Zhang/Jiang/Yu. **No RawData child found in scope** -- may need to be retrieved. |
+| 3827 | `RawData+Publications+Openpsi Zhenhua` | RawData parent | Source: `mattermost://hyper-motivation/0015_openpsi-zhenhua.pdf`. Split into chunks 1+2 (IDs 3828, 3829). Identity overlap with 3168 unknown -- Codex/Gemini to confirm. |
+| 3828, 3829 | `RawData+Publications+Openpsi Zhenhua+chunk-{1,2}` | RawData chunks | Full text of the "Openpsi Zhenhua" PDF. |
+| 7364 | `Publications+MetaMo Robust Motivational Framework` | Draft | MetaMo paper #1 (Markdown stub-upgrade in flight). |
+| 7367 | `Publications+MetaMo to Open-Ended OpenPsi` | Draft | MetaMo paper #2 (created 2026-04-27, in flight). |
+| 3761 | `RawData+Publications+MetaMo Two` | RawData | MetaMo Two raw text. |
+| 3763 | `RawData+Publications+MetaMo Two (1)` | RawData | Suspected duplicate of 3761; orchestrator to confirm. |
+| 653 | `Hyperon AI Algorithms+MetaMo (Motivational Framework)` | RichText | Synthesis card for MetaMo overall. |
+
+### Source-text gap (critical to Source 3)
+
+**No wiki card exists for the 2013 paper Codex's verbatim citation references.** Codex C2-45 quotes from `feed-back-loop.metta:139-140`:
+
+> "OpenPsi: A Novel Computational Affective Model and its Application in Video Games by Goertzel, Ben et al. (2013)"
+
+Searches for "video games", "novel computational affective" and "Cai" returned no Publications card matching this 2013 paper. **Hypothesis to verify:** the 2013 paper is an extension of the 2011 Cognitive Systems Research paper (`Publications+PSI Affective Dynamics`, ID 3096) re-applied to a game-agent context. If true, the existing 2011 papers may be the actual mathematical source, with the 2013 paper title being a downstream application. Source 3 must:
+1. Search the existing RawData (especially 3168 + Openpsi Zhenhua chunks) for any reference to "Application in Video Games" or game-agent scenarios.
+2. If the 2013 paper is genuinely a separate publication, flag it as a discovered-publication for ingestion (per `feedback_discovered_publications.md`) and decide whether equation verification for Source 3 can proceed with only the 2011 papers.
+
+---
+
+## Pre-loaded paper-vs-code mapping (orchestrator-collected from Sources 1-2)
+
+### Codebase formulas requiring verification (canonical hyperon-openpsi `3b356c5`)
+
+**Modulator-updater helpers (Codex C2-37 / C2-38 / C2-39, post-`01936f1`):**
+
+```metta
+;; main/mind-agents/modulator-updater/modulator-updaters.metta:1-5
+ActivationHelper(competence, energy)
+  = competence/(competence + 0.5) * energy/(0.05 + energy)
+
+;; main/mind-agents/modulator-updater/modulator-updaters.metta:8-12
+SecuringThresholdHelper(certanity, integrity)        ;; sic -- typo "certanity" persists
+  = certanity/(certanity + 0.05) * integrity^3
+
+;; main/mind-agents/modulator-updater/modulator-updaters.metta:15-18
+SelectionThresholdHelper(competence)
+  = fuzzy_equal(competence, 1, 15)
+```
+
+Active caller path: `psi-agent-loop` / `psi-loop-v2` -> `modulatorUpdaterAgent` (which calls all three helpers and writes back to modulator space). Use cases: curious-agent (via `psi-agent-loop`), Qwestor (direct call to `modulatorUpdaterAgent`), ping-pong (via planner+loop).
+
+Commit `01936f1` message: *"align activation, securing, resolution, and selection formulas with OpenPsi paper (eq. 10-13)"*. **Verify these equations against the cited paper.**
+
+**Demand satisfaction (Codex C2-16 / C2-17, paper-cited inline):**
+
+```metta
+;; main/demand/demand.metta:150-168
+;; "calculate demand satisfaction according to Ben's Paper"
+calculateDemandSatisfaction(demand) = piecewise:
+  if min <= current <= max:  return 0.8 + 0.2 * random()
+  if current < min:        return fuzzy_equal_to_min  ;; uses fuzzy equality
+  if current > max:        return 0.9 + 0.1 * random()
+```
+
+**Demand-updater formulas (Codex C2-26):**
+
+```metta
+;; main/mind-agents/demand-updater/demand-updaters.metta:1-76
+;; "Based on OpenPsi ben paper"
+fuzzy-new, fuzzy-near
+certaintyDemandUpdater
+affiliationDemandUpdater
+competenceDemandUpdater
+```
+
+**Verbatim code citation (Codex C2-45):**
+
+```metta
+;; main/feed-back-loop/feed-back-loop.metta:139-140
+;; "OpenPsi: A Novel Computational Affective Model and its Application
+;;  in Video Games by Goertzel,Ben et. al (2013)"
+```
+
+---
+
+## Audit checklist (questions for extraction agents)
+
+### A. Paper identity disambiguation (V2-2)
+
+A1. **Identify all OpenPsi/Psi/MetaMo papers in the wiki RawData and code citations.** Cross-reference the RawData parent IDs and titles. For each paper, determine: authors, year, venue, link/source, **and whether the full text is available in RawData chunks**.
+
+A2. **Verify the relationship between `Publications+OpenPsi Cognitive Model` (ID 3093, AGI-11 2011) and `RawData+Publications+Openpsi Zhenhua` (ID 3827, "openpsi-zhenhua.pdf").** Are these the same paper, related papers, or different? Check by reading the openpsi-zhenhua chunks (3828, 3829) and matching content/title/authors.
+
+A3. **Locate the 2013 paper.** Codex's citation: "OpenPsi: A Novel Computational Affective Model and its Application in Video Games by Goertzel, Ben et al. (2013)". Search:
+   - `RawData+Publications+OpenPsi Cognitive Model` (ID 3168) full text -- does the 2011 paper reference an in-progress 2013 follow-up?
+   - `Publications+PSI Affective Dynamics` content -- does this 2011 Cognitive Systems Research paper match the 2013 title's "Computational Affective Model" framing? (The 2013 paper may be a re-titled or extended version.)
+   - External web (NOT required of the audit; flag if web search would be useful).
+
+A4. **Map "Ben's Paper" code citations to specific paper(s).** `demand.metta:150-168` says "according to Ben's Paper"; `demand-updaters.metta:1-76` says "Based on OpenPsi ben paper". Are these references to the same paper? Are the formulas in those files traceable to one of the wiki papers?
+
+### B. Equation verification (V2-3 driver)
+
+B1. **Locate eq. 10-13 in the cited paper.** Once A1-A3 settles which paper is the source, find equations 10, 11, 12, 13 in that paper. Quote them verbatim (LaTeX or Unicode rendering).
+
+B2. **Compare paper eq. 10-13 to MeTTa code helpers.** For each of:
+   - `ActivationHelper(c, e) = c/(c+0.5) * e/(0.05+e)`
+   - `SecuringThresholdHelper(c, i) = c/(c+0.05) * i^3`  (note: `c` here is `certanity`/certainty)
+   - `SelectionThresholdHelper(c) = fuzzy_equal(c, 1, 15)`
+
+   Determine: **literal match** (same formula), **structural match** (same shape, different constants), **inspired** (same idea, different math), **divergent** (paper says X, code does Y). Cite paper page/equation number for each comparison.
+
+B3. **Verify `calculateDemandSatisfaction` against paper.** Same comparison framework -- is the piecewise function (with `0.8 + 0.2*random()` in-range, `fuzzy_equal` at-min, `0.9 + 0.1*random()` above-max) literal/structural/inspired/divergent? **The random terms are particularly suspect** -- does any OpenPsi paper specify random-noise in demand satisfaction, or is this an engineered addition?
+
+B4. **Verify demand-updater formulas (`demand-updaters.metta:1-76`).** Same framework -- `certaintyDemandUpdater`, `affiliationDemandUpdater`, `competenceDemandUpdater` against paper definitions of those demand types.
+
+B5. **Hardcoded value check (Codex C2-63).** The MeTTa code hardcodes `certanity=0.5, integrity=0.5` in `modulatorUpdaterAgent`. The paper presumably has these as time-varying state, not constants. Is the hardcoding documented/justified anywhere, or is it a partial-implementation marker?
+
+### C. Tradition placement decision (V2-3)
+
+C1. **Based on B1-B5 evidence, classify the MeTTa port's relationship to the source paper(s).** Use the following criteria:
+   - **Tradition 6: paper-faithful re-implementation** = formulas literal-match (or are deliberate corrections of paper typos), parameters time-varying as paper specifies, semantically faithful to paper's algorithm.
+   - **Tradition 2 sub-branch: faithful Classic-surrogate port** = formulas match Classic OpenPsi C++/Scheme rather than the paper, even where Classic deviated from paper.
+   - **Hybrid** = some formulas paper-faithful, others Classic-faithful.
+   - **Independent re-derivation** = formulas in code don't match either paper or Classic; engineered for MeTTa-port purposes.
+
+C2. **Document tradition decision rationale.** Whatever the C1 classification, provide the supporting evidence -- cite specific paper equations and specific code lines.
+
+C3. **Cross-cluster comparison.** ECAN cluster pilot established Tradition 2 sub-branch behavior for the metta-attention port (faithful Classic-surrogate replication). How does OpenPsi's MeTTa port compare? If different, is the difference attributable to (a) different cohort priorities, (b) different paper-anchor availability, (c) different code-quality at the Classic baseline being ported, or (d) deliberate community choice to "fix" what Classic got wrong?
+
+### D. MetaMo trajectory (deferred from Source 2 D1)
+
+D1. **MetaMo paper anchor.** Read the MetaMo papers (RawData IDs 3761/3763 + Markdown stubs 7364/7367 + RichText synthesis 653) to determine: where do MetaMo papers position OpenPsi in the Hyperon motivation stack? Do they explicitly cite the 2011 or 2013 papers? Do they propose new equations, or are they architectural/category-theoretic frameworks?
+
+D2. **LLM/curious-agent integration anchor.** Codex C2-81 question carry-forward: do MetaMo or any OpenPsi-related paper describe an LLM-control-of-OpenPsi pattern, or is the curious-agent's hybrid LLM+MeTTa approach a Hyperon-era engineering decision that doesn't have paper anchoring? This affects how the wiki frames the curious-agent finding (paper-derived vs. engineering-side).
+
+D3. **Discovered-publications inventory.** Per `feedback_discovered_publications.md`: any papers cited in the OpenPsi codebase or other Source 3 audit-targets that don't have wiki cards yet should be tracked here for cluster-end ingestion. The 2013 video-games paper is the prime candidate; A1-A3 may surface others.
+
+### E. Cross-cluster questions
+
+E1. **Re-verify ECAN-OpenPsi paper coupling.** The 2014 Harrigan et al. paper (`Publications+Guiding PLN with Attention Allocation`, ID 3057) discusses ECAN-as-control-layer-for-PLN. Do any OpenPsi papers (2011 AGI-11, 2011 PSI Affective, 2013 Video Games, MetaMo) propose a similar ECAN-OpenPsi coupling? If yes, why was it never realized in OpenCog Classic (per Source 1 V1-1: helper-only, no caller)?
+
+E2. **PLN paper anchors for OpenPsi.** Codex C1-7 noted that Classic OpenPsi's README cites PLN as a design-compatibility motivation. Do OpenPsi papers cite specific PLN papers (e.g., `Publications+PLN Book`)? If so, which PLN concepts are claimed to be reusable in OpenPsi, and does the MeTTa port preserve those design dependencies?
+
+---
+
+## Out of scope for Source 3
+
+- **Hanson Robotics fork lineage** -- Source 4 (with Gemini's preserved emotion-runtime subgoal).
+- **Re-auditing Classic OpenPsi or MeTTa port** -- Sources 1 and 2 baselines locked.
+- **External web retrieval is orchestrator-only.** Extraction agents must NOT browse the web independently. If both lanes fail to identify the 2013 paper from local RawData (IDs 3168, 3828, 3829, etc.) and from code-comment context, FLAG it as a source-text gap in the findings file -- do not browse to resolve. The orchestrator will decide whether to fetch externally as a discovered-publication ingestion sub-task.
+- **Full mathematical re-derivation of Doerner's original Psi theory** (1990s German/cognitive-science roots) -- only the OpenPsi paper line is in scope.
+- **MicroPsi / Joscha Bach's separate work** -- referenced in 2011 AGI-11 paper but not the source for OpenPsi formulas.
+
+---
+
+## Methodology rules (per CLAUDE.md standing protocols + Source 1/2 emergence)
+
+1. **Read-only.** No working-tree modifications, no wiki writes from extraction agents.
+2. **Cross-model triangulation.** Codex + Gemini extraction passes; Claude orchestrator cross-checks; reconciliation file synthesizes.
+3. **Both API layers** (carried forward from ECAN Source 4 V0-1; primarily code-side rule, but applies if any Scheme/MeTTa paper-citation comments exist).
+4. **Pickaxe before "dead code" claims** (carried forward from ECAN Source 3 V0-1).
+5. **Caller-analysis before "actively coupled" claims** (carried forward from OpenPsi Source 1 V1-1).
+6. **Bidirectional fork-divergence check** (Source 2 V2-1 emergence) -- applies if Source 3 surfaces forked or alternative paper versions.
+7. **Paper-equation literal verification.** Quote paper equations verbatim (LaTeX or Unicode). Cite paper section/equation number AND code file:line. Distinguish literal-match / structural-match / inspired / divergent -- do NOT collapse the distinction.
+8. **Do NOT trust code comments as source attribution.** Comments like `;; calculate demand satisfaction according to Ben's Paper` or `;; align ... with OpenPsi paper (eq. 10-13)` indicate INTENT, not verified attribution. Always match the formula against the paper text directly. If the paper text doesn't have the cited equation number or doesn't match the formula, the code comment is wrong (or the paper has been revised). Report mismatches as findings, not as paper-faithful confirmation.
+8. **RawData fidelity** (per CLAUDE.md): if a paper RawData has typos/scan-OCR errors, do NOT clean them in the audit; quote verbatim and note OCR limitations separately.
+9. **Verbatim quotes for critical claims.** Code file:line + paper page/equation cite for any paper-vs-code claim.
+
+---
+
+## Cross-source carry-forward references
+
+- **OpenPsi Source 1 reconciliation:** `scripts/archive/openpsi_pilot/source1_classic_baseline/findings_reconciled_crossmodel.txt` -- Classic baseline architecture, V1-1 enabler-not-consumer correction.
+- **OpenPsi Source 2 reconciliation:** `scripts/archive/openpsi_pilot/source2_metta_port_family/findings_reconciled_crossmodel.txt` -- MeTTa port architecture, V2-1 fork divergence rule, V2-2 paper-citation dissent (the question this brief answers), V2-3 tradition placement deferral.
+- **ECAN cluster pilot Source 1 reconciliation:** `scripts/archive/ecan_pilot/source1_metta_attention/findings_reconciled_crossmodel.txt` -- sister cluster's MeTTa-port pattern (faithful Classic-surrogate port). C3 comparison baseline.
+- **CLAUDE.md** -- five-tradition map, two-paradigm framing, cluster narrative.
+- **`feedback_discovered_publications.md`** (Claude memory) -- discovered-publication ingestion protocol for source-text gaps.
+
+---
+
+## Deliverable format (extraction agents)
+
+Each agent produces a single text file:
+
+- `scripts/archive/openpsi_pilot/source3_papers/findings_codex.txt`
+- `scripts/archive/openpsi_pilot/source3_papers/findings_gemini.txt`
+
+Structure (per Sources 1-2 precedent):
+
+1. **Header** -- model name, papers audited (wiki card IDs + RawData IDs), pass date, files touched.
+2. **A-section answers** -- paper identity disambiguation (A1-A4).
+3. **B-section answers** -- equation verification (B1-B5), with verbatim paper equation quotes + verbatim code citations + literal/structural/inspired/divergent classification per equation.
+4. **C-section answers** -- tradition placement (C1-C3).
+5. **D-section answers** -- MetaMo trajectory + LLM anchor + discovered-publications (D1-D3).
+6. **E-section answers** -- cross-cluster (E1-E2).
+7. **Discovered tangents** -- paper attribution surprises, missing references, OCR limitations encountered.
+8. **Open questions** -- anything for V3-N reconciliation or Source 4 / cluster-close.
+
+**Claim numbering convention:** Codex Source 3 = `C3-1`, `C3-2`, ...; Gemini Source 3 = `G3-1`, `G3-2`, ...
+
+**Length target:** ~15-30 KB per agent file. Source 3 may run shorter than Sources 1-2 if the equation comparisons are direct, or longer if multiple papers need disambiguation.
+
+---
+
+## Orchestrator cross-check plan (post-extraction)
+
+1. Diff Codex vs. Gemini per-question. Identify V3-N dissents.
+2. For any V3-N dissent affecting cluster narrative (especially C1 tradition placement), run direct paper-text excerpting (`get_card` on RawData IDs 3168, 3828, 3829, 3761, 3763) and code excerpting (`git show 3b356c5:<path>`) to settle.
+3. Write `scripts/archive/openpsi_pilot/source3_papers/findings_reconciled_crossmodel.txt`.
+4. Decide whether Source 3 closes the tradition placement question OR requires Source 4 (Hanson) before locking the cluster narrative.
+
+---
+
+*End of Source 3 brief. Pre-loaded paper inventory and code-equation mapping above; agents should not re-discover paper IDs or re-extract code formulas unless verifying a specific claim.*

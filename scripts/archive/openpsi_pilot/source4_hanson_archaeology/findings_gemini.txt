@@ -1,0 +1,52 @@
+# Source 4 -- Hanson Archaeology -- Gemini Findings
+
+**Cluster:** OpenPsi / Motivation pilot, Source 4 of 4
+**Source target:** Hanson Robotics fork archaeology
+**Persistence date:** 2026-04-28 (orchestrator-saved verbatim from Gemini's inline-forwarded report at Source 4 cluster-pass close)
+**Brief:** `scripts/archive/openpsi_pilot/source4_hanson_archaeology_brief.txt`
+
+---
+
+## Verbatim findings (per Gemini's forwarded report)
+
+I have gathered all the necessary evidence to answer the Source 4 brief's questions. I am now synthesizing my final report.
+
+Gemini Report: Source 4 (Hanson Fork Archaeology)
+
+### 1. Paper-Formula Verification (Q1-Q3)
+Status: NO across the board.
+- Q1 (resolution_level), Q2 (Eq 5/8 parenthesization), Q3 (Time-varying state): Hanson's opencog fork (aec9b1f) is strictly behind the upstream OpenCog repository. It completely lacks the dynamics/ subdirectory (which houses modulator.scm and updater.scm).
+
+### 2. Source 1 Retroactive Note (Q4)
+- Confirmed NO in Hanson: The slope-based exponential surrogate (slope^(ax)-1)/(slope^a-1) is absent in Hanson master because the entire dynamics/ subsystem is missing.
+- Attribution: Eddie Monroe committed the dynamics/ subsystem directly to the upstream OpenCog repository, not to this isolated Hanson fork.
+
+### 3. The "Smoking Gun" Rationale (Q5 & Q7)
+Status: Deliberate ECAN Decoupling (2018).
+- The Commit: 51a413e77 (2018-06-06) by DevHEAD (devhead@devhead.com).
+- The Message: "update run script to not use ECAN and feedback when rules are loaded"
+- The Action: Added (ghost-af-only #f) and (ghost-set-sti-weight 0) via telnet in loving-ai-ghost/bin/run.sh.
+- Conclusion: The Loving AI team actively evaluated ECAN's impact on their dialogue system and chose to completely disable it. Eddie Monroe's commits in loving-ai-ghost focus entirely on dialogue timing and NLP tweaks, not currency dynamics.
+
+### 4. The OpenPsi Seam Pattern (Q6)
+Status: Simplified State-Machine Wrapper.
+- In ros-behavior-scripting (psi-behavior.scm), OpenPsi is used merely as a structural rule-engine. It maps perceptual predicates (e.g., Someone requests interaction?) to motor schemas (Interaction requested action).
+- Demands like face-demand and speech-demand are present but are satisfied by hardcoded constant values (e.g., face-demand-satisfied (stv 1 1)), effectively bypassing the quantitative economy of the OpenPsi theory.
+
+### 5. Cross-Tree Pickaxe (Q8)
+Status: Absent outside opencog/openpsi/.
+- A cross-tree grep for resolution_level, securing_threshold, and fuzzy_new in loving-ai-ghost and ros-behavior-scripting returned zero structural hits (only NLP adverbs).
+
+### Final Tradition Map Proposal
+Based on the four-source cluster pilot, I propose closing the OpenPsi cluster narrative with the following tradition map:
+
+- Tradition 2 (Classic OpenCog): The original C++ baseline. Characterized by engineered surrogates (e.g., slope-exponential scaling instead of paper formulas).
+- Tradition 2 Sub-branch (iCog-Labs-Dev ECAN): Faithfully ported the Tradition 2 surrogates to MeTTa without attempting to restore the 2009 paper math.
+- Tradition 6 (MeTTa OpenPsi): A Hybrid / Paper-Leaning Reimplementation. It sheds the Tradition 2 C++ surrogates in favor of re-literalizing the 2011/2013 paper formulas (Eqs 10-13), while also introducing modern engineering patterns like LLM correlation matching.
+- The Hanson Divergence (Parallel Tradition): The Hanson robotics and dialogue stacks (Loving AI) utilized OpenPsi and GHOST structurally, but actively decoupled from their mathematical foundations (e.g., disabling ECAN, hardcoding demand satisfaction), relying instead on scripted state machines.
+
+Gemini Standby. Finalizing the report for reconciliation. Ready for cluster close.
+
+---
+
+*End of Gemini Source 4 findings (forwarded verbatim). Reconciliation: see findings_reconciled_crossmodel.txt.*

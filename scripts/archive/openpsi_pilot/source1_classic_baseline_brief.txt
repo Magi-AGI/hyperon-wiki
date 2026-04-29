@@ -1,0 +1,268 @@
+# OpenPsi Cluster Pilot — Source 1 Brief: Classic OpenPsi Baseline
+
+**Cluster:** OpenPsi / Motivation pilot, Source 1 of 4
+**Source target:** `opencog-singnet/opencog/openpsi/` at audit commit `b31c7e3b9beab7a458c84117f3b654a03ca9ffe2` (short `b31c7e3`)
+**Local checkout:** `E:\GitHub\hyperon reference\opencog-singnet\` (HEAD `68d0e553185f227125302b8f31560d02b917f3a4` on `master`, 2026-04-26 git fetch state)
+**Brief author:** Claude orchestrator (Opus 4.7 1M context)
+**Brief date:** 2026-04-27 (drafted 2026-04-26; reviewer-approved and launched 2026-04-27)
+**Audit type:** Read-only archaeology — no working-tree modifications, no wiki writes from extraction agents
+
+---
+
+## Why this source — cluster context
+
+The 2026-04-26 ECAN/Attention cluster pilot (Source 4 V0-1, see `scripts/archive/ecan_pilot/source4_pre_split_monorepo/findings_reconciled_crossmodel.txt`) established that **OpenPsi was a confirmed third executable ECAN consumer** at `b31c7e3` alongside the URE STI source-selection hook and Ghost/NLP-fuzzy. Specifically:
+
+- `opencog/openpsi/action-selector.scm:63` — `(* (cog-confidence RULE) (cog-mean RULE) (cog-av-sti RULE))` weights candidate rules by `strength × confidence × STI`
+- Pickaxe `e5bae708fa5b1e6a5a18ef6c2e4ca6a40f981d98` (2017-11-09, Amen Belayneh, "Cleanup openpsi action-selector functions") — STI weighting in OpenPsi has existed since at least 2017
+- Verified by orchestrator via `git grep b31c7e3 -- opencog/openpsi/` (the V0-1 disambiguator that overturned Gemini's C++-only NO-COUPLING verdict)
+
+This brief opens an OpenPsi-cluster archaeology pass to determine:
+
+1. **Architectural baseline** — What does the canonical Classic OpenPsi look like at `b31c7e3` (peak pre-AttentionBank-removal state)? Action-selection, rule firing, dynamics subsystems, AtomSpace/AttentionBank/PLN coupling.
+2. **Tradition placement** — Per the five-tradition map in `CLAUDE.md`, is OpenPsi a Tradition 2 sub-branch (like ECAN's iCog-Labs-Dev MeTTa port relative to Classic ECAN), an independent tradition, or a cross-cluster control layer? The MeTTa port question is Source 2's job; Source 1 sets the baseline.
+3. **ECAN coupling depth** — Is `cog-av-sti` rule weighting representative of OpenPsi-ECAN integration, or are there other coupling surfaces (modulators driving STI, dynamics affecting AttentionBank, etc.)?
+4. **PLN coupling depth** — Was OpenPsi a PLN consumer (rule firing via Implicator, control of inference goals), or did it use the URE only structurally? This question matters because the "missing PLN inference-control layer" narrative from the ECAN pilot may have a parallel OpenPsi story.
+
+---
+
+## Source target details
+
+**Repo:** `singnet/opencog` (SingularityNET fork of `opencog/opencog` — same upstream, with iCog-Labs-Dev maintenance commits on top through 2019). At `b31c7e3` (2019-09-04), this is the last commit before the 2019-09-06 `318c0b4cb` AttentionBank removal — i.e., peak-coupling state for the broader OpenCog ecosystem.
+
+**Audit subdirectory:** `opencog/openpsi/` only. NLP, Ghost, attention, atomspace, and other subdirectories are out of scope for Source 1 (covered by ECAN pilot or future cluster sources).
+
+**Tree at `b31c7e3` (27 files, verified via `git ls-tree -r b31c7e3 -- opencog/openpsi/`):**
+
+```
+opencog/openpsi/
+├── CMakeLists.txt
+├── README.md
+├── OpenPsiImplicator.{cc,h}      ← C++ rule firing (PatternLink → action)
+├── OpenPsiRules.{cc,h}           ← C++ rule registry
+├── OpenPsiSCM.{cc,h}             ← C++ ↔ Scheme bindings
+├── OpenPsiSatisfier.{cc,h}       ← C++ satisfiability checker
+├── action-selector.scm           ← Scheme rule selection (V0-1 STI weighting site)
+├── control.scm                   ← Scheme control-loop primitives
+├── demand.scm                    ← Scheme demand definitions (Psi theory drives)
+├── main.scm                      ← Scheme module entry
+├── openpsi.scm                   ← Scheme module surface
+├── rule.scm                      ← Scheme rule construction
+├── utilities.scm                 ← Scheme utility helpers
+└── dynamics/
+    ├── CMakeLists.txt
+    ├── dynamics.scm              ← Dynamics module entry
+    ├── emotion.scm               ← Emotion definitions  ★ Hanson runtime question deferred to Source 4
+    ├── event.scm                 ← Event handling
+    ├── interaction-rule.scm      ← Interaction-rule schemas
+    ├── mock-interaction-rules.scm ← Test/mock rules
+    ├── modulator.scm             ← Psi modulators (e.g., arousal)
+    ├── sec.scm                   ← Sensitivity-Evaluation-Component
+    ├── updater.scm               ← Dynamics updater loop
+    └── utilities.scm
+```
+
+Tree composition: ~62% Scheme (17 files), ~30% C++ (8 files in 4 .cc/.h pairs), ~8% build/docs.
+
+---
+
+## Pre-loaded git history (orchestrator-collected — do not re-run broad discovery unless verifying or filling a cited deliverable)
+
+### Author cohort (by commits touching `opencog/openpsi/` at `b31c7e3`, `git shortlog -sne b31c7e3 -- opencog/openpsi/`)
+
+| Commits | Author | Email | Note |
+|--:|---|---|---|
+| 294 | **Amen Belayneh** | amenbelayneh@gmail.com / amen@hansonrobotics.com / AmeBel@users.noreply.github.com | **Dominant contributor.** Both Hanson Robotics and personal addresses → cross-org cohort overlap. Author of the V0-1 STI cleanup `e5bae708`. |
+| 102 + 5 | **Eddie Monroe** | eddiemonroe@gmail.com | Second tier. |
+| 89 + 15 | **Linas Vepštas / Vepstas** | linasvepstas@gmail.com | Third tier (mostly architecture refactoring, atom-API conversions). |
+| 27 | **leungmanhin** | manhinleung@gmail.com | Cross-source overlap with NLP/Ghost (ECAN Source 4 cohort). |
+| 11 | **Alexander Scherbatiy** (`stellarspot`) | stellarspot@gmail.com | Python bindings + atom-table release feature. |
+| 9 | **Nil Geisweiller** | ngeiswei@gmail.com | Cross-source: same author who unwired URE STI hook in 2018 (ECAN Source 3). |
+| 4 | Joel Pitt | joel@joelpitt.com | Documentation cleanup PR #3546. |
+| 5 | kasim | se.kasim.ebrahim@gmail.com | iCog-Labs-Dev cohort. |
+
+**Cohort takeaway:** OpenPsi is **Amen Belayneh's project** by commit volume (294 of ~564 = 52%). Cross-source cohort overlap is significant — Belayneh, Vepstas, Geisweiller, Leung Man Hin all appear in the ECAN/URE/PLN cluster-pilot cohorts.
+
+### Total commit count
+
+- 564 commits touched `opencog/openpsi/` at `b31c7e3` (`git rev-list --count b31c7e3 -- opencog/openpsi/`).
+
+### Recent commits at `b31c7e3` (last 40, `git log --oneline b31c7e3 -- opencog/openpsi/`)
+
+```
+9d28bac0f Hmm... Many users of this obsolete file...           ← FILE PHASE-OUT signal — investigate
+c02094e23 Conversion to explicit paths for guile extensions
+802f0ec84 Merge pull request #3546 from ferrouswheel/psi-doc-edit  ← Joel Pitt doc cleanup
+20d7f4c7c Move references to end and remove verbosity
+8015672dc Tidy documentation - spelling, grammar, outline
+0f4e52adf Fix bogus copyright years
+8918107c4 Move OpenPsiSatisfier::check_satisfiability(...) method back to OpenPsiImplicator
+c441fd2fa Remove OpenPsiSatisfier creation from OpenPsiImplicator::imply(...) method
+4511aec5f Do not call check_satisfiability in OpenPsiImplicator::imply to not delete a query from the _satisfiability_cache
+8a21e4c4c Use new OpenPsiSatisfier instance in OpenPsiImplicator::check_satisfiability(...) and OpenPsiImplicator::imply(...) methods
+368d4dc63 Revert "Make _satisfiability_cache local to OpenPsiSatisfier"
+d0b14cb58 Make _satisfiability_cache local to OpenPsiSatisfier
+dfb82304a Merge https://github.com/opencog/opencog into feature/openpsi-release-atom-table
+430eb6f96 Add OpenPsiRule class for OpenPsi Python wrapper
+c97c270cb Add OpenPsi Python wrapper                            ← Python wrapper exists (Scherbatiy)
+1d34295bd Move Satisfier from OpenPsiImplicator so it is possible to release AtomTable
+8df68de34 Join to psi thread in pshi-halt function to wait the thread exiting   ← runtime threading
+0acdb0e77 Rename rule-engine by ure                              ← URE rename — naming alignment with ECAN Source 3
+480e88fdc Remove a module that is now a no-op
+710034c20 Correct truthvalue includes
+5d39c4456 Correct atom_types refs
+0af3a0206 Update installation paths of guile modules
+fb037002b Set openpsi-logger to "info"
+8c703e1e9 Add functions for defining & manipulating openpsi parameters
+a5c749282 Correct Comments and note
+b82fa9f22 Change ProtoAtom usages to Value
+617de68c2 More simplifications
+ff9a4fc8a More conversions to newer, faster access methods
+67eeb67d5 Convert to new utility opencog/atomspace#1894
+b2745ec91 Revert "Swap cog-tv-mean with cog-mean"               ← VOLATILITY in action-selector formula
+c6cffde50 Swap cog-tv-mean with cog-mean
+7e1eb63b8 Rename cog-tv-conf by cog-tv-confidence
+be8601651 Replace deprecated routine with a faster one.
+34dbe98a1 Check if the values of a goal exist
+64308c175 Use HandleCast as needed.
+7cf12edc0 Synchronization with Atomspace: proto library is extracted from base library
+e71faf3fe Fix a scm module loading bug
+257075035 Simplify psi-increase-urge and psi-decrease-urge
+69d93211f Add argument check for psi-goal
+f091e9d0d Make guile modules load if (opencog attention-bank) isn't installed   ← AttentionBank-OPTIONAL path exists
+```
+
+### Notable PR titles (from `git log --grep="openpsi" --all`, filtered)
+
+- PR #3655 (Belayneh) — `openpsi-py-examples` — ping-pong + simple Python examples
+- PR #3654 (Belayneh) — `openpsi-examples` — basic + scheme-side examples
+- PR #3652 (Belayneh) — `openpsi-documentation-update`
+- PR #3572 (Geisweiller) — `define-have-openpsi` — `HAVE_OPENPSI` macro, `(opencog attention-bank)` optional loading
+- PR #3546 (Pitt) — `psi-doc-edit` — documentation cleanup
+- PR #3517 (Scherbatiy) — `add-openpsi-run-halt-python-wrappers`
+- PR #3501 (Scherbatiy) — `openpsi-python-binding`
+- PR #3496 (Scherbatiy) — `feature/openpsi-release-atom-table`
+
+### Carry-forward V0-1 SHA (verified ancestor of `b31c7e3` via `git merge-base --is-ancestor`)
+
+- `e5bae708fa5b1e6a5a18ef6c2e4ca6a40f981d98` (2017-11-09, Amen Belayneh, "Cleanup openpsi action-selector functions") — STI weighting in `action-selector.scm` introduced or restored at this commit. Pickaxe-anchor for the V0-1 ECAN coupling result.
+
+---
+
+## Audit checklist (questions for extraction agents)
+
+### A. Architecture inventory (must answer)
+
+A1. **Action-selection algorithm.** Read `action-selector.scm` end-to-end at `b31c7e3`. What is the rule-selection function? What inputs (TV, STI, modulators)? What output (single rule, ranked list, sampling)? File:line citations required.
+
+A2. **Rule firing pipeline.** Trace `OpenPsiImplicator.cc` and `OpenPsiSatisfier.cc`: how does a selected rule become an executed action? What's the role of `_satisfiability_cache`? What's the AtomSpace effect of firing? Cite specific functions.
+
+A3. **Demand/Goal model.** Read `demand.scm` + `rule.scm`: how are demands (Psi theory drives) declared? How do they connect to rules? Is there a numeric urge/satisfaction value, or is this purely structural?
+
+A4. **Dynamics subsystem.** Inventory `dynamics/`: what does each of `emotion.scm`, `modulator.scm`, `sec.scm`, `event.scm`, `interaction-rule.scm`, `updater.scm` do? Is the updater a real loop or a stub? Are interaction rules driving runtime state changes or just declarative templates?
+
+A5. **C++ ↔ Scheme boundary.** What does `OpenPsiSCM.cc` expose to Scheme? Which C++ functions are reachable from `(use-modules (opencog openpsi))`? Cite the binding table.
+
+A6. **Python bindings.** What does the Python wrapper (added in PR #3501, expanded in PR #3517 + PR #3655) actually expose? Is OpenPsi callable end-to-end from Python at `b31c7e3`?
+
+### B. ECAN/STI coupling (V0-1 carry-forward)
+
+B1. **Verify `action-selector.scm:63` STI weighting at `b31c7e3`.** Use `git show b31c7e3:opencog/openpsi/action-selector.scm` to confirm `(* (cog-confidence RULE) (cog-mean RULE) (cog-av-sti RULE))` is present. Quote the surrounding context (function definition, comment block).
+
+B2. **Other STI/AttentionalFocus consumers.** Grep `b31c7e3` openpsi/ for ALL of: `cog-av-sti`, `cog-av-lti`, `cog-stimulate`, `cog-set-sti!`, `cog-set-lti!`, `cog-af`, `cog-af-boundary`, `bank->`, `AttentionBank`, `AttentionValue`, `getSTI`, `setSTI`, `atom_is_in_AF`. Per the ECAN Source 4 V0-1 mandatory rule, both C++ AND Scheme tokens. Report file:line for each hit.
+
+B3. **AttentionBank-optional path.** Commit `f091e9d0d` ("Make guile modules load if (opencog attention-bank) isn't installed") and PR #3572 (`define-have-openpsi` `HAVE_OPENPSI`) imply OpenPsi can build without AttentionBank. Trace the `HAVE_OPENPSI` / attention-bank-optional logic at `b31c7e3`. Is the STI weighting silently disabled when AttentionBank is absent, or does the code still compile-link with stub AV functions?
+
+B4. **Stimulation/decay flow.** Does OpenPsi *write* STI (via `cog-stimulate` or `cog-set-sti!`) anywhere, or only read it via `cog-av-sti`? If write-side coupling exists, what triggers it?
+
+### C. PLN/URE coupling
+
+C1. **URE usage.** Commit `0acdb0e77` ("Rename rule-engine by ure") signals OpenPsi was at one point coupled to the URE rule engine. At `b31c7e3`, does OpenPsi instantiate URE chainers, register rules with URE, or use URE for any inference step? Grep for `ure-`, `BackwardChainer`, `ForwardChainer`, `cog-fc`, `cog-bc` in openpsi/.
+
+C2. **PLN inheritance.** Does OpenPsi rule firing depend on PLN-style truth values (strength × confidence multiplication)? The V0-1 weighting `strength × confidence × STI` is multiplicative-confidence-style — is that PLN-derived or independent?
+
+C3. **Implicator vs. Satisfier semantics.** OpenPsiImplicator.cc/h vs. OpenPsiSatisfier.cc/h — what's the semantic distinction? Is Implicator more PLN-like (forward inference) and Satisfier more pattern-match (backward)?
+
+### D. Tradition placement
+
+D1. **Tradition 2 sub-branch hypothesis.** Does Classic OpenPsi at `b31c7e3` have characteristics that would make a MeTTa port a Tradition-2-extension (faithful surrogate ports rather than paper-literal reimplementations)? What are the "engineered surrogates" embedded in Classic OpenPsi (e.g., specific numeric weightings, hardcoded modulator update rates)?
+
+D2. **Independent-tradition hypothesis.** Does Classic OpenPsi have unique architectural commitments that aren't represented in the existing five-tradition map? E.g., is the demand/rule/modulator triad a Hyperon-novel decomposition, or a direct port of Dörner's Psi theory / Cai's 2011 paper?
+
+### E. Volatility flags
+
+E1. **`9d28bac0f Hmm... Many users of this obsolete file...`** — what file is being flagged for phase-out, and what does its content reveal about OpenPsi's deprecation trajectory?
+
+E2. **`b2745ec91 Revert "Swap cog-tv-mean with cog-mean"`** + `c6cffde50` — formula volatility in action-selector. Was the V0-1 STI weighting using `cog-tv-mean` or `cog-mean` at `b31c7e3`? Has this been stable since `e5bae708`?
+
+E3. **PsiSatisfier cache bug history** — commits `4511aec5f`, `c441fd2fa`, `8918107c4`, `8a21e4c4c`, `1d34295bd`, `368d4dc63`, `d0b14cb58`. There's clear thrashing on `_satisfiability_cache` ownership. What's the final state at `b31c7e3` and what was the underlying bug?
+
+---
+
+## Out of scope for Source 1
+
+- **MeTTa port lineage** (`hyperon-openpsi/`, glicerico/zariuq forks) — Source 2.
+- **Foundational papers** (Cai 2011 Zhenhua paper, OpenPsi Cognitive Model overview, MetaMo papers) — Source 3.
+- **Hanson Robotics fork lineage** (`opencog-hansonrobotics/`, `old-openpsi-Jinhua-Chua-2011` tag, dialogue-stack integration) — Source 4. **Specific subgoal preserved for Source 4 per Gemini**: verify whether Hanson had a more runtime-functional emotion/dynamics subsystem than the canonical `b31c7e3` baseline, or whether `dynamics/emotion.scm` was always Scheme-stub-only.
+- **Ghost / NLP-fuzzy** (already audited in ECAN Source 4) — do not re-audit.
+- **AttentionBank C++ internals** (already audited in ECAN Sources 1+2) — do not re-audit.
+- **URE C++ internals** (already audited in ECAN Source 3) — do not re-audit.
+
+---
+
+## Methodology rules (per CLAUDE.md standing protocols)
+
+1. **Read-only.** No working-tree modifications, no wiki writes from extraction agents (one-writer-only rule). Wiki edits are orchestrator-only after reconciliation.
+2. **Cross-model triangulation.** Extraction passes by Codex + Gemini; Claude-orchestrator cross-checks; reconciliation file synthesizes consensus and dissent.
+3. **Both API layers.** Per ECAN Source 4 V0-1 standing rule: any token-grep audit MUST cover both C++-side tokens (`AttentionBank`, `AttentionValue`, `getSTI`, `setSTI`, `atom_is_in_AF`) AND Scheme-side tokens (`cog-av-sti`, `cog-av-lti`, `cog-stimulate`, `cog-set-sti!`, `cog-af`, `cog-af-boundary`, `cog-bind-af`).
+4. **Pickaxe before "dead code" claims.** Per ECAN Source 3 V0-1 standing rule: before classifying anything as "dead enum" or "never wired", run `git log --all -S '<token>'` and `git log -p` on the candidate. Current-snapshot grep is necessary but not sufficient.
+5. **Verbatim quotes for all critical claims.** File:line citations + verbatim code excerpts for any A/B/C/D-section answer that affects cluster narrative.
+6. **No working-tree mutation of `opencog-singnet`.** Use `git show <sha>:<path>` and `git grep <sha>` rather than checking out `b31c7e3`.
+
+---
+
+## Cross-source carry-forward references
+
+- **ECAN Source 4 reconciliation:** `scripts/archive/ecan_pilot/source4_pre_split_monorepo/findings_reconciled_crossmodel.txt` — V0-1 OpenPsi COUPLED verdict, OpenPsi consumer table, broader-OpenCog scope rules.
+- **ECAN Source 3 reconciliation:** `scripts/archive/ecan_pilot/source3_legacy_ure_pln/findings_reconciled_crossmodel.txt` — URE STI source-selection lifecycle, `0a0b09912` / `0b744dbab` / `5a5b7785d` SHAs, deliberate-decoupling narrative.
+- **CLAUDE.md** § ECAN Cluster Pilot — cluster-narrative-deciding findings 1-3, Tradition 2 sub-branch language.
+- **Wiki cards (read-only):** `Hyperon AI Algorithms+ECAN+ECAN Full+System Interfaces and Implementation` (ID 7096), `Implementation Families+Attention and Motivation` (ID 4751), `Hyperon AI Algorithms+MetaMo (Motivational Framework)` (ID 653).
+
+---
+
+## Deliverable format (extraction agents)
+
+Each agent produces a single text file:
+
+- `scripts/archive/openpsi_pilot/source1_classic_baseline/findings_codex.txt` (Codex)
+- `scripts/archive/openpsi_pilot/source1_classic_baseline/findings_gemini.txt` (Gemini)
+
+Structure (per ECAN-pilot precedent):
+
+1. **Header** — model name, audit commit `b31c7e3`, pass date, files touched.
+2. **A-section answers** — architecture inventory (A1-A6), one numbered claim per finding with file:line citations.
+3. **B-section answers** — ECAN/STI coupling (B1-B4), with token-list grep results.
+4. **C-section answers** — PLN/URE coupling (C1-C3).
+5. **D-section answers** — tradition placement (D1-D2).
+6. **E-section answers** — volatility flags (E1-E3).
+7. **Discovered tangents** — any architectural surprises, attribution corrections, or cross-cluster implications worth flagging for reconciliation.
+8. **Open questions** — anything the agent wants escalated to V0-N reconciliation.
+
+**Claim numbering convention:** prefix all claims with the agent identifier and source number, e.g., Codex Source 1 = `C1-1`, `C1-2`, ...; Gemini Source 1 = `G1-1`, `G1-2`, ...
+
+**Length target:** ~10-30 KB per agent file (matches ECAN per-source pattern).
+
+---
+
+## Orchestrator cross-check plan (post-extraction)
+
+After both extraction passes return:
+
+1. Diff Codex vs. Gemini per-question. Identify V0-N dissents.
+2. For any V0-N dissent that affects cluster narrative, run direct `git show <sha>:<path>` / `git grep b31c7e3 -- opencog/openpsi/<file>` from orchestrator side to settle.
+3. Write `scripts/archive/openpsi_pilot/source1_classic_baseline/findings_reconciled_crossmodel.txt` synthesizing consensus + reconciled dissents + orchestrator verifications.
+4. Decide whether Source 1 findings unlock Source 2 (MeTTa port lineage) or whether intermediate questions need addressing first.
+
+---
+
+*End of Source 1 brief. Pre-loaded git history above; agents should not re-run `git log` / `git shortlog` unless verifying a specific claim.*

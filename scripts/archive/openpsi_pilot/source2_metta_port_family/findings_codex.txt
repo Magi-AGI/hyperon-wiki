@@ -1,0 +1,232 @@
+# Source 2 - hyperon-openpsi MeTTa port family - Codex findings
+
+Pilot: OpenPsi / motivation cluster
+Source target: MeTTa port family
+Date: 2026-04-28
+Agent: Codex
+Mode: read-only extraction; no wiki writes; no repo file edits outside this findings file
+
+Audited repositories:
+- 2a canonical: E:/GitHub/hyperon reference/hyperon-openpsi
+  Origin: iCog-Labs-Dev/hyperon-openpsi
+  Branch: dev
+  HEAD: 3b356c5e51d4490b587351721a8cd4187da5817a
+  Commit: "Merge pull request #115 from Mahider-n/ts-ucb-action-selection"
+- 2b fork: E:/GitHub/hyperon reference/hyperon-openpsi-glicerico
+  Origin: glicerico/hyperon-openpsi
+  Branch: dev
+  HEAD: db7592124d31d69f9281ae1d15f4ce8eb6b422ae
+- 2c fork: E:/GitHub/hyperon reference/hyperon-openpsi-zariuq
+  Origin: zariuq/hyperon-openpsi
+  Branch: dev
+  HEAD: 3b356c5e51d4490b587351721a8cd4187da5817a
+
+Executive summary
+=================
+
+C2-1. The MeTTa port is not a thin translation of Classic OpenPsi. It is a larger reimplementation with a MeTTa-native rule/demand/modulator library, multiple planners, feedback loops, and application use cases. The canonical tree has 66 .metta files in the local checkout (brief said 67), versus the 27-file Classic baseline audited in Source 1.
+
+C2-2. The Classic OpenPsi action-selector seam did not survive as a first-class configurable selector API. Classic had Scheme functions such as psi-set-action-selector! and an optional rule-sca-weight helper. The MeTTa port selects behavior by importing/calling specific planners and loops (for example action-planner-v1, action-planner-v2, A*, Thompson/UCB helpers), not by a runtime selector registry equivalent to Classic's action-selector seam.
+
+C2-3. ECAN/STI coupling is absent in the MeTTa port. Repo-wide token audit found no functional hits for cog-av-sti, cog-set-sti!, cog-stimulate, cog-af, bind-af, attention-bank, attentional-focus, AttentionValue, STI, or LTI in canonical hyperon-openpsi. This agrees with Source 1 V1-1: Classic OpenPsi was an ECAN-coupling enabler at most, and the MeTTa port drops even that optional helper surface.
+
+C2-4. The port is nevertheless more paper-aligned than the ECAN MeTTa port pattern. Commit 01936f1 ("align activation, securing, resolution, and selection formulas with OpenPsi paper (eq. 10-13)") changed the active modulator updater formulas, and those helpers are called by active loops. This is not merely a comment or dead code.
+
+C2-5. Tradition placement: call this a "paper-leaning MeTTa reimplementation inside the Motivation/OpenPsi line", not yet a new sixth tradition. The evidence supports a stronger break from Classic than the ECAN port, but Source 3 must verify the paper equations before upgrading the claim to a distinct tradition. For now, it belongs under the OpenPsi/motivation cluster with an explicit note that it attempts paper-faithful formula repair.
+
+C2-6. The most important architectural surprise is the curious-agent use case: it wraps the MeTTa OpenPsi loop in a Python/LLM control path. It calls Python generateResponse and correlation_matcher, then drives psi-agent-loop. This is a hybrid LLM + MeTTa OpenPsi application, not just a symbolic OpenPsi demo.
+
+A. Architecture mapping
+=======================
+
+C2-7. The repository README defines the project as "OpenPsi in MeTTa" and maps the current codebase into main modules and use cases. The README states that main contains mind-agents (action-planner, demand-updater, feeling-updater, modulator-updater, monitor-changes, perception-updater), rules, demand, feed-back-loop, and modulator; use-cases include curious-agent and ping-pong (README.md:1-26).
+
+C2-8. Runtime requirements are concrete rather than purely aspirational: the README requires Hyperon, Python dependencies hyperon==0.2.3 and numpy==2.2.1, and gives `python3 test/run-tests.py` as the test command (README.md:30-47). I did not run the test suite in this pass.
+
+C2-9. The MeTTa type surface is minimal. `main/types.metta` defines only Goal, Action, and Emotion as types (main/types.metta:1-3). It does not encode the full Classic OpenPsi C++/Scheme type model.
+
+C2-10. Rule representation is MeTTa-native. `main/rules/rule.metta` binds `&psiRules` and `&categoryIndex`, defines TRUE_TV/FALSE_TV, and creates the PsiRules type (main/rules/rule.metta:1-7).
+
+C2-11. `addRuleLink` and `addRule` represent rules as implication links from `(AND_LINK ($context $action))` to a goal, with truth values and `isExecuted` state stored in spaces (main/rules/rule.metta:20-73). This resembles the Classic OpenPsi rule abstraction but is not a line-by-line port of the C++ `OpenPsiRules` surface.
+
+C2-12. Rule accessors are explicit MeTTa patterns: `getAction`, `getGoal`, `getContext`, and `getRuleType` destructure the implication-link rule shape (main/rules/rule.metta:75-116).
+
+C2-13. Goal/demand plumbing is local to the MeTTa representation. Goal add/set functions store `(Goal $name $value $dgv)` terms (main/rules/rule.metta:144-191); rule filtering is done by `filterPsiRules` and `isRule` (main/rules/rule.metta:199-212).
+
+C2-14. The implicator/satisfier layer is reimplemented in MeTTa. `main/rules/implicator.metta` binds a global `&satisfiabilityCache` (lines 1-5), converts rules to queries (lines 10-43), checks satisfiers (lines 49-64), satisfies contexts (lines 68-83), and records TRUE_TV/FALSE_TV cache entries in `checkSatisfiability` (lines 112-136).
+
+C2-15. Demand representation in the canonical main module is `(demand name min max current)`, not just a scalar. `main/demand/demand.metta` defines Demand/SkipDemand and this representation at lines 1-7, then provides enabled-demand and update helpers at lines 52-88.
+
+C2-16. Demand satisfaction is non-linear and explicitly paper-cited. `calculateDemandSatisfaction` says "calculate demand satisfaction according to Ben's Paper" and implements a piecewise function: inside min/max returns `0.8 + 0.2 * random`, below min uses fuzzy equality to the minimum, and above max returns `0.9 + 0.1 * random` (main/demand/demand.metta:150-168).
+
+C2-17. The least-satisfied-demand path is active in the canonical loop. `fetchLeastSatisfiedDemand` uses `calculateDemandSatisfaction` (main/demand/demand.metta:170-198), and `psi-agent-loop` calls it before planning (main/feed-back-loop/feed-back-loop.metta:276-287).
+
+C2-18. The main feedback loop is an executable motivational loop: it fetches demands, chooses a goal, plans actions, applies actions, updates modulators, and computes feelings. The active path is visible in `psi-agent-loop` at main/feed-back-loop/feed-back-loop.metta:276-304.
+
+C2-19. `psi-agent-loop` calls `modulatorUpdaterAgent` directly after applying actions and fetching competence/affiliation/energy demands (main/feed-back-loop/feed-back-loop.metta:291-296). This caller trace is important for C2-4: the paper-aligned modulator formulas are active in the loop, not isolated tests.
+
+C2-20. A second loop, `psi-loop-v2`, performs a similar cycle using `fetchLeastSatisfiedDemand`, `goalSelector`, `hillClimbingPlanner`, action application, `modulatorUpdaterAgent`, and feeling updates (main/feed-back-loop/feed-back-loop-v2.metta:2-44).
+
+C2-21. The port has several planner variants rather than one Classic default selector. In the local checkout these include action-planner-v1, action-planner-v2, aStar-action-planner, thompson-sampling, and ts-ucb.
+
+C2-22. action-planner-v1 is greedy and weight-based. It extracts scalar weights from rules, selects an action whose weight approaches a target, and recursively accumulates actions (main/mind-agents/action-planner/action-planner-v1.metta:136-185, 249-300).
+
+C2-23. action-planner-v2 implements hill climbing. `hillClimbingPlanner` applies current actions, scores distance to the goal, and recurses when it finds a better next action (main/mind-agents/action-planner/action-planner-v2.metta:1-84).
+
+C2-24. A* planning exists and is more explicit about cost/priority queues. `aStarPlanner` and `aStarLoop` use a priority queue, visited set, goal check, and expansion over untried actions (main/mind-agents/action-planner/aStar-action-planner.metta:14-74).
+
+C2-25. Thompson/UCB machinery exists as planner-side experiments. `ts-ucb/util.metta` includes Thompson sampling and ts_ucb_select functions (ts-ucb/util.metta:74-90, 220-237), and `thompson-sampling/monster-combat/play.metta` calls the sampling path in a small demo loop (lines 10-17, 37-51).
+
+C2-26. The demand-updater agent is also paper-facing. `main/mind-agents/demand-updater/demand-updaters.metta` opens with "Based on OpenPsi ben paper" and defines fuzzy-new/fuzzy-near plus certainty, affiliation, and competence demand updaters (lines 1-76).
+
+C2-27. The feeling-updater is a symbolic table-driven emotion calculator. It defines emotions from three modulator dimensions, threshold indicators, `modulator_to_feeling_dimension`, `feeling_calculator`, and per-emotion updater functions (main/mind-agents/feeling-updater/feeling-updaters.metta:1-68, 83-96, 107-127, 137-185).
+
+C2-28. The perception updater and monitor-changes modules add time-indexed observation/change detection machinery. `perceptionUpdater` increments timestamps and moves cache entries into percepta (main/mind-agents/perception-updater/perception-updater.metta:57-90); monitor-changes compares TV means across times and records changes/dramatic changes (main/mind-agents/monitor-changes/monitor-changes.metta:137-220).
+
+B. ECAN/STI and action-selector seam
+====================================
+
+C2-29. Source 1 V1-1 established that Classic OpenPsi contained an optional STI helper (`rule-sca-weight`) but no default runtime caller. This MeTTa port does not preserve an equivalent helper. Repo-wide token audit found no `cog-av-sti`, `sti`, or AttentionBank-like API in canonical hyperon-openpsi.
+
+C2-30. There is no MeTTa equivalent of Classic `psi-set-action-selector!` in the files audited. The port chooses planner/loop behavior by importing specific modules and calling specific functions from entry points, not by installing a selector callback into a global OpenPsi controller.
+
+C2-31. The curious-agent imports action-planner-v1 directly (use-cases/curious-agent/main.metta:8) and then calls `psi-agent-loop` after Python correlation matching (use-cases/curious-agent/main.metta:32-40). This is direct use-case orchestration, not a configurable selector seam.
+
+C2-32. The Qwestor loop imports action-planner-v1 directly (use-cases/qwestor/main-loop.metta:9), calls `planner &ruleSpace` (line 63), and then calls `modulatorUpdaterAgent` (line 70). Again, this is direct planner coupling rather than a Classic-style action-selector registry.
+
+C2-33. Ping-pong use cases import action-planner-v2 and call `hillClimbingPlanner`; v2 gates planning with selection-threshold/demand conditions, while v3 treats "motivation" as energy for simplicity and runs a loop around hill-climbing. No STI or attentional-focus token appears in these use cases.
+
+C2-34. The MeTTa port therefore confirms a loss of ECAN-related surface relative even to Classic's optional helper. The port can be described as motivation/action-selection active, but not ECAN-coupled.
+
+C2-35. This result should revise any cluster narrative that would treat OpenPsi MeTTa as an ECAN consumer. It is not. It is a motivation subsystem with its own planners and modulators.
+
+C. Paper-formula alignment and tradition placement
+==================================================
+
+C2-36. Commit 01936f1 is real and narrow. `git show --stat --oneline 01936f1` shows the commit message "align activation, securing, resolution, and selection formulas with OpenPsi paper (eq. 10-13)" and changes only `main/mind-agents/modulator-updater/modulator-updaters.metta` plus its test file.
+
+C2-37. ActivationHelper after 01936f1 is:
+`competence/(competence+0.5) * energy/(0.05+energy)`
+at main/mind-agents/modulator-updater/modulator-updaters.metta:1-5. This matches Gemini's reported formula and is active code.
+
+C2-38. SecuringThresholdHelper after 01936f1 is:
+`certanity/(certanity+0.05) * integrity^3`
+at main/mind-agents/modulator-updater/modulator-updaters.metta:8-12. Note the misspelled variable name `certanity` persists in code.
+
+C2-39. SelectionThresholdHelper after 01936f1 is:
+`fuzzy_equal competence 1 15`
+at main/mind-agents/modulator-updater/modulator-updaters.metta:15-18.
+
+C2-40. `modulatorUpdaterAgent` calls all three helpers and writes arousal, securing-threshold, and selection-threshold modulators back into the modulator space (main/mind-agents/modulator-updater/modulator-updaters.metta:20-45).
+
+C2-41. The helper formulas are covered by tests. The modulator-updater test expects exact numeric outputs for ActivationHelper, SecuringThresholdHelper, and SelectionThresholdHelper (main/mind-agents/modulator-updater/tests/modulator-updaters-test.metta:21-23).
+
+C2-42. The helper formulas are also active in runtime loops. `psi-agent-loop` calls `modulatorUpdaterAgent` (main/feed-back-loop/feed-back-loop.metta:296), `psi-loop-v2` calls it (main/feed-back-loop/feed-back-loop-v2.metta:2-44), the curious-agent reaches it through `psi-agent-loop` (use-cases/curious-agent/main.metta:32-40), and Qwestor calls it directly (use-cases/qwestor/main-loop.metta:70).
+
+C2-43. Demand satisfaction is paper-cited independently of 01936f1. `calculateDemandSatisfaction` says it is "according to Ben's Paper" and implements a non-linear piecewise function (main/demand/demand.metta:150-168). Source 3 should verify whether this matches the specific 2011/2013 OpenPsi paper equation.
+
+C2-44. Demand-updater formulas also cite the OpenPsi/Ben paper family, but I did not verify equation identity against the paper in this pass. Treat them as paper-facing candidates, not confirmed paper-literal formulas (main/mind-agents/demand-updater/demand-updaters.metta:1-76).
+
+C2-45. The feed-back-loop file explicitly cites "OpenPsi: A Novel Computational Affective Model and its Application in Video Games by Goertzel,Ben et. al (2013)" in the demand-selection section (main/feed-back-loop/feed-back-loop.metta:139-140). This citation is a source-text clue for Source 3: the brief's "2011 paper" label may be incomplete or mixed with a 2013 application paper.
+
+C2-46. Tradition placement should remain provisional. Evidence supports "paper-leaning active MeTTa reimplementation" because formula repairs are in active caller paths. It does not yet support "Tradition 6" as a final classification until Source 3 confirms the paper equations and Source 4 clarifies Hanson/early lineage.
+
+C2-47. Contrast with ECAN: metta-attention was a faithful port of Classic surrogates. hyperon-openpsi is not just preserving Classic behavior; it contains deliberate 2026 commits that claim to repair formulas toward the paper. This is a real divergence pattern.
+
+D. Use cases
+============
+
+C2-48. The curious-agent is a major architectural surprise. It imports the main OpenPsi loop, modulators, demands, feeling updater, modulator updater, and action-planner-v1 (use-cases/curious-agent/main.metta:1-11).
+
+C2-49. The curious-agent calls Python/LLM functions before OpenPsi: `generateResponse`, `extractSummary`, and `correlation_matcher`, then destructures a selected rule and calls `psi-agent-loop` (use-cases/curious-agent/main.metta:32-40). This is a hybrid LLM + MeTTa OpenPsi control loop.
+
+C2-50. The curious-agent startup path populates demand, rule, and modulator spaces, initializes a KB, and starts an interactive text/speech loop (use-cases/curious-agent/main.metta:82-104).
+
+C2-51. The LLM hook exists in utility code too: `psi-utilities/miner.metta` defines a `query_llm` Python module hook (psi-utilities/miner.metta:11-18). This reinforces that LLM integration is a repo-level capability, not only a single inline call.
+
+C2-52. The curious-agent rules are data-heavy. `use-cases/curious-agent/setup-kb.metta` contains a large rule space with weighted implication rules, demands, and modulators. It is an application KB, not just a unit-test fixture.
+
+C2-53. Ping-pong v1/v2/v3 are planner and motivation demos. v1 uses action-planner-v2 and hillClimbingPlanner, v2 adds demand/modulator gating, and v3 models energy/motivation and opponent turns. These demos exercise the planner layer but do not bring back ECAN.
+
+C2-54. Qwestor is an integration-style use case. `use-cases/qwestor/main-loop.metta` imports utilities, demand/modulator/rule/feedback modules, qwestor setup/out/in/rules/demand-goal-links modules, initializes spaces, then runs `qwestorLoop` (lines 1-17, 78-83).
+
+C2-55. Qwestor has an external data/application surface in Python files (`agent.py`, `app.py`, `models.py`, `services.py`, `schemas.py`, `utils.py`) and MeTTa fetch helpers (`fetch-demands.metta`, `fetch-modulators.metta`). It looks like an app integration lane, not just a planner demo.
+
+C2-56. Qwestor is internally heterogeneous. `qwestorLoop` destructures demands as `(demand $demandName $demandVal)` (use-cases/qwestor/main-loop.metta:58-59), while canonical demand code uses `(demand name min max current)`. That mismatch may be intentional app-specific schema or stale integration debt.
+
+C2-57. Qwestor imports `use-cases:qwestor:in`, `rules`, and `demand-goal-links` (use-cases/qwestor/main-loop.metta:15-17), but the local file inventory under use-cases/qwestor does not show `in.metta`, `rules.metta`, or `demand-goal-links.metta`. The actual definitions may be generated, registered differently, or missing. Treat Qwestor as promising but not proven runnable from file inspection alone.
+
+E. Volatility and implementation risks
+======================================
+
+C2-58. The canonical repo is active and recent. `git shortlog -sne --all` shows a large iCog-Labs-Dev style contributor set: Nahom32 (142), samwondim (137), Amanuel Garomsa (74), Samuel Wondimagegnehu (64), abrham17 (33), Nahom Senay (31), nathanaelcheramlak (27), yosef-zewdu (27), Mahider Nardos/Mahider-n (21 combined), and others.
+
+C2-59. Monthly commit counts show heavy 2025 development bursts and lighter 2026 continuation: 2025-04 (63), 2025-05 (112), 2025-06 (77), 2025-07 (115), 2025-08 (89), 2025-10 (67), then 2026-02 (5). This is not abandoned, but the most intense work was mid-2025.
+
+C2-60. The action-planner surface is volatile. Glicerico's fork diff against current upstream shows many planner experiments and utilities absent there but present upstream, including A*, Thompson sampling, TS-UCB, and newer curious-agent restructuring. This suggests planner families were added after glicerico's fork point rather than stable from the start.
+
+C2-61. `git log --all --grep paper/formula/equation -i` in canonical found only the formula-alignment merge and 01936f1 as explicit paper/formula commits. Paper-faithfulness is real but not yet a pervasive commit-log discipline.
+
+C2-62. There is a typo in an active formula path: `SecuringThresholdHelper` uses the variable name `$certanity` and `modulatorUpdaterAgent` binds `$certanity 0.5` (main/mind-agents/modulator-updater/modulator-updaters.metta:8-23). This is probably harmless at runtime but signals roughness.
+
+C2-63. `modulatorUpdaterAgent` hardcodes certainty and integrity to 0.5 (main/mind-agents/modulator-updater/modulator-updaters.metta:21-23). If the paper formula expects dynamic certainty/integrity, the implementation is only partially faithful.
+
+C2-64. Demand satisfaction includes random terms for in-range and above-max cases (main/demand/demand.metta:150-168). This may be paper-faithful or engineered; Source 3 must resolve.
+
+C2-65. The default loop prints many debug tuples (`demands`, `dmSelector`, `goal-psi`, `actions-psi-to-apply`, `demandValues`, `modUpdate`, feeling values) at main/feed-back-loop/feed-back-loop.metta:280-304. This looks development/debug oriented rather than a polished runtime API.
+
+C2-66. There is schema heterogeneity between canonical main demand terms and Qwestor demand terms (C2-56). Future wiki wording should avoid claiming a single unified demand schema across all use cases.
+
+C2-67. The MeTTa port currently has no clear equivalent of the Classic C++ OpenPsi module boundary (`OpenPsiImplicator`, `OpenPsiRules`, `OpenPsiSatisfier`, `OpenPsiSCM`). It distributes the concepts across rules, implicator, demand, feedback-loop, and mind-agent modules.
+
+F. Fork divergence
+==================
+
+C2-68. `zariuq/hyperon-openpsi` is in sync with canonical at the audited time. `origin/dev` and `upstream/dev` both resolve to 3b356c5; `git log upstream/dev..origin/dev` and `git diff --stat upstream/dev..origin/dev` are empty.
+
+C2-69. `glicerico/hyperon-openpsi` is behind current canonical, not ahead. `git log upstream/dev..origin/dev` is empty, while `git log origin/dev..upstream/dev -5` shows upstream commits 3b356c5, d163de0, 1a0e61a, 01936f1, and 04f5540 absent from glicerico.
+
+C2-70. The glicerico fork lacks large chunks of current upstream functionality. `git diff --stat upstream/dev..origin/dev` shows 97 changed files, 1,435 insertions and 7,069 deletions when comparing current upstream to glicerico's branch. Deleted-from-glicerico relative to upstream include A*, Thompson sampling, TS-UCB, newer curious-agent files, qwestor files, and ping-pong v3.
+
+C2-71. Glicerico is still useful for archaeology because its visible recent history includes chatting-interface and ping-pong-v2 commits (db75921, 778be1a, e14bfd4, dab1d57, 4ffe43e, 0c54198, 402d256). It should not be treated as the current reference implementation.
+
+C2-72. The canonical iCog-Labs-Dev repo is the right Source 2 reference target. Zariuq is a synchronized mirror; Glicerico is a lagging fork/sandbox.
+
+Source-1 carry-forward decisions
+================================
+
+C2-73. The Source 1 "OpenPsi is enabler, Ghost is actual STI consumer" correction remains valid. Source 2 strengthens it: the MeTTa OpenPsi port does not preserve the unused STI helper or any direct ECAN hook.
+
+C2-74. Do not phrase the MeTTa OpenPsi port as "reviving ECAN/OpenPsi coupling." It revives/reimplements OpenPsi motivation/action-selection, but not ECAN attention-currency coupling.
+
+C2-75. If the wiki needs a one-sentence status: "hyperon-openpsi is an active MeTTa reimplementation of OpenPsi with paper-aligned modulator formula repairs, multiple planner/use-case lanes, and no ECAN/STI coupling surface."
+
+Questions for reconciliation / Source 3
+=======================================
+
+C2-76. Verify the paper identity behind formula comments. The code references "OpenPsi: A Novel Computational Affective Model and its Application in Video Games" as a 2013 Goertzel et al. paper, while the cluster scoping references foundational 2011 Zhenhua Cai material. Source 3 should separate these papers.
+
+C2-77. Verify equations 10-13 from the actual OpenPsi paper text. I confirmed code formulas and caller paths, not textual equation identity beyond the commit message and comments.
+
+C2-78. Determine whether `calculateDemandSatisfaction` (main/demand/demand.metta:150-168) is paper-literal, paper-inspired, or engineered.
+
+C2-79. Determine whether demand-updater formulas (main/mind-agents/demand-updater/demand-updaters.metta:1-76) are paper-literal and whether their parameters correspond to the paper's "demands", "modulators", and "feelings" definitions.
+
+C2-80. Verify whether Qwestor is runnable from current files despite imports for `in`, `rules`, and `demand-goal-links` that do not appear in the local file inventory.
+
+C2-81. Check whether the LLM/correlation-matcher path in curious-agent should be considered an OpenPsi extension, an application wrapper, or a separate neural/LLM integration layer.
+
+C2-82. For tradition placement, my recommendation is to defer "Tradition 6" until after Source 3. Evidence supports a sub-branch label now: "OpenPsi MeTTa paper-leaning reimplementation under the motivation cluster."
+
+Method notes
+============
+
+C2-83. I used both token grep and caller tracing. This is important because Source 1 V1-1 showed a formula can be present but uncalled. For Source 2, the modulator formulas are both present and called by loops/use cases.
+
+C2-84. I did not run tests or mutate any target repo. The only write is this findings file in the hyperon-wiki extraction archive.
+
+C2-85. I did not use network access. Contributor and fork status are from local git metadata.
+
+C2-86. I treated Glicerico/Zariuq as fork-family sanity checks, not equal-weight source targets. Canonical iCog-Labs-Dev dev branch is the reference implementation for this Source 2 pass.
+
+End of Codex findings.

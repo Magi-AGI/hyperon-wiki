@@ -1,0 +1,176 @@
+# Source 1 — Classic OpenPsi Baseline — Cross-Model Reconciliation
+
+**Cluster:** OpenPsi / Motivation pilot, Source 1 of 4
+**Source target:** `opencog-singnet/opencog/openpsi/` at audit commit `b31c7e3b9beab7a458c84117f3b654a03ca9ffe2`
+**Local checkout:** `E:\GitHub\hyperon reference\opencog-singnet\` (HEAD `68d0e553` on `master`)
+**Reconciliation date:** 2026-04-27 (orchestrator-written immediately after Source 1 extraction-pass close)
+
+**Models reconciled:**
+- **Codex single-pass** — `findings_codex.txt` (89 numbered claims `C1-1` through `C1-89`, ~16 KB; `git show <sha>:<path>`, `git grep <sha>`, `git log -S` against `b31c7e3` and selected history; no checkout)
+- **Gemini single-pass** — `findings_gemini.txt` (forwarded inline by user, ~2.5 KB; A-section through E-section answers in compact prose)
+- **Orchestrator cross-checks** — direct `git grep b31c7e3` and `git show b31c7e3:<path>` to settle the V1-1 caller-evidence dissent.
+
+**Coverage note:** Two-model + orchestrator-cross-check, same shape as ECAN-pilot Sources 2-4. Both models converged on architecture, PLN/URE coupling status, and tradition placement; they diverged sharply on whether OpenPsi's `cog-av-sti` formula constitutes runtime ECAN coupling (V1-1 below). Orchestrator caller-evidence grep settled it in favor of Codex.
+
+**Brief:** `scripts/archive/openpsi_pilot/source1_classic_baseline_brief.txt`
+
+---
+
+## Cross-model consensus (both Codex and Gemini agree)
+
+### Architecture (A1-A6)
+
+- Hybrid Scheme/C++ implementation: 27 files at `b31c7e3` — README/CMake, four C++ class pairs (`OpenPsiImplicator`, `OpenPsiRules`, `OpenPsiSatisfier`, `OpenPsiSCM`), seven top-level Scheme files (`action-selector`, `control`, `demand`, `main`, `openpsi`, `rule`, `utilities`), and ten files in `dynamics/` (`emotion`, `modulator`, `sec`, `event`, `interaction-rule`, `mock-interaction-rules`, `dynamics`, `updater`, `utilities`, `CMakeLists`).
+- Rule structure: `ImplicationLink TV (AndLink context action) goal`. C++-side rule cache and PatternLink-based satisfiability indexing in `OpenPsiRules::add_rule`.
+- Implicator/Satisfier separation: `OpenPsiImplicator::check_satisfiability` runs PatternLink search; `OpenPsiImplicator::imply` requires prior satisfiability check and instantiates the action; satisfaction caching in `OpenPsiSatisfier::grounding`.
+- Dynamics subsystem: separate updater loop with modulators (arousal, valence, resolution-level, etc.), SECs (novelty, goal-relevance, pleasantness, etc.), event detection, interaction rules using `PredictiveImplication`, exponential-curve `adjust-psi-var-level`. Both models flag this as runtime-shaped but research-grade.
+- Python wrapper: present in `opencog/cython/opencog/openpsi.{pyx,pxd}` with `set_action_selector` extension hook. Test `test_run_openpsi` skipped at `b31c7e3` (Codex C1-35, OpenCog issue 3532).
+
+### PLN/URE coupling (C1-C3)
+
+- **No direct runtime coupling.** Neither model found `ForwardChainer`, `BackwardChainer`, `cog-fc`, or `cog-bc` calls inside `opencog/openpsi/`. The only active URE-module import is `demand.scm` importing `(opencog ure)`, traced to commit `0acdb0e77` ("Rename rule-engine by ure") rather than active integration.
+- **Conceptual ancestry only.** README cites PLN-style uncertain reasoning as the design motivation for `ImplicationLink` rule structure (Codex C1-7); `psi-context-weight` cites a PLN conjunction formula but is a local helper, not a PLN-engine call.
+- Gemini cites `URE:attention-allocation` parameter as the coupling surface — orchestrator note: this is the same dead-config switch already audited in ECAN Source 4 (`pln-config.scm:62` set to `0`); not OpenPsi-specific evidence.
+
+### Volatility flags (E1-E3)
+
+- **Obsolete-file commit `9d28bac0`** — Gemini identified target as `(opencog atom-types)` migrating to `(opencog nlp)` / `(opencog attention)`; Codex (C1-81) attributes it to Linas Vepstas 2019-07-16 affecting `interaction-rule.scm`'s `PredictiveImplication` import. Both consistent — same commit, different facets.
+- **Satisfiability cache thrashing** — Gemini cites `OpenPsiImplicator.cc:33` cache-erase-on-every-call; Codex (C1-77) details June 2019 Alexander Scherbatiy commits moving cache ownership between Implicator and Satisfier. Both consistent.
+- **AttentionBank optional load (`f091e9d0d` 2018-05-14, Amen Belayneh)** — both models confirm `(resolve-module '(opencog attention-bank) #:ensure #f)` was added so OpenPsi loads without AttentionBank. Codex C1-52 ties commit to PR `define-have-openpsi`; Gemini to "transition phases".
+- **MindCloud 2017 copyrights** — Gemini-only flag on C++ files. Codex did not surface this; orchestrator notes this is consistent with Amen Belayneh's `amen@hansonrobotics.com` email-address overlap (MindCloud was a Hanson-affiliated entity).
+
+### Tradition placement (D1-D2)
+
+Both models converge: **OpenPsi is in the OpenCog Classic Attention/Motivation lineage** (Tradition 2 in the cluster map). Not Production PLN, not ECAN currency-economy proper, not Hyperon-native. Cross-cuts: STI helper seam to ECAN; rule/TV idioms to PLN; component plumbing reused by Ghost.
+
+---
+
+## Cross-model dissent (V1-N)
+
+### V1-1 — OpenPsi STI runtime-coupling status (CRITICAL DISSENT)
+
+**The headline reconciliation question. Resolution affects ECAN Source 4 V0-1 carry-forward and CLAUDE.md cluster-narrative-deciding finding #3.**
+
+**Codex C1-2 / C1-4 / C1-5 / C1-55 / C1-60 / C1-85:**
+> "The default action-selection loop is not STI-weighted... `rule-sca-weight` is the only OpenPsi-local `cog-av-sti` hit at b31c7e3... not wired into the default loop and has no packaged caller in `opencog/openpsi/`... Therefore the ECAN Source 4 phrase 'OpenPsi weights rules by STI' should be narrowed for Source 1: Classic OpenPsi exposes an STI-weighted selector helper and optional AttentionBank dependency, but the b31c7e3 default runtime path is satisfiability-based, not STI-weighted... Classification: PRESENT-AS-OPTIONAL-HELPER / NOT-DEFAULT-RUNTIME."
+
+**Gemini Section 2 (B1-B4):**
+> "Status: Strong Runtime Coupling (2017-2018 peak). Verified Formula: `action-selector.scm:63` explicitly weights rules by `(* (cog-confidence RULE) (cog-mean RULE) (cog-av-sti RULE))`."
+
+**[Claude orchestrator, repo-verified]** Direct grep against `b31c7e3` for callers:
+
+```
+$ git grep b31c7e3 -- "rule-sca-weight"
+b31c7e3:opencog/openpsi/action-selector.scm:57:(define (rule-sca-weight RULE)
+b31c7e3:opencog/openpsi/action-selector.scm:59:  rule-sca-weight RULE
+```
+
+Two hits only: the `define` and the docstring self-reference. No call sites. Same pattern for `pick-from-weighted-list` and `sort-by-weight` — they exist as helpers but `pick-from-weighted-list` is itself uncalled outside its own definition. The whole weighted-selection chain (`pick-from-weighted-list` → `sort-by-weight` → arbitrary `WEIGHT-FUNC`, of which `rule-sca-weight` is one) is **dead code at `b31c7e3`** by caller analysis.
+
+Verified default-selector path at `main.scm:54-59` (verbatim from `git show b31c7e3:opencog/openpsi/main.scm`):
+
+```scheme
+; Assign a default action-selector
+(psi-set-action-selector! component
+  (ExecutionOutput
+    (GroundedSchema "scm: psi-get-satisfiable-rules")
+    (List component))
+)
+```
+
+`psi-get-satisfiable-rules` returns ALL satisfiable rules; no STI weighting, no scoring, no ranking. The default OpenPsi runtime path is satisfiability-only.
+
+**Critical follow-up** — does ANY consumer at `b31c7e3` install a custom action-selector that uses `rule-sca-weight`? Checked `opencog/ghost/matcher.scm:284` (Ghost installs its own action-selector via `psi-set-action-selector!`):
+
+```
+$ git show b31c7e3:opencog/ghost/matcher.scm | sed -n '115,150p'
+  ; Calculate the weight of the rule R [Wr]
+  (define (calculate-rule-weight R)
+    (define strength
+      (if (> strength-weight 0)
+        (* strength-weight (cog-mean R)) 1))
+    (define context
+      (if (> context-weight 0)
+        (* context-weight
+          (assoc-ref context-alist (psi-get-context R))) 1))
+    (define sti
+      (if (> sti-weight 0)
+        (* sti-weight (cog-av-sti R)) 1))
+    ...
+    (define weight (* strength context sti urge))
+```
+
+Ghost installs `(GroundedSchema "scm: ghost-find-rules")` (`matcher.scm:284`) which uses Ghost's own `calculate-rule-weight` — a parallel STI-weighted formula with `strength × context × sti × urge` factors, all knob-controllable via `*-weight` parameters. **Ghost does NOT call OpenPsi's `rule-sca-weight`.**
+
+**Resolution: Codex's PRESENT-AS-OPTIONAL-HELPER / NOT-DEFAULT-RUNTIME verdict is correct.** Gemini's "Strong Runtime Coupling (2017-2018 peak)" verdict is **wrong by methodology**: Gemini verified the formula's textual presence at line 63 but did not verify any caller chain. The same lesson as ECAN Source 3 V0-1 (pickaxe before "dead code") applies here in reverse: **caller-analysis before "actively coupled" claims**. Defined-but-uncalled code is not runtime coupling, even when the definition is syntactically valid and conceptually sound.
+
+**Reconciled status: PRESENT-AS-OPTIONAL-HELPER / NOT-DEFAULT-RUNTIME.** Classic OpenPsi at `b31c7e3` defined an STI-weighted scoring helper (`rule-sca-weight = strength × confidence × STI`) and made `(opencog attention-bank)` an optional-load dependency, but did not invoke that helper anywhere in its own runtime path. The default OpenPsi runtime is satisfiability-only.
+
+### V1-1 cluster-narrative impact (revises ECAN Source 4 V0-1)
+
+**ECAN Source 4 cluster-pilot reconciliation** classified OpenPsi as a "confirmed third executable ECAN consumer" alongside the URE STI source-selection hook and Ghost/NLP-fuzzy. That classification was based on the existence of `cog-av-sti` in `action-selector.scm:63` — exactly Gemini's evidence in this Source 1 pass. With Source 1 caller analysis now in hand, the ECAN Source 4 V0-1 verdict needs an addendum:
+
+**Corrected ECAN consumer classification at `b31c7e3`:**
+
+| Consumer | ECAN Source 4 verdict | Source 1 corrected verdict |
+|---|---|---|
+| URE STI source-selection hook (2016-2018) | COUPLED | COUPLED — verified runtime invocation in 2016-2018 by `0a0b09912` / `0b744dbab` lifecycle (unchanged) |
+| **OpenPsi `rule-sca-weight`** | COUPLED | **HELPER-ONLY** — formula defined, never invoked by OpenPsi runtime; Ghost has its own STI-weighted selector that does not call this helper |
+| Ghost matcher + schemas | COUPLED | COUPLED — Ghost owns its `calculate-rule-weight` formula at `matcher.scm:117-130`, installs its own action-selector at `matcher.scm:284`. Ghost is the actual STI consumer that uses OpenPsi's *plumbing* (component model, action-selector seam) but not OpenPsi's *STI math*. |
+| NLP fuzzy matching | COUPLED | COUPLED — verified `bank->atom_is_in_AF` use in `Fuzzy.cc` (unchanged) |
+| Python web API (`apiatomcollection.py`) | COUPLED (read/write surface) | COUPLED (unchanged) |
+
+**The cluster-narrative correction:** OpenPsi at `b31c7e3` was an *ECAN-coupling enabler* (it provided the action-selector seam through which Ghost installed its STI-weighted selector) but not itself a default ECAN consumer. The actual STI-weighted rule selection running at runtime in 2017-2019 OpenCog was Ghost's, not OpenPsi's.
+
+This nuance does not invalidate the ECAN Source 4 broader-OpenCog finding ("AttentionBank had real non-PLN executable consumers") — that remains true via Ghost, NLP fuzzy, and the Python web API. But it sharpens the OpenPsi-specific characterization from "weighted rules by STI" to "exposed an STI-weighting helper used by Ghost's parallel formula via the OpenPsi action-selector seam, with no OpenPsi-internal default usage".
+
+### V1-2 — README-vs-code drift (Codex-only flag)
+
+Codex C1-9, C1-39, C1-79, C1-80 surfaces a substantial README/code drift at `b31c7e3`:
+- README describes demand-associated weighted random selection; code installs `psi-get-satisfiable-rules` (all satisfiable) by default.
+- README references `psi-select-rules-per-demand`, `psi-add-action-selector`, `psi-action-selector-set!` — none defined at `b31c7e3`.
+- `openpsi.scm:24-31` exports `psi-get-all-weighted-satisfiable-rules` and `psi-action-weight` — neither defined.
+
+Gemini did not surface this category of drift. Orchestrator notes: this is corroborating evidence for V1-1 — the README reflected an *intended* weighted-selection architecture that never landed in code (or landed and was simplified in `e5bae708`). The "missing weighted selection" is consistent with `rule-sca-weight` being a remnant helper from that aborted plan rather than an active feature.
+
+**No dissent here; flagging as a discovered tangent for cluster-narrative impact.**
+
+---
+
+## Open questions deferred to later sources
+
+1. **Source 2 (MeTTa port lineage)** — Did `hyperon-openpsi/` port `rule-sca-weight` (the unused helper) or only `psi-get-satisfiable-rules` (the default)? If MeTTa port preserved the helper, was it ever wired up in MeTTa, or did the dead-code carry over verbatim? This is the OpenPsi parallel of the ECAN cluster's "MeTTa port faithfully replicates Classic surrogates" question.
+2. **Source 4 (Hanson/fork archaeology)** — Per Gemini's preserved subgoal: did Hanson Robotics' fork have a custom action-selector that used `rule-sca-weight`, restoring the helper to runtime? More broadly: did any production OpenPsi deployment (Hanson dialogue stack, Loving AI sessions, etc.) install a custom STI-weighted selector? If yes, OpenPsi's STI coupling was production-real *somewhere*, just not in the canonical SingNet `b31c7e3` default. If no, the helper was always vestigial.
+3. **Source 4 (Hanson emotion-runtime)** — Is `dynamics/emotion.scm` the same minimal stub in Hanson lineage that it is at SingNet `b31c7e3` (Codex C1-49: `psi-create-emotion` creates a ConceptNode with value 0)? Or did Hanson have a fuller emotion system that integrated with the OpenPsi modulator/SEC framework?
+
+---
+
+## Cluster-position summary (Source 1)
+
+1. **Architectural baseline locked.** Classic OpenPsi at `b31c7e3` is a real C++/Scheme runtime: rule registry + satisfiability cache + Implicator/Satisfier dispatch + Scheme component loop + dynamics subsystem (modulators, SECs, interaction rules). Not a stub.
+
+2. **Tradition placement: Tradition 2 (OpenCog Classic Attention/Motivation lineage).** Cross-cuts ECAN through the optional STI-helper seam, PLN through TV/rule-structure idioms, Ghost through the action-selector plug. Not its own tradition.
+
+3. **ECAN coupling: PRESENT-AS-OPTIONAL-HELPER / NOT-DEFAULT-RUNTIME.** Defined an STI-weighting formula `strength × confidence × STI` but never called it; default selector returns all satisfiable rules. The actual ECAN-driven action selection at `b31c7e3` lived in Ghost, which used OpenPsi's component plumbing without using OpenPsi's STI math.
+
+4. **PLN/URE coupling: NONE direct.** Conceptual ancestry only — `ImplicationLink` rule structure justified by PLN-compatibility argument in README; `psi-context-weight` cites PLN conjunction formula as a local-helper basis. No URE chainer calls.
+
+5. **Volatility surface: substantial.** README/code drift, satisfiability-cache thrashing in mid-2019, AttentionBank optional-load path added 2018, action-selector simplified by `e5bae708` 2017-11. The pinned `b31c7e3` is the eve-of-AttentionBank-removal snapshot of an actively churning subsystem.
+
+6. **Cohort: Amen Belayneh dominant** (294 of 564 commits, 52%; both `@hansonrobotics.com` and personal addresses → Hanson/SingNet cross-org overlap). Eddie Monroe and Linas Vepstas as second/third tier. Significant 2017-period MindCloud copyright presence on C++ files.
+
+7. **New methodology rule (Source 1 V1-1 driven):** caller-analysis before "actively coupled" claims. Symmetric to the ECAN Source 3 V0-1 pickaxe rule, but in reverse direction — code can be syntactically present and conceptually sound without being runtime-invoked. Save to `feedback_caller_analysis_for_runtime_claims.md`.
+
+---
+
+## Reconciliation result
+
+Source 1 reconciled with one critical V1-1 dissent fully resolved by orchestrator caller-evidence grep. Codex's PRESENT-AS-OPTIONAL-HELPER classification settles in favor of revising the ECAN Source 4 V0-1 verdict on OpenPsi specifically (the broader-OpenCog finding remains intact via Ghost/NLP/Python-web-API).
+
+**No wiki edits performed in this reconciliation pass.** Cluster-pilot edit phase deferred until all 4 OpenPsi sources reconcile. The ECAN Source 4 V0-1 OpenPsi consumer-table addendum should be applied to the wiki when the OpenPsi cluster-pilot edit phase opens (probably alongside or before the OpenPsi-specific edits).
+
+**No repo file edits performed** (read-only access to `opencog-singnet` repo).
+
+---
+
+*End of Source 1 reconciliation. OpenPsi cluster pilot Source 1 extraction phase CLOSED. Awaiting cluster-narrative review before launching Source 2.*

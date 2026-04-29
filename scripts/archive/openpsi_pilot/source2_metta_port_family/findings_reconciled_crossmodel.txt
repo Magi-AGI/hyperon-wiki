@@ -1,0 +1,204 @@
+# Source 2 — OpenPsi MeTTa Port Family — Cross-Model Reconciliation
+
+**Cluster:** OpenPsi / Motivation pilot, Source 2 of 4
+**Source targets:**
+- **2a — Canonical:** `iCog-Labs-Dev/hyperon-openpsi.git` @ `3b356c5e51d4490b587351721a8cd4187da5817a` (`dev`)
+- **2b — Glicerico fork:** `glicerico/hyperon-openpsi.git` @ `db7592124d31d69f9281ae1d15f4ce8eb6b422ae` (`dev`)
+- **2c — Zariuq fork:** `zariuq/hyperon-openpsi.git` @ `3b356c5...` (in sync with canonical)
+
+**Reconciliation date:** 2026-04-28 (orchestrator-written immediately after Codex extraction-pass close; Gemini extraction returned 2026-04-27)
+
+**Models reconciled:**
+- **Codex single-pass** — `findings_codex.txt` (86 numbered claims `C2-1` through `C2-86`, 24,498 bytes / 233 lines; both token grep and caller tracing per the Source 1 V1-1 methodology rule). Author note: "Source 1 V1-1 showed a formula can be present but uncalled. For Source 2, the modulator formulas are both present and called by loops/use cases."
+- **Gemini single-pass** — `findings_gemini.txt` (forwarded inline by user, ~3.5 KB; A1-A6 / B1-B4 / C1-C4 / D1-D3 / F1-F3 plus transition-narrative summary).
+- **Orchestrator cross-checks** — direct `git grep` and `git log/diff/show` against canonical `3b356c5` and glicerico `db75921` to settle V2-1 (Glicerico fork direction) and verify the Source 1 V1-1 carry-forward.
+
+**Coverage note:** Two-model + orchestrator-cross-check, same shape as Source 1. Both models converged on architecture, ECAN absence, paper-formula presence, action-selector seam loss, and curious-agent LLM-hybrid surprise. They diverged on the framing of Glicerico fork status (V2-1 below) and on the source-paper identity for demand satisfaction (V2-2 below); both dissents resolve to "both partly right, framing reconciled" or "deferred to Source 3" rather than direct contradiction.
+
+**Brief:** `scripts/archive/openpsi_pilot/source2_metta_port_family_brief.txt`
+
+---
+
+## Cross-model consensus (both Codex and Gemini agree)
+
+### Architecture (A1-A4)
+
+- **Modernized + expanded MeTTa-native reimplementation, not a thin port.** Canonical 67 (Codex local count: 66) `.metta` files vs Classic's 27 — substantial growth and reorganization.
+- **Three-layer reorganization:** `main/` (demand, emotion, rules, modulator, mind-agents, feed-back-loop, types) + `psi-utilities/` (logger, miner, normalization) + `use-cases/` (curious-agent, ping-pong, qwestor).
+- **Rule representation preserved structurally:** `ImplicationLink` over `(AndLink context action) → goal`, but reimplemented MeTTa-natively with spaces and unification (`main/rules/rule.metta`, `main/rules/implicator.metta`).
+- **Satisfiability cache modernized:** MeTTa space `&satisfiabilityCache` replacing Classic's C++ in-memory cache (Codex C2-14, Gemini section 1).
+- **5 action-planner variants:** `action-planner-v1` (greedy/weight-based), `action-planner-v2` (hill climbing), `aStar-action-planner` (A*), `thompson-sampling/`, `ts-ucb/`. Replaces Classic's single `psi-get-satisfiable-rules` default. Both models flag this as the most distinctive divergence from Classic.
+- **Type system minimal:** `main/types.metta` defines only Goal/Action/Emotion (Codex C2-9). Classic had no equivalent type module.
+
+### ECAN/STI coupling (B1-B4) — Source 1 V1-1 carry-forward CONFIRMED
+
+**Both models verify ECAN coupling is ABSENT in the MeTTa port.** Repo-wide token audit returned zero functional hits for `cog-av-sti`, `cog-set-sti!`, `cog-stimulate`, `cog-af`, `bind-af`, `attention-bank`, `attentional-focus`, `AttentionValue`, `STI`, `LTI`. Both Classic's optional `rule-sca-weight` STI helper and the optional `(opencog attention-bank)` module load are gone — not just dormant but textually absent.
+
+**The Classic action-selector enabler seam did NOT survive as a configurable selector API.** Codex C2-2/C2-30/C2-31/C2-32: the MeTTa port chooses planner behavior by importing specific modules (e.g., `import action-planner-v1` in `curious-agent/main.metta:8` and `qwestor/main-loop.metta:9`) and calling specific functions, not by installing a callback into a global OpenPsi controller. Gemini's softer phrasing ("the seam survives conceptually") is consistent with this once "conceptually" is read as "different mechanism with similar role" — there is still a way to plug a planner into a use-case, but it is not the Classic `psi-set-action-selector!` registry.
+
+**Cluster-narrative alignment:** Source 2 strengthens the Source 1 V1-1 conclusion. Classic OpenPsi was an ECAN-coupling enabler with an unused STI helper; the MeTTa port is a motivation/action-selection subsystem with no ECAN coupling surface at all. ECAN is not "preserved as an optional path" in the MeTTa port — it is structurally gone.
+
+### Paper-formula alignment (C1-C4) — caller-trace requirement met
+
+**Commit `01936f1` (2026-02-24, Mahider-n) is real, narrow, and active in runtime loops.** Codex C2-36/C2-42 traces:
+- The commit's diff changes `main/mind-agents/modulator-updater/modulator-updaters.metta` plus its test file only.
+- Three helpers introduced or aligned to paper equations:
+  - `ActivationHelper`: `competence/(competence+0.5) * energy/(0.05+energy)` — `modulator-updaters.metta:1-5`
+  - `SecuringThresholdHelper`: `certanity/(certanity+0.05) * integrity^3` — `modulator-updaters.metta:8-12`
+  - `SelectionThresholdHelper`: `fuzzy_equal competence 1 15` — `modulator-updaters.metta:15-18`
+- `modulatorUpdaterAgent` calls all three helpers (`modulator-updaters.metta:20-45`).
+- The helpers are covered by tests with exact numeric outputs (`modulator-updaters-test.metta:21-23`).
+- **Active caller chain verified:** `psi-agent-loop` → `modulatorUpdaterAgent` (`feed-back-loop.metta:296`); `psi-loop-v2` → `modulatorUpdaterAgent` (`feed-back-loop-v2.metta:2-44`); use-case entry from `curious-agent/main.metta:32-40` reaches `psi-agent-loop`; Qwestor calls `modulatorUpdaterAgent` directly (`qwestor/main-loop.metta:70`).
+
+**Gemini and Codex agree on the paper-faithfulness direction.** Gemini: "actively re-literalizing the paper math that was simplified or surrogate-heavy in Tradition 2". Codex: "paper-leaning active MeTTa reimplementation".
+
+**Both models recommend deferring the formal "Tradition 6" placement until Source 3 verifies the paper equations.** Gemini's "Tradition 6 candidate" is consistent with Codex's "remain provisional until Source 3". The Source 1 V1-1 caution about not over-claiming runtime coupling from formula presence has been addressed (caller-trace done), but a separate question remains: do the formulas correctly implement what the OpenPsi paper says? That requires the paper itself.
+
+### Use-case findings (D1-D3)
+
+- **Curious-agent is a hybrid LLM + MeTTa OpenPsi loop.** Both models flag this as the most architecturally significant Source-2 surprise. `use-cases/curious-agent/main.metta:32-40` calls Python/LLM functions (`generateResponse`, `extractSummary`, `correlation_matcher`) before invoking `psi-agent-loop`. Codex C2-51 expands: `psi-utilities/miner.metta:11-18` defines a `query_llm` Python module hook, indicating LLM integration is a **repo-level capability** not just an inline curious-agent feature.
+- **Ping-pong demos exercise the planner layer without ECAN.** v1/v2/v3 use action-planner-v2 + hillClimbingPlanner with progressively richer demand/modulator/energy gating. No STI/AF tokens (Codex C2-33).
+- **Qwestor is an integration-style use case** with external Python files (agent.py, app.py, models.py, services.py, schemas.py, utils.py) and MeTTa fetch helpers. **Codex C2-56-C2-57 flag two integrity concerns:** Qwestor uses `(demand $demandName $demandVal)` (2-arg) where canonical uses `(demand name min max current)` (4-arg) — schema heterogeneity; and Qwestor imports `use-cases:qwestor:in`, `rules`, `demand-goal-links` modules whose files do not appear in the local inventory — possibly missing, generated elsewhere, or stale integration debt. This affects whether Qwestor is currently runnable from file inspection.
+- **A* planner heuristic** (Gemini D3 specifically): `aStar-action-planner.metta:15` uses absolute distance between current goal value and desired goal value as the heuristic. Codex C2-24 covers A* generally but does not surface the heuristic specifics; Gemini's call-out is a useful detail.
+
+### Volatility / archaeology (E)
+
+- **Active development, peak in 2025.** Codex C2-58/C2-59: ~575 commits total; monthly cadence 2025-04 (63), 2025-05 (112), 2025-06 (77), 2025-07 (115), 2025-08 (89), 2025-10 (67), 2026-02 (5). Heavy mid-2025 burst, lighter 2026 continuation — not abandoned but past peak velocity.
+- **Cohort attribution (Codex-only, fills Gemini's gap):** Nahom32 (142), samwondim (137), Amanuel Garomsa (74), Samuel Wondimagegnehu (64), abrham17 (33), Nahom Senay (31), nathanaelcheramlak (27), yosef-zewdu (27), Mahider Nardos / Mahider-n (21 combined). iCog-Labs-Dev style cohort (Ethiopia-focused student/contributor base, consistent with the metta-attention cohort observed in the ECAN cluster).
+- **Active formula typo.** Codex C2-62: `SecuringThresholdHelper` uses variable name `$certanity` (should be "certainty"); `modulatorUpdaterAgent` propagates the misspelling. Probably runtime-harmless but signals roughness.
+- **Hardcoded values in active formulas.** Codex C2-63: `modulatorUpdaterAgent` hardcodes `certanity=0.5, integrity=0.5`. Paper-faithfulness is partial — formula structure is paper-aligned but parameter values are placeholder.
+- **Demand satisfaction has random terms.** Codex C2-64: `calculateDemandSatisfaction` returns `0.8 + 0.2*random` for in-range and `0.9 + 0.1*random` for above-max. Source 3 must determine whether this is paper-literal or engineered.
+- **Action-planner v3 history.** Codex C2-21 implicit (covered through fork-divergence): v3 was added then deleted (`b03f7a1 Add action-planner-v3.metta for A* planner` → `3ea0df0 update action-planner-v3 ... A*planner isn't working` → `e9e2258 removed unused action-planner-v3.metta and updated aStarPlanner`). Current `aStar-action-planner.metta` is the successor.
+
+---
+
+## Cross-model dissent (V2-N)
+
+### V2-1 — Glicerico fork status: divergent both ways
+
+**Dissent:**
+- **Gemini section 5:** "Glicerico Fork: Verified `stimulus` parameter addition in `ActivationHelper` and `SecuringThresholdHelper`." — implies divergence forward (added feature).
+- **Codex C2-69 / C2-70 / C2-71:** Glicerico is BEHIND canonical, not ahead. `git log upstream/dev..origin/dev` is empty (no glicerico-only commits visible from upstream's perspective). `git diff --stat upstream/dev..origin/dev` shows 97 files changed, 1,435 insertions, **7,069 deletions** — i.e., glicerico is missing ~5,634 net lines of upstream development including `01936f1`, A*, Thompson sampling, TS-UCB, newer curious-agent restructuring, qwestor, ping-pong v3.
+
+**[Claude orchestrator, repo-verified]** Direct `git grep` against both repos:
+
+```
+$ git -C glicerico grep -n "stimulus" -- '*.metta'
+main/mind-agents/modulator-updater/modulator-updaters.metta:3:(= (ActivationHelper $competence $energy $stimulus)
+main/mind-agents/modulator-updater/modulator-updaters.metta:4:    (+  (* 2 $stimulus)
+main/mind-agents/modulator-updater/modulator-updaters.metta:12:(= (SecuringThresholdHelper  $integrity $stimulus)
+main/mind-agents/modulator-updater/modulator-updaters.metta:13:     (+  (* 2 $stimulus)
+main/mind-agents/modulator-updater/modulator-updaters.metta:22:(= (SelectionThresholdHelper $competence $stimulus)
+main/mind-agents/modulator-updater/modulator-updaters.metta:23:     (+  (* 2 $stimulus)
+main/mind-agents/modulator-updater/modulator-updaters.metta:31:        ($stimulus 0.5)
+main/mind-agents/modulator-updater/modulator-updaters.metta:36:        ($activationValue (ActivationHelper $competenceValue $energyValue $stimulus))
+main/mind-agents/modulator-updater/modulator-updaters.metta:37:        ($securingValue (SecuringThresholdHelper $integrity $stimulus))
+main/mind-agents/modulator-updater/modulator-updaters.metta:38:        ($selectionValue (SelectionThresholdHelper $competenceValue $stimulus))
+
+$ git -C canonical grep -n "stimulus" -- '*.metta'
+(no output — zero hits in canonical)
+```
+
+**Resolution: Both models are correct on different facets — no real contradiction.**
+
+Glicerico is **divergent in both directions**:
+- **Glicerico-only additions:** the `stimulus` parameter in modulator helpers (Gemini's correct observation), with formula structure `(+ (* 2 $stimulus) ...)` — completely different from canonical's `c/(c+0.5) * e/(0.05+e)` paper-aligned form. Glicerico's helpers are the older/alternative formula approach. The 1,435 insertions in Codex's diff represent these glicerico-specific changes.
+- **Glicerico-missing upstream work:** the 7,069 deletions in Codex's diff represent canonical advancement after glicerico's fork point — the entire 5-planner expansion (A*/Thompson/TS-UCB), `01936f1` paper alignment, qwestor, ping-pong v3, and curious-agent restructuring.
+
+**Reconciled framing: Glicerico is a divergent-but-stale fork.** It contains a `stimulus`-parameter modulator-helper experiment that canonical does not have, but canonical has substantially advanced (5,634 net lines, including the paper-alignment commits and the planner family) since glicerico's fork point. Glicerico should NOT be treated as the current reference (Codex C2-72 is correct on this) but its `stimulus` parameter is a real divergent feature worth flagging in the cluster narrative — possibly an early Glicerico hypothesis that the canonical iCog-Labs-Dev path did not adopt.
+
+### V2-2 — Source paper for demand satisfaction (deferred to Source 3)
+
+**Dissent:**
+- **Gemini section 3:** `demand.metta:158` "non-linear piecewise function from the **2011 paper**".
+- **Codex C2-45:** `feed-back-loop.metta:139-140` cites "**OpenPsi: A Novel Computational Affective Model and its Application in Video Games by Goertzel,Ben et. al (2013)**" — a 2013 paper.
+
+**[Claude orchestrator, no verification — both citations may be pointing to different formulas].** The two citations may be referring to different parts of the codebase (modulator helpers vs demand satisfaction may cite different source papers) or to different historical understandings of "the OpenPsi paper". The wiki has multiple OpenPsi-related Publications cards (`Publications+OpenPsi Cognitive Model` ID 3168, `Publications+Openpsi Zhenhua` ID 3827, plus chunks 3828/3829), so the question of which paper is being cited in code is non-trivial.
+
+**Resolution: Defer to Source 3 (Papers).** Source 3 will need to:
+1. Identify each paper cited in code (`feed-back-loop.metta:139-140` cites a 2013 video-games paper; demand-updater and demand modules cite "Ben's Paper" generically).
+2. Verify whether the 2011 Cai/Zhenhua paper, the 2013 Goertzel et al. video-games paper, or both are the source for the modulator helpers and demand satisfaction.
+3. Then verify whether eq. 10-13 in the actual paper text matches the MeTTa code.
+
+This is V2-2 not because the models contradicted each other, but because the source-paper question was under-resolved at Source 2 and needs Source 3's paper-verification pass.
+
+### V2-3 — Tradition placement: paper-leaning, but tradition-number deferred (RESOLVED — both agree)
+
+Both models converge on the same outcome:
+- **Gemini conclusion:** "Tradition 6 candidate" — qualifying language ("candidate", not declaration).
+- **Codex C2-5 / C2-46 / C2-82:** "paper-leaning MeTTa reimplementation inside the Motivation/OpenPsi line, not yet a new sixth tradition" / "should remain provisional until Source 3 confirms the paper equations and Source 4 clarifies Hanson/early lineage".
+
+**No contradiction.** Both agree the evidence points toward paper-faithfulness in a way that's distinct from the ECAN MeTTa port's faithful-Classic-surrogate pattern, but both agree the "Tradition 6" formal label is premature without Source 3. Reconciled position: **provisional sub-branch label "OpenPsi MeTTa paper-leaning reimplementation under the motivation cluster"** (Codex C2-82's wording). Tradition number deferred to Source 3 / Source 4 close.
+
+---
+
+## Source-1 carry-forward decisions (Codex C2-73 / C2-74 / C2-75)
+
+Both models converge:
+- **The Source 1 V1-1 "OpenPsi is enabler, Ghost is actual STI consumer" correction holds and is strengthened.** Source 2 confirms the MeTTa port does not preserve the unused STI helper or any direct ECAN hook — Classic's "enabler" surface is also gone in the MeTTa port.
+- **Do not phrase the MeTTa OpenPsi port as "reviving ECAN/OpenPsi coupling".** It revives/reimplements OpenPsi motivation/action-selection, but not ECAN attention-currency coupling.
+- **One-sentence wiki status (Codex C2-75 candidate):** "hyperon-openpsi is an active MeTTa reimplementation of OpenPsi with paper-aligned modulator formula repairs, multiple planner/use-case lanes, and no ECAN/STI coupling surface."
+
+---
+
+## Open questions for Source 3 (Papers)
+
+(Aggregated from Codex C2-76/C2-77/C2-78/C2-79/C2-80/C2-81 and orchestrator V2-2/V2-3.)
+
+1. **Disambiguate paper citations in code.** `feed-back-loop.metta:139-140` cites Goertzel et al. 2013 video-games paper. Demand modules cite "Ben's paper" generically. Which paper(s) are the actual sources? Are the 2011 Cai paper and 2013 Goertzel paper the same family, distinct papers, or related?
+2. **Verify eq. 10-13 from paper text.** Confirm the MeTTa modulator-updater formulas (`competence/(competence+0.5) * energy/(0.05+energy)` etc.) match the paper's eq. 10-13 character-by-character or only conceptually.
+3. **Verify `calculateDemandSatisfaction` (`demand.metta:150-168`).** Is the piecewise function (with random terms 0.8-1.0 in-range and 0.9-1.0 above-max) paper-literal, paper-inspired, or engineered?
+4. **Verify demand-updater formulas (`demand-updaters.metta:1-76`).** Are these paper-literal? Do their parameters correspond to the paper's "demands", "modulators", and "feelings" definitions?
+5. **Tradition placement decision.** Once paper anchoring is verified (questions 1-4), determine whether OpenPsi MeTTa port qualifies as a Tradition 6 (paper-faithful re-implementation) or remains a sub-branch under Tradition 2 / motivation cluster.
+
+## Open questions for Source 4 (Hanson / fork archaeology)
+
+Carrying forward from Source 1 brief and reinforced by Source 2 findings:
+
+1. **Did Hanson's fork have a runtime-functional emotion/dynamics subsystem?** (Gemini's preserved subgoal from Source 1.)
+2. **Did any production OpenPsi deployment install a custom STI-weighted action-selector?** Source 1 V1-1 found no caller of `rule-sca-weight` in canonical SingNet at `b31c7e3`, but Hanson or other forks may have wired it in production deployments.
+3. **Glicerico stimulus parameter ancestry.** Per V2-1 above: where did the `stimulus` parameter come from? Is it a Glicerico personal experiment, a feature ported from elsewhere, or an early version that canonical superseded?
+4. **Curious-agent LLM hybrid lineage.** Per Codex C2-81: should the LLM/correlation-matcher path be considered an OpenPsi extension, an application wrapper, or a separate neural/LLM integration layer? Is this pattern present in other use cases or repos?
+
+---
+
+## Cluster-position summary (Source 2)
+
+1. **Architectural verdict.** The MeTTa port is a **modernized, expanded reimplementation** of OpenPsi — not a thin port. ~2.5× the file count, MeTTa-native rule/space/unification idioms, and a 5-variant action-planner family replacing Classic's single default selector.
+
+2. **ECAN coupling: STRUCTURALLY ABSENT.** Confirmed by both models and orchestrator-verified. The Classic "optional STI helper + optional AttentionBank module load" surface is gone. The MeTTa port is a motivation/action-selection subsystem, not an ECAN consumer.
+
+3. **Action-selector seam: NOT PRESERVED as a configurable selector API.** Use cases plug planners by direct module imports (e.g., `import action-planner-v1`), not via `psi-set-action-selector!`-style runtime registration. Classic's "enabler" function for Ghost-style consumers is absent.
+
+4. **Paper-formula alignment: VERIFIED VIA CALLER TRACE.** Commit `01936f1` introduced/aligned three modulator helpers to OpenPsi paper eq. 10-13. The helpers are tested, called by `modulatorUpdaterAgent`, and reached by all canonical use cases through `psi-agent-loop` or direct call. Source 1 V1-1's caller-analysis methodology rule has been satisfied.
+
+5. **Tradition placement: PROVISIONAL.** "Paper-leaning MeTTa reimplementation inside the OpenPsi/motivation cluster" — distinct pattern from the ECAN MeTTa port (Tradition-2 faithful surrogate). Whether this rises to a separate "Tradition 6" is deferred to Source 3 paper verification and Source 4 Hanson lineage.
+
+6. **Curious-agent LLM hybrid: REPO-LEVEL PATTERN.** Not just a curious-agent feature — `psi-utilities/miner.metta` defines a `query_llm` Python hook used elsewhere. The MeTTa OpenPsi port is built with LLM integration as a first-class capability, not just an experiment.
+
+7. **Glicerico fork: divergent-but-stale.** Has a `stimulus`-parameter modulator-helper variant canonical lacks, but is missing canonical's substantial 2025-2026 advancement (planner family + paper alignment + use-case expansion). Reference status: **NOT** the canonical implementation; useful for archaeology.
+
+8. **Zariuq fork: synchronized mirror.** No divergence at fetch time; treat as canonical lineage tracking, not a separate audit target unless other branches surface.
+
+9. **Cohort:** iCog-Labs-Dev student/contributor base (Ethiopia-focused), led by Nahom32 (142 commits) / samwondim (137) / Amanuel Garomsa (74). Same cohort family as ECAN's metta-attention.
+
+10. **New methodology rule (Source 2 V2-1 driven):** Fork-divergence audits must check BOTH directions explicitly — `git log upstream..fork` AND `git log fork..upstream`. A fork can simultaneously have its own additions AND lag behind upstream development. Reporting only one direction misframes the divergence.
+
+---
+
+## Reconciliation result
+
+Source 2 reconciled. Two V2-N dissents:
+- **V2-1** (Glicerico fork direction): both models partly right; resolved by orchestrator-verified bidirectional `git log/diff/grep`. Glicerico has unique `stimulus` parameter divergence AND lags behind canonical 2025-2026 development.
+- **V2-2** (source paper for demand satisfaction): under-determined at Source 2; deferred to Source 3 paper-verification pass.
+- **V2-3** (Tradition placement): both models converge on "paper-leaning, formal tradition-number deferred to Source 3".
+
+Source 1 V1-1 carry-forward fully strengthened: ECAN coupling structurally absent in MeTTa port; OpenPsi-as-enabler narrative now extends to "Classic enabler surface also lost in MeTTa port".
+
+**No wiki edits performed in this reconciliation pass.** Cluster-pilot edit phase deferred until all 4 OpenPsi sources reconcile.
+
+**No repo file edits performed** (read-only access to all three repos).
+
+---
+
+*End of Source 2 reconciliation. OpenPsi cluster pilot Source 2 extraction phase CLOSED. Awaiting cluster-narrative review before launching Source 3 (Papers).*

@@ -1,0 +1,53 @@
+# Source 3 -- OpenPsi Papers / Foundations -- Gemini Findings
+
+**Cluster:** OpenPsi / Motivation pilot, Source 3 of 4
+**Source target:** Foundational and lineage papers cited by OpenPsi codebase
+**Persistence date:** 2026-04-28 (orchestrator-saved verbatim from Gemini's inline-forwarded report at Source 3 cluster-pass close)
+**Brief:** `scripts/archive/openpsi_pilot/source3_papers_brief.txt`
+
+**Orchestrator verification note:** Gemini's headline V3 paper-identification claim (that `RawData+Publications+Openpsi Zhenhua+chunk-1`, ID 3828, contains the 2013 video-games paper) was verified by orchestrator-side `find_in_card` queries on 2026-04-28. Verbatim from chunk-1 position 72: *"OpenPsi: A novel computational affective model and its application in video games -- Zhenhua Cai, Ben Goertzel, Changle Zhou, Deheng Huang, Shujing Ke, Gino Yu, Min Jiang -- Engineering Applications of Artificial Intelligence 26 (2013) 1-12 -- DOI 10.1016/j.engappai.2012.07.013"*. The wiki RawData card was mislabeled "Openpsi Zhenhua" but is actually the canonical 2013 paper.
+
+---
+
+## Verbatim findings (per Gemini's forwarded report)
+
+I have completed the extraction and verification pass for Source 3 (Papers). My findings confirm the specific "paper-faithfulness" of the MeTTa port and resolve the "2013 video-games paper" identity gap.
+
+### Gemini Report: Source 3 (Papers vs. Code)
+
+**1. Identity Verification (The "2013 Video-Games Paper")**
+**Status:** Identified & Verified.
+- **Paper:** "OpenPsi: A novel computational affective model and its application in video games" (Zhenhua Cai, Ben Goertzel, Changle Zhou et al., 2013). Published in *Engineering Applications of Artificial Intelligence*, Vol 26, Issue 1.
+- **Source Text:** Found in ID 3828 (`RawData+Publications+Openpsi Zhenhua+chunk-1`).
+- **Conclusion:** This is the canonical source for the math implemented in the MeTTa port. The 2011 AGI-11 paper (ID 3168) is the conceptual precursor but lacks the formal equations.
+
+**2. Equation Verification (B1-B5)**
+
+The MeTTa port (Source 2) is **LITERAL** in its mapping of the 2013 paper formulas, whereas the Classic C++ baseline (Source 1) was **DIVERGENT**.
+
+| Mechanism | 2013 Paper Formula (Page 6) | MeTTa Code (File:Line) | Status |
+|---|---|---|---|
+| Activation | Eq (10): `S_comp / (S_comp + 0.5) * S_en / (S_en + 0.05)` | `modulator-updaters.metta:2` | LITERAL |
+| Securing | Eq (12): `S_cert / (S_cert + 0.05) * S_int^3` | `modulator-updaters.metta:9` | LITERAL |
+| Selection | Eq (13): `fuzzy_equal(S_comp, 1, 15)` | `modulator-updaters.metta:16` | LITERAL |
+| Satisfaction | Eq (1): `0.8 + 0.2 * random(0,1)` (mid-range) | `demand.metta:158` | LITERAL |
+| Fuzzy Equal | Eq (2): `1 / (1 + a * (x-t)^2)` | `psi_utils.metta:68` | LITERAL |
+
+- **Random Terms (B4):** The suspect `random 0 1` terms in `demand.metta` are **Verified Literal**. The 2013 paper explicitly includes stochastic components in the piecewise satisfaction function to model biological variability.
+
+**3. Tradition Decision (C1-C3)**
+**Verdict:** Tradition 6 (Paper-Faithful Re-implementation).
+- Unlike the ECAN MeTTa port (which faithfully ported Tradition 2 surrogates), the OpenPsi MeTTa port **regressed from Tradition 2 to re-literalize Tradition 6**.
+- **Classic Baseline (Tradition 2):** Diverged from the paper in `updater.scm`, using a slope-based exponential scaling formula `new = (slope^(ax) - 1) / (slope^a - 1)` instead of the paper's fractional helpers.
+- **MeTTa Port (Tradition 6):** Commit `01936f1` (2026-02-24) explicitly "aligned... formulas with OpenPsi paper".
+
+**4. MetaMo / LLM Anchoring (D1-D3)**
+- **Paper Root:** Section 4.3 of the 2013 paper describes `MonitorChangesMindAgent` pushing "heuristic hints" into the AtomSpace.
+- **MeTTa Realization:** The Curious Agent's usage of LLM-generated summaries for "correlation matching" (`curious-agent/main.metta:28`) is an engineering-side innovation that structuralizes the "heuristic hint" concept using modern LLM capabilities. It is **Inspired** by the paper but not a literal realization.
+
+**5. Volatility Flag (B3 - Selection Threshold)**
+The 2013 paper notes: *"Selection threshold... prevents oscillation of behavior... It increases with heightening activation."* This explains the paper's use of `S_comp` in the threshold formula, but the MeTTa implementation at `modulator-updaters.metta:16` uses a fixed `alpha=15` which matches the paper's experimental settings.
+
+---
+
+*End of Gemini Source 3 findings (forwarded verbatim). Awaiting Codex's extraction pass before reconciliation.*

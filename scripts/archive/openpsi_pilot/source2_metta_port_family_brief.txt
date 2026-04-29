@@ -1,0 +1,346 @@
+# OpenPsi Cluster Pilot — Source 2 Brief: MeTTa Port Family
+
+**Cluster:** OpenPsi / Motivation pilot, Source 2 of 4
+**Source target:** MeTTa port lineage of Classic OpenPsi
+**Brief author:** Claude orchestrator (Opus 4.7 1M context)
+**Brief date:** 2026-04-27
+**Audit type:** Read-only archaeology — no working-tree modifications, no wiki writes from extraction agents
+
+### Repos in scope
+
+| Role | Local path | Remote | HEAD (2026-04-27) | Branch |
+|---|---|---|---|---|
+| **2a — Canonical** | `E:\GitHub\hyperon reference\hyperon-openpsi\` | `iCog-Labs-Dev/hyperon-openpsi.git` | `3b356c5e51d4490b587351721a8cd4187da5817a` | `dev` |
+| **2b — Glicerico fork** | `E:\GitHub\hyperon reference\hyperon-openpsi-glicerico\` | `glicerico/hyperon-openpsi.git` | `db7592124d31d69f9281ae1d15f4ce8eb6b422ae` | `dev` |
+| **2c — Zariuq fork** | `E:\GitHub\hyperon reference\hyperon-openpsi-zariuq\` | `zariuq/hyperon-openpsi.git` (upstream: iCog-Labs-Dev) | `3b356c5...` (currently in sync with canonical 2a) | `dev` |
+
+**Audit pin:** Source 2a = `3b356c5` (HEAD as of fetch 2026-04-27). Forks audited at their respective HEADs to surface divergence from canonical. Source 2c being in sync with 2a means Zar's fork has no extant divergence at fetch time — confirm or document as an audit finding.
+
+---
+
+## Why this source — cluster context (carry-forward from Source 1)
+
+OpenPsi cluster pilot Source 1 (2026-04-27 V1-1 reconciliation, file `scripts/archive/openpsi_pilot/source1_classic_baseline/findings_reconciled_crossmodel.txt`) established the corrected baseline for Classic OpenPsi at `b31c7e3`:
+
+> **Classic OpenPsi was an ECAN-coupling enabler, not itself a default executable ECAN consumer.** It defined an STI-weighting helper `rule-sca-weight` at `opencog/openpsi/action-selector.scm:57-64` that had **zero callers** in the OpenPsi runtime. The default component selector at `main.scm:54-59` was `psi-get-satisfiable-rules` (returns all satisfiable rules, no STI scoring). Ghost was the actual STI consumer; it installed its own STI-weighted action-selector at `opencog/ghost/matcher.scm:117-130, 284` via OpenPsi's `psi-set-action-selector!` seam — a parallel `strength × context × sti × urge` formula, not a call into OpenPsi's helper.
+
+Source 1 also locked in additional baseline facts:
+- 27-file Scheme/C++ implementation at `b31c7e3`; ~52% Amen Belayneh contribution.
+- Implicator/Satisfier/Rules C++ pipeline + Scheme component loop + dynamics subsystem (modulators, SECs, interaction rules).
+- Conceptual PLN/URE ancestry (rule structure, TV idioms) but no runtime invocation of either.
+- README/code drift: README documents weighted-selection that doesn't exist in code; `openpsi.scm` exports symbols that aren't defined.
+
+**Source 2 question:** What survived the MeTTa transition?
+
+---
+
+## Source target details
+
+### 2a — `iCog-Labs-Dev/hyperon-openpsi` @ `3b356c5` (canonical MeTTa port)
+
+**Volumetrics (orchestrator-collected via `git rev-list` + `Glob`):**
+- 575 commits total on `dev` branch.
+- 67 `.metta` files in working tree.
+- Active development through 2026-02-24 (`01936f171` — see Volatility Flag below).
+
+**Tree (high-level inventory from Glob `**/*.metta`):**
+
+```
+hyperon-openpsi/
+├── main/
+│   ├── types.metta                              ← typed schema
+│   ├── demand/
+│   │   ├── demand.metta
+│   │   └── tests/demand-test.metta
+│   ├── emotion/
+│   │   ├── emotion.metta                        ← MeTTa-port emotion (Source 1 had only minimal Scheme stub)
+│   │   └── tests/emotion-test.metta
+│   ├── modulator/
+│   │   ├── modulator.metta
+│   │   └── tests/modulator-test.metta
+│   ├── rules/
+│   │   ├── rule.metta
+│   │   ├── implicator.metta                     ← MeTTa "Implicator" — name-shared with C++ class but semantically may differ
+│   │   └── tests/{rule-test, implicator-test}.metta
+│   ├── feed-back-loop/
+│   │   ├── feed-back-loop.metta
+│   │   ├── feed-back-loop-v2.metta              ← V2 lineage marker
+│   │   ├── feed-back-helpers.metta
+│   │   └── test/{feedback-loop-test, feedback-loop-v2-test}.metta
+│   └── mind-agents/                             ← MAJOR REORG — replaces Classic's dynamics/ subsystem and expands it
+│       ├── action-planner/                      ← richest divergence — multiple selector variants
+│       │   ├── action-planner-v1.metta
+│       │   ├── action-planner-v2.metta
+│       │   ├── aStar-action-planner.metta       ← A* planner (no Classic equivalent)
+│       │   ├── thompson-sampling/
+│       │   │   ├── math.metta
+│       │   │   ├── util.metta
+│       │   │   ├── monster-combat/{play, rules}.metta   ← Thompson Sampling demo with monster-combat game
+│       │   │   └── tests/{math.test, util.test}.metta
+│       │   ├── ts-ucb/                          ← Thompson Sampling + UCB hybrid (PR #115, 2026)
+│       │   │   ├── math.metta
+│       │   │   ├── util.metta
+│       │   │   └── tests/{math.test, util.test}.metta
+│       │   └── tests/{action-planner-v1, action-planner-v2, aStar-action-planner}-test.metta
+│       ├── demand-updater/{demand-updaters, tests}.metta
+│       ├── feeling-updater/{feeling-updaters, tests}.metta    ← New abstraction
+│       ├── modulator-updater/{modulator-updaters, tests, test-helpers}.metta
+│       ├── monitor-changes/{monitor-changes, monitor-changes-helpers, tests}.metta
+│       └── perception-updater/{perception-updater, tests}.metta    ← New abstraction
+├── psi-utilities/
+│   ├── psi_utils.metta
+│   ├── normalization.metta
+│   ├── miner.metta
+│   ├── example.metta
+│   └── tests/{logger, normalization, psi_utils, miner}-test.metta
+└── use-cases/
+    ├── curious-agent/                           ← Gemini's named focus
+    │   ├── main.metta
+    │   ├── setup-kb.metta
+    │   └── tests/sample-rules.metta
+    ├── ping-pong/                               ← Multiple versions
+    │   ├── ping-pong.metta
+    │   ├── ping-pong-v2.metta
+    │   ├── ping-pong-v3.metta
+    │   └── test/ping-pong-v3-test.metta
+    └── qwestor/
+        ├── main-loop.metta
+        ├── helpers.metta
+        ├── helpers-test.metta
+        ├── fetch-demands.metta
+        ├── fetch-modulators.metta
+        ├── setup_kb.metta
+        └── out.metta
+```
+
+**Compared to Classic OpenPsi 27 files:** the MeTTa port is **2.5× larger** (67 vs 27), substantially **reorganized** (`main/` + `psi-utilities/` + `use-cases/` + `mind-agents/` instead of flat directory + `dynamics/`), and **richer** in action-selection (5 planner variants vs Classic's single `psi-get-satisfiable-rules` default).
+
+### 2b — `glicerico/hyperon-openpsi` @ `db75921` (Glicerico fork)
+
+Recent commits: ping-pong v2, chatting interface, planner edge-case fix. No "OpenPsi paper alignment" commits like canonical's `01936f1`. Need to determine: is this fork a personal sandbox, or has Glicerico contributed unique features?
+
+### 2c — `zariuq/hyperon-openpsi` @ `3b356c5` (Zar fork)
+
+Currently in sync with canonical iCog-Labs-Dev. Either Zar maintains a clean tracking-only relationship, or there are local feature branches not on `dev`. Audit should check: are there other branches in this fork with divergent work (e.g., Zar's xiPLN lineage might integrate with OpenPsi via a feature branch)?
+
+---
+
+## Pre-loaded git history (orchestrator-collected — do not re-run broad discovery unless verifying or filling a cited deliverable)
+
+### Most recent commits (canonical 2a `dev` HEAD)
+
+```
+3b356c5 Merge pull request #115 from Mahider-n/ts-ucb-action-selection
+d163de0 separate benchmark and plotter, removed type definations inside utilities-module
+1a0e61a Merge pull request #116 from Mahider-n/fix/modulator-updater-formulas
+01936f1 align activation, securing, resolution, and selection formulas with OpenPsi paper (eq. 10–13)   ★ TRADITION-PLACEMENT-DECIDING
+04f5540 Merge pull request #114 from Myk72/ping-pong
+95eb3f6 added utils for the ts-ucb and updated some functions to align related functions
+2b61553 implemented helper math functions for ts-ucb metta implementation
+ee38ee5 implemented helper math functions for ts-ucb metta implementation
+9272aad added cumulative regret plot
+1717a59 added comparision analysis and visualization
+b35424a implemented TS-USB inspired action selection, used previous beta posterior sampling for distribution sampling
+ba5b5db fix: recursive plan execution and goal value
+000f04c Change variable names to camel case format
+eb759e6 Improved ping-pong agent
+cf45d31 Merge pull request #111 from iCog-Labs-Dev/feat/ruleAndRuleDemandRelPersistance
+636bf03 Merge pull request #112 from nathanaelcheramlak/demand
+48302b5 Merge branch 'iCog-Labs-Dev:dev' into demand
+9c6be60 fix: updated loop to support new demand representation
+a8f04ac fix: unify rule representation
+5b3ecc4 fix: loop with the updated demand representation
+```
+
+### Earliest commits
+
+```
+7d4eae8 Initial commit
+abee57f chore: added utilities module
+75a1c74 included new version of utils
+779fac3 chore: sync utilities module
+385f49f feat: added modulators
+```
+
+### Action-selector / action-planner history (canonical 2a; 20 most recent matches)
+
+```
+e9e2258 removed unused action-planner-v3.metta and updated aStarPlanner to use global &priorityQueue directly removing previous local
+3ea0df0 update action-planner-v3 and add tests but the A*planner isn't working
+b71cb29 checking each functions inside the action-planner-v3.metta
+03f36ef feat: thompson sampling action planner with a demo game
+b03f7a1 Add action-planner-v3.metta for A* planner
+0afc569 add changes to action-planner v1.
+1a2e8ac Merge pull request #87 from iCog-Labs-Dev/action-selector-patch
+7cc3c11 feat: update feedback loop to account for the new action planner implementation
+806e5c9 fix: a patch for the action selector to include initial and final actions to the accumulator
+a5671d6 Merge pull request #82 from iCog-Labs-Dev/action-selector-patch
+c14320e fix: a patch for the action selector to include initial and final actions to the accumulator
+f16127a feat: feedback loop implementation with action-planner V2
+40118a8 port: action-planner-v2 and ping pong
+266a9a6 simple changes to the action planner
+0c54198 feat: add action planner condition based on demand and modulator values
+402d256 feat: add goals, rules & action planner
+0ace3e3 Delete main/mind-agents/action-planner/ction-planner-v2.metta
+68dd021 chore: moved planning related code to mind-agents/action-planner directory.
+02575e9 Save WIP for action-planner before switching
+e7ba505 chore: renamed action planner to prevent merge conflicts
+```
+
+### TRADITION-PLACEMENT-DECIDING commit
+
+`01936f171fa758f04c9458b58564fd6b7b7a95e4` — **2026-02-24** (Tuesday) — author **Mahider-n** (`Mahidernardos@gmail.com`) — commit message: *"align activation, securing, resolution, and selection formulas with OpenPsi paper (eq. 10–13)"*.
+
+This commit explicitly aligns the MeTTa port to the original OpenPsi paper's mathematical formulas. **This is potentially the OPPOSITE of the ECAN cluster's pattern.** ECAN MeTTa port faithfully replicated Classic C++'s engineered surrogates rather than the 2009 paper's formulas (giving 0/4 strict-literal compliance against the paper). If `01936f1` represents a real (not nominal) alignment to OpenPsi paper formulas eq. 10-13, the OpenPsi MeTTa port may be a **paper-leaning re-implementation** rather than a Classic-faithful surrogate port. Reviewers must verify by:
+1. Reading the full `01936f1` diff (`git show 01936f1`).
+2. Identifying which OpenPsi paper they're aligning to (Cai 2011? a different MetaMo paper? OpenPsi Cognitive Model paper?).
+3. Quoting the relevant equations and checking that the MeTTa code at HEAD `3b356c5` actually implements them (not just renamed variables).
+
+### Contributor cohort
+
+`git shortlog -sne` returned empty for unclear reasons (Bash tool returned no output). **Extraction agents to fill**: top contributors, email-domain analysis (iCog-Labs-Dev cohort, Hanson cohort, individual contributors), commit-volume tiers. Known contributors visible in commit messages: Mahider-n (Mahidernardos@gmail.com), Myk72, nathanaelcheramlak, yosef-zewdu (in glicerico fork), Amanuel-1 (in glicerico fork). Cross-source check: which iCog-Labs-Dev metta-attention authors (Birhane Gulilat, etc.) also appear here?
+
+---
+
+## Audit checklist (questions for extraction agents)
+
+### A. Architecture mapping (Classic → MeTTa)
+
+A1. **File-level mapping.** For each Classic OpenPsi file (27 files at `b31c7e3`), identify the MeTTa-port equivalent or document its absence:
+   - `OpenPsiImplicator.{cc,h}` → `main/rules/implicator.metta` (verify semantic equivalence — same role of "if context satisfiable, fire action"?).
+   - `OpenPsiSatisfier.{cc,h}` → ? (Classic's satisfiability checker; MeTTa equivalent unclear from file inventory).
+   - `OpenPsiRules.{cc,h}` → `main/rules/rule.metta` (?).
+   - `OpenPsiSCM.{cc,h}` → no equivalent (SCM bindings layer is C++↔Scheme; MeTTa port is MeTTa-native).
+   - `action-selector.scm` → `mind-agents/action-planner/action-planner-v{1,2}.metta` (?). Note name change from "selector" to "planner".
+   - `control.scm`, `demand.scm`, `main.scm`, `openpsi.scm`, `rule.scm`, `utilities.scm` → ?
+   - `dynamics/{emotion, modulator, sec, event, interaction-rule, mock-interaction-rules, dynamics, updater, utilities}.scm` → mostly fragmented across `main/{emotion, modulator}/` and `mind-agents/{demand-updater, modulator-updater, feeling-updater, perception-updater, monitor-changes}/` — verify mapping.
+
+A2. **Net-new structure.** Inventory what exists in the MeTTa port that has NO Classic equivalent: `psi-utilities/`, `feed-back-loop/`, `mind-agents/feeling-updater/`, `mind-agents/perception-updater/`, `mind-agents/monitor-changes/`, the multi-planner architecture (v1/v2/aStar/thompson/ts-ucb), `use-cases/{curious-agent, qwestor}/`. For each, what is its function and what motivates its existence?
+
+A3. **Net-removed structure.** What from Classic OpenPsi has NO MeTTa-port equivalent: `OpenPsiSatisfier`, `OpenPsiSCM` C++/Scheme bindings layer, `dynamics/sec.scm` (SECs — sensitivity-evaluation-components), `dynamics/event.scm`, `dynamics/interaction-rule.scm` with `PredictiveImplication`, the satisfiability cache mechanism. What's been lost?
+
+A4. **Type system.** `main/types.metta` exists in MeTTa port; Classic had no type module (Scheme/C++). What does the type schema constrain — rule shape, demand shape, modulator shape? Does it enforce constraints the Classic implementation only documented in comments?
+
+### B. Action-selector seam survival (Source 1 V1-1 carry-forward)
+
+B1. **Did the configurable selector seam survive?** Classic's distinguishing feature was the ability for clients (Ghost) to install custom selectors via `psi-set-action-selector!`. In the MeTTa port, is there a parallel pluggable selector point? If yes, where? If no, what replaced it?
+
+B2. **Multiple planners — pluggable or hardcoded?** The MeTTa port has 5 planner variants (`action-planner-v1`, `action-planner-v2`, `aStar-action-planner`, `thompson-sampling/`, `ts-ucb/`). Are these:
+   (a) Selectable at runtime via a planner-selection seam (the "enabler" survived),
+   (b) Hardcoded for specific use-cases (curious-agent uses one, ping-pong uses another, etc.),
+   (c) Different versions where only the latest is canonical and earlier are dead code?
+
+B3. **STI/AttentionalFocus presence.** Per the both-API-layers methodology rule, grep the MeTTa port for: `cog-av-sti`, `cog-stimulate`, `cog-af`, `cog-set-sti!`, `cog-set-lti!`, plus MeTTa-equivalents (`get-sti`, `set-sti`, `bind-af`, `attention-bank`, `attentional-focus`, `STI`, `LTI`, `AttentionValue`). Report file:line for every hit. Source 1's caller-analysis methodology applies — is each hit a definition, a runtime invocation, a dead helper, or test-only?
+
+B4. **AttentionBank optional-load equivalent.** Classic OpenPsi at `b31c7e3` had `(resolve-module '(opencog attention-bank) #:ensure #f)` to be loadable without AttentionBank. Does the MeTTa port have any analogous "optional ECAN" architecture, or is ECAN integration just absent entirely (which would match the Source 1 V1-1 finding that OpenPsi was an enabler not a consumer)?
+
+### C. Tradition placement (V1-2 question, paper-vs-classic alignment)
+
+C1. **Verify `01936f1` paper alignment is real.** Read `git show 01936f1` in full. What changed? Specifically:
+   - Which `.metta` files were modified?
+   - What were the prior formula expressions, what are the new ones?
+   - Which OpenPsi paper does "OpenPsi paper (eq. 10-13)" refer to — Cai 2011 ("Openpsi Zhenhua")? Goertzel & Cai's 2011 paper? OpenPsi Cognitive Model? Hyperon-era MetaMo paper?
+
+C2. **Other paper-alignment commits.** Was `01936f1` a one-off, or part of a sustained alignment campaign? Run `git log --all --grep="paper" --grep="formula" --grep="equation" -i` (use `-i` for case-insensitive) and report.
+
+C3. **Engineered-surrogates inventory.** Where does the MeTTa port still use engineered surrogates (hardcoded numeric weights, ad-hoc decay rates, simplified versions of paper formulas)? Compare to Classic OpenPsi — did Classic's surrogates carry over, or has the MeTTa port replaced them with paper formulas?
+
+C4. **Tradition decision.** Based on B1-B4 + C1-C3 evidence:
+   (a) Is the MeTTa port a **Tradition 2 sub-branch** (faithful Classic-surrogate port, paralleling ECAN's pattern)?
+   (b) Is it a **Tradition 6: paper-faithful re-implementation** (independent re-derivation from OpenPsi papers)?
+   (c) Is it a **hybrid** (some surrogates ported, some paper formulas re-derived)?
+   (d) Is the question premature because the MeTTa port is still actively diverging?
+
+### D. Use-cases — runtime evidence
+
+D1. **Curious-agent (Gemini's focus).** Read `use-cases/curious-agent/main.metta` and `setup-kb.metta`. What demand/goal/modulator structure does curious-agent instantiate? What action planner does it use? Is there an STI/AttentionalFocus integration here that wasn't in core OpenPsi?
+
+D2. **Ping-pong v1/v2/v3.** What's the version progression? Is each version a stand-alone demo, or do they share a kernel? Do any of them install custom action-planners?
+
+D3. **Qwestor.** Per CLAUDE.md, Qwestor is "Qwestor API". What does this use case demonstrate? Does it integrate with external services (LLM API, web API)? Does it use OpenPsi as a control layer for something else?
+
+### E. Volatility / Archaeology Flags
+
+E1. **Recent activity volume.** 575 commits total, recent activity through 2026-02-24+. The MeTTa port is still actively under development. Document the rough cadence: commits per month in 2025? In 2026 Q1?
+
+E2. **`action-planner-v3` deletion.** Commit `e9e2258` "removed unused action-planner-v3.metta" + `3ea0df0` "the A*planner isn't working" + `b03f7a1` "Add action-planner-v3.metta for A* planner". V3 was added then removed — what was wrong with it, and is the current `aStar-action-planner.metta` a successor or different architecture?
+
+E3. **Demand representation churn.** Commits `cf45d31` (`feat/ruleAndRuleDemandRelPersistance`), `9c6be60` ("loop to support new demand representation"), `5b3ecc4` ("loop with the updated demand representation") indicate substantial churn on demand model. What was the change? Cross-link to Classic OpenPsi's demand.scm comments about "two conflicting storage approaches" (Codex C1-36) — is this the same issue, finally being resolved?
+
+### F. Fork divergence (2b + 2c)
+
+F1. **Glicerico fork features.** What does `db75921` have that canonical `3b356c5` doesn't? Run `git log canonical_branch..glicerico_branch --oneline` (orchestrator may need to set up remote-tracking; or just compare commit ranges via `git log` with both HEADs visible).
+
+F2. **Zariuq fork features.** Currently in sync with canonical at HEAD. Are there other branches in this fork? Run `git branch -a` (already partially visible). Is there a Zar-specific feature branch (e.g., for xiPLN integration)?
+
+F3. **Glicerico/Zariuq usage in production.** Per `Implementation Families+Attention and Motivation` wiki card, hyperon-openpsi is "Operational" but use-cases are research. Are the forks production deployments, research forks, or personal sandboxes?
+
+---
+
+## Out of scope for Source 2
+
+- **Foundational papers** (Cai 2011 Zhenhua paper, OpenPsi Cognitive Model, MetaMo papers) — Source 3.
+- **Hanson Robotics / 2011 OpenPsi tag lineage** — Source 4 (with the named subgoal: did Hanson have a more runtime-functional emotion/dynamics subsystem than the canonical SingNet `b31c7e3` baseline?).
+- **PeTTa-OpenPSI** (separate iCog-Labs-Dev MeTTa+Prolog port mentioned in CLAUDE.md `Implementation Families+Attention and Motivation`) — defer if found in audit; not a primary 2a/2b/2c target.
+- **MetaMo-Python** (Python-only category-theory reference) — Source 3 / future cluster.
+- **Re-auditing Classic OpenPsi** — Source 1 baseline is locked. Cite Source 1 reconciliation, don't redo.
+
+---
+
+## Methodology rules (per CLAUDE.md standing protocols + Source 1 emergence)
+
+1. **Read-only.** No working-tree modifications, no wiki writes from extraction agents.
+2. **Cross-model triangulation.** Codex + Gemini extraction passes; Claude orchestrator cross-checks; reconciliation file synthesizes.
+3. **Both API layers.** Per ECAN Source 4 V0-1: grep both Scheme-side and C++-side tokens. **For MeTTa port additionally**: grep MeTTa-namespace equivalents (`get-sti`, `set-sti`, `attention-bank`, etc.).
+4. **Pickaxe before "dead code" claims.** Per ECAN Source 3 V0-1.
+5. **Caller-analysis before "actively coupled" claims.** Per OpenPsi Source 1 V1-1: presence of a formula or symbol at a file:line is not sufficient evidence of runtime coupling. Verify caller chain through `main.metta`/`feed-back-loop/` and use-case entry points.
+6. **Verbatim quotes for critical claims.** File:line + verbatim code excerpt for any A/B/C/D-section answer that affects cluster narrative.
+7. **No working-tree mutation.** Use `git show <sha>:<path>` and `git grep <sha>` rather than checkouts.
+
+---
+
+## Cross-source carry-forward references
+
+- **OpenPsi Source 1 reconciliation:** `scripts/archive/openpsi_pilot/source1_classic_baseline/findings_reconciled_crossmodel.txt` — V1-1 enabler-vs-consumer correction, Classic baseline architecture inventory.
+- **OpenPsi Source 1 brief:** `scripts/archive/openpsi_pilot/source1_classic_baseline_brief.txt` — Classic baseline questions and methodology rules.
+- **ECAN cluster pilot Source 4 reconciliation:** `scripts/archive/ecan_pilot/source4_pre_split_monorepo/findings_reconciled_crossmodel.txt` — broader-OpenCog ECAN consumer table, OpenPsi addendum (corrected by Source 1 V1-1).
+- **ECAN cluster pilot Source 1 reconciliation:** `scripts/archive/ecan_pilot/source1_metta_attention/findings_reconciled_crossmodel.txt` — sister cluster's MeTTa-port pattern (faithful Classic-surrogate port). Use as comparison baseline for the Tradition 2 sub-branch question.
+- **CLAUDE.md** — five-tradition map, Tradition 2 sub-branch language, two-paradigm framing.
+
+---
+
+## Deliverable format (extraction agents)
+
+Each agent produces a single text file:
+
+- `scripts/archive/openpsi_pilot/source2_metta_port_family/findings_codex.txt`
+- `scripts/archive/openpsi_pilot/source2_metta_port_family/findings_gemini.txt`
+
+Structure (per ECAN/OpenPsi-Source-1 precedent):
+
+1. **Header** — model name, audit commits (2a `3b356c5`, 2b `db75921`, 2c `3b356c5`), pass date, files touched.
+2. **A-section answers** — architecture mapping (A1-A4).
+3. **B-section answers** — action-selector seam survival (B1-B4).
+4. **C-section answers** — tradition placement (C1-C4).
+5. **D-section answers** — use-case runtime evidence (D1-D3).
+6. **E-section answers** — volatility flags (E1-E3).
+7. **F-section answers** — fork divergence (F1-F3).
+8. **Discovered tangents** — any architectural surprises, attribution discoveries, paper-alignment findings, cross-cluster implications.
+9. **Open questions** — anything for V2-N reconciliation.
+
+**Claim numbering convention:** Codex Source 2 = `C2-1`, `C2-2`, ...; Gemini Source 2 = `G2-1`, `G2-2`, ...
+
+**Length target:** ~15-30 KB per agent file (matches ECAN/OpenPsi-Source-1 per-source pattern; Source 2 may run longer due to three repos in scope).
+
+---
+
+## Orchestrator cross-check plan (post-extraction)
+
+1. Diff Codex vs. Gemini per-question. Identify V2-N dissents.
+2. For any V2-N dissent affecting cluster narrative (especially C4 tradition placement and B1 enabler survival), run direct `git show <sha>:<path>` verification.
+3. Write `scripts/archive/openpsi_pilot/source2_metta_port_family/findings_reconciled_crossmodel.txt`.
+4. Decide whether Source 2 unlocks Source 3 (papers) or Source 4 (Hanson) first. The C4 tradition decision may benefit from paper-anchor verification (Source 3) before declaring final. Consider re-ordering Sources 3 and 4 if needed.
+
+---
+
+*End of Source 2 brief. Pre-loaded git history above; agents should not re-run `git log` / `git shortlog` unless verifying a specific claim or filling a cited deliverable.*

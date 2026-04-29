@@ -1,0 +1,182 @@
+# OpenPsi Cluster Pilot -- Source 4 Reconciliation (Cross-Model)
+
+**Cluster:** OpenPsi / Motivation pilot, Source 4 of 4
+**Source target:** Hanson Robotics fork archaeology -- `hansonrobotics/opencog`, `hansonrobotics/ros-behavior-scripting`, `opencog/loving-ai-ghost`, `leungmanhin/loving-ai-ghost`
+**Persistence date:** 2026-04-28 (orchestrator-saved at Source 4 cluster-pass close)
+**Reviewer outputs:** `findings_codex.txt` (42 numbered claims) + `findings_gemini.txt` (5 sections) -- both saved verbatim alongside this file.
+
+---
+
+## Headline reconciliation
+
+Codex and Gemini agree on the top-level Hanson tradition placement: **the Hanson lineage is NOT an independent paper-mathematics tradition; it is a robotics/dialogue runtime branch over Classic OpenPsi.** Both confirm:
+
+- Q1 (eq 11 resolution_level): NO Hanson literal implementation
+- Q2 (eq 5/8 parenthesization): NO Hanson literal implementation
+- Q3 (time-varying state): YES via Eddie Monroe's upstream-only ROS `psi-dynamics.scm` (`3b2d91b:src/psi-dynamics.scm:34-79, 200-235`) and TinyCog event-to-Ghost bridges, but as robotics dynamics not paper-equation recovery
+- Q4 (slope-based exponential surrogate from Source 1 retroactive): NO in Hanson master; PRESENT in upstream (`upstream/master:opencog/openpsi/dynamics/updater.scm`); attributed to Amen Belayneh's `48ee8a0bc` (2017-07-24, "Create (opencog openpsi dynamics) guile module")
+- Q5 (`(ghost-set-sti-weight 0)` rationale): COMMIT `51a413e7` by DevHEAD, 2018-06-06, message: "update run script to not use ECAN and feedback when rules are loaded"
+- Q6 (`ros-behavior-scripting` OpenPsi seam): OpenPsi as active runtime authority (psi-step loop, psi-rule registrations) but no custom action-selector and no explicit ECAN/STI customization
+- Q7 (Eddie Monroe's commit destination): Upstream-only -- representative commits `c32c318b2`, `a6caa8264`, `8c6bf454a` are contained only in `remotes/upstream/master`, not Hanson master
+- Q8 (cross-tree paper equations outside `opencog/openpsi/`): NONE found; epistemics-hansonrobotics, TinyCog, and dialog repos contain no paper-equation implementations
+
+---
+
+## Three dissents (V4-N)
+
+### V4-1. Caller-analysis time-indexing -- the 2016 Hanson master STI-default path
+
+**Codex (winning):** The brief's pre-loaded "zero caller" expectation, inherited from Source 1 V1-1, is FALSE for Hanson master at the 2016-06-24 snapshot. In `opencog-hansonrobotics/opencog/openpsi/action-selector.scm`, the default selector at lines 121-127 and the per-demand variant at lines 170-176 both call `most-important-weighted-atoms` -- which uses `(* (tv-conf a-stv) (tv-mean a-stv) sti)` at `utilities.scm:87-90` -- WHEN `cog-af-boundary` is not 0 or 1. The non-STI fallback (`most-weighted-atoms`) is gated on the degenerate-AF-boundary condition. Per `main.scm:50-91`, `psi-step` iterates demands and calls `psi-select-rules-per-demand`, which routes to this default selector when no custom action-selector is installed. So this is a real default-runtime STI-coupling path at the 2016 Hanson snapshot, not a dead helper.
+
+Codex pickaxe identified the lifecycle:
+- `8ab0e8f81` Amen Belayneh, 2016-05-10, "add importance into the utility function" -- adds the STI default branch
+- `9f2697859` Linas Vepštas, 2016-11-24, "General cleanup of the action selector" -- removes the conditional default STI branch from `psi-default-action-selector` and `psi-default-action-selector-per-demand`
+- `e5bae708f` Amen Belayneh, 2017-11-08, "Cleanup openpsi action-selector functions" -- reintroduces `rule-sca-weight` as `strength * confidence * STI` in upstream, but only as a helper definition with no runtime caller
+
+**Gemini's position:** Gemini's report does not raise this finding. Its analysis of the OpenPsi seam pattern centers on the bypassing of OpenPsi's quantitative economy in `ros-behavior-scripting` (Q6), without examining the action-selector default path in the 2016 Hanson opencog snapshot.
+
+**Orchestrator verification:** Verified directly. `Read` of `opencog-hansonrobotics/opencog/openpsi/action-selector.scm:121-127` shows verbatim:
+
+```scheme
+(define (choose-rules)
+    ; NOTE: This check is required as ecan isn't being used continuesely.
+    ; Remove `most-weighted-atoms` version once ecan is integrated.
+    (if (or (equal? 0 (cog-af-boundary)) (equal? 1 (cog-af-boundary)))
+        (most-weighted-atoms (psi-get-all-satisfiable-rules))
+        (most-important-weighted-atoms (psi-get-all-satisfiable-rules))
+    )
+)
+```
+
+The same conditional at lines 170-176 in `psi-default-action-selector-per-demand`. The author comment "Remove `most-weighted-atoms` version once ecan is integrated" demonstrates intent: the STI branch was the *intended default*, and the non-STI fallback was the temporary path. `Read` of `utilities.scm:87-90` confirms the STI-weighted formula. `git show --no-patch` on all three commit SHAs confirms author + date + message verbatim as Codex reported.
+
+**Verdict:** Codex correct. The Source 1 V1-1 "enabler-not-default" framing is correct for the 2019 Source 1 baseline (singnet `b31c7e3`) but is INCORRECT for the 2016 Hanson master snapshot. Caller-analysis must be time-indexed; "called/uncalled" claims should always include the commit/date snapshot. This is a new methodology rule (Source 4 emergent rule).
+
+**Implication for ECAN cluster pilot finding #2 in CLAUDE.md:** That finding currently states "The only realized executable hook in OpenCog history was a narrow URE forward-chainer STI source-selection mechanism: wired by Misgana Bayetta in commit `0a0b09912` (2016-03-09), unwired by Nil Geisweiller in commit `0b744dbab` (2018-10-23)..." This is now KNOWN INCOMPLETE. The OpenPsi default action-selector also had an STI-weighted path from 2016-05-10 (`8ab0e8f81`) to 2016-11-24 (`9f2697859`). Cluster-narrative addendum will be needed during cluster-close, similar in shape to ECAN Source 4 V0-1 addendum.
+
+---
+
+### V4-2. Tradition map labeling -- "Tradition 6" relapse
+
+**Codex (winning):** Codex's tradition map at C4-37 retains the Source 3 verdict: "MeTTa OpenPsi line: paper-leaning HYBRID reimplementation from Source 2/3." Codex explicitly recommends NOT making Hanson a new mathematical tradition. Codex's tradition map: "three practical lineages, but only two mathematical traditions."
+
+**Gemini's report:** Re-introduces the "Tradition 6" label that Source 3 reconciliation specifically REJECTED. Gemini's tradition map writes: "Tradition 6 (MeTTa OpenPsi): A Hybrid / Paper-Leaning Reimplementation. It sheds the Tradition 2 C++ surrogates in favor of re-literalizing the 2011/2013 paper formulas (Eqs 10-13)..."
+
+**Orchestrator note:** Gemini approved the Source 3 reconciliation explicitly on 2026-04-28, including the verdict "AVOID 'Tradition 6' label without explicit qualification." Gemini's Source 4 report inadvertently regresses against its own approved Source 3 position. This is a label-regression, not a substantive disagreement -- Gemini's body text agrees with the HYBRID classification.
+
+**Verdict:** Codex correct. Use "MeTTa OpenPsi line: paper-leaning HYBRID reimplementation" without the "Tradition 6" number. Source 3 verdict stands. Cluster-close CLAUDE.md edit must NOT use "Tradition 6" naming.
+
+---
+
+### V4-3. Hanson tradition framing -- "parallel tradition" vs "runtime branch"
+
+**Codex (winning):** "Hanson/Ghost robotics runtime lineage: OpenPsi and Ghost as behavior/dialogue runtime, affective-state callbacks, and explicit ECAN/STI disabling in Loving AI." Explicitly declines to call Hanson its own mathematical tradition.
+
+**Gemini:** "The Hanson Divergence (Parallel Tradition): The Hanson robotics and dialogue stacks (Loving AI) utilized OpenPsi and GHOST structurally, but actively decoupled from their mathematical foundations (e.g., disabling ECAN, hardcoding demand satisfaction), relying instead on scripted state machines."
+
+**Orchestrator note:** Both reviewers agree on the underlying observation: Hanson consumed OpenPsi structurally, did not implement paper math, and explicitly decoupled from ECAN/STI in Loving AI. The disagreement is rhetorical: Gemini calls it a "parallel tradition" (suggesting it deserves a designation in the tradition map); Codex calls it a "runtime/application branch" (suggesting it does not deserve its own number). Codex's framing is cleaner and consistent with Source 1 V1-1 (Classic OpenPsi as enabler) and the ECAN cluster pilot's existing "deliberate decoupling" framing. Gemini's "Hanson Divergence" rhetoric, while correct on observation, risks reading as a fourth tradition number.
+
+**Verdict:** Use Codex's framing for the cluster-narrative phrasing. The Hanson lineage is a "runtime/application branch over Classic OpenPsi with documented ECAN-decoupling policy", not a tradition number. The cluster has THREE practical lineages and TWO mathematical traditions:
+
+- **Mathematical Tradition 2 (Classic surrogate):** Upstream OpenCog C++/Scheme, including the dynamics/updater.scm slope-exponential surrogate added by Amen Belayneh in `48ee8a0bc` (2017-07-24)
+- **Mathematical Tradition 6 [PAPER-LEANING HYBRID, not strict-literal]:** `iCog-Labs-Dev/hyperon-openpsi` MeTTa port -- Source 2/3 verdict
+- **Practical lineage (no math tradition number):** Hanson/Ghost robotics runtime branch over Classic OpenPsi
+
+(Note the explicit qualification on Tradition 6: per Source 3, the "6" label is retained ONLY with the "PAPER-LEANING HYBRID" qualifier. Per V4-2, never write "Tradition 6" alone without that qualification.)
+
+---
+
+## Other notable Source 4 findings
+
+### Decoupling-event timeline (cluster-narrative augmentation)
+
+The ECAN cluster pilot's "deliberate decoupling" narrative now has a fuller timeline of executable ECAN-coupling lifecycle events:
+
+| # | Event | Commit | Date | Author | Repo |
+|---|---|---|---|---|---|
+| 1 | OpenPsi adds default STI-weighted selector path | `8ab0e8f81` | 2016-05-10 | Amen Belayneh | opencog-hansonrobotics master + upstream |
+| 2 | URE adds `source_selection_mode::STI` wiring | `0a0b09912` | 2016-03-09 | Misgana Bayetta | opencog/ure (per ECAN Source 3 V0-1) |
+| 3 | OpenPsi removes default STI selector branch | `9f2697859` | 2016-11-24 | Linas Vepštas | upstream (Hanson master also reflects this if it pulled later, but it didn't) |
+| 4 | Ghost adds `ghost-set-sti-weight` parameterization | (multiple, see Ghost README + test.scm) | ~2017-2018 | various | upstream opencog |
+| 5 | Loving AI Ghost runtime explicitly disables STI | `51a413e7` | 2018-06-06 | DevHEAD | opencog/loving-ai-ghost |
+| 6 | URE STI source-selection mode unwired | `0b744dbab` | 2018-10-23 | Nil Geisweiller | opencog/ure (per ECAN Source 3 V0-1) |
+| 7 | OpenPsi reintroduces `rule-sca-weight` as helper-only | `e5bae708f` | 2017-11-08 | Amen Belayneh | upstream opencog |
+| 8 | URE STI source-selection finalized removed | `5a5b7785d` | (date per ECAN cluster) | (per ECAN cluster) | opencog/ure |
+| 9 | Loving AI Ghost Scheme runner inherits STI-disable | `6ec13879` | 2020-09-21 | leungmanhin | leungmanhin/loving-ai-ghost |
+
+This is now the most complete OpenCog ECAN/STI lifecycle reconstruction available. The cluster-close CLAUDE.md edit should reflect this.
+
+### Gemini-only finding: hardcoded demand satisfaction
+
+Gemini observed (Q6): in `ros-behavior-scripting`, demands like face-demand and speech-demand are present but satisfied by hardcoded constant values such as `face-demand-satisfied (stv 1 1)`, "effectively bypassing the quantitative economy of the OpenPsi theory." Codex's report does not surface this specific observation.
+
+**Orchestrator note:** This is an additional Source 4 evidence point for the H2-side hypothesis (Hanson sidesteps OpenPsi math). Not a dissent -- Codex did not contradict it; Gemini surfaced an additional detail. Useful for the cluster narrative.
+
+### Codex-only finding: STI runtime control as supported public API
+
+Codex observed (C4-24): `ghost-set-sti-weight` is documented in `opencog/ghost/README.md:217-222` and defined in `opencog/ghost/test.scm:297-304`. The `0` setting is therefore a deliberate configuration choice using a documented public control, not an undocumented hack.
+
+**Orchestrator note:** This is a useful nuance. Loving AI Ghost is using a SUPPORTED Ghost API to disable STI -- so the decoupling is a runtime configuration policy, not a code-level bypass. Strengthens the "deliberate decoupling" framing for the ECAN cluster.
+
+### Codex-only finding: Loving AI test-scripts retain STI demos
+
+Codex observed (C4-25): `test-scripts/STI-schema-test.ghost` in Loving AI Ghost contains stimulation and max/min STI helper use, but these are not on the production run-path. The production runners explicitly disable STI weighting before loading dialogue files.
+
+**Orchestrator note:** The presence of STI test scripts confirms that the Loving AI team understood STI semantics and explicitly chose not to use them in production. This is additional evidence for "deliberate decoupling" framing.
+
+---
+
+## Source 4 emergent methodology rules
+
+**Rule 9 (new): Caller-analysis must be time-indexed.** "Called/uncalled" claims about a function/formula should always include the commit/date snapshot at which the analysis was performed. Source 1 V1-1's "rule-sca-weight has zero callers" is correct at the 2019 singnet `b31c7e3` snapshot but is INCORRECT at the 2016 Hanson `aec9b1f` snapshot, where the same formula was on the default action-selector path. Future archaeology should pickaxe the function definition's lifecycle (when added, when removed from callers, when reintroduced as helper) before classifying.
+
+**Rule 10 (new, derived from V4-1): Codebase-staleness affects pickaxe interpretation.** A "stale" fork that has not pulled upstream changes is NOT equivalent to "an isolated tradition." It may simply be a frozen snapshot of a particular upstream era. Diff against `upstream/master` and check `git log fork ^upstream/master` and `git log upstream/master ^fork` BEFORE labeling a fork as a divergent tradition. (This generalizes Source 2 V2-1's bidirectional-fork-divergence rule to fork-vs-upstream-snapshot identification.)
+
+---
+
+## Cluster-narrative finalization
+
+After Source 4 reconciliation, the OpenPsi cluster pilot's narrative-deciding findings are:
+
+1. **Mathematical tradition map: TWO traditions, not three.**
+   - Tradition 2 (Classic surrogate): pragmatic engineered surrogates in C++/Scheme upstream OpenCog. Includes the dynamics/updater.scm slope-exponential surrogate (`48ee8a0bc`, Amen Belayneh, 2017-07-24).
+   - Tradition 6 [PAPER-LEANING HYBRID]: iCog-Labs-Dev/hyperon-openpsi MeTTa port. 8 LITERAL equations, 2 DIVERGENT (eqs 5 & 8 denominators), 1 ABSENT (eq 11), partial paper recovery. Per Source 3.
+   - "Tradition 6" label may NEVER appear without the "PAPER-LEANING HYBRID" qualifier. Per Source 3 reconciliation and V4-2.
+
+2. **Practical lineages: THREE.**
+   - Classic surrogate lineage (Tradition 2 substrate, primary contributors Amen Belayneh + Linas Vepstas + Eddie Monroe upstream)
+   - MeTTa OpenPsi paper-leaning lineage (Tradition 6 substrate, primary contributors Mahider-n et al. at iCog-Labs-Dev)
+   - Hanson/Ghost robotics runtime lineage -- runs Classic OpenPsi as behavior-loop authority, deliberately decouples from ECAN/STI in Loving AI Ghost runtime configuration via supported public API (`ghost-set-sti-weight 0`)
+
+3. **Executable ECAN coupling lifecycle.** Now reconstructed across both OpenPsi (`8ab0e8f81` 2016-05-10 to `9f2697859` 2016-11-24, plus `e5bae708f` 2017-11-08 helper-only reintroduction) AND URE (`0a0b09912` 2016-03-09 to `0b744dbab` 2018-10-23 to `5a5b7785d` finalization) AND Ghost/Loving AI (`51a413e7` 2018-06-06 disable, `6ec13879` 2020-09-21 inheritance). All deliberately decoupled by 2019.
+
+4. **The 2013 Cai et al. EAAI paper is the canonical mathematics source** for the OpenPsi cluster. Per Source 3 verification: ID 3828 (`RawData+Publications+Openpsi Zhenhua`, mislabeled). Cluster-close wiki edit should relabel this card.
+
+5. **MetaMo / LLM anchoring pattern (Source 2/3) is engineering-side innovation, not paper-faithful realization.** The Curious Agent's LLM-summary correlation matching is INSPIRED by the 2013 paper's `MonitorChangesMindAgent` "heuristic hints" concept but is an engineering structuralization, not a literal port.
+
+---
+
+## Wiki-edit deliverables for cluster-close phase
+
+The cluster-close phase will produce wiki edits parallel to the ECAN cluster pilot's 8-card audit. Anticipated targets:
+
+- `Hyperon AI Algorithms+OpenPsi+OpenPsi Full` (Published parent) -- `+AI` Draft child with cluster-pilot consolidated findings (similar to ECAN's ID 7419)
+- `Hyperon AI Algorithms+OpenPsi+OpenPsi Full+...` Subcards as needed (Development & Historical Context, System Interfaces, Status & Resources -- if equivalent structure exists; check first)
+- `Publications+Openpsi Zhenhua` (RawData ID 3828) -- relabel to canonical 2013 EAAI paper title (or create a new card and deprecate the mislabel)
+- `Publications+Guiding PLN with Attention Allocation` (ID 3057) -- ECAN cluster pilot card may need V4-1-driven addendum to extend the executable-coupling timeline to include OpenPsi's 2016-05/2016-11 default STI path
+- `Implementation Families+Attention and Motivation` (ID 4751) -- ECAN cluster pilot card may need V4-1-driven addendum on the same timeline
+- CLAUDE.md -- new "OpenPsi Cluster Pilot" section parallel to ECAN's, including:
+  - Three-source archive reference (`scripts/archive/openpsi_pilot/source*/`)
+  - Cluster-narrative-deciding findings (above 5 points)
+  - Wiki-edit audit table
+  - V4-1 implication for ECAN cluster's #2 finding (cite this reconciliation as the source-of-truth for the executable ECAN coupling lifecycle correction)
+
+These will be planned during the cluster-close phase. **No wiki writes have occurred during Source 4 extraction.** Per the standing protocol, advisory models do not write; orchestrator-only writes during the cluster-close phase, after this reconciliation is approved.
+
+---
+
+## Closure
+
+OpenPsi cluster pilot Source 4 extraction phase CLOSED. All 4 sources reconciled. Awaiting cluster-narrative review by Codex and Gemini before launching cluster-close phase (CLAUDE.md edit + wiki edit audit table + memory saves for new methodology rules 9-10).
+
+End-of-Source-4 reconciliation. Output paths: `findings_codex.txt`, `findings_gemini.txt`, this file -- all under `scripts/archive/openpsi_pilot/source4_hanson_archaeology/`.

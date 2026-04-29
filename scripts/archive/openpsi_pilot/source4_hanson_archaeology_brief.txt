@@ -1,0 +1,287 @@
+# OpenPsi Cluster Pilot -- Source 4 Brief: Hanson Robotics Fork Archaeology
+
+**Cluster:** OpenPsi / Motivation pilot, Source 4 of 4
+**Source target:** Hanson Robotics' OpenPsi-touching fork tree -- the dialogue-driven Sophia robot lineage
+**Persistence date:** 2026-04-28 (orchestrator-saved verbatim at Source 4 brief launch)
+**Status:** Sources 1-3 closed. Source 3 reconciliation approved by both Codex and Gemini (cluster-narrative-baseline confirmed). This is the final extraction source for the OpenPsi cluster pilot.
+
+---
+
+## Source target -- the four primary repos
+
+The Hanson Robotics tradition is a mix of (a) a stale-but-real fork of `opencog/opencog`, (b) a heavy production-side dialogue-and-behavior tree that consumed OpenPsi as a runtime layer, and (c) a Loving AI Ghost dialogue installation. The four primary repos are:
+
+| # | Repo | Local path | HEAD commit | HEAD date | Notes |
+|---|---|---|---|---|---|
+| A | `hansonrobotics/opencog` | `hyperon reference/opencog-hansonrobotics/` | `aec9b1f267ebad0962dabd1fc34f1bdfcae938ee` | 2016-06-24 | master; tracking upstream `opencog/opencog`; `dynamics/` subdir ABSENT vs upstream |
+| B | `hansonrobotics/ros-behavior-scripting` | `hyperon reference/ros-behavior-scripting-hansonrobotics/` | `9cc2cdefccdae56ecf3697ae371f241fcafeb63d` | 2016-08-22 | "Latest tuned configs"; src/btree-psi.scm + src/psi-behavior.scm runtime trees |
+| C | `opencog/loving-ai-ghost` | `hyperon reference/loving-ai-ghost/` | `4c170ce5450ed4fa4a7bba5eb8416cb0e443837b` | 2019-02-22 | Loving AI Ghost root upstream |
+| D | `leungmanhin/loving-ai-ghost` | `hyperon reference/loving-ai-ghost-leungmanhin/` | `534c569a937b1bc70b6ed3e9ffe915ad4e4d7911` | 2020-09-22 | Personal fork; `bin/run.scm:4` has `(ghost-set-sti-weight 0)` -- STI deliberately disabled |
+
+Secondary references (mention only if directly relevant):
+- `opencog-hansonrobotics/opencog/openpsi/` -- 6 .scm files, 1,116 lines total, no C++ classes, no `dynamics/` subdir
+- `Mozi-GHOST` (`leungmanhin/Mozi-GHOST` @ `392bb6f5`, 2020-01-24) -- Ghost-rules variant
+- `TinyCog-hansonrobotics` (@ `35dff5c1`, 2018-11-21) -- a small Sophia-cog config
+- `epistemics-hansonrobotics` (@ `eda005c9`, 2022-05-17) -- Hanson fork of robopop/epistemics
+
+---
+
+## Mission frame -- what Source 4 must learn
+
+Sources 1-3 closed with the following narrative:
+- Classic OpenPsi (singnet @ `b31c7e3`) was Tradition 2 -- pragmatic engineered surrogates for the 2009 ECAN paper AND for the 2013 Cai et al. EAAI OpenPsi paper
+- MeTTa OpenPsi port (`hyperon-openpsi` @ `3b356c5`) is a paper-leaning HYBRID reimplementation -- 8 LITERAL equations, 2 DIVERGENT (eqs 5 & 8 denominators), 1 ABSENT (eq 11 resolution), partial paper recovery but not strict-literal
+- Glicerico fork -- divergent-but-stale extension with stimulus parameter
+- Source 3 verdict: AVOID "Tradition 6" label without explicit qualification
+
+**Source 4's job is to determine where the Hanson tradition fits in this framing.** Two competing hypotheses:
+
+1. **Hypothesis H1 (Hanson-as-Tradition-2-extension):** Hanson's OpenPsi consumption was a runtime layer that consumed Tradition 2 surrogates faithfully -- via `opencog/openpsi/` Scheme bindings -- with no independent mathematical innovation. The Sophia production runtime executed OpenPsi rules but did not re-implement the math.
+
+2. **Hypothesis H2 (Hanson-as-parallel-tradition):** Hanson sidestepped the OpenPsi math entirely by running affective state through Ghost dialogue rules, ros-behavior-scripting behavior trees, and SEC/feeling/emotion variables that bypassed the action-selector seam. The `(ghost-set-sti-weight 0)` finding in `loving-ai-ghost-leungmanhin/bin/run.scm:4` is the smoking gun: STI coupling was deliberately disabled in production. Therefore, the Hanson tradition is **functionally decoupled** from the literal-equations question.
+
+The reviewers should produce evidence for or against each hypothesis, distinguish between them where possible, and surface any third pattern.
+
+The four carry-forward questions from Source 3 must be answered, but reframed in light of the Hanson opencog fork's 2016-06 staleness:
+
+- **Q1.** Did Hanson implement eq (11) `resolution_level`? (Likely no in fork itself; check whether Eddie Monroe's later upstream OpenPsi work, picked up from `opencog/opencog`, ever did.)
+- **Q2.** Did Hanson have eqs (5)/(8) parenthesization matching the paper's `n_s / (n_s + n_f^{3/2})` structure? (Likely no in fork; same upstream-pickaxe recommended.)
+- **Q3.** Did Hanson supply time-varying state instead of hardcoded certainty/integrity=0.5? Specifically: does Eddie Monroe's `emotion.scm`, `add-decay-toward-baseline-for-psi-vars`, ultradian rhythm, or Ghost-dialogue path supply a time-varying input that the MeTTa port currently lacks?
+- **Q4.** (Source 1 retroactive note) Did the Hanson fork ever contain Classic OpenPsi's slope-based exponential surrogate `(slope^(a*x)-1)/(slope^a-1)` from `dynamics/updater.scm`? (Strong prior: NO in master, but PRESENT in upstream `opencog/opencog`. Confirm via diff and date the addition + author.)
+
+**Source-4-specific questions (new):**
+
+- **Q5.** What is the rationale and history of `(ghost-set-sti-weight 0)` at `loving-ai-ghost-leungmanhin/bin/run.scm:4`? When was it added, who, and why? Cross-check: does it match the Source 1 V1-1 finding that the OpenPsi-side STI coupling was an enabler-not-default?
+- **Q6.** Did Hanson's `ros-behavior-scripting/src/btree-psi.scm` and `psi-behavior.scm` use OpenPsi rules with the action-selector seam, or did they bypass it? (i.e., was OpenPsi the active runtime or a vestigial dependency in the Sophia production stack?)
+- **Q7.** What is the relationship between Eddie Monroe's contributions to `opencog/opencog` upstream (emotion.scm, decay-toward-baseline, ultradian rhythm) and the Hanson fork? Specifically: did Eddie Monroe's work go to `hansonrobotics/opencog` master, or directly to `opencog/opencog` upstream that was then consumed by the singnet split?
+- **Q8.** Are there any Hanson-flavored paper-equation implementations OUTSIDE `opencog/openpsi/`? Possibilities: `epistemics-hansonrobotics` (an "epistemics" framework), `TinyCog-hansonrobotics`, dr-roboto.scm in TinyCog, or a Sophia-internal config layer. Pickaxe `git log --all -S '<formula-fragment>'` across all Hanson repos.
+
+---
+
+## Pre-loaded git context (orchestrator-side)
+
+Per the standing rule (`feedback_git_history_in_brief.md`), agents read this section, do not re-run git. The orchestrator pre-loaded all of the following on 2026-04-28.
+
+### Repo A: `hansonrobotics/opencog` openpsi/ subdirectory
+
+**Branch state (all branches stale at 2016, except upstream tracking):**
+- `master`: HEAD `aec9b1f` 2016-06-24 (last openpsi/ commit `8320cc4f` 2016-06-23 "add copyright notice")
+- `dev`: HEAD `ae6e5941` 2016-02-22 (last openpsi/ commit `603ef028` 2016-02-03 "update openpsi example")
+- `update`: last openpsi/ commit `2b3cc5c9` 2016-03-22
+- `stable`: last openpsi/ commit `740a805a` 2016-03-01
+- `3DSpaceMap` and `PatternMinerEmbodiment`: no openpsi/ touches at all
+
+**Hanson-only commits in openpsi/:** ZERO.
+- Verified: `git log master ^upstream/master --oneline opencog/openpsi/` returns 0 lines.
+- Hanson's master strictly lags upstream. There are NO Hanson-specific OpenPsi diverences in this fork.
+
+**Diff master..upstream/master for openpsi/ (lines absent in Hanson):** 4,052 lines DELETED, 967 lines added. Major absences in Hanson master vs upstream:
+- `opencog/openpsi/dynamics/mock-interaction-rules.scm` (-57 lines)
+- `opencog/openpsi/dynamics/modulator.scm` (-106)
+- `opencog/openpsi/dynamics/sec.scm` (-112)
+- `opencog/openpsi/dynamics/updater.scm` (-819) -- this is where the slope-based exponential surrogate lives
+- `opencog/openpsi/dynamics/utilities.scm` (-252)
+- Substantial reductions in main.scm, openpsi.scm, rule.scm, utilities.scm
+
+**Authorship across 184 openpsi/ commits (all branches):**
+- Amen Belayneh: 304 commits (as upstream's primary author)
+- Eddie Monroe + Eddie: 102+5 = 107 commits (Hanson-flavored dialogue/affective work on a `dev`-style branch; later directed at upstream)
+- Linas Vepštas + Linas Vepstas: 90+28 = 118 commits
+- leungmanhin: 27 commits
+- Alexander Scherbatiy: 11 commits
+- Nil Geisweiller: 9 commits
+
+**Eddie Monroe's commit titles (sample, all openpsi/ touches):**
+- `74aba0315` 2017-06-16 "add emotion.scm to README"
+- `c32c318b2` 2017-06-16 "add emotion.scm"
+- `888474746` 2017-06-14 "add return atoms to functions called within ExOutLinks"
+- `a6caa8264` 2017-02-05 "add decay toward baseline for psi vars"
+- `81aff1b85` 2017-02-03 "add baseline values for psi dynamics vars"
+- `f295f9659` 2016-12-07 "make ultradian rhythm and noise rules in atomese"
+- `abd2cc2a3` 2016-12-01 "add ultradian rhythm"
+- `66fcbd752` 2016-11-29 "add initial value parameter to sec creation function"
+- `a9f81e8e6` 2016-11-10 "add special handling for getting SEC values through rest api"
+- `b7be47340` 2016-11-27 "assume sec var alone represents system/agent state for consistency with psi variables"
+
+These commits are **on a Hanson dev branch** (date range 2016-11 to 2017-06) but did NOT land in Hanson master (which froze at 2016-06). Reviewers: pickaxe to confirm whether Eddie Monroe's commits also exist in upstream `opencog/opencog` master with the same SHAs (which would mean the work was upstreamed directly, bypassing the Hanson fork).
+
+**STI coupling in Hanson openpsi/:**
+- Single hit: `opencog/openpsi/utilities.scm:89-90` -- the formula `(* (tv-conf a-stv) (tv-mean a-stv) sti)`. This is the same `rule-sca-weight` formula Source 1 found in singnet `b31c7e3` at `action-selector.scm:57-64`. Source 1 V1-1 verdict: enabler-not-default; zero callers in singnet pre-split monorepo. Reviewers: confirm same zero-caller status in Hanson fork.
+
+### Repo B: `hansonrobotics/ros-behavior-scripting`
+
+**HEAD:** `9cc2cde` 2016-08-22 "Latest tuned configs"
+**All-branches commit count:** 1,244 commits
+**Top authors:**
+- Linas Vepstas + Linas Vepštas + Linas VEPSTAS: 396+369+63 = 828 commits (~67%)
+- Amen Belayneh: 146
+- mandeep + mandeep singh bhatia: 49+29 = 78
+- leungmanhin: 47
+- Eddie: 36
+- yenat: 35
+- Vytas: 32
+
+**OpenPsi-touching files (grep `openpsi|psi-rule|psi-demand|cog-av|sti`):**
+- `notes/eva-fsm.scm`
+- `notes/general_behavior.py`
+- `notes/universal-fsm.scm`
+- `src/behavior.scm`
+- `src/btree-eva-mute.scm`
+- `src/btree-eva.scm`
+- `src/btree-psi.scm`
+- `src/btree.scm`
+- `src/cfg-eva.scm`
+- `src/old-tree.scm`
+- `src/orchestrate.scm`
+- `src/primitives.scm`
+- `src/psi-behavior.scm`
+- `src/ros_commo.py`
+- `src/self-model.scm`
+
+**Notable late commits:**
+- `93858d3` 2017-06-16 "Remove dead code"
+- `3a2248b` 2017-06-16 "Remove dead code"
+- `9d23965` 2017-06-16 "move emotion creation function to opencog repo" (matches Eddie Monroe's emotion.scm work)
+- `843c39a` 2017-03-19 "Move the openpsi python code over"
+
+This is a Sophia behavior-tree runtime built around OpenPsi rules. Linas-dominant.
+
+### Repo C: `opencog/loving-ai-ghost`
+
+**HEAD:** `4c170ce` 2019-02-22 "Merge pull request #5 from opencog/pred-rename"
+**Notes:** This is the upstream Loving AI Ghost root. Investigate it as the master template that personal forks (Repo D) consume.
+
+### Repo D: `leungmanhin/loving-ai-ghost`
+
+**HEAD:** `534c569` 2020-09-22 "Start the Ghost loop automatically"
+**All-branches commit count:** 122
+**Top authors:**
+- Eddie Monroe: 75 commits (~61%)
+- Lake Watkins: 10 commits
+- leungmanhin: 9 commits
+- Eddie: 9 commits
+- Nemquae: 8 commits (note: same person as Lake Watkins)
+- DevHEAD: 4 commits
+- Jamie Diprose: 3 commits
+- Leung Man Hin: 2 commits
+- Amen Belayneh: 2 commits
+
+**SMOKING GUN:** `bin/run.scm:1`:
+```scheme
+(use-modules (opencog) (opencog nlp) (opencog nlp relex2logic) (opencog nlp chatbot) (opencog openpsi) (opencog ghost) (opencog ghost procedures))
+```
+And `bin/run.scm:4`:
+```scheme
+(ghost-set-sti-weight 0)
+```
+
+This is direct evidence that the Loving AI Ghost runtime LOADS `(opencog openpsi)` as a module but **deliberately disables the STI weighting** in Ghost's action selector. Reviewers must investigate the history of this single line: who added it, when, and why.
+
+**ORCHESTRATOR NOTE TO REVIEWERS:** The user has 18 commits in this repo (10 as Lake Watkins + 8 as Nemquae). User-hint: this is a personal contribution lineage; the user can speak to design intent firsthand. Do not contradict or speculate about user intent without textual evidence -- surface findings as observations and let the orchestrator route to the user.
+
+---
+
+## Specific instructions for the two reviewers
+
+### Codex (left-side reviewer)
+
+You have access to the four repos at the local paths listed above. Your job is bottom-up code archaeology.
+
+1. **Hanson opencog fork forensics.** For repo A:
+   - Confirm the `master..upstream/master` diff statistics match what's pre-loaded above (4,052 deleted, 967 added).
+   - Pickaxe across all branches: `git log --all -S '<token>'` for each of: `resolution_level`, `slope`, `(expt`, `tanh`, `sqrt`, `n_s`, `n_f`, the literal eq (5)/(8) numerator pattern. Report any hits with commit SHA + branch + date + author.
+   - Confirm zero callers of `rule-sca-weight` (the `* (tv-conf ...) (tv-mean ...) sti` formula at utilities.scm:89-90) in the Hanson fork. Use grep for `rule-sca-weight` callers across all .scm files including ros-behavior-scripting and the Ghost repos.
+   - Determine whether Eddie Monroe's 2016-11 to 2017-06 dialogue/emotion commits also exist in upstream `opencog/opencog` master at the same SHAs. (`git log --all --format='%h' upstream/master` and intersection.)
+
+2. **ros-behavior-scripting OpenPsi seam.** For repo B:
+   - Read `src/btree-psi.scm` and `src/psi-behavior.scm` end-to-end. Determine if Sophia behavior-tree ticks invoke OpenPsi rules through the action-selector, or bypass it via direct cog-execute / direct rule firing.
+   - Surface any STI / cog-av-sti / cog-stimulate consumers; report file:line.
+   - Identify the dominant integration pattern: (i) OpenPsi as authority, (ii) OpenPsi as helper, or (iii) OpenPsi as vestigial.
+
+3. **Loving AI Ghost runtime.** For repos C and D:
+   - `git blame bin/run.scm` to identify when `(ghost-set-sti-weight 0)` was added; report SHA, date, author, and one-liner of the commit message.
+   - Cross-check with repo C upstream (`opencog/loving-ai-ghost`) -- is the line present there too, or is it specific to leungmanhin's fork?
+   - Look for any other STI-coupling or paper-equation implementations across the Loving AI Ghost runtime config.
+
+4. **Cross-Hanson-tree paper-equation pickaxe.** Across ALL Hanson-flavored repos (epistemics-hansonrobotics, TinyCog-hansonrobotics, ros-behavior-scripting-hansonrobotics, plus the four primary), pickaxe each of: `resolution_level`, `expt`, `tanh`, `S_comp`, `S_int`, `S_cert`, `S_aff`, `S_en`. Report any literal paper-equation hits.
+
+5. **Methodology rule reminder:** Per Source 3 brief rule #8, do NOT trust code comments as source attribution. If a comment says "implements equation X from paper Y", verify it independently. Per Source 1 V1-1, do caller-analysis before claiming any code is "actively coupled" -- presence at the binding site is necessary but not sufficient.
+
+Output format: claims numbered C1, C2, ..., each with file:line citation OR commit SHA OR pickaxe-result citation. Same as Sources 1-3.
+
+### Gemini (right-side reviewer)
+
+Your job is top-down narrative archaeology + cross-source synthesis.
+
+1. **Hypothesis selection (H1 vs H2).** Read the relevant cards on the wiki (use the get_card-only protocol; you do not write):
+   - `Hyperon AI Algorithms+OpenPsi+OpenPsi Full` (Published parent, search by title)
+   - Any `Implementation Families+Attention and Motivation` cards relevant to OpenPsi
+   - The Source 1, Source 2, Source 3 reconciliations at `scripts/archive/openpsi_pilot/source*/findings_reconciled_crossmodel.txt`
+
+2. **Position the Hanson tradition.** Given Sources 1-3 and the pre-loaded git context, write a position paper:
+   - Is Hanson's OpenPsi consumption an extension of Tradition 2 (surrogate-faithful Classic-OpenPsi consumption), or a parallel tradition (Ghost-driven affective state that bypasses OpenPsi math entirely)?
+   - What does the `(ghost-set-sti-weight 0)` finding mean for the cluster narrative? Does it confirm or undermine the ECAN cluster pilot's framing of "ECAN-OpenPsi-Ghost coupling existed but was deliberately decoupled"?
+   - Are there any signals that Hanson invested in paper-equation faithfulness independent of upstream `opencog/opencog`?
+
+3. **Cluster-narrative deltas.** Surface any deltas this source introduces vs the existing CLAUDE.md ECAN cluster pilot finding #3 ("Broader-OpenCog ECAN consumers existed at the pre-split monorepo snapshot but none survived as functioning ECAN integrations"). Specifically: the `(ghost-set-sti-weight 0)` line at the Loving AI Ghost runtime is a 2020 deliberate decoupling -- does this REINFORCE the ECAN cluster's "deliberate decoupling" narrative, or does it identify a SECOND deliberate decoupling event distinct from the 2018 URE one?
+
+4. **Tradition map closure.** Propose final cluster-narrative phrasing for OpenPsi traditions, comparable in shape to the PLN cluster's five-tradition map. Candidates:
+   - **Tradition 1 (paper-faithful re-implementation)**: `iCog-Labs-Dev/hyperon-openpsi` MeTTa port (Source 2/3 reconciliation: HYBRID / PAPER-LEANING)
+   - **Tradition 2 (Classic surrogate)**: `opencog-singnet` and earlier `opencog/opencog` C++/Scheme; the dynamics/updater.scm slope-exponential surrogate
+   - **Tradition 3 (?)**: Hanson dialogue-driven affective state -- decide if this deserves its own designation
+   - **Tradition 4 (?)**: Ghost-runtime consumer with deliberate STI disabling
+   Provide your verdict with evidence.
+
+5. **Methodology rule reminder:** Per `feedback_attribution_verify_against_git.md` and Source 3 V3-1, your "Verified" claims must be independently cross-checked. Do not over-claim Tradition assignments without evidence from the pre-loaded git context or the wiki cards.
+
+Output format: claims numbered G1, G2, ..., each with file:line OR card+section citation OR commit SHA. Same as Sources 1-3.
+
+---
+
+## Cross-model triangulation rules
+
+Same as Sources 1-3. Specifically:
+- Both reviewers produce a `findings_codex.txt` and `findings_gemini.txt` respectively, persisted by orchestrator.
+- Orchestrator reconciles into `findings_reconciled_crossmodel.txt` -- numbered V4-N for any dissents that need user-side adjudication.
+- "Verified" claims (especially attribution and identity-between-artifacts) get orchestrator-side spot-checks per the standing rule.
+
+---
+
+## Methodology rules accumulated through the cluster pilot
+
+Reviewers must follow these rules from prior sources:
+
+1. **Cross-source reconciliation rule**: Surface dissents explicitly with V4-N numbering. Do not paper over.
+2. **Pickaxe before "never used"** (`feedback_pickaxe_for_dead_code.md`): `git log --all -S '<token>'`; current-HEAD grep is not sufficient. ECAN Source 3 V0-1 case: STI hook was wired 2016-2018, not "never".
+3. **Both API layers** (`feedback_ecan_audit_token_list.md`): For any STI/AttentionBank coupling audit, grep BOTH C++-side AND Scheme-side. ECAN Source 4 V0-1 case: OpenPsi was missed via C++-only grep.
+4. **Verify attribution against git** (`feedback_attribution_verify_against_git.md`): Cross-check attribution AND identity claims against the source. Gemini drifts on attribution and on V-N-X identity assertions.
+5. **Caller-analysis before "actively coupled" claims** (Source 1 V1-1): Presence at the binding site is necessary but not sufficient. `rule-sca-weight` example: present in code, zero callers, therefore enabler-not-default.
+6. **Bidirectional fork-divergence check** (Source 2 V2-1): "Forward divergence" (fork has feature X) and "behind upstream" can BOTH be true. Run `git log A..B` AND `git log B..A` AND grep both directions.
+7. **Don't trust code comments as source attribution** (Source 3 brief rule #8): A comment that says "implements eq 12 from paper" is a hypothesis, not evidence. Verify against the paper independently.
+8. **Equation-presence verification must be exhaustive** (Source 3 V3-1 implicit corollary): Selective verification of "prominent" equations creates false-positive Tradition assignments. If you don't verify all paper-relevant equations, do not assert paper-faithfulness.
+
+---
+
+## Output format
+
+Each reviewer produces a single text file (no markdown):
+- Codex: `scripts/archive/openpsi_pilot/source4_hanson_archaeology/findings_codex.txt`
+- Gemini: `scripts/archive/openpsi_pilot/source4_hanson_archaeology/findings_gemini.txt`
+
+Numbered claims (C1-Cn for Codex, G1-Gn for Gemini), each with at minimum:
+- One-line claim
+- Citation (file:line OR commit SHA OR card+section)
+- Confidence tag: VERIFIED / OBSERVED / INFERRED
+
+Reviewers should NOT write to the wiki (advisory rule) and NOT modify reconciliation files (orchestrator-only).
+
+---
+
+## Cluster-pilot closing context
+
+Source 4 is the final extraction source. After reconciliation:
+- Cluster-close wiki edits will be planned (relabel "Openpsi Zhenhua" RawData; dedupe MetaMo Two; ingest cited-but-missing 2018 "Shifting and Drifting" paper if needed; create `+AI` Draft child for Published OpenPsi parent)
+- CLAUDE.md will get an OpenPsi Cluster Pilot section comparable to the ECAN one (4-source archive reference + cluster-narrative-deciding findings + wiki-edit audit table)
+- Memory saves: caller-analysis rule (V1-1), bidirectional fork-divergence rule (V2-1), don't-trust-code-comments rule (Source 3 brief #8), and any new Source 4 emergent rules
+
+OpenPsi cluster pilot Source 4 brief LAUNCHED. Awaiting Codex's `findings_codex.txt` and Gemini's `findings_gemini.txt` before reconciliation.
