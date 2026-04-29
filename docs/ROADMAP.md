@@ -225,7 +225,9 @@ PostgreSQL
 
 **Timeline**: Month 3-6 (Jan - Apr 2026)
 **Status**: Not Started
-**Goal**: Prove Hyperon Atomspace backend is superior to PostgreSQL before committing
+**Goal**: Prove that a **read-only AtomSpace semantic mirror** answers queries Decko/PostgreSQL cannot trivially answer, fast enough to be useful, before committing to any deeper migration.
+
+> **⚠ CLUSTER-PILOT REFRAMING (2026-04-29).** The AtomSpace Backend Integration Cluster Pilot narrowed Phase 3 to **READONLY-ATOMSPACE-BRIDGE**. Decko/Rails/PostgreSQL stays the source of truth. AtomSpace serves a read-only semantic mirror; **NO write-through to DAS or MORK**. The MCP adapter pseudocode in this section uses `from hyperon import Atomspace, MCP` — an **apocryphal API** (Source 2 + Source 4). Treat the diagrams and code below as conceptual sketches; the real Phase 3 architecture uses **Decko MCP for extraction + one of: (a) atomspace-bridge style import, or (b) `mork_ffi` for low-latency queries + `mork_loader.py` for periodic hydration.** The choice between (a) and (b) is the prototype-benchmark decision; both fall under READONLY-ATOMSPACE-BRIDGE. See `docs/ATOMSPACE-INTEGRATION.md` Cluster-Pilot Reframing section and the wiki synthesis card `Implementation Families+AtomSpace Backend Integration` for the canonical post-pilot statements.
 
 ### Approach
 
@@ -339,46 +341,54 @@ class DeckoAtomspaceAdapter:
         return [self._atom_to_card(a) for a in atoms]
 ```
 
-### Success Metrics
+### Success Metrics (Cluster-Pilot Refined, 2026-04-29)
 
-- [ ] Atomspace query latency <2 seconds (acceptable for users)
-- [ ] PLN reasoning finds 5+ insights not visible in PostgreSQL
-- [ ] Atomspace handles 1000+ cards without performance degradation
-- [ ] MCP adapter has <10% overhead vs direct Atomspace access
-- [ ] Export script runs reliably (0 errors in 10 consecutive runs)
+**Acceptance gates for the read-only mirror:**
+- [ ] **Fetch latency <500ms target / <2s acceptable** for typical card-resolution queries against the mirror (tightened from the original <2s, per cluster-pilot R1.accept-1).
+- [ ] **5+ semantic insights** that PostgreSQL+Decko cannot trivially answer (e.g., transitive type chains, cross-game relationship paths, semantic similarity beyond exact-match search). **No claim of PLN global completeness** — the PLN cluster No-Go theorem (xiPLN §5; Lean-proven in `Mettapedia/Logic/PLNJointEvidenceNoGo.lean`) shows that local-rule PLN cannot be globally complete without joint-state information; insights must be characterized as "semantic queries that PostgreSQL cannot trivially answer," not as "PLN global inference."
+- [ ] **Mirror handles 1000+ cards without performance degradation** at the chosen latency target.
+- [ ] **Mirror loader runs reliably** (0 errors in 10 consecutive runs; periodic re-hydration from Decko MCP / direct DB export).
+- [ ] **Decko remains source of truth at all times** — no write-through path, no surprises on Decko trash/restore, no consistency drift caused by AtomSpace state.
 
 ### Deliverables
 
-- ✅ Hyperon Atomspace test instance
-- ✅ MCP adapter (Decko ↔ Atomspace)
-- ✅ Performance benchmark report
-- ✅ PLN reasoning evaluation
-- ✅ Export/import scripts
+- ✅ Decko-MCP-driven extraction pipeline (Phase 3 mirror loader; not "Atomspace MCP").
+- ✅ Read-only mirror seam (one of: atomspace-bridge style import, OR `mork_ffi` + `mork_loader.py`).
+- ✅ Performance benchmark report (fetch-latency target validation; mechanism-comparison if both seams prototyped).
+- ✅ Semantic-insight catalog (the 5+ queries PostgreSQL cannot trivially answer, with worked examples).
+- ✅ Re-hydration / cache-invalidation strategy.
 
 ### Decision Point: Go/No-Go
 
-**End of Month 6**: Should we replace PostgreSQL with Atomspace?
+**End of Month 6**: Should we promote the read-only mirror to a permanent Phase-4 production feature, retire it, or restructure?
 
-**✅ Proceed to Phase 4 if**:
-- Atomspace query latency <2 seconds
-- PLN provides clear value (insights, reasoning capabilities)
-- MCP adapter is stable and performant
-- Team comfortable maintaining Atomspace
+**✅ Proceed to Phase 4 (read-only mirror as durable feature) if**:
+- Fetch latency meets <500ms target (or <2s acceptable with a documented reason).
+- ≥5 semantic-insight queries land that PostgreSQL+Decko cannot trivially answer.
+- Mirror seam is stable; re-hydration cadence is operationally sustainable.
+- Decko stays source of truth with zero observed drift from mirror activity.
 
-**❌ Keep PostgreSQL if**:
-- Atomspace query latency >5 seconds (too slow for interactive use)
-- PLN doesn't provide insights beyond graph algorithms
-- MCP adapter unreliable or high overhead
-- Atomspace maintenance burden too high
+**❌ Retire the mirror if**:
+- Fetch latency >5 seconds (too slow for interactive use).
+- The semantic-insight catalog stays empty or trivially reproducible in PostgreSQL+Decko.
+- Mirror loader / FFI maintenance burden outweighs the insight value.
+- Drift from Decko (even read-only) introduces user-visible inconsistencies.
 
-**Hybrid Option**:
-- Keep PostgreSQL for interactive wiki
-- Use Atomspace for offline reasoning/analysis
-- Best of both worlds, no migration risk
+**❌ Phase 4 write-through is OUT OF SCOPE** until the AtomSpace cluster-pilot blockers are cleared:
+- DAS-MorkDB link/S-expression delete (`MorkDB.cc:268-270` hard-fails) — required for Decko trash/restore semantics.
+- MORK server-branch reconciliation (Dockerfile pin / image tag / `origin/server` HEAD).
+- Decko-semantic mappings (history, RichText, files, permissions, sections/TOC) defined as AtomSpace types.
+
+**Hybrid Option (likely best end-state)**:
+- Keep PostgreSQL+Decko as source of truth for interactive wiki.
+- Keep AtomSpace mirror for the small-but-real set of semantic queries that PostgreSQL cannot answer.
+- No migration risk; cluster-pilot architecture (R4.B1).
 
 ---
 
 ## Phase 4: Atomspace Backend Swap 🔄
+
+> **⚠ CLUSTER-PILOT REFRAMING (2026-04-29).** Phase 4 as originally written ("replace PostgreSQL with Atomspace as primary data store") is **BLOCKED** by the AtomSpace Backend Integration Cluster Pilot until: (1) DAS-MorkDB link/S-expression delete is implemented (currently hard-fails at `MorkDB.cc:268-270`); (2) MORK server-branch references (Dockerfile pin / image tag / `origin/server` HEAD) are reconciled; (3) Decko semantics (history, RichText, files, permissions, sections/TOC, rename/aliases, rollback) are defined as AtomSpace types. The diagrams and dual-write code below describe the legacy aspirational Phase 4. The realistic Phase 4 outcome is the **read-only mirror promoted to a durable production feature** (per Phase 3 Decision Point above), not a primary-backend swap. Treat the dual-write / cutover material below as conditional on blocker resolution.
 
 **Timeline**: Month 6-9 (Apr - Jul 2026)
 **Status**: Conditional (only if Phase 3 successful)

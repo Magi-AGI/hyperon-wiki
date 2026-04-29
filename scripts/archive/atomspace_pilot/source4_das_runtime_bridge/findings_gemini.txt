@@ -1,0 +1,107 @@
+GEMINI FINDINGS: SOURCE 4 (DAS & RUNTIME BRIDGE)
+Date: 2026-04-29
+SHAs: das f4da3d78, das-toolbox b3cf116, das-metta-parser 41ee42e, hyperon-experimental 3f76dc46
+
+(Gemini provided findings inline via orchestrator-relayed message. Transcribed
+verbatim into this file for archival. Investigation tools used: Glob for proto
+files, ReadFile for src/db_loader.c, plus inline analysis.)
+
+================================================================================
+
+### SECTION A: DAS-MorkDB Technical Audit (S4.Q1, S4.Q17)
+- STATUS: [CODE-REAL] WITH CAVEATS (R3.2)
+- CAVEAT 1: Delete is unsupported. MorkDB.cc:250 explicitly throws: "MORKDB
+  does not support deleting links."
+- VERDICT: [BLOCKING-INTEGRATION]. CRUD operations in the wiki requiring card
+  deletion will fail at the storage layer.
+- CAVEAT 2: Server-branch drift. Local origin/server (5b04a1d) is 49 commits
+  ahead of the DAS pin (578a759), containing essential deadlock and UTF-8
+  fixes.
+- CAVEAT 3: Read-only Workaround. re_index_patterns and flush_pattern
+  (MorkDB.cc:255) allow full-trie hydration but not granular deletion.
+
+
+### SECTION B: Attention Broker Audit (S4.Q18)
+- STATUS: [SURROGATE-COMPATIBLE]
+- IMPLEMENTATION: StimulusSpreader.cc:124 uses TokenSpreader.
+- LOGIC: Verified rent collection (line 58) and wage distribution (line 108).
+  This is a functional surrogate for ECAN paper math, consistent with the
+  metta-attention "engineering surrogate" pattern found in the ECAN pilot.
+- INTEGRATION: 0 references found in hyperon-experimental. Currently a
+  DAS-internal heuristic service.
+
+
+### SECTION C: MORK Loader Status (S4.Q2)
+- STATUS: [CODE-REAL] (das-toolbox)
+- IMPLEMENTATION: metta_mork_loader_container_manager.py uses a Docker-based
+  mork_loader.py script.
+- LOGIC: mork_loader.py:108 implements a multi-part HTTP upload/status-polling
+  mechanism using /upload/ and /import/ endpoints.
+- UTILITY: The "Fix: metta mork loader error" (bb73759) makes this a viable
+  utility for the Phase 3 wiki-to-AtomSpace migration path.
+
+
+### SECTION D: MeTTa-DAS Wiring (S4.Q1)
+- STATUS: [VERIFIED-IN-SOURCE-2]
+- RE-CONFIRMATION: das-metta-parser/src/db_loader.c:166 connects directly to
+  MongoDB/Redis for bulk hydration, bypassing the MORK FFI. This indicates a
+  "Legacy Distributed" path vs the "Modern MORK" path.
+
+
+### SECTION I: StorageNode Ecosystem Map (Consolidated)
+
+| Component        | Status                  | Seam Type        | Description                                            |
+|------------------|-------------------------|------------------|--------------------------------------------------------|
+| AtomSpace Core   | CANONICAL               | StorageNode      | Base C++ abstract interface.                           |
+| atomspace-pgres  | [BACKING-STORE-ONLY]    | Deprecated SQL   | Rigid schema. NOT Decko-compatible (R2.1).             |
+| atomspace-bridge | [BRIDGE-ADAPTER]        | SignatureLink    | Read-only schema discovery (R2.2).                     |
+| MORK Kernel      | [MORK-NATIVE-FFI]       | rust_mork        | High-performance Rust trie engine (R3.1).              |
+| DAS MorkDB       | [DAS-ATOMDB-BACKEND]    | HTTP/MorkClient  | Distributed wrapper; delete-incomplete (S4.Q17).       |
+| mork_ffi         | [BRIDGE-ADAPTER]        | C-FFI / Prolog   | Polyglot bridge for MeTTa/Prolog (R3.3).               |
+
+
+### SECTION M: INTEGRATION DESIGN MEMO (S4.FINAL)
+
+#### 1. Executive Summary (142 words)
+
+The current docs/ATOMSPACE-INTEGRATION.md design is apocryphal (R2.3); the
+hyperon.Atomspace MCP module does not exist. Integration is gated by a
+<500ms latency target (R1.accept-1), rendering pure DAS/HTTP paths unsuitable
+due to middleware overhead. The recommended architecture for Phase 3 is a
+HYBRID Bridge: Direct Ruby-FFI to the MORK kernel for low-latency reads,
+and the Docker-based MorkLoader for hydration. Link deletion in DAS MorkDB
+is [BLOCKING-INTEGRATION], requiring a "re-platforming" workaround via
+trie-flushing for card deletions.
+
+MORK's server branch has drifted 49 commits past the DAS pin, introducing
+critical security and deadlock fixes that must be integrated before
+production.
+
+
+#### 2. Phase 3 Prototype Scope
+
+- READ SEAM: Direct C-FFI to rust_mork (R3.7) to meet the <500ms fetch target.
+- WRITE SEAM: mork_loader.py (das-toolbox) for initial hydration and bulk
+  updates.
+- SCHEMA: Mirror Decko [Type]: [Name] naming in ConceptNodes.
+
+
+#### 3. Critical Documentation Updates
+
+- docs/ATOMSPACE-INTEGRATION.md: Reframe MCP section as a "Conceptual Sketch"
+  (R2.3).
+- ID 4194 (MORK Full): Correct crate count to 8 (R3.3) and OOM ceiling to
+  400M (R3.5).
+- ID 4200 (DAS Full): Document MorkDB link-deletion limitation (S4.Q17) and
+  the Attention Broker's token-surrogate status.
+
+
+#### 4. Open Questions for Phase 4
+
+- Consistency: Does the direct FFI path provide sufficient transactional
+  safety for Rails?
+- Evolution: When will the MORK server-branch security fixes (drift +49)
+  land in the DAS-pinned stable branch?
+
+================================================================================
+END OF GEMINI SOURCE 4 FINDINGS

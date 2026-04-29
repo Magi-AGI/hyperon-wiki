@@ -1,0 +1,260 @@
+# Source 2 - AtomSpace API + Persistence Layer - Codex Findings
+
+Pilot: AtomSpace Backend Integration Cluster Pilot
+Source target: AtomSpace core + StorageNode persistence ecosystem
+Model lane: Codex
+Date: 2026-04-29
+Output path: scripts/archive/atomspace_pilot/source2_atomspace_persistence/findings_codex.txt
+
+No wiki writes and no repo edits were performed. I did not run builds or tests. I inspected the local pinned clones and source files. Claude reported pre-extraction pulls with zero drift across the seven primary repos; I verified the local HEAD SHAs below.
+
+Primary audited repos and local HEADs:
+- atomspace: c8d633bf272b838c2132c21b7c8ddf169a18dd22, 2026-02-10, "Unit test for fix for definition expansion."
+- atomspace-storage: ecd88d673258e51f65cc0605400003affdf4d694, 2026-01-31, "Fix handling ov VoidValue"
+- atomspace-pgres: 6fe97630071455c8bd491e7ddc2ec97936a9979a, 2025-10-10, "Stub out failing test."
+- atomspace-rocks: 6577a5bcc961cf24c00a4f7a916cc9cc05beed00, 2026-01-21, "Fix incorrect description in previous commit."
+- atomspace-bridge: 40b8af713d37d3d71cb0291435c73f308144980c, 2025-08-15, "Migrate the BridgeStorageNode to here"
+- atomspace-cog: 665271dd7f404a9387a4526c39c13f954f5efb1a, 2026-01-19, "Convert unit tests to message-passing API"
+- hyperon-experimental: 3f76dc460da6961f57f69f6c3e550c59c74ada83, 2026-02-11, "Merge pull request #1075 from vsbogd/update-version"
+
+## Executive Summary
+
+C2-1. StorageNode is the canonical classical AtomSpace persistence interface. It is a C++ Atomese object type backed by the BackingStore virtual interface, exposed through Scheme message/value APIs, and implemented by several backend repos: PostgresStorageNode, RocksStorageNode, MonoStorageNode, CogStorageNode/CogSimpleStorageNode, FileStorageNode, and BridgeStorageNode. Evidence: atomspace-storage/opencog/persist/api/StorageNode.h:42, 81-114, 169-200, 243-254, 298-341; BackingStore.h:54, 76-112, 212-235, 281; opencog/persist/storage/storage_types.script:6-35.
+
+C2-2. atomspace-pgres is [BACKING-STORE-ONLY], not [DECKO-SCHEMA-COMPATIBLE]. It stores AtomSpace atoms into its own AtomSpace-specific PostgreSQL schema: Spaces, Atoms, Valuations, Values, TypeCodes, plus uuid/vuid sequences. It does not read or write Decko's cards/card_actions/card_changes schema. Repo-wide grep found no Decko/Wagn/card_actions/card_changes hits in atomspace-pgres. Evidence: atomspace-pgres README top-level lines 6-9; opencog/persist/sql/README.md:3-5, 72-79, 424-453; opencog/persist/sql/multi-driver/atom.sql:3, 21-27, 39-49, 64, 73, 78-83, 103, 107-111, 131, 145-146.
+
+C2-3. atomspace-bridge is the most relevant existing code for "foreign SQL rows to AtomSpace atoms", but at this snapshot it is a read/import bridge, not a production Decko read/write adapter. It introspects public PostgreSQL tables, maps tables/columns/rows into Atomese, supports `cog-bridge-load-tables` and `cog-bridge-load-rows`, and fetches rows via `fetchIncomingSet`. However, its write-side StorageNode methods are empty stubs. Evidence: atomspace-bridge README.md:3-18, 23-26, 33, 38-44, 86-89, 123, 189-206; BridgeStorage.h:48, 88, 101-110, 122-147; BridgePersistSCM.cc:66-69, 83-95; SQLReader.cc:97-110, 159-179, 242-261, 268-280, 366-393, 395-425.
+
+C2-4. The lowest-friction Decko integration seam is not atomspace-pgres. If the goal is to avoid duplicating Decko data, the closest existing seam is atomspace-bridge plus a custom Decko-specific mapping layer. If the goal is durable AtomSpace persistence after mirroring Decko cards into AtomSpace atoms, atomspace-pgres or atomspace-rocks are valid backing stores for the mirrored AtomSpace, but not direct Decko schema readers.
+
+C2-5. Classical AtomSpace and Hyperon/MeTTa Space are related concepts but not API-compatible at this source layer. Hyperon exposes `Space`/`SpaceMut`, `GroundingSpace`, `DynSpace`, and `new-space`/`add-atom`/`match` style operations. It does not expose the classical C++ StorageNode API in `hyperon-experimental`. Evidence: hyperon-experimental/hyperon-space/src/lib.rs:152, 175, 202, 219, 237, 255, 275, 282; python/hyperon/base.py:6, 14-44, 56, 67-95, 168, 223-248, 263-274; lib/src/metta/runner/stdlib/space.rs:13, 27-30, 127, 154, 181, 207-223, 238-245.
+
+C2-6. DAS is already wired into hyperon-experimental as a MeTTa builtin module through `metta-bus-client` from `singnet/das`, not through classical StorageNode. This makes DAS a Source 4 runtime/API question, not a Source 2 StorageNode backend. Evidence: hyperon-experimental/lib/Cargo.toml:31-34, 46, 55; lib/src/metta/runner/builtin_mods/das.rs:15, 36-40, 66-85, 187-194.
+
+C2-7. The current primary persistence repos do not contain current AttentionBank/cog-av-sti/ECAN-PLN runtime surfaces. A focused grep over the seven primary repos found no AttentionBank/cog-av-sti/cog-set-av hits; only stale/documentary PLN references in atomspace and toy/test PLN hits in hyperon-experimental, plus atomspace-pgres historical notes mentioning AttentionValueUTest. This supports the stale-claim warning: do not infer active ECAN-PLN integration from AtomSpace persistence repos.
+
+## A. StorageNode/API Surface
+
+C2-A1. StorageNode is a stateful Atomese object backed by BackingStore. The type hierarchy script explicitly says StorageNodes are stateful objects "existing in the real physical world" that accept the storage API messages. Evidence: atomspace-storage/opencog/persist/storage/storage_types.script:6-9.
+
+C2-A2. The StorageNode lifecycle API is explicit and implementation-facing: `open`, `open_read_only`, `close`, `connected`, `create`, `destroy`, and `erase`. Evidence: atomspace-storage/opencog/persist/api/StorageNode.h:81-114.
+
+C2-A3. The main read/write surface is atom-centric, not relational-row-centric: `fetch_atom`, `fetch_value`, `store_atomspace`, `fetch_incoming_set`, `fetch_incoming_by_type`, `store_atom`, `store_value`, and `remove_atom`. Evidence: StorageNode.h:169, 184, 200, 243, 254, 298, 310, 341.
+
+C2-A4. BackingStore is the implementation contract that concrete storage backends override. Required operations include incoming-set fetch, incoming-by-type fetch, atom store, atomspace load/store, and barrier. Optional/default operations include value store/update/load and query. Evidence: BackingStore.h:54, 88-112, 142-171, 212, 223-235, 281.
+
+C2-A5. StorageNode uses message/value command atoms internally. `StorageNode.h` registers predicate strings such as `*-barrier-*` and `*-connected?-*`; `StorageNode.cc` implements handlers for store/fetch/value/barrier/proxy/open calls. Evidence: StorageNode.h:365, 379; StorageNode.cc:387-517.
+
+C2-A6. Scheme exposes the StorageNode surface via `(cog-open ...)`, `fetch-atom`, `fetch-value`, `fetch-incoming-set`, `fetch-incoming-by-type`, `store-atom`, `store-value`, `load-atomspace`, `store-atomspace`, `fetch-query`, deletion APIs, frame APIs, `proxy-open`, `set-proxy!`, and `barrier`. Evidence: atomspace-storage/opencog/persist/api/opencog/persist.scm:127-139, 212-229, 257-270, 297-311, 341-355, 382-400, 426-440, 550-580, 614-639, 678-737, 801-963, 1014-1097, 1130-1235.
+
+C2-A7. StorageNode is asynchronous enough that `barrier` matters. The API notes that barrier and flush are not distinguished at this time, and CogStorage documents barrier as a network fence. Evidence: StorageNode.h:152; atomspace-cog README.md:189-194.
+
+C2-A8. ProxyNode is part of the canonical storage ecosystem. The type script defines ProxyNode under StorageNode and includes NullProxy, ReadThruProxy, SequentialReadProxy, WriteThruProxy, ReadWriteProxy, WriteBufferProxy, CachingProxy, and DynamicDataProxy. Evidence: atomspace-storage/opencog/persist/storage/storage_types.script:41-77.
+
+C2-A9. FileStorageNode is the minimal local persistence implementation. It implements only some StorageNode APIs: whole AtomSpaces can be read/written and individual atoms can be written; more complex queries are not supported. Evidence: atomspace-storage/opencog/persist/file/README.md:1, 3-8, 52-54; FileStorage.h:36, 75-76.
+
+## B. Decko Representation Feasibility
+
+C2-B1. AtomSpace node names can preserve Decko card names without the lossy `_sanitize_card_name` style sketched in Source 1. A Node stores `_name` as `std::string`, validates UTF-8, escapes only for rendering, and hashes/compares the raw name. Evidence: atomspace/opencog/atoms/base/Node.h:42, 46, 59-60, 76; Node.cc:37, 74-78, 92-113, 126-131, 150, 167, 172.
+
+C2-B2. Decko card names containing spaces and plus signs should be represented as exact Node names unless a downstream API layer has a narrower escaping requirement. The core C++ Node layer does not ban spaces or plus signs; it only enforces valid UTF-8 and escapes display/control characters. Evidence: Node.cc:74-78, 92-113; examples/atomspace/basic.scm uses names with spaces in its examples.
+
+C2-B3. A Decko mirror can use ConceptNodes for card identities, PredicateNodes for relation names/cardtype/property keys, EvaluationLinks/InheritanceLinks/StateLinks for relations, and Values for mutable metadata. This is feasible at the AtomSpace layer but is a modeling decision, not provided by any current Decko adapter in Source 2.
+
+C2-B4. Mutable Decko card metadata fits the AtomSpace Value model better than atom names alone. AtomSpace supports Values on atoms; pgres stores values in separate Valuations/Values tables. Evidence: atomspace-pgres atom.sql:78-83, 103, 107-111; atomspace-pgres SQLValues.cc includes StringValue, FloatValue, LinkValue, and SimpleTruthValue support.
+
+C2-B5. Decko revisions, card_actions, authorship, file uploads, RichText body format, and cardtype-specific behavior are not addressed by any generic StorageNode backend. Those need an explicit Decko-to-Atomese schema/mapping layer. This is a Source 1 design requirement that Source 2 confirms is not solved by generic persistence.
+
+## C. atomspace-pgres Compatibility Verdict
+
+C2-C1. Required hard verdict: atomspace-pgres is [BACKING-STORE-ONLY].
+
+C2-C2. It is not [DECKO-SCHEMA-COMPATIBLE]. Repo-wide grep found no references to `card_actions`, `card_changes`, `cards` as Decko tables, `Decko`, or `Wagn` in atomspace-pgres. Positive evidence shows it creates and expects its own AtomSpace tables: Spaces, Atoms, Valuations, Values, and TypeCodes. Evidence: atomspace-pgres atom.sql:21-27, 39-49, 78-83, 107-111, 131.
+
+C2-C3. The README describes atomspace-pgres as saving/restoring AtomSpace contents and individual Atoms to PostgreSQL, not reading an arbitrary existing application schema. Evidence: atomspace-pgres/README.md:6-9.
+
+C2-C4. The SQL README states the project implements atom persistence in SQL, allowing multiple AtomSpaces to connect to the same SQL database. It does not state compatibility with an existing non-AtomSpace schema. Evidence: atomspace-pgres/opencog/persist/sql/README.md:3-5.
+
+C2-C5. The concrete atomspace-pgres schema is table-owned by AtomSpace. The setup instructions tell users to pipe `atom.sql` into Postgres and expect `atoms`, `spaces`, `typecodes`, `valuations`, and `values` in `public`. Evidence: opencog/persist/sql/README.md:424-453.
+
+C2-C6. The `SQLAtomStorage` implementation is a StorageNode backend, not a foreign SQL bridge. It subclasses StorageNode, implements atom/value/incoming-set/load/store methods, and defines `PostgresStorageNode`. Evidence: SQLAtomStorage.h:57, 245-276, 285; SQLAtomStorage.cc:62, 371, 375-377, 627.
+
+C2-C7. Deletion semantics are AtomSpace-store semantics, not Decko revision semantics. The docs warn delete removes atoms from both AtomSpace and the DB and has multi-AtomSpace edge cases. That is incompatible with Decko's append/history model without a custom layer. Evidence: opencog/persist/sql/README.md:679-685.
+
+C2-C8. Integration implication: atomspace-pgres may be useful after the wiki is mirrored into an AtomSpace graph, but it is not the lowest-friction path to interact with Decko's existing PostgreSQL schema. The "lowest-friction seam" claim should be revised to atomspace-bridge or a custom Decko mirror/adapter, not atomspace-pgres.
+
+## D. Classical AtomSpace vs Hyperon API
+
+C2-D1. Classical AtomSpace persistence is centered on C++ StorageNode plus Scheme wrappers. Hyperon is centered on MeTTa Space abstractions: `Space`, `SpaceMut`, `DynSpace`, `GroundingSpace`, and MeTTa ops like `new-space`, `add-atom`, `remove-atom`, and `get-atoms`. Evidence: StorageNode.h:42; hyperon-space/src/lib.rs:152, 219, 282; lib/src/metta/runner/stdlib/space.rs:13, 27-30, 127, 154, 181, 207-223.
+
+C2-D2. The hyperon Python package does not expose a classical `Atomspace` or `MCP` object matching the Source 1 sketch. `python/hyperon/__init__.py` exports atoms/base/runner; `base.py` exposes AbstractSpace/GroundingSpace/SpaceRef/GroundingSpaceRef. A focused grep of `python/hyperon` and `lib/src` found DAS and Atomspace documentation strings, but no MCP API surface in hyperon-experimental. Evidence: python/hyperon/base.py:6, 56, 168, 263; local grep result.
+
+C2-D3. Hyperon DAS support is imported from the DAS repo as a built-in MeTTa module. This is not classical AtomSpace StorageNode persistence. Evidence: lib/Cargo.toml:31-34, 46, 55; builtin_mods/das.rs:15, 66-85, 187-194.
+
+C2-D4. The wiki/backend integration design should treat "classical AtomSpace StorageNode", "Hyperon Space", "DAS DistributedAtomSpace", and "MCP tool API" as four distinct layers. Source 1's DECKO-MCP vs ATOMSPACE-MCP terminology split is correct and should be kept.
+
+C2-D5. If the goal is direct runtime integration with MeTTa programs, Source 4 must inspect Hyperon Space and DAS. If the goal is durable classical AtomSpace persistence, Source 2 points to StorageNode backends. Mixing these layers will produce incorrect architecture.
+
+## E. Name Sanitization and Card Identity
+
+C2-E1. Do not sanitize Decko card names by replacing punctuation unless a later target requires it. AtomSpace Node names are arbitrary valid UTF-8 strings at the core layer. Evidence: Node.h:46, 76; Node.cc:74-78.
+
+C2-E2. Rendering escapes quotes, backslashes, and control characters, but that is not a semantic name restriction. Evidence: Node.cc:92-113, 126-131.
+
+C2-E3. Hashing and equality use the raw Node name, so an exact Decko card title can be a stable key if the mapping layer preserves type plus name. Evidence: Node.cc:150, 167, 172.
+
+C2-E4. Decko card IDs should still be mirrored explicitly. Card titles can be renamed; Decko IDs and action/change history are needed for identity stability. AtomSpace's node name exactness solves title preservation, not Decko's full identity/history model.
+
+C2-E5. Recommended AtomSpace mirror identity pattern for later design work: `(ConceptNode "DeckoCard:<id>")` or exact title ConceptNode plus a State/EvaluationLink to ID metadata. The exact choice belongs in Source 4's integration memo after AtomSpace/DAS/MORK tradeoffs are known.
+
+## F. Dual API Audit: C++ and Scheme/MeTTa
+
+C2-F1. Classical storage has both C++ and Scheme layers. C++ implements StorageNode/BackingStore and concrete backends; Scheme wraps user-facing open/fetch/store/query/delete APIs. Evidence: StorageNode.h:42; BackingStore.h:54; opencog/persist/api/opencog/persist.scm:127-139 and 212-1235.
+
+C2-F2. `cog-open` is a Scheme dispatch seam for multiple concrete StorageNodes: Postgres, Rocks, and Cogserver examples are documented in the same wrapper. Evidence: opencog/persist/api/opencog/persist.scm:127-139.
+
+C2-F3. The storage proxy layer is a C++ Atomese type layer that matters for architecture. It can mirror writes, load-balance reads, buffer writes, cache reads, or compute dynamic values. Evidence: storage_types.script:41-77; proxy README explains StorageNode API string-to-method mapping and proxies.
+
+C2-F4. Hyperon/MeTTa side has separate MeTTa token registration for Spaces and DAS. For integration claims, grep both Scheme/C++ StorageNode APIs and MeTTa/Rust Space APIs. Evidence: hyperon-experimental lib/src/metta/runner/stdlib/space.rs:207-223; builtin_mods/das.rs:66-85.
+
+C2-F5. Focused stale-claim grep: no current AttentionBank/cog-av-sti/cog-set-av API in the primary storage repos. Atomspace has documentary PLN references; hyperon-experimental has PLN toy/test references; atomspace-pgres has historical notes mentioning AttentionValueUTest. These are not active ECAN-PLN storage-layer integration.
+
+## G. atomspace-bridge / BridgeStorageNode
+
+C2-G1. atomspace-bridge is conceptually the closest existing repo to a Decko SQL-to-AtomSpace bridge. Its README states it connects pre-existing SQL DBs to AtomSpace and imports pre-existing SQL table schemas automatically. Evidence: README.md:3-4, 14-18.
+
+C2-G2. The README explicitly says atomspace-bridge is not for save/restore of AtomSpace contents; for that, use atomspace-rocks or atomspace-cog StorageNodes. Evidence: README.md:7-11.
+
+C2-G3. BridgeStorageNode is currently Postgres-only. Evidence: README.md:33; BridgeStorage.cc connects to Postgres and prints server version at line 106.
+
+C2-G4. BridgeStorageNode introspects public tables with `SELECT tablename FROM pg_tables WHERE schemaname = 'public';`. This is a generic public-schema assumption, not a Decko-specific table contract. Evidence: SQLReader.cc:97-110.
+
+C2-G5. BridgeStorageNode builds SELECT statements from table signatures and can load selected rows by column/value. Evidence: SQLReader.cc:159-179, 242-261, 268-280.
+
+C2-G6. BridgeStorageNode routes `fetchIncomingSet` by Atom type: PredicateNode loads a table, VariableNode loads columns, ConceptNode/NumberNode loads joined rows. Evidence: SQLReader.cc:366-386.
+
+C2-G7. BridgeStorageNode ignores type in `fetchIncomingByType` and delegates to `fetchIncomingSet`. That is a semantic simplification relative to full StorageNode capabilities. Evidence: SQLReader.cc:389-393.
+
+C2-G8. BridgeStorageNode's write side is unimplemented at this snapshot. `storeAtom`, `removeAtom`, `storeValue`, `updateValue`, `loadValue`, `loadType`, `loadAtomSpace`, and `storeAtomSpace` have empty bodies. Evidence: SQLReader.cc:395-425.
+
+C2-G9. The README says the bridge "should allow both the read and the update" of SQL rows while maintaining foreign-key constraints, but the code shows empty write methods. Treat write/update as intended/future, not implemented. Evidence: README.md:23-26 vs SQLReader.cc:395-425.
+
+C2-G10. The bridge punts on key semantics and stores naked primary/foreign keys for now, rather than using foreign-key metadata to create direct links between table rows. Evidence: README.md:86-89, 123.
+
+C2-G11. BridgeStorageNode has Scheme primitives `cog-bridge-load-tables` and `cog-bridge-load-rows`, which could be starting points for a Decko prototype that imports `cards`, `card_actions`, and `card_changes` rows as raw tables. Evidence: BridgePersistSCM.cc:66-69, 83-95.
+
+C2-G12. However, a raw Decko table import would not be a correct wiki semantic model. It would need custom templates/mappings for card identity, current content, history, cardtypes, nests, files, RichText, and permissions. The README mentions custom mappings/templates as optional; no Decko-specific templates were found. Evidence: README.md:14-18; repo-wide Decko grep negative.
+
+## H. atomspace2 Divergence
+
+C2-H1. atomspace2 is not the current canonical AtomSpace. It is a separate/local fork snapshot with origin `https://github.com/ngeiswei/atomspace.git`, HEAD 4cfaa16cb765adc613eb28ae766397fee90b14e9 from 2025-05-31, and package version 5.0.5. Evidence: `git -C atomspace2 log -1`; atomspace2/pyproject.toml project version line; AGENTS/GEMINI local docs also call it secondary/snapshot.
+
+C2-H2. atomspace2 still contains the classical AtomSpace tree and StorageNode examples, but not the split modern storage repo ecosystem as the current source of truth. It references `RocksStorageNode`, `PostgresStorageNode`, and `CogStorageNode` in examples, while current primary persistence development is in atomspace-storage/pgres/rocks/cog/bridge. Evidence: atomspace2 examples/atomspace/persistence.scm hits; current repo SHAs above.
+
+C2-H3. Classification: atomspace2 = EXPERIMENTAL / LEGACY-FORK for this pilot. It should not be used as the canonical API reference for a wiki backend bridge unless Source 4 finds an explicit reason.
+
+C2-H4. Bidirectional divergence note: I did not build a full cross-repo commit graph between atomspace2 and atomspace because they are separate local repos and atomspace2 origin is ngeiswei/atomspace. The decisive local facts are age, version, origin, and that the Source 2 primary repo `atomspace` is newer and active at c8d633bf27.
+
+## I. StorageNode Ecosystem Map
+
+Labels used: CANONICAL / BACKEND-IMPLEMENTATION / BRIDGE-ADAPTER / LEGACY-FORK / EXPERIMENTAL / UNKNOWN.
+
+| Component | Repo | Label | Evidence and integration meaning |
+|---|---|---|---|
+| StorageNode | atomspace-storage | CANONICAL | Core persistence API class. StorageNode.h:42, 81-114, 169-341. |
+| BackingStore | atomspace-storage | CANONICAL | Backend virtual interface. BackingStore.h:54, 76-112, 212-235, 281. |
+| Scheme persist API | atomspace-storage | CANONICAL | `cog-open`, fetch/store/query/delete wrappers. opencog/persist.scm:127-139, 212-1235. |
+| FileStorageNode | atomspace-storage | BACKEND-IMPLEMENTATION | Partial file-backed StorageNode. file/README.md:3-8; FileStorage.h:36. |
+| ProxyNode family | atomspace-storage | BRIDGE-ADAPTER | Read/write/cache/buffer/dynamic proxy composition. storage_types.script:41-77. |
+| PostgresStorageNode | atomspace-pgres | BACKEND-IMPLEMENTATION | AtomSpace-owned PostgreSQL schema; not Decko schema compatible. SQLAtomStorage.h:57, 285; atom.sql:21-146. |
+| RocksStorageNode | atomspace-rocks | BACKEND-IMPLEMENTATION | Full local RocksDB StorageNode; one process at a time. README.md:1, 5-13, 34-35; RocksStorage.h:48, 180. |
+| MonoStorageNode | atomspace-rocks | BACKEND-IMPLEMENTATION | Single-AtomSpace Rocks variant. README.md:139-146; MonoStorage.h:48, 140. |
+| CogStorageNode | atomspace-cog | BRIDGE-ADAPTER | Network StorageNode to CogServer; async sockets and barrier. README.md:22-33, 189-194; CogStorage.h:43, 75-102. |
+| CogSimpleStorageNode | atomspace-cog | BRIDGE-ADAPTER | Simpler single-threaded CogServer StorageNode. CogSimpleStorage.h:42, 48, 77-107. |
+| BridgeStorageNode | atomspace-bridge | BRIDGE-ADAPTER | Foreign Postgres schema to Atomese import; write stubs. BridgeStorage.h:48, 126; SQLReader.cc:97-110, 395-425. |
+| atomspace2 | atomspace2 | EXPERIMENTAL / LEGACY-FORK | 2025 snapshot, version 5.0.5, origin ngeiswei/atomspace. |
+| Hyperon GroundingSpace | hyperon-experimental | EXPERIMENTAL / CANONICAL-FOR-HYPERON | MeTTa Space API, not StorageNode. hyperon-space/src/lib.rs:152-282; base.py:6-274. |
+| Hyperon DAS builtin | hyperon-experimental + singnet/das | BRIDGE-ADAPTER / SOURCE-4 | `new-das!` DistributedAtomSpace via metta-bus-client. Cargo.toml:31-34; das.rs:15, 66-85, 187-194. |
+
+Integration map conclusion:
+- For a classical AtomSpace mirror: Decko -> custom mapping -> AtomSpace -> PostgresStorageNode/RocksStorageNode/CogStorageNode.
+- For a direct existing PostgreSQL-row bridge: Decko PostgreSQL -> custom atomspace-bridge templates/mapping -> AtomSpace, currently read/import only unless write stubs are implemented.
+- For Hyperon runtime: Decko/MCP or adapter -> MeTTa Space/DAS, not StorageNode.
+
+## J. Wiki Delta Candidates
+
+C2-J1. About Hyperon+AtomSpace / AtomSpace Full should distinguish classical AtomSpace StorageNode from Hyperon MeTTa Space and DAS DistributedAtomSpace. Current wiki claims that collapse "AtomSpace" into a single backend family risk misleading the integration story.
+
+C2-J2. Any claim that "MORK and DAS backends are operational" on AtomSpace cards should be checked in Sources 3-4. Source 2 confirms DAS is a Hyperon builtin via singnet/das, not a classical StorageNode backend. MORK was not part of Source 2 beyond carry-forward.
+
+C2-J3. Knowledge Representations+DAS should be updated after Source 4 to reflect that hyperon-experimental depends on `metta-bus-client` from singnet/das and exposes `new-das!`. Evidence: hyperon-experimental Cargo.toml:31-34; das.rs:66-85.
+
+C2-J4. Knowledge Representations+MORK should not be updated from Source 2 alone. MORK belongs to Source 3; carry forward only the integration question: is MORK a StorageNode-compatible backend, a Hyperon Space backend, a DAS AtomDB backend, or separate substrate?
+
+C2-J5. A new synthesis card is justified at cluster close: "Implementation Families+AtomSpace Backend Integration" or equivalent. The Source 2 ecosystem map is a good seed: StorageNode backends vs bridge adapters vs Hyperon/DAS runtime interfaces.
+
+C2-J6. docs/ATOMSPACE-INTEGRATION.md should be edited at cluster close to revise the atomspace-pgres seam. Suggested wording: "atomspace-pgres can persist an AtomSpace mirror into PostgreSQL, but it cannot operate directly over Decko's existing schema. Direct Decko-DB integration would require atomspace-bridge-style schema import plus Decko-specific mappings, or a custom adapter."
+
+C2-J7. docs/ATOMSPACE-INTEGRATION.md should revise any `_sanitize_card_name` recommendation. AtomSpace Node names preserve valid UTF-8; prefer exact card-title preservation plus explicit Decko ID metadata.
+
+## K. Stale Claims and Negative Findings
+
+C2-K1. Stale claim: "atomspace-pgres is the lowest-friction integration seam because Decko already uses PostgreSQL." Corrected: PostgreSQL store compatibility is not Decko schema compatibility. Verdict: [BACKING-STORE-ONLY].
+
+C2-K2. Stale claim: "AtomSpace bridge supports two-way Decko data movement." Corrected: README says the bridge should allow read/update, but current write-side methods are empty. Evidence: README.md:23-26 vs SQLReader.cc:395-425.
+
+C2-K3. Stale claim: "Hyperon has a Python `Atomspace, MCP` API matching the Source 1 sketch." Corrected: hyperon-experimental exposes Space/GroundingSpace/MeTTa APIs and no MCP symbol in the inspected package.
+
+C2-K4. Stale claim: "AttentionBank is currently available in the primary AtomSpace persistence stack." Corrected: focused grep found no active AttentionBank/cog-av-sti/cog-set-av API in primary Source 2 repos. Historical notes/tests are not runtime integration.
+
+C2-K5. Stale claim: "PLN production readiness is evidenced by AtomSpace repos." Corrected: atomspace has documentary and test PLN references; hyperon-experimental has toy/test PLN scripts. This does not modify the PLN cluster finding that production MeTTa PLN lacks ECAN inference control.
+
+C2-K6. Stale claim: "atomspace2 is the modern successor." Corrected: atomspace2 is a 2025 snapshot/fork and not the 2026 canonical primary source for StorageNode integration.
+
+## L. Cross-Source Forwards
+
+Forward to Source 3 - MORK Production Substrate:
+
+C2-L1. Determine whether MORK implements any classical StorageNode-compatible API, Hyperon Space API, DAS AtomDB backend, or only its own Rust kernel/FFI/SDK surfaces. Source 2 found no MORK in classical StorageNode primary repo stack.
+
+C2-L2. Verify whether `MORK integration as DAS backend under development` is code-real, branch-only, design-only, or stale wiki text.
+
+C2-L3. Check whether mork_ffi/mork-rust-sdk/mork-ts-sdk can serve a Decko bridge without passing through classical StorageNode or DAS.
+
+C2-L4. Re-check PLN Source 8/11 findings from the production-storage angle: MORK was substrate-only for FactorGraph PLN; Source 3 should decide whether it is also substrate-only for AtomSpace persistence.
+
+C2-L5. Audit "weighted atom sweep" and count-sink patterns against the StorageNode proxy/value ecosystem. If MORK weight counters resemble ECAN attention or AtomSpace Values, classify as implementation analogy, not identity, unless code proves a bridge.
+
+Forward to Source 4 - DAS + Runtime Bridge:
+
+C2-L6. Inspect singnet/das because hyperon-experimental imports `metta-bus-client` from that repo at tag 1.0.2. Source 4 should audit DAS API, AtomDB layer, deployment topology, and whether it can be a wiki backend query surface. Evidence: hyperon-experimental Cargo.toml:31-34.
+
+C2-L7. Inspect `new-das!` and the DAS builtin module as a concrete MeTTa runtime bridge. Evidence: hyperon-experimental das.rs:66-85, 187-194.
+
+C2-L8. Decide whether the viable wiki integration architecture should be: Decko primary + AtomSpace mirror + atomspace-pgres/Rocks backing store; Decko DB read/import via atomspace-bridge; Decko/MCP -> DAS; or some hybrid.
+
+C2-L9. Evaluate whether atomspace-bridge can be extended to write Decko rows safely. Source 2 found current write stubs; Source 4 integration memo should decide whether implementing write-back is desirable or whether a read-only mirror is safer.
+
+C2-L10. Keep DECKO-MCP and ATOMSPACE-MCP separate. Source 4 should inventory existing `mod/mcp_api` as a Decko API surface and only call AtomSpace MCP "implemented" if actual AtomSpace query tools exist.
+
+## M. Reviewer Dissents / Issues for Reconciliation
+
+C2-M1. I expect Gemini may treat atomspace-bridge as a stronger positive because its README says data can move "in both directions" and "should allow" update. My code-level finding is stricter: write/update methods are empty at SQLReader.cc:395-425, so current status is read/import bridge with future write intent.
+
+C2-M2. I expect Gemini may classify atomspace-pgres as a candidate because it uses PostgreSQL. The hard negative test should settle this: it is [BACKING-STORE-ONLY], because it owns AtomSpace-specific tables and has no Decko schema awareness.
+
+C2-M3. I did not run a full bidirectional commit graph analysis for all AtomSpace forks. I checked fork HEADs and remotes. Relevant results: atomspace-linas matches canonical c8d633bf27; singnet is 2021; hansonrobotics is 2016; leungmanhin is 2022; glicerico is 2019; atomspace-gpu and atomspace-viz are separate adjacent repos with 2026 activity but not StorageNode core. If fork lineage becomes narrative-critical, run deeper bidirectional `git log A..B` checks during cluster-close or a follow-up.
+
+C2-M4. I did not build/test the repos. The findings are source-level and doc-level. The atomspace-pgres top commit "Stub out failing test" is a test-health caution, not proof of broken production behavior.
+
+C2-M5. The term "AtomSpace" is overloaded across classic C++ AtomSpace, Hyperon/MeTTa Space, DAS DistributedAtomSpace, and wiki integration design docs. Reconciliation should keep these labels explicit in every wiki edit.
+
+## Bottom Line for the Cluster
+
+C2-Z1. Source 2 resolves the main Source 1 seam question: atomspace-pgres is not the direct Decko/PostgreSQL bridge. It is an AtomSpace backing store that happens to use PostgreSQL.
+
+C2-Z2. The most actionable existing integration code is atomspace-bridge, but only as a read/import foreign-SQL bridge at this snapshot. A Decko adapter would need custom schema templates/mappings and new write semantics if write-back is desired.
+
+C2-Z3. StorageNode remains the canonical classical persistence abstraction. DAS/Hyperon Space are separate runtime/distributed abstractions and must be evaluated in Source 4, not treated as interchangeable with StorageNode.
+
+C2-Z4. For the wiki-backend integration use case, the lowest-risk architecture after Source 2 is still "Decko remains source of truth; AtomSpace is a mirrored/query substrate." A direct replatform of Decko storage onto AtomSpace persistence is not supported by Source 2 evidence.

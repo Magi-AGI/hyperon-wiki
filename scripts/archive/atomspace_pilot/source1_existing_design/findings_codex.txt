@@ -1,0 +1,153 @@
+# Source 1 - Existing Wiki Backend Integration Design - Codex Findings
+
+Pilot: AtomSpace Backend Integration Cluster Pilot
+Source: in-repo design and operations docs
+Model lane: Codex
+Date: 2026-04-29
+Write policy: no wiki writes; no design-doc edits during extraction
+
+## Executive Summary
+
+C1. The existing design is not "replace PostgreSQL with Atomspace"; it is a gated migration program. The canonical requirement is: keep Decko/Rails/PostgreSQL as the production path unless an Atomspace prototype proves clear value over PostgreSQL. Evidence: `docs/ATOMSPACE-INTEGRATION.md:12-15`, `docs/ROADMAP.md:224-229`, `docs/ROADMAP.md:358-370`.
+
+C2. The acceptance bar is explicit and quantitative. Fetch-card latency target is `<500ms`, acceptable `<2s`, unacceptable `>5s`; Phase 3 requires `<2s` latency for 90% of queries, MCP overhead `<10%`, 0 export errors in 10 runs, 1000+ cards, and 5+ PLN/semantic insights not visible in PostgreSQL. Evidence: `docs/ATOMSPACE-INTEGRATION.md:639-645`, `docs/ATOMSPACE-INTEGRATION.md:788-803`, `docs/ROADMAP.md:342-370`.
+
+C3. The design docs contain a real adapter sketch, but it is a sketch, not implementation evidence. Local code has `mod/mcp_api/` for a Decko MCP/card API, but grep found no implemented `DeckoAtomspaceAdapter`, `AtomspaceBackend`, `DualWriteAdapter`, or `CARD_BACKEND` switch outside docs. The term "MCP adapter" is overloaded and must be disambiguated in later sources.
+
+C4. Source 1 should be used as the requirements anchor for Sources 2-4, not as proof that AtomSpace/MORK/DAS provide the required APIs. The docs assert or assume a Python Hyperon Atomspace API, PLN query support, MORK distributed backend behavior, and MCP-mediated card operations. Those are Source 2/3/4 verification targets.
+
+## A. Requirements
+
+C5. REQUIREMENT: The production wiki remains Decko/Rails/PostgreSQL during the prototype phase. The Atomspace path is a read-only or mirrored evaluation path until it meets the gate. Evidence: `docs/ATOMSPACE-INTEGRATION.md:59-83`, `docs/ROADMAP.md:232-258`.
+
+C6. REQUIREMENT: PostgreSQL remains the fallback even after an Atomspace attempt. The migration plan explicitly includes dual-write, consistency checks, a backend flag, and rollback to PostgreSQL. Evidence: `docs/ATOMSPACE-INTEGRATION.md:703-780`, `docs/ROADMAP.md:400-430`, `docs/ROADMAP.md:525-531`.
+
+C7. REQUIREMENT: Any integration must preserve the Decko card model: card identity, name, type, content, pointers, timestamps, hierarchical `+` names, nesting, and cardtype-specific rendering behavior. Evidence: `docs/ATOMSPACE-INTEGRATION.md:120-228`, `docs/DECKO-SECTION-PATTERN.md:47-79`, `docs/DECKO-CONTENT-UPLOAD-GUIDE.md:40`, `docs/DECKO-CONTENT-UPLOAD-GUIDE.md:198`.
+
+C8. REQUIREMENT: RichText vs Markdown semantics are not cosmetic. Section/TOC inclusion cards require RichText and `{{+child|content}}` syntax; content cards may be Markdown. Any Atomspace mapping that treats content as plain strings only will miss operational wiki behavior. Evidence: `docs/DECKO-SECTION-PATTERN.md:47-79`, `docs/DECKO-CONTENT-UPLOAD-GUIDE.md:243-245`, `docs/DECKO-CONTENT-UPLOAD-GUIDE.md:370-374`.
+
+C9. REQUIREMENT: The integration must preserve file-card/upload behavior or explicitly scope it out. Browser file uploads had Decko-specific cache/action-context bugs and console uploads required a server-side workaround; this is not captured by the simple ConceptNode/StateLink card mapping. Evidence: `docs/DECKO-FILE-UPLOAD-BUG.md:10-29`, `docs/DECKO-FILE-UPLOAD-BUG.md:101-104`.
+
+C10. REQUIREMENT: Operational access today is Rails/Decko API access, not direct file editing. Cards live in the database; normal inspection uses Rails console, `script/card runner`, or the MCP/card API. Evidence: `docs/CLAUDE.md:7-18`, `docs/CLAUDE.md:22-35`, `docs/DECKO-DATABASE-ACCESS.md:87-119`.
+
+C11. REQUIREMENT: The integration must demonstrate semantic value, not just alternate storage. The docs repeatedly ask whether PLN/semantic reasoning finds relationships PostgreSQL cannot. Evidence: `docs/ATOMSPACE-INTEGRATION.md:406-429`, `docs/ATOMSPACE-INTEGRATION.md:788-803`, `docs/ROADMAP.md:294-304`, `docs/ROADMAP.md:358-370`.
+
+C12. REQUIREMENT: Prototype scale targets include 100/1000/10000-card tests, 1000+ cards as Phase 3 success, and 100+ concurrent users for Phase 4. Evidence: `docs/ATOMSPACE-INTEGRATION.md:834-852`, `docs/ROADMAP.md:342-349`, `docs/ROADMAP.md:510-517`.
+
+## B. Assumptions To Verify In Sources 2-4
+
+C13. ASSUMPTION: `from hyperon import Atomspace, MCP` and `MCP.Client(atomspace_url)` are real current APIs suitable for the adapter. The code block is a design sketch, not proof. Verify in Source 4. Evidence: `docs/ATOMSPACE-INTEGRATION.md:248-253`.
+
+C14. ASSUMPTION: The Atomspace query API can implement `fetch_card`, `search_cards`, create/update/delete, and relationship inference with the shown query shapes. Verify actual query semantics, mutation semantics, and deletion behavior in Source 2. Evidence: `docs/ATOMSPACE-INTEGRATION.md:257-404`.
+
+C15. ASSUMPTION: `pln_query` exists and can produce actionable card relationship inferences within the latency budget. Prior PLN pilot results make this a high-risk claim unless scoped carefully. Verify in Sources 2 and 4. Evidence: `docs/ATOMSPACE-INTEGRATION.md:406-429`, `docs/ATOMSPACE-INTEGRATION.md:639-645`.
+
+C16. ASSUMPTION: Card names can be sanitized and desanitized without loss. The proposed `_sanitize` replaces spaces, colons, and plus signs with underscores, and the doc itself notes original names may need metadata. This is a correctness risk because `+` hierarchy is a first-class Decko convention. Verify in Source 2/integration synthesis. Evidence: `docs/ATOMSPACE-INTEGRATION.md:443-479`.
+
+C17. ASSUMPTION: MORK is available as a distributed Atomspace backend with horizontal scaling, replication, partitioning, and coordination. Verify in Source 3; do not treat the Source 1 text as implementation evidence. Evidence: `docs/ATOMSPACE-INTEGRATION.md:580-630`, `docs/ROADMAP.md:486-509`.
+
+C18. ASSUMPTION: Atomspace/MORK consistency semantics can support Decko writes. The docs explicitly list eventual-vs-strong consistency and conflict handling as open questions. Verify in Source 3/4. Evidence: `docs/ATOMSPACE-INTEGRATION.md:610-630`, `docs/ATOMSPACE-INTEGRATION.md:819-826`.
+
+C19. ASSUMPTION: Existing MCP work can serve as the integration transport. Current repo code supports a Decko MCP/card API, while the Atomspace adapter is not present. Source 4 must decide whether to reuse MCP, build a new Atomspace MCP server, or bypass MCP. Evidence: `docs/MCP-DEPLOYMENT-STATUS.md:13-50`, `docs/MCP-PHASE-2-COMPLETE.md:5-12`.
+
+C20. ASSUMPTION: `atomspace-pgres` or `StorageNode` may be a better Decko integration seam than the sketched Python MCP adapter. Source 1 docs do not analyze this; Phase 0 surfaced it as a candidate. Verify in Source 2.
+
+C21. ASSUMPTION: DAS is relevant to the wiki backend integration. Source 1 docs emphasize Atomspace/MORK/MCP, not DAS. Source 4 must establish whether DAS is the consumer-facing API the wiki should call or a separate distributed deployment layer.
+
+## C. Stale Or Suspect Claims
+
+C22. STALE CLAIM: `docs/ROADMAP.md` labels Phase 3 "Atomspace Integration Prototype" as Jan-Apr 2026 and "Not Started." Current date is 2026-04-29, so the schedule/status is stale unless separately updated. Evidence: `docs/ROADMAP.md:224-229`.
+
+C23. STALE CLAIM: `docs/ATOMSPACE-INTEGRATION.md` is marked Future/Experimental and last updated 2025-10-16. It remains useful as design intent, but source-close edits should update status after Sources 2-4 verify current infrastructure. Evidence: `docs/ATOMSPACE-INTEGRATION.md:1-6`.
+
+C24. STALE CLAIM / HIGH-RISK ASSUMPTION: The docs imply PLN inference is an available value driver. Prior PLN pilot findings show production PLN is local-rule and incomplete, world-model runtime closure is pending, and FactorGraph PLN over MORK remains paper/proposal. Any wiki/docs wording that treats PLN reasoning as production-ready should be corrected or conditioned. Evidence: `docs/ATOMSPACE-INTEGRATION.md:29`, `docs/ATOMSPACE-INTEGRATION.md:406-429`, `docs/ROADMAP.md:294-304`.
+
+C25. STALE CLAIM: `docs/MCP-PHASE-2-PLAN.md` is superseded by completion/deployment docs. It includes DB-backed API keys, named queries, batch dry-run, and jobs as Phase 2 targets; `docs/MCP-PHASE-2-COMPLETE.md` marks several of these deferred. Use COMPLETE/DEPLOYMENT as status sources, not PLAN. Evidence: `docs/MCP-PHASE-2-PLAN.md:246-258`, `docs/MCP-PHASE-2-COMPLETE.md:311-331`.
+
+C26. STALE CLAIM: `docs/MCP-PHASE-1.1-FIXES.md` is historical. Its parser/API-key limitations and "ready for testing" language are superseded by Phase 2 completion/deployment docs. Evidence: `docs/MCP-PHASE-1.1-FIXES.md:36-47`, `docs/MCP-PHASE-2-COMPLETE.md:5-12`, `docs/MCP-DEPLOYMENT-STATUS.md:13-50`.
+
+C27. STALE CLAIM CANDIDATE: Wiki claims discovered in Phase 0 that "MORK and DAS backends operational", "PeTTa/MORK 500M+ atoms in RAM", "MORK-native PLN/WILLIAM", "MORK integration as DAS backend under development", and "atomspace-pgres operational" must be verified by Sources 2-4 before being retained.
+
+C28. NEGATIVE FINDING: The Source 1 corpus did not materially depend on ECAN/OpenPsi/AttentionBank claims. The stale-claim hot spots from prior pilots are still relevant as guardrails, but they are not central in these design docs.
+
+## D. Design Options
+
+C29. DESIGN OPTION: Shadow/nightly export mirror. Decko/PostgreSQL remains primary; Atomspace receives exports for read-only evaluation. This is the safest Phase 3 path and should be the baseline option. Evidence: `docs/ATOMSPACE-INTEGRATION.md:59-83`, `docs/ROADMAP.md:232-258`.
+
+C30. DESIGN OPTION: Atomspace primary via adapter. Atomspace becomes source of truth, PostgreSQL becomes backup/archive, and an adapter provides Decko-like card operations. This is Phase 4 only, conditional on Phase 3. Evidence: `docs/ATOMSPACE-INTEGRATION.md:85-114`, `docs/ATOMSPACE-INTEGRATION.md:540-575`.
+
+C31. DESIGN OPTION: Dual-write migration. Writes go to both PostgreSQL and Atomspace, reads initially stay PostgreSQL, then switch to Atomspace with PostgreSQL shadow validation. Evidence: `docs/ATOMSPACE-INTEGRATION.md:703-752`, `docs/ROADMAP.md:400-430`.
+
+C32. DESIGN OPTION: MCP bridge. The repo already has a Decko MCP API surface; a bridge could expose Atomspace-backed query tools without replacing Decko storage. This may satisfy semantic-query goals with less risk than a backend swap. Evidence: `docs/MCP-DEPLOYMENT-STATUS.md:13-50`, `docs/MCP-PHASE-2-COMPLETE.md:181-230`.
+
+C33. DESIGN OPTION: Direct Atomspace/StorageNode integration. Not developed in Source 1 docs, but Phase 0 surfaced Atomspace storage backends (`atomspace-storage`, `atomspace-pgres`, `atomspace-rocks`) as likely Source 2 targets. This may be more appropriate than HTTP/MCP if low latency is critical.
+
+C34. DESIGN OPTION: MORK distributed backend. The docs frame MORK as optional scaling infrastructure, not required for the first prototype. Source 3 must establish whether MORK is a real backend option or still experimental for this use case. Evidence: `docs/ATOMSPACE-INTEGRATION.md:580-630`, `docs/ROADMAP.md:486-509`.
+
+C35. DESIGN OPTION: Keep PostgreSQL primary indefinitely and use Atomspace for offline/batch reasoning only. This is compatible with the docs' go/no-go criteria and may be the pragmatic outcome if semantic value exists but latency or consistency fails. Evidence: `docs/ROADMAP.md:358-370`, `docs/ATOMSPACE-INTEGRATION.md:807-815`.
+
+## E. Non-Goals And Deferred Work
+
+C36. NON-GOAL: Atomspace from day one. The roadmap explicitly rejects this as too risky and chooses Decko/PostgreSQL first. Evidence: `docs/ROADMAP.md:791-799`.
+
+C37. NON-GOAL: Production disruption during Phase 3. The prototype is designed to impose no production risk. Evidence: `docs/ATOMSPACE-INTEGRATION.md:79-83`, `docs/ROADMAP.md:232-242`.
+
+C38. NON-GOAL: MORK as required initial infrastructure. MORK is optional and conditional on scale/distributed-backend needs. Evidence: `docs/ATOMSPACE-INTEGRATION.md:103-114`, `docs/ROADMAP.md:486-509`.
+
+C39. NON-GOAL: Treating the Phase 2 MCP plan as fully implemented. Phase 2 completion/deployment docs are the status source; deferred Phase 2 features remain deferred unless code/current deployment proves otherwise. Evidence: `docs/MCP-PHASE-2-COMPLETE.md:311-331`.
+
+C40. NON-GOAL: Editing `docs/CLAUDE.md` during this source. It documents the current Decko/Rails/PostgreSQL operating model and should remain stable unless the cluster-close integration design changes current operating procedures.
+
+## F. Wiki-Card Delta Candidates
+
+C41. DELTA CANDIDATE: `About Hyperon+AtomSpace` / `About Hyperon+AtomSpace+AtomSpace Full` should distinguish current AtomSpace capabilities from the wiki backend integration plan. If the cards imply a backend swap is imminent or production-ready, update them to the gated Phase 3/Phase 4 framing.
+
+C42. DELTA CANDIDATE: `Knowledge Representations+MORK` / `Knowledge Representations+MORK+MORK Full` should be rechecked after Source 3. The Source 1 docs treat MORK as optional and open-question-heavy, while Phase 0 found stronger wiki status claims.
+
+C43. DELTA CANDIDATE: `Knowledge Representations+DAS` / `Knowledge Representations+DAS+DAS Full` should be rechecked after Source 4. Source 1 docs do not establish DAS as the wiki integration route, so any DAS-card claim about MORK backend integration or production readiness needs independent verification.
+
+C44. DELTA CANDIDATE: The wiki should likely gain a concise "AtomSpace Backend Integration" synthesis note after cluster close: conditional value-over-PostgreSQL criterion, latency gates, dual-write/rollback plan, semantic-insight requirement, and current recommended integration seam.
+
+C45. DELTA CANDIDATE: If existing wiki cards mention `atomspace-pgres`, `StorageNode`, or MORK as operational backend options, Source 2/3 should determine whether those are real integration seams or historical/experimental artifacts.
+
+C46. DELTA CANDIDATE: Source-close doc edits should include `docs/ATOMSPACE-INTEGRATION.md` and `docs/ROADMAP.md` if Sources 2-4 invalidate API assumptions or stale timelines. `docs/CLAUDE.md` should stay focused on current Decko operation unless the operating procedure actually changes.
+
+C47. DELTA CANDIDATE: The integration docs/cards should explicitly include Decko file-card/upload handling and RichText inclusion semantics as requirements. The current Atomspace mapping emphasizes content/pointers but under-specifies these Decko-specific behaviors.
+
+## G. Cross-Source Forwards
+
+C48. FOR SOURCE 2: Verify AtomSpace API surfaces needed by the adapter: query, mutation, delete, values/metadata, link typing, StorageNode, atomspace-storage, atomspace-pgres, atomspace-rocks, and atomspace-bridge.
+
+C49. FOR SOURCE 2: Determine whether Decko card identity and hierarchy can be represented losslessly. Pay special attention to `+` names, original-name metadata, RichText inclusion cards, file cards, card history, and permissions.
+
+C50. FOR SOURCE 2: Verify whether `atomspace-pgres` can interact with Decko's existing PostgreSQL data or requires a separate schema/store. This is the most promising low-friction seam if it exists.
+
+C51. FOR SOURCE 2: Check whether classical C++ AtomSpace and modern Hyperon/MeTTa Atomspace APIs are compatible enough for the design docs' assumptions. Avoid collapsing C++ AtomSpace, Hyperon Space API, and DAS into one thing.
+
+C52. FOR SOURCE 3: Verify MORK production-readiness claims: external API, FFI/SDKs, persistence, benchmarks, distributed operation, replication, partitioning, coordination, and the "500M+ atoms in RAM" claim found in Phase 0 wiki discovery.
+
+C53. FOR SOURCE 3: Apply the bidirectional fork-divergence rule across MORK forks and SDK/FFI repos. A stale fork may still contain unique bridge work; a current fork may have dropped older integration experiments.
+
+C54. FOR SOURCE 3: Carry forward PLN Source 8/11 constraints: FactorGraph PLN over MORK was paper/proposal only; ZAM Lean formalization was adjacent, not wired into Rust production. Verify whether anything changed.
+
+C55. FOR SOURCE 4: Establish whether DAS is the correct consumer-facing API for the wiki backend, a deployment layer underneath Atomspace, or irrelevant to a Decko integration. Check DAS core, `das-toolbox`, `das-metta-parser`, Attention Broker, and runtime bridge repos.
+
+C56. FOR SOURCE 4: Evaluate MeTTa Spaces / `lib_spaces.metta` / PeTTa / hyperon-experimental as runtime integration seams. Determine whether a wiki backend would call MeTTa, DAS, AtomSpace directly, or only export a shadow mirror.
+
+C57. FOR SOURCE 4: Produce the integration-design synthesis against Source 1 gates: latency, semantic value, data integrity, rollback, operational complexity, and implementation effort.
+
+## H. Reviewer-Specific Dissents And Corrections
+
+C58. DISSENT: The brief's doc line counts appear stale. Local counts are lower for the main docs (`docs/ATOMSPACE-INTEGRATION.md` is 671 lines, `docs/ROADMAP.md` 709, `docs/SPEC.md` 490, `docs/CLAUDE.md` 242). This does not change the extraction, but future briefs should avoid relying on old line counts.
+
+C59. DISSENT: "Pure documentation audit" should not mean "no local code sanity check." Source 1 needed the small grep confirming that the repository has a real Decko MCP API but no Atomspace backend implementation. Without that check, the adapter sketch could be mistaken for landed code.
+
+C60. DISSENT: Do not treat `MCP adapter` as a single unambiguous component. In this repo, MCP currently means a deployed Decko card API. In the Atomspace design, MCP also means a proposed bridge/client around an Atomspace backend. These need separate names in wiki edits.
+
+C61. DISSENT: Do not accept code comments or design-doc comments as source attribution. The adapter skeleton's API names and the docs' MORK claims are hypotheses to test, not verified implementation status.
+
+C62. DISSENT: The most important Source 1 output is the gate, not the architecture sketch: Atomspace is only worth integrating if it beats "PostgreSQL plus ordinary graph/query tooling" on semantic value while staying within the latency and reliability budgets.
+
+## Bottom Line
+
+C63. Source 1 locks the integration acceptance criteria: keep PostgreSQL primary unless Atomspace demonstrates measurable semantic value, acceptable latency, reliable export/migration, and lossless-enough Decko semantics. Sources 2-4 should now test whether AtomSpace, MORK, DAS, and runtime bridge code can satisfy that bar, while also producing the normal cluster-pilot wiki corrections for AtomSpace/MORK/DAS status claims.

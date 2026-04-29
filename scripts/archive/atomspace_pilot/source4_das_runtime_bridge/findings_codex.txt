@@ -1,0 +1,342 @@
+AtomSpace Backend Integration Cluster Pilot
+Source 4 - DAS + runtime bridge
+Codex findings
+Date: 2026-04-29
+
+Primary audited local state:
+- das: f4da3d78f356c70c0030c1fb9cb90b1c2ebccf77, 2026-04-29, master.
+- das-toolbox: b3cf116000d0b3c2fc717c2ff571ce9e02c757e1, 2026-04-24, master.
+- das-metta-parser: 41ee42eb03c86819776cf1ea771d4e9e3c52a884, 2025-11-14, master/tag 1.0.0.
+- hyperon-experimental: 3f76dc460da6961f57f69f6c3e550c59c74ada83, 2026-02-11, main/tag v0.2.10.
+- MORK origin/server reference: 5b04a1d71b9935e0b963fab0f1081f95f32d77fc, 2026-04-18.
+
+Scope discipline:
+- Read-only extraction. No wiki writes, no docs edits, no commits.
+- Existing advisor docs in reference repos were ignored as evidence unless directly cited as repo-local operational notes. They are not treated as authoritative.
+- Source 1/2/3 reconciliations are cited by R-number where used as lateral evidence.
+
+EXECUTIVE HEADLINE
+
+C4-1. DAS is a real distributed AtomSpace/runtime layer and is already exposed as a Hyperon MeTTa Space, but it is not the right first Decko/wiki backend seam. The safest Phase 3 prototype is READONLY-ATOMSPACE-BRIDGE: keep Decko/Rails/PostgreSQL as source of truth, build a read-only AtomSpace semantic mirror, and defer write-through DAS/MORK until delete semantics, MORK server drift, and Decko card semantics are resolved.
+
+C4-2. DAS MorkDB remains CODE-REAL but not Decko-ready. Current Source 4 evidence confirms Source 3's split verdict: MorkDB is a DAS-side AtomDB backend over MongoDB + MORK HTTP server, but `MorkDB::delete_link` is still a hard false path, while DAS Docker still pins a stale MORK server commit.
+
+C4-3. DAS Attention Broker is an engineering ECAN-compatible surrogate, not a literal 2009 ECAN implementation. It implements STI, contexts, exact-count Hebbian networks, rent/wages, and token spreading, but the formulas are the DAS token model, not the Classic ECAN paper equations. Label: [SURROGATE-COMPATIBLE].
+
+C4-4. The existing Decko MCP API is a mature consumer API for cards, relations, history, render conversion, file upload, auth, and batch operations. It is the best source-of-truth API surface for extracting wiki data into any AtomSpace/DAS/MORK mirror. It is not an AtomSpace MCP.
+
+DELIVERABLE 1 - DAS + RUNTIME AUDIT
+
+Section A - DAS as wiki backend verdict (S4.Q1)
+
+C4-A1. Verdict: (b) deployment-layer.
+
+C4-A2. DAS is not "irrelevant" because it is explicitly built as a distributed AtomSpace query/runtime layer and is already integrated with Hyperon Experimental. `das/README.md:40-48` says DAS exposes a query API for large knowledge bases, has configurable persistence backends, and can be used as a special Hyperon space. `hyperon-experimental/lib/src/metta/runner/builtin_mods/das.rs:30-41` gives the MeTTa REPL usage example for `(import! &self das)`, `(new-das! ...)`, and `(match &das ...)`.
+
+C4-A3. DAS is not the direct consumer API for Decko. Its README operational path is DAS CLI + AtomDB + Query Engine + Attention Broker + agents (`das/README.md:50-59`, `124-130`, `191-236`). The wiki already has Decko MCP endpoints for card CRUD, relations, history, render, files, trash, and auth (`mod/mcp_api/config/initializers/mcp_routes.rb:7-63`). A Decko integration should use Decko MCP/Rails/Postgres as the consumer-facing extraction/control layer, then feed DAS or an AtomSpace mirror downstream.
+
+C4-A4. DAS is therefore a plausible later deployment/query layer once the mirror semantics are proven, but it should not replace Decko storage during Phase 3. This preserves Source 1's gated-migration requirement: Decko remains source of truth and AtomSpace must prove semantic value, latency, and rollback safety first (R1.1, R1.A1-A8, R1.B3).
+
+Section B - MeTTa Spaces / lib_spaces / PeTTa / hyperon-experimental seam inventory (S4.Q2)
+
+C4-B1. Hyperon Experimental has first-class DAS support behind a default feature. `hyperon-experimental/lib/Cargo.toml:31-35` depends on `metta-bus-client` from `https://github.com/singnet/das` tag `1.0.2`; `lib/Cargo.toml:45-55` enables feature `das` by default and maps it to `metta-bus-client`.
+
+C4-B2. The MeTTa module registers a concrete DAS surface, not a doc-only placeholder. `das.rs:60-120` registers tokens/functions: `new-das!`, `das-join-network!`, `das-services!`, `das-service-status!`, `das-set-param!`, `das-get-params!`, `das-create-context!`, `das-evolution!`, `das-link-creation!`, and `das-helpers!`.
+
+C4-B3. `new-das!` constructs a `DistributedAtomSpace` and wraps it as a `DynSpace`. Evidence: `das.rs:156-199` validates server/client endpoints, inserts host/port/known-peer params, calls `DistributedAtomSpace::new(...)`, then returns `Atom::gnd(DynSpace::new(das_space))`.
+
+C4-B4. Runtime operations recreate/use `DistributedAtomSpace` for network joins, services, context creation, evolution, and link creation. Representative lines: `das.rs:227-239` (`das-join-network!`), `271-276` (`das-services!`), `441-457` (`das-create-context`), `491-511` (`das-evolution!`), and `538-555` (`das-link-creation!`).
+
+C4-B5. `python/sandbox/sql_space/sql_space.py` is a MeTTa-native SQL GroundingSpace, but it is sandbox-quality and not Decko-aware. It connects directly through psycopg2 (`sql_space.py:131-139`), constructs SELECTs from MeTTa expressions (`144-168`), supports a basic insert branch (`170-181`), and registers `new-sql-space`, `sql.save-query-result`, and `sql.insert` (`226-237`). There is no Decko schema mapping, permission model, history handling, RichText inclusion handling, or file-card support.
+
+C4-B6. `python/sandbox/mork/mork.py` is explicitly preliminary. The file says it is a "very preliminary wrapper to MORK server" (`mork.py:7-11`), exposes status/import/export over HTTP (`28-40`), leaves query empty (`42-45`), and leaves add unimplemented (`47-50`). This confirms Source 3 R3.H1 and should not be used as the Decko bridge.
+
+C4-B7. PeTTa-specific runtime bridge code was not required to decide Source 4's integration seam. The decisive modern Hyperon path is the Rust `new-das!`/`DynSpace` module above, plus sandbox SQL/MORK experiments. Any PeTTa/lib_spaces audit should be a follow-up if the cluster chooses a MeTTa-runtime-centered pilot.
+
+Section C - Decko-MCP API surface inventory (S4.Q16)
+
+C4-C1. Decko MCP is operationally broad enough to serve as the extraction/source-of-truth API for a read-only AtomSpace mirror. Routes include auth, JWKS, types, tags, cards, card relations, history/revision/restore, file upload, trash listing, rename, and HTML/Markdown render conversion. Evidence: `mod/mcp_api/config/initializers/mcp_routes.rb:7-63`.
+
+C4-C2. Auth is real RS256 JWT bearer auth, not an open local script surface. `base_controller.rb:10-13` authenticates all MCP endpoints except auth/JWKS; `base_controller.rb:31-41` extracts/verifies a bearer token and finds the current account; `auth_controller.rb:10-24` documents username/password and API-key methods; `auth_controller.rb:75-120` authenticates with Decko and generates the token.
+
+C4-C3. Card identity and type/content preservation are supported at the API level. `cards_controller.rb:65-88` creates cards by name, type, and content. `cards_controller.rb:93-120` updates content/type and supports patch mode. This aligns with Source 1 R1.A5-A6, but any AtomSpace mapping still must preserve Decko-specific semantics, not just strings.
+
+C4-C4. Deletion and rename exist in Decko MCP and are permission-gated. `cards_controller.rb:122-132` deletes cards; `134-164` renames cards and can update referers. `cards_controller.rb:10-13` checks admin role for destroy/rename. This matters because DAS/MORK delete is not equivalent.
+
+C4-C5. Relation endpoints give the mirror enough graph structure to reconstruct many wiki edges without scraping rendered HTML. `cards_controller.rb:166-196` lists children; `198-266` provides referers, nested_in, nests, links, and linked_by.
+
+C4-C6. Batch operations exist and can be transactional at the Decko level. `cards_controller.rb:268-290` accepts up to 100 ops and has a transactional mode. This is useful for controlled export snapshots, but not evidence that DAS/MORK can receive equivalent transactions.
+
+C4-C7. History/restore endpoints exist. `cards_controller.rb:292-338` returns revision history and a specific revision; `340-360` restores from trash or revision. This is a strong reason not to map Decko directly onto a backend that lacks link delete/version semantics.
+
+C4-C8. File/Image support exists in MCP. `cards_controller.rb:414-505` uploads base64 or URL file data, writes to Decko File/Image cards, and returns file metadata. Source 1's file-card requirement (R1.A7) remains first-class and is not handled by any DAS/MORK bridge.
+
+C4-C9. Safe query is intentionally limited to CQL-like Decko fields. `query_controller.rb:38-75` allows only name, type, content, updated_at, and created_at; `100-110` executes via `Card.search` and re-checks permissions. It is a good extraction/search endpoint, not an AtomSpace query engine.
+
+C4-C10. Design implication: use DECKO-MCP for card extraction and change detection; do not invent an "AtomSpace MCP" until a semantic mirror proves value. Source 2 R2.3 already found the `from hyperon import Atomspace, MCP` sketch apocryphal.
+
+Section D - DAS deep audit and Attention Broker classification (S4.Q10, S4.Q18)
+
+C4-D1. DAS is a query engine/deployment architecture over AtomDB + agents. `das/docs/conceptual_documentation.md:16-23` describes query-engine pruning, AttentionBroker, specialized agents, and Service Bus. `README.md:40-44` describes DAS as a query API for very large knowledge bases with configurable backends.
+
+C4-D2. AtomDB is an abstraction over storage backends, not the same as OpenCog Classic StorageNode. `conceptual_documentation.md:26-30` says AtomDB can be implemented by different backends including DBMSs and MORK. `AtomDB.h:45-65` defines add/delete/re-index methods at the API boundary.
+
+C4-D3. Query execution is STI-prioritized through sources. `conceptual_documentation.md:64-77` says sources fetch candidate answers from AtomDB, query AttentionBroker for STI, attach STI, sort candidates by STI, and deliver higher-STI candidates first.
+
+C4-D4. AttentionBroker stores STI outside AtomDB and per context. `conceptual_documentation.md:79-89` says STI is in [0,1], not stored as atom property, held in AttentionBroker, and can differ across contexts. It also says Hebbian links estimate co-presence probability in query answers.
+
+C4-D5. AttentionBroker has real RPC operations and persistence. `AttentionBrokerServer.h:58-64` declares worker count and global parameters. `AttentionBrokerServer.h:95-169` exposes stimulate/correlate/asymmetric_correlate/get_importance/set_determiners/set_parameters/save_context/drop_and_load_context. `AttentionBrokerServer.cc:206-259` serializes and reloads context state.
+
+C4-D6. AttentionBroker is not running the exact 2009 ECAN formulas. Its concrete implementation is `ExactCountHebbianUpdater` plus `TokenSpreader`. `HebbianNetworkUpdater.h:92-95` defines weights as count(A->B)/count(A). `HebbianNetworkUpdater.cc:57-75` increments symmetric correlations; `78-96` increments asymmetric correlations. This is exact-count statistical updating, not the Classic ECAN Hebbian Conjunction equation audited in the ECAN cluster.
+
+C4-D7. Rent/wages are implemented, but as a fixed-token model. `StimulusSpreader.h:75-78` says importance is a fixed amount of tokens distributed among atoms. `StimulusSpreader.cc:54-60` collects rent as `rent_rate * importance`; `140-157` distributes wages proportional to request counts; `160-209` combines rent, alienated tokens, wages, consolidation, and one spreading cycle.
+
+C4-D8. The spreading formula is deterministic and arity-weighted, not stochastic sigmoid diffusion. `StimulusSpreader.cc:75-82` computes spreading rate from arity ratio and lower/upper bounds, subtracts `to_spread`, and stores it. `102-109` delivers stimulus proportionally to edge count / source count normalized by sum weights. There is no tanh sigmoid, tournament, or probabilistic diffuse/no-diffuse step.
+
+C4-D9. Defaults are fixed and aggressive. `AttentionBrokerServer.cc:10-12` sets `RENT_RATE = 0.75`, lower spreading = 0.10, upper spreading = 0.10. `AttentionBrokerServer.cc:187-197` allows runtime parameter updates through `set_parameters`.
+
+C4-D10. Tests confirm the intended token-rent/wage mathematics. `stimulus_spreader_test.cc:23-69` tests wage distribution (2/8 -> 0.25, 1/8 -> 0.125). `stimulus_spreader_test.cc:165-189` computes expected rent, total rent/wages, updated importance, and spreading rate exactly from current constants. `attention_broker_test.cc:46-98` verifies correlated/stimulated atoms get high importance and determiners can lift another atom's importance.
+
+C4-D11. Label for S4.Q18: [SURROGATE-COMPATIBLE]. DAS AttentionBroker is more production-oriented than the metta-attention audit surface, but its math is still a functional ECAN-compatible engineering surrogate. It should be documented as "ECAN-inspired/ECAN-compatible attention allocation for query prioritization," not "literal 2009 ECAN."
+
+Section E - Delete-completeness verdict (S4.Q17)
+
+C4-E1. Required hard label: [BLOCKING-INTEGRATION].
+
+C4-E2. DAS's abstract AtomDB API includes full delete methods. `AtomDB.h:57-63` defines delete_atom/node/link and plural variants. RedisMongoDB implements them (`RedisMongoDB.h:113-119`; `RedisMongoDB.cc:996-1093`). AtomDBProxy forwards `delete_atoms` commands to the server side (`AtomDBProxy.cc:100-109`, `155-188`). RemoteAtomDB and RemoteAtomDBPeer also forward delete calls (`RemoteAtomDB.cc:285-330`, `RemoteAtomDBPeer.cc:344-395`).
+
+C4-E3. MorkDB overrides only link delete and hard-fails it. `MorkDB.h:56-58` says delete_link is TODO until MORK supports deleting links/S-expressions. `MorkDB.cc:268-270` logs "MORKDB does not support deleting links" and returns false.
+
+C4-E4. Tests intentionally codify the failure. `morkdb_test.cc:250-251` expects `delete_link` false, `275-276` expects `delete_links` false, and `296` repeats the false expectation. Node delete tests pass (`morkdb_test.cc:172-197`) because MorkDB inherits RedisMongoDB node deletion, but that does not solve link/S-expression cleanup.
+
+C4-E5. There is a batch rebuild workaround, not an integration-ready delete path. `MorkDB.cc:273-316` exposes `flush_pattern` and `re_index_patterns`, clearing MORK by arity and re-adding links from MongoDB. This can repair/rebuild indexes in batch but is not transactional card delete/restore semantics and is not safe as a live Decko write-through backend.
+
+C4-E6. Therefore Gemini's likely `[BLOCKING-INTEGRATION] / [WORKAROUND-EXISTS]` dual label should be reconciled as `[BLOCKING-INTEGRATION]` with a batch-rebuild workaround noted. The brief required one label; Decko delete/rename/trash/restore semantics need a live, per-card, consistent delete path.
+
+Section F - MORK server branch status (S4.Q11)
+
+C4-F1. DAS Docker pins an old MORK server commit. `das/src/docker/mork/Dockerfile.server:8-16` pins `COMMIT_ID="578a759d2c4962de7b4a2cd17f695c89f5e53bb4"`, clones `trueagi-io/MORK` branch `server`, checks out that commit, and builds `server`.
+
+C4-F2. Current local `origin/server` is `5b04a1d71b9935e0b963fab0f1081f95f32d77fc` (2026-04-18), 49 commits ahead of the DAS pin. Representative post-pin commits include server shutdown deadlock/status fixes (`5b04a1d`, `205dd91`), malformed-symbol/invalid-expression hardening (`f284ff6`, `7872975`, `94566d5`, `1bf0e30`), write-zipper cleanup (`d8f06d7`), and copy/clear semantic changes (`58408f3`, `6f3ad55`).
+
+C4-F3. DAS runtime scripts are still on container tags, not live source. `das/src/scripts/mork_server.sh:5-13` runs image `trueagi/das:mork-server-1.0.0`. `das-toolbox/das-cli/src/settings/config.py:46-50` points CLI defaults to `trueagi/das:mork-server-1.0.5` and `mork-loader-1.0.5`. The toolbox has moved beyond the DAS repo script, but neither path proves the Dockerfile pin is current.
+
+C4-F4. das-toolbox confirms MORK is an operational local-service option. `morkdb_container_manager.py:27-41` starts a MorkDB container with `MORK_SERVER_PORT`/`MORK_SERVER_ADDR`. `metta_mork_loader_container_manager.py:31-73` runs the MORK loader container with file mount and MORK server env. `config_sections/atomdb.py:172-195` and `248-268` make "MongoDB + MorkDB" a selectable backend.
+
+C4-F5. Source 4 design implication: the Source 3 "DAS MorkDB = CODE-REAL" verdict stands, but production use should first update/pin to a vetted MORK server release or explicitly justify staying on `578a759`. The drift is large enough to be an engineering risk, not a footnote.
+
+Section G - atomspace-bridge write-back desirability (S4.Q7)
+
+C4-G1. atomspace-bridge remains the closest existing read-side Decko/PostgreSQL-to-AtomSpace seam, but write-back is not desirable for Phase 3.
+
+C4-G2. Source 2 already classified atomspace-bridge as BRIDGE-ADAPTER and read-only at this snapshot (R2.2, R2.G1-G4). Source 4 direct inspection confirms the decisive code: `SQLReader.cc:395-425` defines empty bodies for `storeAtom`, `removeAtom`, `storeValue`, `updateValue`, `loadValue`, `loadType`, `loadAtomSpace`, and `storeAtomSpace`.
+
+C4-G3. The README positions BridgeStorageNode as a foreign SQL database loader. `atomspace-bridge/README.md:178-210` demonstrates `BridgeStorageNode "postgres://..."`, `cog-open`, and `fetch-incoming-set` over tables, rows, and columns. This is a schema-import/read surface, not a Decko writer.
+
+C4-G4. Recommendation: do not implement write-back first. Use atomspace-bridge-style import/read mapping, or a small custom read-only exporter, to prove semantic value. Write-back should be a later project after Decko identity, history, permissions, files, RichText inclusions, and deletes have explicit AtomSpace semantics.
+
+Section H - sql_space.py evaluation (S4.Q9)
+
+C4-H1. `sql_space.py` is useful as a proof that MeTTa can query SQL as a GroundingSpace, but it is not a Decko integration seam.
+
+C4-H2. Positive evidence: it maps MeTTa expressions to SQL SELECTs (`sql_space.py:144-168`), returns Hyperon bindings (`7-18`, `183-200`), and registers a MeTTa operation surface (`226-237`).
+
+C4-H3. Blocking gaps: no Decko schema knowledge; no type/card identity mapping; no permission checks; no history/trash/restore; no file uploads; no safe SQL parameterization; and only minimal insert support (`170-181`). It is sandbox code, not a production adapter.
+
+C4-H4. Recommendation: mine it for API style only. Do not select `DECKO-MCP->HYPERON-SPACE->DAS` via `sql_space.py` as Phase 3. It adds a MeTTa layer without solving Decko semantics.
+
+Section I - Phase 5 PLN game-rule No-Go compatibility (S4.Q4)
+
+C4-I1. Backend integration must not be described as making PLN globally complete. The PLN cluster No-Go result still applies: local-rule PLN cannot be globally complete without joint-state information. Storage choice does not erase that boundary.
+
+C4-I2. An AtomSpace/DAS/MORK mirror can help Phase 5 game-rule reasoning only if the mirror explicitly represents the needed joint state, evidence provenance, and rule-context atoms. It can improve retrieval and query expressiveness; it does not by itself supply World-Model PLN semantics.
+
+C4-I3. For wiki/backend integration docs, replace any "PLN inference over Atomspace" acceptance gate with a narrower gate: "semantic queries and game-rule relationships that PostgreSQL cannot trivially answer, with explicit caveat that PLN completeness depends on represented joint-state/evidence structure." This aligns Source 1 R1.C3 with PLN Source 11.
+
+Section J - Four-layer AtomSpace taxonomy lock-in (S4.Q15)
+
+C4-J1. Proposed taxonomy:
+
+| Layer | What it is | Repos/evidence | Decko relevance |
+| --- | --- | --- | --- |
+| 1. Classical AtomSpace StorageNode | C++ AtomSpace persistence family, including StorageNode/BridgeStorageNode/rocks/pgres/cog | Source 2 R2.1-R2.2, R2.I map | Best conceptual ancestor for read-side SQL import, but not Decko-write ready |
+| 2. Hyperon Space | Runtime MeTTa `DynSpace`/GroundingSpace abstraction | hyperon-experimental `das.rs`, `sql_space.py`, `mork.py` | Useful for MeTTa-facing query demos; not primary Decko backend |
+| 3. DAS AtomDB + services | Distributed query/deployment layer with AtomDB, Query Engine, AttentionBroker, agents | DAS README/docs, MorkDB, das-toolbox | Candidate later query/deployment layer; delete/server-pin caveats |
+| 4. MORK native substrate | PathMap/MORK-native Rust/FFI/SDK/server substrate | Source 3 R3.1-R3.4, R3.10 | Performance substrate; requires adapter/DAS layer for Decko semantics |
+
+C4-J2. This four-layer taxonomy should replace any wiki prose that conflates AtomSpace, DAS, MORK, and Hyperon Space as one backend. It is the cleanest cluster-close artifact for `About Hyperon+AtomSpace+AtomSpace Full`.
+
+Section K - PathMap wiki card placement decision (S4.Q13)
+
+C4-K1. Recommendation: create `Knowledge Representations+PathMap` or equivalent, not just a subsection under MORK.
+
+C4-K2. Reasoning: Source 3 R3.4/R3.I established PathMap as MORK's foundational substrate and sibling repo, with incomplete database docs. MORK depends on PathMap, but PathMap is broader than the MORK application layer. Putting it only inside MORK would recreate the same "substrate hidden under implementation" ambiguity this cluster is trying to fix.
+
+C4-K3. Minimum card scope: PathMap as trie/path substrate, its relationship to MORK, the incomplete database-book TODO status, and a warning not to treat Lean/ZAM formalization claims as Rust production equivalence without bridge verification.
+
+Section L - DAS Full wiki edit specifics (S4.Q14)
+
+C4-L1. `Knowledge Representations+DAS+DAS Full` should keep "operational" for Redis/Mongo/DAS services, but tighten MORK wording:
+
+Suggested replacement:
+"DAS contains a code-real MorkDB AtomDB backend, but it is a split implementation: DAS-side AtomDB code is real; the MORK server is pinned through a Docker/server branch path; link/S-expression delete is not supported in the MorkDB backend. Treat MORK-as-DAS-backend as experimental/integration-ready for loads and queries, not a Decko-compatible mutable store."
+
+C4-L2. DAS Full should classify AttentionBroker as "ECAN-compatible engineering surrogate" rather than "literal ECAN." Add: "AttentionBroker stores per-context STI outside AtomDB, updates exact-count Hebbian networks, and uses a token rent/wages/spreading model; it is not the literal 2009 ECAN formula set."
+
+C4-L3. DAS Full should include the Hyperon Experimental bridge: `new-das!` creates a `DistributedAtomSpace` and returns a `DynSpace` (hyperon-experimental `das.rs:156-199`).
+
+C4-L4. DAS Full should include the server-branch drift caveat: DAS Docker pins MORK `578a759`, while local `origin/server` at extraction time is `5b04a1d` with 49 subsequent commits including deadlock and malformed-symbol fixes.
+
+C4-L5. AtomSpace Full should get the four-layer taxonomy from Section J.
+
+C4-L6. MORK Full should already be queued from Source 3 for 8-crate workspace, 400M-not-500M, CountSink role, weighted-atom-sweep role, PathMap dependency, and no FactorGraph PLN.
+
+C4-L7. New synthesis card remains recommended: `Implementation Families+AtomSpace Backend Integration`. It should capture the Decko integration conclusion separately from the general AtomSpace/MORK/DAS knowledge-representation cards.
+
+Section M - Reviewer-specific dissents (V4-N)
+
+V4-1. Winning seam label: Codex selects READONLY-ATOMSPACE-BRIDGE. Gemini's pre-correction extraction reportedly suggested a hybrid FFI/loader path. That may be useful for later performance work, but it skips Source 1's highest-priority Decko semantics constraints and Source 4's delete/server-drift blockers. Reconciliation should preserve "hybrid" as a Phase 4+ option, not the Phase 3 starting seam.
+
+V4-2. Delete verdict: If Gemini returns two labels (`BLOCKING-INTEGRATION` plus `WORKAROUND-EXISTS`), reconcile to the required single label [BLOCKING-INTEGRATION]. `re_index_patterns`/`flush_pattern` are batch repair mechanisms, not live Decko CRUD semantics.
+
+V4-3. AttentionBroker label: If Gemini uses [SURROGATE-COMPATIBLE], accept. If it uses [ECAN-FAITHFUL] or [0/4-LITERAL], reject unless it cites the four 2009 ECAN equations literally in DAS code. Current evidence supports STI/rent/wages/Hebbian surrogate behavior, not literal Classic ECAN equations.
+
+V4-4. MORK server drift: A reviewer who only reads das-toolbox image tags may understate the `Dockerfile.server` pin. Both facts must be kept: toolbox now uses 1.0.5 image tags, while the DAS repo Dockerfile still pins `578a759`.
+
+DELIVERABLE 2 - INTEGRATION DESIGN MEMO
+
+1. Executive summary (<=150 words)
+
+Build Phase 3 as a read-only AtomSpace semantic mirror of Decko, not a write-through DAS/MORK backend. The existing Decko MCP API already exposes the source-of-truth card surface: CRUD, names/types/content, relations, history, render conversion, file upload, and auth. DAS is code-real and Hyperon-integrated, with MORK-backed AtomDB and AttentionBroker, but MorkDB link/S-expression delete is unsupported and the DAS MORK Docker path pins a stale server commit. atomspace-bridge is the closest existing SQL-to-AtomSpace seam, but its write methods are empty. The acceptance gate should therefore test semantic value over PostgreSQL under latency and integrity constraints before any storage migration. Use DAS/MORK as downstream query/substrate candidates after the read-only mirror proves value.
+
+2. Acceptance gate recap
+
+C4-MEMO-1. Source 1 acceptance gate remains controlling (R1.1-R1.4, R1.B3):
+- Fetch card latency: target under 500ms, acceptable under 2s.
+- Semantic/PLN query latency: target under 2s, acceptable under 5s, but no PLN-completeness overclaim.
+- Demonstrate at least 5 semantic insights/relationships not trivially available from PostgreSQL.
+- Zero export/mapping errors over repeated runs.
+- Preserve Decko semantics: card identity, names, type, RichText/Markdown behavior, sections/TOC inclusions, file cards, history, permissions, delete/restore.
+- Keep Decko/Rails/PostgreSQL primary during the prototype.
+
+C4-MEMO-2. Source 2 and Source 3 narrowed the gate:
+- atomspace-pgres is BACKING-STORE-ONLY and deprecated, not Decko schema-compatible (R2.1).
+- atomspace-bridge is closest existing read-side seam but not write-ready (R2.2).
+- DAS is already wired into Hyperon but should be evaluated as runtime/query layer (R2.4).
+- MORK native is FFI/SDK/substrate, not StorageNode/DAS by itself (R3.1).
+- DAS MorkDB is code-real but delete-incomplete (R3.2, C4-E).
+
+3. Winning seam selection
+
+C4-MEMO-3. Hard label: READONLY-ATOMSPACE-BRIDGE.
+
+C4-MEMO-4. Rationale:
+- It respects Decko as source of truth (R1.A1-A2).
+- It uses the mature Decko MCP/Rails/Postgres API surface for extraction (C4-C).
+- It avoids MORK/DAS delete blockers during Phase 3 (C4-E).
+- It avoids atomspace-bridge write stubs (C4-G).
+- It can still exercise AtomSpace/DAS/MORK semantic-query value downstream.
+
+C4-MEMO-5. Explicit non-selection:
+- DECKO-MCP->DAS: too early; DAS/MorkDB delete and MORK server pin are unresolved.
+- DECKO-MCP->HYPERON-SPACE->DAS: adds MeTTa runtime complexity without solving Decko semantics.
+- DIRECT-MORK-HTTP: MORK-native surface lacks Decko schema, CRUD, history, permissions, and delete semantics.
+- DIRECT-MORK-FFI: potentially low latency, but product semantics and Ruby/Rails integration are custom work.
+- HYBRID: correct as a long-term architecture option, not Phase 3's first proof.
+- DEFER: too conservative; a read-only mirror is feasible and valuable enough to prototype.
+
+4. Phase 3 prototype scope
+
+C4-MEMO-6. Prototype name: Decko read-only AtomSpace mirror.
+
+C4-MEMO-7. Input:
+- Use Decko MCP or Rails runner/Postgres export to pull a controlled card subset.
+- Include card name, id, type, content, updated_at, children, links, referers, nests/nested_in, history summary, tags, and file metadata placeholders.
+- Start with 500-2,000 cards; include representative RichText, Markdown, RawData, Pointer, File/Image, and cluster-pilot cards.
+
+C4-MEMO-8. Mapping:
+- Card -> ConceptNode/CardNode equivalent.
+- Card type -> InheritanceLink or typed predicate.
+- Parent/child plus-name hierarchy -> EvaluationLink or explicit relation atoms.
+- Links/nests/referers -> relation atoms with relation type.
+- Content hashes and revision metadata -> explicit data atoms, not MORK CountSink.
+- File cards -> metadata atoms only in Phase 3; binary payload stays in Decko storage.
+
+C4-MEMO-9. Backend:
+- Start with atomspace-bridge-style read/import mapping or a small custom exporter into a local AtomSpace/MeTTa representation.
+- Run optional DAS query experiments after the mirror exists, not before.
+- Do not use DAS/MORK as mutable store in Phase 3.
+
+C4-MEMO-10. Evaluation:
+- Measure export time, mirror-build time, single-card fetch, relation query, semantic query, and repeated-run consistency.
+- Compare against native PostgreSQL/CQL baseline for the same queries.
+- Require 5 semantic insights that are materially harder in PostgreSQL: e.g. cross-cluster lineage, stale-claim detection, relation-distance queries, source-to-wiki-card provenance paths, and publication/repo/code triple links.
+
+C4-MEMO-11. Stop criteria:
+- Any loss of card identity/name/type/content.
+- Any file-card payload corruption.
+- Any history/delete/restore mismatch if those are included in the subset.
+- p90 query latency over 2s for simple semantic lookups unless the query demonstrably cannot be approximated in SQL.
+
+5. Documentation edit catalog
+
+C4-MEMO-12. `docs/ATOMSPACE-INTEGRATION.md` edits:
+- Replace atomspace-pgres/lowest-friction implication with "atomspace-pgres is backing-store-only and deprecated; not Decko schema-compatible" (R2.1).
+- Replace any `from hyperon import Atomspace, MCP` wording with explicit distinction: deployed Decko MCP API vs proposed AtomSpace bridge (R2.3, C4-C).
+- Replace MORK/500M claim with "tested up to 400M atoms in RAM, 500M reported OOM" (R3.5).
+- Add delete warning: DAS MorkDB link/S-expression delete unsupported; not Decko mutable backend-ready (C4-E).
+- Add Phase 3 scope: read-only mirror first, not dual-write/backend replacement.
+
+C4-MEMO-13. `docs/ROADMAP.md` edits:
+- Update Phase 3 from generic "Atomspace via MCP" to "Decko read-only AtomSpace mirror acceptance test."
+- Add acceptance gates from C4-MEMO-1.
+- Add explicit go/no-go before any write-through backend work.
+
+C4-MEMO-14. Do not edit `docs/CLAUDE.md` for prospective AtomSpace integration. Source 1 R1.E5 already said it documents current Decko/Rails/PostgreSQL operating model and should remain current-ops focused.
+
+6. Wiki edit catalog
+
+C4-MEMO-15. `About Hyperon+AtomSpace` / `About Hyperon+AtomSpace+AtomSpace Full`:
+- Add four-layer taxonomy (Classical StorageNode, Hyperon Space, DAS AtomDB/services, MORK native substrate).
+- Correct any wording that treats these as one interchangeable backend.
+- Add atomspace-pgres and atomspace-bridge caveats from Source 2.
+
+C4-MEMO-16. `Knowledge Representations+DAS` / `DAS Full`:
+- Add DAS current HEAD/source-pilot note.
+- Update MORK integration wording: code-real MorkDB AtomDB backend, split with server branch, delete incomplete, stale Docker pin.
+- Add AttentionBroker classification: ECAN-compatible engineering surrogate, not literal 2009 ECAN.
+- Add Hyperon Experimental `new-das!`/`DynSpace` evidence.
+
+C4-MEMO-17. `Knowledge Representations+MORK` / `MORK Full`:
+- Apply Source 3 queued edits: 8-crate workspace, PathMap foundational dependency, 400M not 500M, CountSink query/reduction not card history, weighted-atom-sweep experimental, no FactorGraph PLN runtime, MORK-native FFI/SDK/substrate label.
+- Add Source 4 server-branch drift caveat where DAS/MorkDB is discussed.
+
+C4-MEMO-18. New card: `Knowledge Representations+PathMap`.
+- Include PathMap role as MORK foundational trie/path substrate.
+- Include "database docs incomplete" caveat.
+- Link to MORK and MORK-PathMap formalization with proof-status caveat.
+
+C4-MEMO-19. New card: `Implementation Families+AtomSpace Backend Integration`.
+- Purpose: separate engineering integration design from knowledge-representation descriptions.
+- Include Source 1 acceptance gate, Source 2 seams, Source 3 MORK verdicts, Source 4 winning seam, and Phase 3 prototype recommendation.
+
+C4-MEMO-20. Conditional: `Implementation Families+Attention and Motivation`.
+- Add DAS AttentionBroker note only if the card currently discusses ECAN/DAS storage-layer attention. Wording should be "DAS AttentionBroker is an ECAN-compatible query-prioritization surrogate," not "literal ECAN."
+
+7. Open questions for Phase 4+
+
+C4-MEMO-21. Can atomspace-bridge be safely templated for Decko public schema without requiring a custom Decko write path?
+
+C4-MEMO-22. Should Phase 4 use DAS as a query layer over the mirror, or keep a simpler local AtomSpace/MeTTa query path until the semantic-value gate passes?
+
+C4-MEMO-23. What exact AtomSpace schema should represent Decko history? Source 3 says CountSink is not a persistent version counter; history must be explicit data.
+
+C4-MEMO-24. What is the safe plan for delete/restore parity if DAS/MORK enters the write path? Current answer: unresolved/blocking.
+
+C4-MEMO-25. Should DAS Docker MORK pin be updated to a current audited server commit before any local benchmark? Current answer: yes, or explicitly document why not.
+
+C4-MEMO-26. How much semantic value must come from PLN vs non-PLN graph queries? Avoid making PLN the only success criterion because PLN completeness depends on world-model evidence structure.
+
+C4-MEMO-27. What is the correct relationship between Decko MCP and a future AtomSpace query MCP? Current answer: keep Decko MCP as source-of-truth API; add AtomSpace query tools only after the mirror proves value.
+
+END OF CODEX SOURCE 4 FINDINGS

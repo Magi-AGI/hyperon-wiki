@@ -1,0 +1,532 @@
+================================================================================
+ATOMSPACE BACKEND INTEGRATION CLUSTER PILOT
+SOURCE 1 RECONCILIATION — Existing Wiki Backend Integration Design
+================================================================================
+
+Pilot:        AtomSpace Backend Integration Cluster Pilot
+Source:       1 of 4 (in-repo design and operations docs)
+Date:         2026-04-29
+Orchestrator: Claude Opus 4.7 (1M)
+Reviewers:    Codex (findings_codex.txt) + Gemini (findings_gemini.txt)
+Status:       Reconciled. Source 1 closes for extraction. Cross-source
+              forwards locked. Wiki/file edits deferred to cluster close.
+
+
+================================================================================
+EXECUTIVE SUMMARY (CONSENSUS)
+================================================================================
+
+R1.1 Source 1 locks the ACCEPTANCE GATE, not the ARCHITECTURE CHOICE. Both
+     models converge on this framing. AtomSpace integration is conditional
+     on proving measurable semantic value over PostgreSQL while meeting
+     latency, reliability, rollback, and Decko-semantics requirements.
+     Cf. Codex C1, C62, C63 ↔ Gemini G1, G5.
+
+R1.2 Quantitative acceptance criteria are explicit and shared:
+     - Fetch card latency:    target <500ms / acceptable <2s / unacceptable >5s
+     - Search/create latency: target <1s    / acceptable <3s / unacceptable >10s
+     - PLN inference:         target <2s    / acceptable <5s / unacceptable >15s
+     - Phase 3 scale:         1000+ cards no degradation
+     - Phase 4 scale:         10,000+ cards / 100+ concurrent users
+     - Phase 3 success:       <2s p90 latency, MCP overhead <10%, 0 export
+                              errors in 10 runs, 5+ PLN/semantic insights
+                              not visible in PostgreSQL
+     Cf. Codex C2, C12 ↔ Gemini G29-G32.
+
+R1.3 The "MCP adapter" term is overloaded. There are TWO distinct components
+     that share the label and must not be conflated in subsequent sources or
+     wiki edits:
+     (a) The deployed Decko MCP/card API. Operational since 2025-12-02 with
+         JWT/RS256/JWKS/role-based access. Live infrastructure.
+     (b) The proposed Python `DeckoAtomspaceAdapter` bridge. Sketch only;
+         no implementation in the local code tree (Codex C3 grep).
+     Cf. Codex C3, C19, C60 ↔ Gemini G2, G6, G21, G22.
+
+R1.4 The integration design is a GATED MIGRATION program, not a backend
+     swap. Phase 3 (Jan-Apr 2026) prototypes against PostgreSQL primary;
+     Phase 4 (Apr-Jul 2026) is conditional swap with dual-write rollback;
+     Phase 5 (2026+) AI Gamemaster reasoning. Both reviewers concur.
+     Cf. Codex C5, C6, C29-C31, C36, C37 ↔ Gemini G4, G5.
+
+
+================================================================================
+SECTION A — REQUIREMENTS (CONSENSUS + EXPANSIONS)
+================================================================================
+
+CONSENSUS REQUIREMENTS (both reviewers):
+
+R1.A1 Production wiki remains Decko/Rails/PostgreSQL during prototype phase.
+      Atomspace path is read-only or mirrored evaluation until gate is met.
+      [C5, G4, G5]
+
+R1.A2 PostgreSQL remains the fallback even after Atomspace adoption. Plan
+      includes dual-write, consistency checks, backend flag, rollback.
+      [C6]
+
+R1.A3 Integration must demonstrate semantic value, not just alternate
+      storage. PLN/semantic-reasoning queries must find relationships
+      PostgreSQL cannot.
+      [C11, G5, G31]
+
+R1.A4 Phase 3 (Jan-Apr 2026) "Atomspace Integration Prototype" is the
+      current active target.
+      [C22, G1]
+
+CODEX-EXPANDED REQUIREMENTS (Gemini did not surface; reviewers should
+review and confirm before Source 2):
+
+R1.A5 Decko card model MUST be preserved losslessly: card identity, name,
+      type, content, pointers, timestamps, hierarchical `+` names, nesting,
+      cardtype-specific rendering.
+      [C7, C49] — V1-2 Codex-only finding.
+
+R1.A6 RichText vs Markdown semantics are NOT cosmetic. Section/TOC
+      inclusion cards REQUIRE RichText and `{{+child|content}}` syntax.
+      Atomspace mappings that treat content as plain strings will miss
+      operational wiki behavior.
+      [C8] — V1-3 Codex-only finding.
+
+R1.A7 File-card / upload behavior must be preserved or explicitly scoped
+      out. Decko-specific cache/action-context bugs in browser uploads,
+      console-upload server-side workarounds — these are NOT captured by
+      the simple ConceptNode/StateLink mapping.
+      [C9] — V1-4 Codex-only finding.
+
+R1.A8 Operational access today is Rails/Decko API access, not direct file
+      editing. Cards live in the database; normal inspection uses Rails
+      console, `script/card runner`, or the MCP/card API.
+      [C10]
+
+R1.A9 SPEC.md core hypothesis: Decko's structured card model offsets DB
+      latency penalty (target: <10x slower than static files). Naming
+      convention `[Type]: [Name] (+Context)` should be mirrored in
+      AtomSpace ConceptNode names.
+      [G3] — Gemini-specific extraction; aligns with C7.
+
+
+================================================================================
+SECTION B — ASSUMPTIONS (TAGGED FOR SOURCE 2-4 RESOLUTION)
+================================================================================
+
+The 9 open research questions Gemini enumerates align with Codex's
+assumption catalog. Both are preserved. Tag column = which Source resolves.
+
+  ID    Question / Assumption                                    Resolves
+  ----  -------------------------------------------------------  --------
+  G7    Pure symbolic vs hybrid embeddings for card content      S2/S4
+  G8/   PLN inference real-time (<2s) for interactive use        S2/S3/S4
+  C15
+  G9/   Consistency model (eventual MORK vs strong)              S3/S4
+  C18
+  G10   Query language: raw Atomese vs high-level DSL            S2/S4
+  G11   Versioning: card history inside AtomSpace                S2
+  G12   MORK hosting: SaaS/Managed vs Self-hosted                S3
+  G13   Multi-node latency in distributed MORK cluster           S3
+  G14   Write-conflict handling in distributed backend           S3/S4
+  G15   Backup strategy equivalent to pg_dump                    S3/S4
+
+  C13   `from hyperon import Atomspace, MCP` API real?           S4
+  C14   Atomspace query API can implement adapter sketch?        S2
+  C16   Card name sanitization correctness (`+`, `:`)             S2
+  C17   MORK distributed backend with HA/replication/sharding?   S3
+  C19   Existing MCP work as integration transport?              S4
+  C20   atomspace-pgres / StorageNode as Decko-friendly seam?    S2 [HIGH-PRIORITY]
+  C21   Is DAS the wiki integration consumer or deployment-only? S4
+
+R1.B1 HIGH-PRIORITY assumption (both reviewers, separate framings):
+      atomspace-pgres compatibility with Decko's existing PostgreSQL
+      schema. If atomspace-pgres can read/write the same database Decko
+      uses, this is the lowest-friction integration seam available. If
+      it requires a separate schema/store, it loses much of its appeal.
+      [C20, C50, G19]
+
+
+================================================================================
+SECTION C — STALE CLAIMS (CONSENSUS + EXPANSIONS)
+================================================================================
+
+CONSENSUS STALE CLAIMS:
+
+R1.C1 ROADMAP.md Phase 3 labeled "Not Started" but date is 2026-04-29.
+      Schedule/status field is stale. [C22]
+
+R1.C2 ATOMSPACE-INTEGRATION.md last updated 2025-10-16 and marked
+      Future/Experimental. Useful as design intent; status should be
+      refreshed at cluster close. [C23]
+
+R1.C3 PLN-as-production-ready language. Prior PLN cluster pilot
+      established: production PLN is local-rule and incomplete; world-
+      model runtime closure is pending; FactorGraph PLN over MORK is
+      paper/proposal only. Doc-side claims that treat PLN reasoning as
+      production-ready must be corrected or conditioned.
+      [C24, G16]
+
+R1.C4 ATOMSPACE-INTEGRATION.md "Distributed via MORK" framing.
+      Production-readiness needs Source 3 verification.
+      [C24 (overlaps), C27 (overlaps), G17]
+
+R1.C5 Wiki-side status claims discovered in Phase 0 — to be verified by
+      Sources 2-4 before being retained:
+      - "MORK and DAS backends operational"
+      - "PeTTa/MORK 500M+ atoms in RAM"
+      - "MORK-native PLN, WILLIAM"
+      - "MORK integration as DAS backend under development"
+      - "atomspace-pgres operational"
+      - "classical C++ AtomSpace v5.0+ mature"
+      [C27]
+
+CODEX-EXPANDED STALE CLAIMS (Gemini did not surface):
+
+R1.C6 MCP-PHASE-2-PLAN.md is superseded by MCP-PHASE-2-COMPLETE.md.
+      Plan items (DB-backed API keys, named queries, batch dry-run, jobs)
+      are partially deferred per COMPLETE/DEPLOYMENT docs. PLAN is no
+      longer the status source.
+      [C25] — V1-5 Codex-only finding.
+
+R1.C7 MCP-PHASE-1.1-FIXES.md is historical. Parser/API-key limitations
+      and "ready for testing" language are superseded by Phase 2
+      completion/deployment docs.
+      [C26] — V1-5b Codex-only finding.
+
+PHASE-0 PRE-FLAGGED HOT SPOTS — unaffected this Source:
+
+R1.C8 ECAN-PLN coupling, OpenPsi paper-faithfulness, AttentionBank
+      availability — none are central to the Source 1 design docs.
+      Hot spots remain as guardrails for Source 2-4 but did not produce
+      Source 1 corrections. [C28]
+
+
+================================================================================
+SECTION D — DESIGN OPTIONS (CONSENSUS CATALOG)
+================================================================================
+
+The reviewers' option catalogs largely overlap. Reconciled list:
+
+R1.D1 Shadow / nightly export mirror. Decko/PostgreSQL primary; Atomspace
+      receives exports for read-only evaluation. SAFEST Phase 3 baseline.
+      [C29]
+
+R1.D2 Atomspace primary via adapter. Atomspace becomes source of truth;
+      PostgreSQL becomes backup/archive. PHASE 4 ONLY, conditional on
+      Phase 3 outcome. [C30, G4]
+
+R1.D3 Dual-write migration. Writes go to both stores; reads transition
+      from PostgreSQL to Atomspace with PostgreSQL shadow validation.
+      [C31, G4]
+
+R1.D4 MCP bridge. Repo already has a Decko MCP API surface; a bridge
+      could expose Atomspace-backed query tools without replacing Decko
+      storage. May satisfy semantic-query goals with less risk than a
+      backend swap.
+      [C32, G6, G21]
+
+R1.D5 Direct Atomspace/StorageNode integration. atomspace-storage,
+      atomspace-pgres, atomspace-rocks are likely Source 2 targets.
+      May be more appropriate than HTTP/MCP if low latency is critical.
+      [C33, G19]
+
+R1.D6 MORK distributed backend. Framed as optional scaling infrastructure,
+      not required for first prototype. Source 3 must establish whether
+      MORK is real backend option or still experimental for this use.
+      [C34]
+
+R1.D7 PostgreSQL-primary indefinitely with Atomspace for offline/batch
+      reasoning. Compatible with the gate criteria; pragmatic outcome
+      if semantic value exists but latency or consistency fails.
+      [C35]
+
+R1.D8 lib_spaces.metta — MeTTa-native pluggable storage abstraction.
+      Distinct from above; could host any of the above as backends.
+      [G20]
+
+R1.D9 (NEW SEAM, Gemini-only) `run-card-runner.sh` — production wrapper
+      script at `/home/ubuntu/run-card-runner.sh` for direct Ruby-to-Card
+      operations. Potential high-value seam for administrative/bulk
+      integration testing.
+      [G18] — V1-6 Gemini-only finding.
+
+R1.D10 Ruby AtomspaceBackend wrapper. Prospective `lib/atomspace_backend.rb`
+       wrapping the MCP adapter from the Rails side. Implementation
+       location, not an alternative to the adapter itself.
+       [G22]
+
+
+================================================================================
+SECTION E — NON-GOALS
+================================================================================
+
+R1.E1 Atomspace from day one. Roadmap explicitly rejects this. [C36]
+
+R1.E2 Production disruption during Phase 3. Prototype must impose no
+      production risk. [C37]
+
+R1.E3 MORK as required initial infrastructure. MORK is optional and
+      conditional on scale/distributed-backend needs. [C38]
+
+R1.E4 Treating MCP-PHASE-2-PLAN.md as fully implemented. PHASE-2-COMPLETE
+      and DEPLOYMENT-STATUS are the status sources; deferred features
+      remain deferred unless current code/deployment proves otherwise.
+      [C39]
+
+R1.E5 Editing docs/CLAUDE.md as part of cluster close. It documents the
+      current Decko/Rails/PostgreSQL operating model and should remain
+      stable unless the cluster outcome changes operating procedures.
+      [C40] — Aligns with the brief's §7 carve-out.
+
+
+================================================================================
+SECTION F — WIKI-CARD DELTA CANDIDATES (RECONCILED)
+================================================================================
+
+Both reviewers identified wiki cards as edit candidates; reconciled list
+with Codex's framing primary and Gemini's specific cards added:
+
+R1.F1 About Hyperon+AtomSpace (ID 4017) and About Hyperon+AtomSpace+
+      AtomSpace Full (ID 4403). If they imply backend swap is imminent
+      or production-ready, reframe to gated Phase 3/Phase 4.
+      [C41]
+
+R1.F2 Knowledge Representations+MORK (ID 648) and MORK Full (ID 4194).
+      Recheck after Source 3. Source 1 docs frame MORK as optional and
+      open-question-heavy; Phase 0 found stronger wiki status claims.
+      [C42]
+
+R1.F3 Knowledge Representations+DAS (ID 646) and DAS Full (ID 4200).
+      Recheck after Source 4. Source 1 docs do not establish DAS as the
+      wiki integration route; any DAS-card claim about MORK backend
+      integration or production readiness needs independent verification.
+      [C43, G24]
+
+R1.F4 Implementation Families+Attention and Motivation (ID 4751).
+      Gemini-flagged. May need update to reflect AtomSpace Backend
+      Integration pilot findings — but only if Sources 2-4 surface
+      attention-layer integration claims that affect the card. Codex
+      did not flag this; we tag as CONDITIONAL pending Source 3-4.
+      [G23] — V1-7 Gemini-only finding.
+
+R1.F5 NEW WIKI-CARD CANDIDATE (Codex): A concise "AtomSpace Backend
+      Integration" synthesis note after cluster close. Captures: the
+      conditional value-over-PostgreSQL criterion, latency gates, dual-
+      write/rollback plan, semantic-insight requirement, current
+      recommended integration seam. Likely under About Hyperon+ or
+      Implementation Families+.
+      [C44] — V1-8 Codex-only finding.
+
+R1.F6 Cards mentioning atomspace-pgres / StorageNode / MORK as
+      operational backend options must be cross-checked against Source
+      2/3 reality before retention. [C45]
+
+R1.F7 docs/ATOMSPACE-INTEGRATION.md and docs/ROADMAP.md are explicit
+      cluster-close edit targets if Sources 2-4 invalidate API
+      assumptions or stale timelines. docs/CLAUDE.md remains out of
+      scope. [C46, brief §7]
+
+R1.F8 Wiki/docs should make file-card upload handling and RichText
+      inclusion semantics first-class requirements. The current
+      Atomspace mapping under-specifies these. [C47] — Codex-only.
+
+
+================================================================================
+SECTION G — CROSS-SOURCE FORWARDS (LOCKED FOR SOURCE 2-4 BRIEFS)
+================================================================================
+
+FOR SOURCE 2 (AtomSpace API + persistence):
+
+  S2.Q1 Verify AtomSpace API surfaces needed by the adapter: query,
+        mutation, delete, values/metadata, link typing, StorageNode,
+        atomspace-storage, atomspace-pgres, atomspace-rocks, atomspace-
+        bridge. [C48]
+
+  S2.Q2 Determine whether Decko card identity and hierarchy can be
+        represented losslessly: `+` names, original-name metadata,
+        RichText inclusion cards, file cards, card history, permissions.
+        [C49, R1.A5-A7]
+
+  S2.Q3 [HIGH-PRIORITY] Verify whether atomspace-pgres can interact
+        with Decko's existing PostgreSQL data or requires a separate
+        schema/store. Most promising low-friction seam if it exists.
+        [C50, G19, R1.B1]
+
+  S2.Q4 Check whether classical C++ AtomSpace and modern Hyperon/MeTTa
+        Atomspace APIs are compatible enough for the design docs'
+        assumptions. Do NOT collapse C++ AtomSpace, Hyperon Space API,
+        and DAS into one thing. [C51]
+
+  S2.Q5 Verify name sanitization correctness: the proposed `_sanitize`
+        replaces `+`, `:`, spaces with `_`. `+` is a first-class Decko
+        hierarchy convention — verify whether lossless round-trip is
+        achievable. [C16, C49]
+
+  S2.Q6 Apply C++ AND Scheme/MeTTa dual-API audit (ECAN Source 4 V0-1
+        rule). Grep both layers for any backend-readiness claim.
+
+FOR SOURCE 3 (MORK production substrate):
+
+  S3.Q1 Verify MORK production-readiness: external API, FFI/SDKs,
+        persistence, benchmarks, distributed operation, replication,
+        partitioning, coordination, and "500M+ atoms in RAM" claim.
+        [C52]
+
+  S3.Q2 Apply bidirectional fork-divergence rule across MORK forks
+        (MORK, MORK-atomspace-builder, MORK-leungmanhin, MORK-rejuve-
+        bio, MORK-zariuq, MORK2) and SDK/FFI repos (mork_ffi,
+        mork-rust-sdk, mork-ts-sdk). Stale fork may have unique bridge
+        work; current fork may have dropped older experiments.
+        [C53]
+
+  S3.Q3 Carry forward PLN Source 8/11 constraints: FactorGraph PLN
+        over MORK was paper/proposal only; ZAM Lean formalization was
+        adjacent, not wired into Rust production. Verify whether
+        anything has changed.
+        [C54]
+
+  S3.Q4 Verify MORK distributed-backend production-readiness for the
+        wiki use case scale. Gemini flagged this specifically.
+        [G17]
+
+  S3.Q5 Apply pickaxe rule (ECAN Source 3 V0-1) before any "MORK does
+        not support X" claim.
+
+FOR SOURCE 4 (DAS + runtime bridge):
+
+  S4.Q1 Establish whether DAS is the correct consumer-facing API for
+        the wiki backend, a deployment layer underneath Atomspace,
+        or irrelevant to a Decko integration. Check DAS core, das-
+        toolbox, das-metta-parser, Attention Broker, runtime bridge
+        repos. [C55]
+
+  S4.Q2 Evaluate MeTTa Spaces / lib_spaces.metta / PeTTa / hyperon-
+        experimental as runtime integration seams. Determine whether
+        a wiki backend would call MeTTa, DAS, AtomSpace directly, or
+        only export a shadow mirror.
+        [C56, G20]
+
+  S4.Q3 Verify the `from hyperon import Atomspace, MCP` API used in
+        the design sketch — does this resolve in current hyperon-
+        experimental? If yes, what is the version pin?
+        [C13]
+
+  S4.Q4 Verify Phase 5 PLN game-rule reasoning against PLN cluster
+        pilot's No-Go theorem. Does the design's symbolic rule
+        representation account for joint-evidence completeness?
+        [G16, R1.C3]
+
+  S4.Q5 Produce the integration-design synthesis against Source 1
+        gates: latency, semantic value, data integrity, rollback,
+        operational complexity, implementation effort. [C57]
+
+
+================================================================================
+SECTION H — CROSS-MODEL DISSENTS (V1-N RECORDS)
+================================================================================
+
+V1-1 FILE-LINE-COUNT DISCREPANCY (orchestrator vs Codex):
+     - Orchestrator's `wc -l` (verified twice at HEAD 2026-04-29):
+       ATOMSPACE-INTEGRATION.md = 858, ROADMAP.md = 891,
+       SPEC.md = 638, CLAUDE.md = 322.
+     - Codex C58 cites 671/709/490/242.
+     - Ratio analysis: Codex's counts are 75-80% of orchestrator's,
+       consistent with Codex counting non-blank lines or running a
+       different tool. Substantive extraction unaffected.
+     - Resolution: orchestrator counts are authoritative for HEAD; Codex
+       counts logged as Codex-side methodology variance. Future briefs
+       will avoid relying on absolute line numbers anyway since both
+       reviewers cite line ranges (`docs/X.md:N-M`) which depend only on
+       relative position within the file.
+
+V1-2 DECKO CARD MODEL PRESERVATION REQUIREMENT (Codex-only):
+     Codex C7 makes lossless preservation of Decko card identity,
+     hierarchical `+` names, nesting, and cardtype-specific rendering
+     a hard REQUIREMENT. Gemini did not surface this. Adopted into
+     R1.A5; flagged as Codex-only finding for parity.
+
+V1-3 RICHTEXT VS MARKDOWN SEMANTICS (Codex-only):
+     Codex C8 surfaces that Section/TOC inclusion cards REQUIRE
+     RichText and `{{+child|content}}` syntax — content cards may be
+     Markdown — and that mappings treating content as plain strings
+     miss operational wiki behavior. Gemini did not surface this.
+     Adopted into R1.A6; flagged for parity.
+
+V1-4 FILE-CARD UPLOAD BEHAVIOR (Codex-only):
+     Codex C9 surfaces Decko-specific cache/action-context bugs in
+     browser uploads and the console-upload server-side workaround as
+     a REQUIREMENT or scope-out item. Gemini did not surface this.
+     Adopted into R1.A7; flagged for parity.
+
+V1-5 / V1-5b MCP-PHASE STATUS SUPERSESSION (Codex-only):
+     Codex C25/C26 flag MCP-PHASE-2-PLAN.md and MCP-PHASE-1.1-FIXES.md
+     as superseded by MCP-PHASE-2-COMPLETE.md / MCP-DEPLOYMENT-STATUS.md.
+     Gemini cited PHASE-2-PLAN.md and DEPLOYMENT-STATUS.md but did not
+     flag the supersession. Adopted into R1.C6/R1.C7.
+
+V1-6 `run-card-runner.sh` SEAM (Gemini-only):
+     Gemini G18 surfaces a production wrapper script at
+     `/home/ubuntu/run-card-runner.sh` discovered in MCP-DEPLOYMENT-
+     STATUS.md as a candidate integration seam. Codex did not surface
+     this. Adopted into R1.D9; flagged for parity. Source 4 should
+     verify whether this seam can be repurposed for Atomspace-side
+     bulk operations.
+
+V1-7 ID 4751 (Attention and Motivation) AS WIKI-EDIT CANDIDATE
+     (Gemini-only):
+     Gemini G23 flagged this card as a likely cluster-close edit
+     target. Codex did not. Reconciled as CONDITIONAL — only if
+     Sources 3-4 surface attention-layer integration claims that
+     affect this card's content. Otherwise ignore.
+
+V1-8 NEW SYNTHESIS WIKI-CARD (Codex-only):
+     Codex C44 proposes a new "AtomSpace Backend Integration"
+     synthesis note after cluster close. Gemini did not propose a
+     new card. Adopted into R1.F5 as a candidate; final decision at
+     cluster close.
+
+V1-9 `MCP ADAPTER` TERMINOLOGY (Codex-only):
+     Codex C60 flags that "MCP adapter" is overloaded between the
+     deployed Decko MCP API and the proposed Atomspace bridge. Gemini
+     uses "MCP Adapter" (Python) without disambiguation. Adopted into
+     R1.3; both labels must be disambiguated in subsequent sources
+     and any wiki edits.
+
+V1-10 NO-CODE-CHECK DISSENT (Codex-only methodology):
+     Codex C59 dissented from the brief's framing of Source 1 as
+     "pure documentation audit," arguing a small grep was needed to
+     confirm the Decko MCP API exists and the Atomspace adapter does
+     not. The brief was already revised per Codex's earlier
+     correction; Codex C59 is a methodological reaffirmation, not a
+     new dissent. Recorded for traceability.
+
+
+================================================================================
+BOTTOM LINE
+================================================================================
+
+R1.B1 Source 1 closes with a clear acceptance gate, a quantitative latency
+      budget, an enumerated assumption catalog tagged for Source 2-4
+      resolution, and a non-overlapping list of design options. The
+      single biggest substantive divergence between reviewers is Codex's
+      depth on Decko-side requirements (card identity, RichText, file
+      uploads, name-sanitization, MCP-status supersession) which Gemini
+      did not surface but which the orchestrator has adopted into the
+      reconciled requirements (R1.A5-A7) without dilution.
+
+R1.B2 The single biggest substantive divergence the OTHER way is Gemini's
+      discovery of `run-card-runner.sh` (R1.D9, V1-6), a production-side
+      seam that Codex's grep did not find because it lives at
+      `/home/ubuntu/run-card-runner.sh` on the production server, not
+      in the local repo tree.
+
+R1.B3 The integration is conditional on PROVING value over PostgreSQL.
+      Sources 2-4 must produce data that either supports or refutes:
+      (a) lossless Decko semantics achievable on Atomspace,
+      (b) <500ms / <2s / <1s latency budgets achievable on a real backend,
+      (c) PLN/semantic queries that PostgreSQL cannot trivially serve,
+      (d) reliable export/migration with rollback,
+      (e) clear identification of THE seam (StorageNode / atomspace-pgres
+          / MCP bridge / shadow mirror / lib_spaces.metta).
+
+R1.B4 Source 1 produces NO wiki writes, NO design-doc edits, NO commits.
+      All identified delta candidates are queued for cluster close.
+
+================================================================================
+END OF SOURCE 1 RECONCILIATION
+================================================================================

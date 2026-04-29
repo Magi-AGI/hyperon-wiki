@@ -1,0 +1,313 @@
+================================================================================
+ATOMSPACE BACKEND INTEGRATION CLUSTER PILOT
+SOURCE 1 BRIEF — Existing Wiki Backend Integration Design (in-repo docs)
+================================================================================
+
+§0. SOURCE IDENTITY
+-------------------
+Cluster pilot:    AtomSpace Backend Integration (AtomSpace + MORK + DAS)
+Source number:    1 of 4
+Source name:      Existing Wiki Backend Integration Design
+Repo:             E:\GitHub\Magi-AGI\hyperon-wiki
+Commit pin:       The audited docs all currently live at HEAD; per `git log`
+                  every Source-1 doc was introduced in a single fork-import
+                  commit `7baa714` (2026-03-24, Nemquae,
+                  "feat: Initial Hyperon Wiki from magi-archive fork") and
+                  has had no subsequent in-tree edits. Earlier evolution lives
+                  in the magi-archive repo; the brief treats current HEAD
+                  content as the audit surface, not its prior history.
+Pilot brief date: 2026-04-29
+Orchestrator:     Claude Opus 4.7 (1M)
+Reviewers:        Codex + Gemini (cross-model triangulation)
+
+
+§1. SCOPE AND DELIVERABLE TAXONOMY
+----------------------------------
+Source 1 is NOT a passive documentation read. It is an active claim audit.
+Each substantive doc claim shall be classified into exactly one of:
+
+  REQUIREMENT    — User/project goal to preserve unless directly contradicted
+                   by Sources 2-4 evidence. Acts as the "what we must satisfy"
+                   anchor for the integration architecture.
+
+  ASSUMPTION     — Claim presented as if true but dependent on the state of
+                   external code (MORK, DAS, atomspace-storage, hyperon-
+                   experimental, etc.) that Sources 2-4 will verify. Tag with
+                   the Source(s) that should resolve it.
+
+  STALE CLAIM    — Already suspect from Phase 0 evidence or from prior
+                   cluster pilots (PLN, ECAN, OpenPsi). Examples to expect:
+                   any reference to ECAN-PLN coupling, OpenPsi paper-
+                   faithfulness, or AttentionBank availability — all of which
+                   were re-characterized after the doc was written. Flag with
+                   the contradicting prior-pilot reconciliation.
+
+  DESIGN OPTION  — A viable architecture branch the doc names but does not
+                   commit to. Examples: StorageNode adapter vs. MCP bridge
+                   vs. shadow/mirror vs. MORK FFI vs. MeTTa Spaces. Catalog
+                   without choosing.
+
+  NON-GOAL       — Explicitly out of scope, deferred, or rejected. Capture so
+                   later sessions don't re-litigate.
+
+Acceptance criterion (per Gemini's Phase 0 read of ATOMSPACE-INTEGRATION.md):
+The integration is conditional on proving value over PostgreSQL alone. Doc-
+declared latency budgets are <500ms target / <2s acceptable for "Fetch card."
+Source 1 must surface every numeric budget, every value-over-Postgres claim,
+and every "Phase 3 (Jan-Apr 2026) prototype must answer X" research question
+so Sources 2-4 know what they're being graded against.
+
+Dual-purpose deliverable (per user's explicit correction):
+  (a) Wiki content correctness — every Source 1 STALE CLAIM and every
+      doc-vs-wiki-card disagreement becomes a candidate wiki edit at
+      cluster close, regardless of integration outcome.
+  (b) Integration architecture — Source 1 outputs the requirements +
+      assumptions + design-option catalog that Sources 2-4 evaluate.
+
+
+§2. ARTIFACTS TO READ
+---------------------
+Primary integration design (must read in full):
+  1. docs/ATOMSPACE-INTEGRATION.md         858 lines  — 3-phase rollout,
+                                                       Decko Card -> Atomspace
+                                                       mapping, DeckoAtomspace-
+                                                       Adapter Python skeleton,
+                                                       9 open research Qs
+  2. docs/ROADMAP.md                       891 lines  — 5-phase plan, Phase 3
+                                                       "Atomspace Integration
+                                                       Prototype" Jan-Apr 2026
+  3. docs/SPEC.md                          638 lines  — magi-archive base spec,
+                                                       card type hierarchy,
+                                                       naming conventions
+  4. docs/CLAUDE.md                        322 lines  — Decko/Rails/PostgreSQL
+                                                       infrastructure guidance
+                                                       for AI agents
+
+Decko-side surface (must read for "what the integration must mirror or hook"):
+  5. docs/DECKO-CONTENT-UPLOAD-GUIDE.md   2066 lines  — content pipeline
+  6. docs/DECKO-DATABASE-ACCESS.md         303 lines  — DB access patterns
+  7. docs/DECKO-FILE-UPLOAD-BUG.md         142 lines  — known bug; flag if
+                                                       relevant to atomspace-
+                                                       backed file storage
+  8. docs/DECKO-SECTION-PATTERN.md         465 lines  — section/inclusion model
+                                                       (relevant: how to
+                                                       represent +Section
+                                                       subcards in Atomspace)
+
+MCP-side surface (must read for "what middleware already exists"):
+  9. docs/MCP-DEPLOYMENT-STATUS.md         415 lines  — current MCP status
+ 10. docs/MCP-PHASE-1.1-FIXES.md           126 lines  — recent bugfixes
+ 11. docs/MCP-PHASE-2-COMPLETE.md          475 lines  — Phase 2 outcomes
+ 12. docs/MCP-PHASE-2-PLAN.md              289 lines  — Phase 2 plan
+
+Adjacent (read if scope-extending claims surface in 1-12):
+  - docs/AWS-DEPLOYMENT.md                            — deployment surface
+  - docs/MIGRATION.md                                 — migration patterns
+  - docs/mcp/README.md                                — MCP tooling readme
+  - top-level README.md, AGENTS.md, CLAUDE.md         — orientation context
+
+Total mandatory corpus: ~6,990 lines across 12 files.
+
+
+§3. PHASE-0 PRE-EXTRACTION OBSERVATIONS
+---------------------------------------
+The orchestrator's Phase 0 already surfaced the following anchors. Reviewers
+should treat these as the prior layer to either confirm or contradict:
+
+A. Wiki cards likely affected (cluster-close edit candidates):
+   - About Hyperon+AtomSpace (ID 4017, Draft index)
+   - About Hyperon+AtomSpace+AtomSpace Full (ID 4403, Draft deep-dive)
+   - Knowledge Representations+MORK (ID 648, Published shell)
+   - Knowledge Representations+MORK+MORK Full (ID 4194, Draft deep-dive)
+   - Knowledge Representations+DAS (ID 646, Published shell)
+   - Knowledge Representations+DAS+DAS Full (ID 4200, Draft deep-dive)
+
+B. Wiki status claims to triangulate (current state per the cards):
+   - "MORK PeTTa/MORK integration handles 500M+ atoms in RAM" (MORK Full)
+   - "MORK-native PLN, WILLIAM integration, distributed multi-machine
+      execution under development" (MORK Full)
+   - "MORK integration as DAS backend under development" (DAS Full)
+   - "atomspace-pgres operational" implied by AtomSpace Full's "Space API
+      operational" — directly relevant: Decko already runs on PostgreSQL
+   - "classical C++ AtomSpace v5.0+ mature" (AtomSpace Full)
+
+C. Candidate integration seams Phase 0 surfaced. Sources 1-4 must not
+   collapse to one prematurely:
+   1. StorageNode (atomspace-storage; atomspace-pgres especially relevant
+      since Decko = PostgreSQL)
+   2. atomspace-bridge (newly surfaced repo; name implies bridging — needs
+      Source 2 inspection)
+   3. DAS (singnet/das + hyperon_das Python client)
+   4. MeTTa Spaces (lib_spaces.metta)
+   5. MORK FFI/SDK (mork_ffi, mork-rust-sdk, mork-ts-sdk)
+   6. Shadow/mirror adapter (the design-doc intent)
+   7. MCP-based bridge (the wiki already ships an MCP server)
+
+D. Likely STALE-CLAIM hot spots (per prior cluster pilots):
+   - Any doc reference to ECAN-PLN coupling: per ECAN cluster pilot finding
+     #2 + OpenPsi V4-1, all three executable paths were deliberately
+     decoupled by 2019. Doc-side claims about attention-driven inference
+     should be tagged STALE unless explicitly framed as "research direction."
+   - Any doc reference to OpenPsi paper-faithfulness: per OpenPsi cluster
+     pilot Source 3, only 8 of 17 equations are LITERAL. The MeTTa port is
+     HYBRID/PAPER-LEANING. Doc-side claims should be tagged STALE if they
+     present OpenPsi as a complete paper realization.
+   - Any doc reference to AttentionBank: removed monorepo-wide on
+     2019-09-06 (`318c0b4cb`). Cite ECAN cluster pilot.
+   - Per OpenPsi V4-2 / V4-3: stale forks are NOT divergent traditions;
+     "tradition N" framing requires bidirectional fork-divergence checks.
+
+
+§4. KEY QUESTIONS BY TAXONOMY BUCKET
+------------------------------------
+REQUIREMENT bucket — extract every:
+  - Latency budget (target + acceptable, both)
+  - Throughput / scale ceiling (e.g., "500M atoms")
+  - "Must preserve" wiki UX guarantee
+  - "Must preserve" Decko data-model invariant (card identity, +Section
+    inclusion, naming convention, history/revision integrity)
+  - "Conditional on proving value over PostgreSQL" thresholds
+
+ASSUMPTION bucket — extract every claim about:
+  - MORK readiness (which features are "operational" per the doc?)
+  - DAS readiness (Redis+MongoDB? in-memory? attention broker?)
+  - atomspace-pgres readiness as a Decko-compatible Postgres adapter
+  - hyperon-experimental Space API stability (the Python adapter calls
+    `self.atomspace.query(...)` — does this map to StorageNode or to a
+    newer MeTTa-native Space query? Gemini's Phase 0 question.)
+  - MCP middleware throughput / round-trip latency
+  - MeTTa expression evaluation latency for "Fetch card" path
+
+  Tag each ASSUMPTION with the Source likeliest to resolve it:
+  - Source 2 (AtomSpace + persistence layer) → atomspace-pgres,
+    StorageNode, atomspace-bridge, atomspace-storage, hyperon-experimental
+  - Source 3 (MORK production substrate) → MORK + forks, mork_ffi,
+    mork-rust-sdk, mork-ts-sdk, weighted-atom-sweep
+  - Source 4 (DAS + runtime bridge) → singnet/das, das-toolbox,
+    das-metta-parser, hyperon-experimental Space, PeTTa
+
+STALE CLAIM bucket — flag every doc statement that:
+  - Treats ECAN-PLN coupling as available (per ECAN cluster pilot findings)
+  - Treats OpenPsi as paper-faithful (per OpenPsi cluster pilot Source 3)
+  - References AttentionBank as available (removed 2019-09-06)
+  - References pre-2026 "current state" of any Hyperon subsystem that has
+    been re-characterized in PLN, ECAN, or OpenPsi cluster pilots
+  - Cites a specific repo path / fork / tradition without bidirectional
+    fork-divergence verification
+
+DESIGN OPTION bucket — catalog without choosing:
+  - StorageNode adapter (Decko -> atomspace-storage)
+  - atomspace-pgres direct (Decko PostgreSQL -> AtomSpace via existing
+    Postgres backend)
+  - atomspace-bridge (if its purpose matches; verify in Source 2)
+  - MCP middleware (Decko -> MCP -> hyperon_das or hyperon-experimental)
+  - DAS Python client direct
+  - MeTTa Spaces / lib_spaces.metta abstraction
+  - MORK FFI / SDK direct
+  - Shadow/mirror dual-write (Decko primary, Atomspace mirror for query)
+  - Hybrid (different read/write paths via different seams)
+
+  For each option, surface the doc's stated reasoning + the doc's stated
+  reservations + the doc's stated open questions.
+
+NON-GOAL bucket — capture every:
+  - "Out of scope for Phase 3"
+  - "Will not / does not"
+  - "Deferred to Phase 4 (Backend Swap)"
+  - "Deferred to Phase 5 (AI Gamemaster)"
+
+
+§5. METHODOLOGY RULES IN FORCE
+------------------------------
+The OpenPsi cluster pilot established two new methodology rules that apply
+to the AtomSpace pilot from Source 1 onward. Both reviewers MUST observe:
+
+R1. PICKAXE BEFORE "DEAD" CLAIMS (ECAN Source 3 V0-1).
+    For any feature/flag/function the docs describe as "deprecated", "not
+    used", "legacy", or "removed", verify with `git log --all -S '<token>'`
+    in the relevant repo before propagating. Source 1 may not need pickaxe
+    itself but reviewers should NOT trust doc-side "deprecated" tags
+    without a Source 2-4 pickaxe verification flag.
+
+R2. CALLER-ANALYSIS MUST BE TIME-INDEXED (OpenPsi V4-1).
+    "Called/uncalled" claims must include the commit/date snapshot at
+    which the analysis was performed. Source 1 doc-claims that assert
+    "X is currently called by Y" without a commit pin are ASSUMPTIONS,
+    not REQUIREMENTS.
+
+R3. BIDIRECTIONAL FORK-DIVERGENCE (OpenPsi V2-1, V4-2).
+    Any doc claim labeling a fork as a divergent tradition or independent
+    lineage shall be flagged ASSUMPTION until Source 2-4 verifies via
+    `git log A..B` AND `git log B..A` AND grep both directions.
+
+R4. C++ AND SCHEME/MeTTa BOTH (ECAN Source 4 V0-1).
+    For any doc claim about API consumption in legacy OpenCog repos,
+    note that verification requires grepping BOTH C++-side tokens
+    (AttentionBank, get_sti, StorageNode, BackingStore) AND Scheme/MeTTa
+    side (cog-av-sti, cog-stimulate, &storage, lib_spaces.metta).
+    Source 1 itself only flags this; verification happens in Source 2.
+
+R5. CODE COMMENTS / DOC CLAIMS ARE HYPOTHESES, NOT EVIDENCE
+    (OpenPsi Source 3 brief #8).
+    Doc statements that "X implements Y" or "the adapter will call Z"
+    are ASSUMPTIONS until verified at the named code site.
+
+Cross-model triangulation rules (carried forward from PLN/ECAN/OpenPsi):
+  - One writer only: orchestrator executes wiki + file writes.
+  - Cross-check every "Verified" claim against the source.
+  - Reviewers may disagree; reconcile, do not vote.
+  - Report dissents as V<source>-<seq> records.
+
+
+§6. DELIVERABLE SHAPE
+---------------------
+Each reviewer (Codex, Gemini) returns a structured finding:
+
+  Section A — REQUIREMENTS list, numbered.
+  Section B — ASSUMPTIONS list, numbered, each tagged with the Source
+              expected to resolve it.
+  Section C — STALE CLAIMS list, each citing the contradicting prior-
+              pilot reconciliation file.
+  Section D — DESIGN OPTIONS catalog, with doc-stated pros/cons/open Qs
+              per option.
+  Section E — NON-GOALS list.
+  Section F — Wiki-card delta candidates: doc statements that disagree
+              with current Wiki card content (per Phase 0 §3.A reads).
+  Section G — Cross-source forwards: questions to inject into Source
+              2-4 briefs.
+  Section H — Reviewer-specific dissents (V1-1, V1-2, ...) where the
+              reviewer disagrees with the orchestrator's framing of any
+              Phase-0 anchor or this brief itself.
+
+Reconciliation file: scripts/archive/atomspace_pilot/source1_existing_design/
+                     findings_reconciled_crossmodel.txt
+
+Reviewer findings files:
+  scripts/archive/atomspace_pilot/source1_existing_design/findings_codex.txt
+  scripts/archive/atomspace_pilot/source1_existing_design/findings_gemini.txt
+
+
+§7. CLUSTER-CLOSE EDIT-TARGET FLAGGING (per Codex)
+--------------------------------------------------
+docs/ATOMSPACE-INTEGRATION.md and docs/ROADMAP.md are explicit cluster-close
+edit targets if Sources 2-4 invalidate any of their current status claims.
+Source 1's STALE CLAIM bucket is the seed for those edits. Other docs in §2
+are edit targets if-and-only-if their claims are contradicted; flag in §F
+of the deliverable.
+
+NOTE: docs/CLAUDE.md (Decko infrastructure guidance) is OUT OF SCOPE for
+edit at cluster close — it documents the current Decko/Rails/Postgres
+backend, not the prospective Atomspace backend, and edits to it would only
+be warranted if Phase 3 prototype outcomes mandate Decko-side changes.
+
+
+§8. NON-WRITE STANCE
+--------------------
+Source 1 is read-only. No wiki writes, no file edits in this source's
+extraction phase. Wiki/file edits land at cluster close, after all four
+source reconciliations are settled and the user authorizes a commit.
+
+
+================================================================================
+END OF SOURCE 1 BRIEF
+================================================================================

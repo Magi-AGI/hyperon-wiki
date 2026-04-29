@@ -1,0 +1,115 @@
+# Source 3 - MORK Production Substrate - Gemini Findings
+
+Pilot:        AtomSpace Backend Integration Cluster Pilot
+Source:       MORK kernel + PathMap + FFI/SDK + fork tree
+Model lane:   Gemini
+Date:         2026-04-29
+Write policy: no wiki writes; no repo edits during extraction
+
+(Findings provided inline via orchestrator-relayed message; transcribed
+verbatim into this file for archival. Section labels normalized to match
+the Source 3 brief's §5 deliverable shape.)
+
+================================================================================
+
+## Summary
+
+MORK is an 8-crate Rust workspace with a sophisticated Sink trait system and
+active integration with DAS via HTTP. mork_ffi facilitates Prolog-to-MORK
+integration. Weighted-atom-sweep implements Adam Vandervorst's design for
+atomic data structures.
+
+
+## Section A — MORK-vs-INTERFACE FAMILY VERDICT (S3.Q1)
+
+VERDICT: MORK-NATIVE-RUST-FFI-SDK
+
+Rationale:
+- MORK operates as an independent Rust kernel with a primary FFI surface
+  (mork_ffi).
+- Integrates with DAS-ATOMDB-BACKEND via an HTTP server (mork_server), but
+  does NOT implement the C++ CLASSICAL-STORAGENODE interface.
+- Modern MeTTa integration is experimental via python/sandbox/mork/mork.py.
+
+
+## Section B — MORK-DAS COUPLING STATUS (S3.Q2)
+
+STATUS: CODE-REAL.
+
+Implementation: Verified in the weighted-atom-sweep crate. It implements the
+WeightedAtomSweep trait for traversing and transforming tries using the
+PathMap structure.
+
+
+## Section E — WEIGHTED ATOM SWEEP (S3.Q5)
+
+- weighted-atom-sweep crate verified.
+- Implements WeightedAtomSweep trait for traversing and transforming tries
+  using the PathMap structure.
+- Adam Vandervorst's design implementation for atomic data structures.
+
+ECAN MAPPING: No literal ECAN sigmoid was found in the kernel. MORK's
+"weights" are strictly numeric counters reduced during finalize().
+
+
+## Section F — COUNT SINK PATTERN (S3.Q6)
+
+- Verified in kernel/src/sinks.rs.
+- CountSink performs atom unification by reducing counts (n_new = n_1 + n_2).
+- Suitable for importance-accumulation.
+- Could potentially model card versioning IF counts are repurposed as
+  timestamps or sequence numbers.
+
+
+## Section G — RAILS-TO-MORK BRIDGE (S3.Q7)
+
+STATUS: FEASIBLE (via C/FFI).
+
+Surface: mork_ffi exposes rust_mork(command, input) as a C-callable function.
+
+Ruby Bridge: A direct Rails-to-MORK bridge (bypassing DAS) is statically
+feasible using the Ruby ffi gem to call rust_mork. This would offer the
+"Lowest-Friction" path for low-latency (<500ms) card fetches by eliminating
+the HTTP/DAS middleware overhead.
+
+
+## Section J — WIKI CLAIM CORRECTIONS (S3.Q10, S3.Q11)
+
+8-CRATE WORKSPACE VERIFIED.
+- Crates: interning, expr, frontend, kernel, eval, eval-ffi, eval-examples,
+  unification_test_laws.
+- Wiki Correction: The Knowledge Representations+MORK card (ID 4194)
+  incorrectly claims a "7-crate Rust workspace."
+
+
+## Section K — PROLOG INTEGRATION (S3.Q12, R8)
+
+STATUS: VERIFIED.
+- experiments/unification_test_laws/src/main.rs explicitly includes a
+  run_prolog_unifier flag (line 7).
+- Generates random MORK tries and verifies their unification results
+  against SWI-Prolog outputs to ensure semantic correctness.
+
+
+## Section L — FORK CLASSIFICATIONS (S3.Q13)
+
+MORK-atomspace-builder:
+- Role: Primarily a deployment orchestrator.
+- Uses docker-compose.mork.yml to stitch together hugegraph-atomspace,
+  mork-pathmap, and a custom-atomspace-api.
+- Hit Counts:
+    mork:        35 hits (mostly image names and URLs).
+    AtomSpace:   5  hits (README descriptions).
+    DAS:         0 hits.
+    Decko:       0 hits.
+
+
+## Conclusion
+
+MORK is a performance-optimized trie engine with a minimal, polyglot FFI
+surface. For the wiki integration, a direct Ruby-FFI-to-MORK bridge is the
+most technically efficient path, provided the lack of DAS-layer features
+(distributed query, attention broker) is acceptable.
+
+================================================================================
+END OF GEMINI SOURCE 3 FINDINGS

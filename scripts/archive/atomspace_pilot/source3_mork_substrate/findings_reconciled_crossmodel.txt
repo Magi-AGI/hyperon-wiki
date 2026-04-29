@@ -1,0 +1,755 @@
+================================================================================
+ATOMSPACE BACKEND INTEGRATION CLUSTER PILOT
+SOURCE 3 RECONCILIATION — MORK Production Substrate
+================================================================================
+
+Pilot:        AtomSpace Backend Integration Cluster Pilot
+Source:       3 of 4 (MORK kernel + PathMap + FFI/SDK + fork tree)
+Date:         2026-04-29
+Orchestrator: Claude Opus 4.7 (1M)
+Reviewers:    Codex (findings_codex.txt) + Gemini (findings_gemini.txt)
+Status:       Reconciled. Source 3 closes for extraction. Cross-source
+              forwards locked. Wiki/file edits deferred to cluster close.
+
+Pre-extraction pull: 2026-04-29, zero drift across all 5 primary repos.
+
+
+================================================================================
+EXECUTIVE SUMMARY (CONSENSUS)
+================================================================================
+
+R3.1 MORK proper = MORK-NATIVE-RUST-FFI-SDK. (S3.Q1 verdict, both
+     reviewers, single-label.) Canonical MORK does NOT implement
+     CLASSICAL-STORAGENODE, HYPERON-SPACE, or DAS-ATOMDB-BACKEND
+     interfaces in inspected primary repos.
+     Codex evidence: 0 hits across MORK / PathMap / mork_ffi /
+     mork-rust-sdk / mork-ts-sdk for StorageNode, GroundingSpace,
+     SpaceMut, DynSpace, DistributedAtomSpace, AtomDB, metta-bus
+     (case-insensitive "DAS" hits were false positives like `pandas`).
+     Gemini evidence: independent MeTTa integration analysis.
+
+R3.2 DAS MorkDB backend = [CODE-REAL] WITH THREE CRITICAL CAVEATS
+     (S3.Q2 verdict). Both reviewers agree code-real; Codex surfaced
+     the caveats Gemini did not enumerate:
+     (a) The code lives in singnet/das-side as MorkDB (subclass
+         RedisMongoDB), not in MORK proper.
+     (b) DAS Dockerfile pins the MORK server-branch commit
+         `578a759d2c4962de7b4a2cd17f695c89f5e53bb4` (2025-07-21
+         "Updating server to use latest PathMap API"), not MORK main.
+     (c) Delete is NOT supported. MorkDB.h:57-58 + MorkDB.cc:284-286
+         log "MORKDB does not support deleting links" and return false.
+     Per Codex C3-P1 anticipatory split:
+       DAS-side AtomDB backend: CODE-REAL.
+       MORK server implementation: server-branch / deployment branch,
+                                   not MORK main.
+     Cf. Codex C3-B1 to C3-B4; Gemini Section B (less detailed).
+
+R3.3 MORK is an 8-crate workspace, not 7. Both reviewers verified
+     against MORK/Cargo.toml:3-12. Wiki claim "7-crate Rust workspace"
+     in Knowledge Representations+MORK+MORK Full (ID 4194) is INCORRECT.
+     Crates: interning, expr, frontend, kernel, experiments/eval,
+     experiments/eval-ffi, experiments/eval-examples,
+     experiments/unification_test_laws.
+     Recommended wiki edit: "8-member Rust workspace at commit 4cef6f7"
+     OR durable wording "multi-crate Rust workspace".
+     Cf. Codex C3-A3, C3-J1; Gemini Section J.
+
+R3.4 PathMap is a foundational substrate, not a bundled crate.
+     Codex evidence (Gemini did not address depth):
+     - MORK/Cargo.toml:28-32 depends on `../PathMap/` with jemalloc,
+       arena_compact, nightly features.
+     - PathMap is "the low-level data structure for MORK"
+       (PathMap/README.md:4-8).
+     - PathMap pathmap-book includes intro + structural-sharing
+       documentation but the database section (2.00.00_database_intro.md)
+       is a stub with TODO notes for trie segmentation, schemas,
+       indices, permissions, concurrency.
+     Wiki implication: PathMap deserves its own card as "foundational
+     MORK trie substrate", NOT "complete database layer."
+     Cf. Codex C3-I1, C3-I2.
+
+R3.5 The "PeTTa/MORK 500M+ atoms in RAM" wiki claim is FALSIFIED.
+     Codex-only finding (V3-1, see §M):
+     - mork_ffi/example_space.metta:13-17 comments benchmark points
+       at 100M, 200M, 300M, 400M ATOMS LOADED, then 500M ran OUT OF
+       MEMORY.
+     - 500M was the OOM ceiling, not the demonstrated capacity.
+     - PeTTa/README.md:18-25 says PeTTa can use MORK spaces through
+       mork_ffi but does NOT claim 500M+ atoms in RAM.
+     Recommended wiki edit: replace "500M+ atoms in RAM" with
+     "tested up to 400M atoms in RAM (per benchmark comments at
+     mork_ffi/example_space.metta:13-17, with 500M reported as
+     out-of-memory at the same site)."
+     Cf. Codex C3-N4, C3-J4.
+
+R3.6 Weighted Atom Sweep = adjacent EXPERIMENTAL crate, NOT canonical
+     MORK kernel feature, NOT ECAN, NOT AtomSpace Values.
+     Codex finding (Gemini did not catch the separate-crate distinction):
+     - weighted-atom-sweep is at HEAD `1471ff2c` (2026-03-03), a
+       SEPARATE adjacent repo outside the canonical MORK workspace.
+     - Depends on local PathMap and MORK expr crate.
+     - AtomHeader is a generic trait, NOT STI/LTI/TruthValue/
+       AttentionValue/AtomSpace Value (sweep.rs:15).
+     - Has only Add/Remove template effects (sexpr_operation.rs:12-22).
+     - Has a match counter, NOT an ECAN attention currency
+       (sexpr_operation.rs:78-80).
+     Classification: implementation analogy only. Could be repurposed
+     for recency/priority/card-version metadata if a Decko-specific
+     AtomHeader and traversal policy were defined. NO inspected code
+     proves identity with ECAN STI/LTI, AtomSpace AttentionValue, or
+     Decko card history.
+     Cf. Codex C3-E1 to C3-E3; Gemini Section E.
+
+R3.7 CountSink is real in MORK kernel but is a QUERY/REDUCTION
+     PRIMITIVE, NOT a persistent card-history counter. (V3-2 dissent
+     between reviewers — see §M.)
+     Codex evidence: MORK/kernel/src/sinks.rs:127-132 (Sink trait),
+     :512-591 (CountSink with PathMap accumulator + finalize), :1194-
+     1208 (ASink dispatch alongside Add/Remove/Hash/Sum/FloatReduction/
+     Pure/Z3), :1287/1313/1339 (request/sink/finalize wiring).
+     CountSink does NOT provide atomic increment/decrement, Decko
+     action IDs, revision timestamps, or transactional history.
+     Cf. Codex C3-F1 to C3-F3.
+
+R3.8 PR #49 (unification_test_laws) is the canonical MORK ↔ Prolog
+     correctness audit. Both reviewers verified.
+     - Generates random MORK tries, runs MORK unifier AND SWI-Prolog
+       unifier, diffs results.
+     - axiom_unify.prolog uses unify_with_occurs_check (Codex K1
+       Role 1).
+     R8 scope confirmed: Prolog is a first-class oracle ONLY for
+     the unification subset PR #49 exercises. NOT authoritative for
+     sinks, server behavior, FFI, weighted atom sweep, PathMap algebra,
+     or Decko integration.
+     Cf. Codex C3-D2, C3-K1, C3-K2; Gemini Section K.
+
+R3.9 Prolog has TWO distinct roles in the MORK ecosystem (Codex-only;
+     V3-3):
+     Role 1 — PR #49 unification oracle (above).
+     Role 2 — PeTTa runtime bridge:
+       mork_ffi/mork.c:33-36 registers SWI-Prolog predicate `mork/3`.
+       mork_ffi/morkspaces.pl:7-32 maps Prolog/MeTTa space ops to MORK.
+       PeTTa/build.sh + run.sh build mork_ffi and load it as a
+       SWI-Prolog dynamic library.
+       PeTTa/lib/lib_mm2.metta defines add/remove/query/transform forms
+       over `&mork`.
+     Reconciliation: do NOT collapse the two roles when reasoning
+     about MORK's Prolog interactions.
+
+R3.10 hyperon-experimental/python/sandbox/mork/mork.py confirmed
+      preliminary (per Codex Source-2 sign-off that pre-flagged this).
+      mork.py:7-9 says "very preliminary wrapper to MORK server"; :42-
+      45 `query()` returns empty BindingsSet; :47-50 `add()` is `pass`.
+      Defaults to http://127.0.0.1:8000 (line :11). Registers
+      `mork-space` OperationAtom (:64-70). NOT viable Decko integration
+      seam at this snapshot.
+      Cf. Codex C3-H1.
+
+R3.11 No FactorGraph PLN over MORK. PLN cluster pilot Source 8/11
+      verdict UNCHANGED. Codex grep negative across MORK / PathMap /
+      mork_ffi / mork-rust-sdk / mork-ts-sdk for FactorGraph,
+      factor_graph, belief_propagation, pln, wmpln, lib_pln,
+      AttentionBank, cog-av-sti.
+      Cf. Codex C3-D1, C3-N3.
+
+R3.12 MORK-atomspace-builder = DEPLOYMENT-WRAPPER / APPLICATION,
+      NOT a MORK kernel fork or StorageNode bridge. (V3-4 dissent on
+      hit counts — see §M; classification is consensus.)
+      Both reviewers performed required-grep targets:
+        - StorageNode: 0 (Codex)
+        - BridgeStorageNode: 0 (Codex)
+        - Decko: 0 (Codex AND Gemini)
+        - DAS exact / DistributedAtomSpace: 0 (Codex; Gemini reported 0)
+      Hit-count divergence on `mork` (Codex 37, Gemini 35) and
+      `AtomSpace` (Codex 68, Gemini 5) — likely scope/grep differences;
+      both still confirm DEPLOYMENT-WRAPPER classification.
+      docker-compose.mork.yml stitches: atomspace-api, annotation_service,
+      a custom mork container using image
+      `deazstar/custom-query-builder:mork-pathmap`.
+      Cf. Codex C3-L6; Gemini Section L.
+
+
+================================================================================
+SECTION A — MORK-vs-INTERFACE FAMILY VERDICT (S3.Q1)
+================================================================================
+
+R3.A1 LITERAL VERDICT: MORK-NATIVE-RUST-FFI-SDK.
+
+R3.A2 Negative interface grep across MORK + PathMap + mork_ffi +
+      mork-rust-sdk + mork-ts-sdk (Codex evidence, applies to all):
+        StorageNode:               0
+        GroundingSpace:            0
+        SpaceMut:                  0
+        DynSpace:                  0
+        DistributedAtomSpace:      0
+        AtomDB:                    0
+        metta-bus:                 0
+      The MORK substrate is its own Rust kernel + polyglot FFI, with
+      no shim layer to classical or Hyperon-side AtomSpace APIs.
+
+R3.A3 Workspace structure verified (R3.3): 8 crates at HEAD `4cef6f7`.
+
+R3.A4 Polyglot FFI surface (consensus):
+      - C ABI:        mork_ffi/src/lib.rs exposes `rust_mork(cmd,input)`
+                      and `rust_string_free(ptr)`; built as `cdylib`
+                      named `mork_ffi`.
+      - SWI-Prolog:   mork_ffi/mork.c registers Prolog predicate
+                      `mork/3`; morkspaces.pl maps space ops.
+      - MeTTa:        mork_ffi/example_space.metta + .metta family
+                      demonstrate Space API usage.
+      - TypeScript:   mork-ts-sdk targets MORK HTTP server.
+      - Python:       PeTTa wraps mork_ffi via SWI-Prolog dyn-load.
+
+
+================================================================================
+SECTION B — MORK-DAS COUPLING STATUS (S3.Q2)
+================================================================================
+
+R3.B1 LITERAL VERDICT: [CODE-REAL] with split per Codex C3-P1:
+      - DAS-side AtomDB backend (singnet/das MorkDB): CODE-REAL
+      - MORK server implementation: SERVER-BRANCH / DEPLOYMENT-BRANCH,
+        not MORK main
+
+R3.B2 Code-real evidence (Codex C3-B1, exhaustive):
+      - das/README.md:40-44, 114-120: configurable DBMS backends; lists
+        PostgreSQL and Mork.
+      - das/config/example.json:32-35, 50-60, 78-79: morkdb image,
+        endpoint, local_persistence, loader image.
+      - das/src/atomdb/AtomDBSingleton.cc:21-24: instantiates MorkDB
+        for ATOMDB_TYPE::MORKDB.
+      - das/src/atomdb/morkdb/MorkDB.h:43: MorkDB subclasses
+        RedisMongoDB.
+      - das/src/atomdb/morkdb/MorkDB.h:48-62: overrides nested indexing,
+        pattern query, target query, add_links, delete_link,
+        flush_pattern, re-indexing.
+      - das/src/atomdb/morkdb/MorkDB.cc:150-186: query_for_pattern
+        converts link schema → MeTTa, calls MORK export, decodes MORK
+        results.
+      - das/src/atomdb/morkdb/MorkDB.cc:197-281: add_links generates
+        MeTTa expressions, posts them to MORK, upserts Mongo documents.
+
+R3.B3 Server-branch dependency:
+      das/src/docker/mork/Dockerfile.server:8 pins MORK commit
+      `578a759d2c4962de7b4a2cd17f695c89f5e53bb4`; lines 11-16 clone
+      `-b server`, check out that commit, build the server. Commit
+      object verified locally in canonical MORK as 2025-07-21
+      "Updating server to use latest PathMap API".
+
+R3.B4 Delete-incomplete:
+      MorkDB.h:57-58 says delete will be implemented once MORK supports
+      deleting links / S-expressions. MorkDB.cc:284-286 logs "MORKDB
+      does not support deleting links" and returns false.
+
+R3.B5 Wiki edit recommendation (Codex C3-J2):
+      Replace "MORK integration as backend under development" in DAS
+      Full (ID 4200) with: "DAS contains a code-real MorkDB AtomDB
+      backend that talks to a MORK HTTP server and Mongo-side
+      metadata, but deletion/writeback semantics are incomplete and
+      the MORK server dependency is pinned to a server-branch commit."
+
+
+================================================================================
+SECTION C — FFI/SDK BRIDGE FEASIBILITY (S3.Q3, S3.Q7)
+================================================================================
+
+R3.C1 mork_ffi C-callable interface:
+      `rust_mork(command, input)` exposes string-command operations:
+      add-atoms, remove-atoms, mm2-exec, get-atoms, match. Returns
+      strings; companion `rust_string_free` for memory management.
+      Single global Space in `OnceLock` at mork_ffi/src/lib.rs:10-13.
+
+R3.C2 Ruby FFI feasibility: STATICALLY POSSIBLE, NOT PRODUCT-READY.
+      ABI shape simple enough for Ruby `ffi` gem (two C-callable
+      functions, raw C strings/pointers). Missing pieces: Ruby
+      binding, Rails packaging, Decko transaction model, connection
+      pooling, per-card schema, lifecycle design for the global
+      singleton Space.
+      Cf. Codex C3-C2; Gemini Section G (assessed similar without
+      enumerating engineering gaps).
+
+R3.C3 mork-rust-sdk = SKELETAL (Codex C3-C3):
+      Cargo.toml has no dependencies. src/lib.rs:1-43 is placeholder
+      text split one character per line: "source code for the sdk
+      will be put here". NOT usable at this snapshot.
+
+R3.C4 mork-ts-sdk = REAL HTTP CLIENT SDK, not a Rails persistence seam:
+      - mork-ts-sdk/src/client.ts:3-15: MorkApiClient + base URL
+        dispatch.
+      - text/plain for upload/transform; JSON for other bodies.
+      - Endpoints: /upload/{pattern}/{namespace+template}, /export/...,
+        /clear/...
+      - 20 second default timeout.
+      Useful for JS/Node clients but NOT a Rails-side option.
+      Cf. Codex C3-C4.
+
+R3.C5 RANKED Decko-bridge candidates (V3-5 reviewer dissent — see §M):
+      Codex's ranking (C3-C5):
+        1. DAS MorkDB path        — code-real, AtomDB semantics, but
+                                    DAS infrastructure not Decko-native
+        2. MORK server HTTP path  — viable as external service if
+                                    server branch is adopted
+        3. mork_ffi direct Ruby FFI — possible, but highest engineering
+                                      risk
+        4. mork-ts-sdk            — JS/Node, not Rails persistence seam
+        5. mork-rust-sdk          — not usable at this snapshot
+
+      Gemini's ranking (Section G) — implicit:
+        1. mork_ffi direct Ruby FFI (lowest-friction, <500ms achievable
+           by eliminating HTTP/DAS overhead)
+
+      Reconciled: ABI feasibility ≠ adapter completeness. mork_ffi has
+      the simplest ABI but the largest adapter gap (Decko transaction
+      model, schema mapping, lifecycle, etc.). DAS MorkDB has the most
+      complete AtomDB semantics but adopts heavy infrastructure
+      (Redis+Mongo+MORK split). The right architectural choice depends
+      on Source 4's audit of DAS attention broker / distributed query
+      / MeTTa-bus value-add. Both rankings are kept as decision input;
+      the cluster pilot does NOT pick one prematurely.
+
+
+================================================================================
+SECTION D — PLN OVER MORK STATUS (S3.Q4)
+================================================================================
+
+R3.D1 PLN cluster pilot Source 8/11 verdict UNCHANGED.
+      No code-real FactorGraph PLN over MORK in inspected primary
+      repos. PR #49 audits unification semantics only; does NOT
+      implement message passing, FactorGraph PLN, or WMC/xiPLN
+      runtime closure.
+      Cf. Codex C3-D1, C3-D2, C3-N3.
+
+
+================================================================================
+SECTION E — WEIGHTED ATOM SWEEP (S3.Q5)
+================================================================================
+
+R3.E1 Classification: ADJACENT EXPERIMENTAL CRATE / IMPLEMENTATION
+      ANALOGY ONLY.
+
+R3.E2 Located at separate repo `weighted-atom-sweep` HEAD `1471ff2c`
+      (2026-03-03), outside canonical MORK workspace. Depends on
+      local PathMap + MORK expr.
+
+R3.E3 Architectural details (Codex):
+      - WeightedMap wraps a PathMap (map.rs:15-17).
+      - get_val / set_weighted_val for generic header values
+        (map.rs:34-48).
+      - Two-thread design: traversal (sweep.rs:220-294) + operations
+        (sweep.rs:298-340).
+      - SExprOperation has only Add / Remove template effects
+        (sexpr_operation.rs:12-22) — minimal, not ECAN-currency-shaped.
+
+R3.E4 NOT ECAN, NOT AtomSpace Values:
+      - AtomHeader is a generic trait (sweep.rs:15), not STI/LTI,
+        TruthValue, AttentionValue, or AtomSpace Value.
+      - Match counter (sexpr_operation.rs:78-80) is an integer, not
+        an attention currency.
+      - Per OpenPsi cluster pilot V4-1: classify as implementation
+        analogy unless code proves a bridge. No bridge code present.
+
+R3.E5 Cluster relevance: pattern is REPURPOSEABLE for recency /
+      priority / card-version metadata IF a Decko-specific AtomHeader
+      and traversal policy are defined. Source 4 may revisit if
+      narrative-critical.
+
+
+================================================================================
+SECTION F — COUNT SINK PATTERN (S3.Q6)
+================================================================================
+
+R3.F1 CountSink IS REAL in canonical MORK kernel.
+      Located at MORK/kernel/src/sinks.rs:512-591.
+      Sink trait at sinks.rs:127-132. Dispatched via ASink at :1194-
+      1208 alongside Add, Remove, Hash, Sum, FloatReduction, Pure,
+      Z3, etc. Wired into request/sink/finalize at :1287, :1313, :1339.
+
+R3.F2 SEMANTIC ROLE: query/reduction primitive.
+      - Accumulates per-sink `unique: PathMap<()>`.
+      - Computes `val_count()` during finalize.
+      - Writes derived count facts when guards match or variables
+        substitute.
+      - Dispatches arity-4 `(count ...)` MeTTa forms.
+
+R3.F3 NOT a persistent card-history counter.
+      - No atomic increment/decrement primitives.
+      - No Decko action IDs, revision timestamps, or transactional
+        history.
+      - The sink is reset per MM2 execution (finalize swaps the
+        unique set).
+
+R3.F4 RECONCILIATION OF V3-2 DISSENT (see §M):
+      Codex (C3-F3): "Decko card revision mapping should NOT target
+      CountSink directly."
+      Gemini: "Could potentially model card versioning IF counts are
+      repurposed as timestamps or sequence numbers."
+      RECONCILED: Codex's stricter framing wins on architecture: as
+      currently designed, CountSink is an MM2 query/reduction
+      primitive within an execution, not a durable revision log.
+      Gemini's "if repurposed" framing is hypothetical and would
+      require:
+        (a) Treating MORK as the system of record for revisions
+            (currently rejected by Source 1 R1.A2 dual-write/rollback
+            requirement).
+        (b) Implementing custom counter-as-timestamp semantics outside
+            CountSink's current contract.
+      VERDICT for cluster narrative: card_actions / card_revisions
+      should be represented explicitly as data atoms; CountSink can
+      query/count them later, but should NOT be the primary store.
+
+
+================================================================================
+SECTION G — RAILS-TO-MORK BRIDGE (S3.Q7)
+================================================================================
+
+R3.G1 No drop-in Rails-to-MORK binding exists. Three custom-engineering
+      paths (Codex C3-G1):
+      (a) Ruby FFI -> mork_ffi: minimal ABI, no Ruby wrapper, no
+          process model, no Decko schema mapping.
+      (b) Rails HTTP client -> MORK server branch: feasible if server
+          branch becomes deployment target. Most conventional non-DAS
+          direct route.
+      (c) Rails -> DAS -> MorkDB: strongest existing AtomDB semantics
+          but requires DAS infrastructure (Redis/Mongo/MORK split).
+
+R3.G2 Decko card semantics MUST be provided externally — MORK alone
+      gives fast S-expression / path algebra and kernel primitives
+      but does NOT define:
+      - Decko card identity
+      - RichText / file handling
+      - Permissions
+      - Redirects
+      - Database transaction boundaries
+      Source 1 R1.A5-A7 requirements remain unsatisfied by any MORK
+      path without an adapter layer.
+
+R3.G3 Cluster narrative: MORK should be treated as a SUBSTRATE unless
+      Source 4 selects the DAS route. The "lowest-friction" framing
+      (Source 1 R1.B1) does not survive Source 3: there is no
+      zero-friction path; only varying engineering effort across
+      paths (a), (b), (c) above.
+
+
+================================================================================
+SECTION H — HYPERON SANDBOX MORK SPACE (S3.Q8)
+================================================================================
+
+R3.H1 hyperon-experimental/python/sandbox/mork/mork.py CONFIRMED
+      PRELIMINARY (Codex C3-H1):
+      - mork.py:7-9: "very preliminary wrapper to MORK server"
+      - mork.py:11: defaults to http://127.0.0.1:8000
+      - mork.py:28-40: status / import_uri / export over HTTP
+      - mork.py:42-45: `query()` prints and returns empty BindingsSet
+      - mork.py:47-50: `add()` is TODO + pass
+      - mork.py:64-70: registers `mork-space` OperationAtom
+
+      NOT a viable Decko integration seam at this snapshot. Confirms
+      Codex's Source-2 sign-off characterization.
+
+
+================================================================================
+SECTION I — PATHMAP CHARACTERIZATION (S3.Q9)
+================================================================================
+
+R3.I1 PathMap is a foundational substrate, NOT just a bundled crate.
+      Cargo.toml dep at `../PathMap/` with features jemalloc,
+      arena_compact, nightly. Author: Luke Peterson.
+
+R3.I2 PathMap design (per pathmap-book + README):
+      - Key-value store with prefix compression, structural sharing,
+        algebraic operations.
+      - Functionally a superset of HashMap<Vec<u8>, V>.
+      - Supports path-prefix composition / grafting.
+      - Supports dangling paths and structural sharing.
+      - Optimized for large data sets, multi-threaded use.
+
+R3.I3 PathMap's pathmap-book is INCOMPLETE for database use cases:
+      pathmap-book/src/2.00.00_database_intro.md is a stub with
+      GOAT/TODO notes for trie segmentation, schemas, indices,
+      permissions, and concurrency. PathMap is "foundational MORK
+      trie substrate", NOT "complete database layer".
+      Cf. Codex C3-I2.
+
+R3.I4 NEW WIKI CARD CANDIDATE: Knowledge Representations+PathMap
+      (or equivalent placement). Should describe:
+      - PathMap as MORK's foundational trie substrate.
+      - Author Luke Peterson.
+      - Structural-sharing trie design.
+      - Dependency relationship to MORK kernel.
+      - Independent usability not yet demonstrated outside MORK
+        context.
+      Cf. Codex C3-M1.
+
+
+================================================================================
+SECTION J — WIKI CLAIM CORRECTIONS (S3.Q10, S3.Q11)
+================================================================================
+
+(Already covered in R3.3 [8-crate] and R3.5 [500M atoms].)
+
+
+================================================================================
+SECTION K — PROLOG INTEGRATION (S3.Q12, R8)
+================================================================================
+
+R3.K1 TWO DISTINCT ROLES (do NOT collapse, V3-3):
+
+      Role 1: PR #49 unification ORACLE.
+      - MORK/experiments/unification_test_laws/src/main.rs:5-8 runs
+        conversion + MORK unifier + Prolog unifier + diff.
+      - main.rs:25-28 invokes SWI-Prolog on axiom_unify.prolog.
+      - axiom_unify.prolog:8-14 uses unify_with_occurs_check.
+      - axiom_unify.prolog:30-32 writes `(unifies L R)` results.
+      - main.rs:36-44 diffs MORK and Prolog all_results files.
+      - Gemini-verified flag: `run_prolog_unifier` at line 7.
+
+      Role 2: PeTTa / mork_ffi RUNTIME BRIDGE.
+      - mork_ffi/mork.c:33-36 registers SWI-Prolog predicate `mork/3`.
+      - mork_ffi/morkspaces.pl:7-32 maps Prolog/MeTTa space ops to
+        MORK.
+      - PeTTa/build.sh:1-4 clones and builds mork_ffi.
+      - PeTTa/run.sh:2-4 preloads libmork_ffi.so and runs SWI-Prolog
+        with `mork`.
+      - PeTTa/src/metta.pl:21-23 loads morkspaces when `mork` is in
+        argv.
+      - PeTTa/lib/lib_mm2.metta:1-20 defines add/remove/query/transform
+        forms over `&mork`.
+
+R3.K2 R8 SCOPE GUARD: Prolog is a first-class reference oracle ONLY
+      for the PR #49 unification subset. NOT an oracle for sinks,
+      server behavior, FFI, weighted atom sweep, PathMap algebra,
+      or Decko integration.
+      Cf. Codex C3-K2.
+
+
+================================================================================
+SECTION L — FORK CLASSIFICATIONS (S3.Q13)
+================================================================================
+
+R3.L1 trueagi-io/MORK: CANONICAL.
+      HEAD `4cef6f7` (2026-04-19). Current canonical main snapshot.
+
+R3.L2 MORK2 (ngeiswei): LEGACY-FORK / stale snapshot.
+      HEAD `ca3cea9` (2026-03-10). Cargo.toml lacks
+      experiments/unification_test_laws (which canonical MORK has at
+      MORK/Cargo.toml:10-11). Per V2-8 wording: "non-canonical / stale
+      by HEAD age."
+
+R3.L3 MORK-leungmanhin: LEGACY-FORK, BIDIRECTIONAL VERIFIED behind.
+      Codex C3-L3:
+        ahead upstream/main..HEAD = 0
+        behind HEAD..upstream/main = 132
+      HEAD `728e83e` (2025-09-23).
+      Strictly behind canonical with no unique commits.
+
+R3.L4 MORK-zariuq: LEGACY-FORK, BIDIRECTIONAL VERIFIED behind.
+      Codex C3-L4:
+        ahead upstream/main..HEAD = 0
+        behind HEAD..upstream/main = 86
+      HEAD `449cb66` (2025-11-17).
+      Strictly behind canonical with no unique commits.
+
+R3.L5 MORK-rejuve-bio: SERVER-BRANCH / DEPLOYMENT-FORK.
+      Codex C3-L5: bidirectional check (against upstream/main):
+        branch = server
+        ahead upstream/main..HEAD = 299
+        behind HEAD..upstream/main = 167
+      HEAD `ba04543` (2026-03-11).
+      SUBSTANTIAL forward divergence (299 server-specific commits) +
+      167 main-branch commits behind. This is a TRUE server-branch
+      fork carrying the most readable MORK server documentation:
+      - server/Cargo.toml package `mork-server`.
+      - server/src/main.rs:22-27 server env vars/defaults.
+      - server/src/main.rs:63-80 service internals: worker pool,
+        resource store, HTTP client, MORK ServerSpace, request counter.
+      - server/src/commands.rs: clear, count, explore, export, import,
+        status, status_stream, stop, transform, upload.
+      Significant for cluster: this is the most documented MORK
+      server reference. Worth flagging for Source 4 deployment-topology
+      audit.
+
+R3.L6 MORK-atomspace-builder: DEPLOYMENT-WRAPPER / APPLICATION (per
+      R3.12 above).
+
+R3.L7 weighted-atom-sweep (separate adjacent crate): EXPERIMENTAL
+      (per R3.E1 above). HEAD `1471ff2c` (2026-03-03).
+
+
+================================================================================
+SECTION M — CROSS-MODEL DISSENTS (V3-N RECORDS)
+================================================================================
+
+V3-1 500M ATOMS CLAIM FALSIFIED (Codex-only).
+     Codex C3-N4, C3-J4: closest local benchmark evidence at
+     mork_ffi/example_space.metta:13-17 says 100M, 200M, 300M, 400M
+     worked, 500M ran out of memory. PeTTa/README.md:18-25 makes
+     no 500M+ claim. Gemini did not surface this.
+     Adopted into R3.5. Wiki edit at cluster close required.
+
+V3-2 COUNT SINK FOR CARD VERSIONING (Codex stricter, Gemini permissive).
+     Codex C3-F3: "Decko card revision mapping should NOT target
+     CountSink directly."
+     Gemini Section F: "Could potentially model card versioning IF
+     counts are repurposed as timestamps or sequence numbers."
+     RECONCILED: Codex's stricter view wins on architecture (R3.F4).
+     Gemini's "if repurposed" is hypothetical engineering, not
+     current capability.
+
+V3-3 PROLOG ROLES SPLIT (Codex-only).
+     Codex C3-K1 explicitly identifies TWO Prolog roles (PR #49
+     oracle + PeTTa runtime bridge). Gemini surfaced the PR #49
+     oracle role only. Adopted into R3.9 / R3.K1 — both roles
+     preserved separately.
+
+V3-4 MORK-ATOMSPACE-BUILDER HIT-COUNT DIVERGENCE (methodology).
+     Codex's hit counts: mork=37, AtomSpace=68.
+     Gemini's hit counts: mork=35, AtomSpace=5.
+     Discrepancy on AtomSpace (68 vs 5) is large; likely Gemini
+     grepped only README while Codex grepped repo-wide including
+     docker-compose / config files. Both reach same classification
+     (DEPLOYMENT-WRAPPER), so the divergence is methodological, not
+     substantive. Logged for Source-4 grep-scope-discipline reminder.
+
+V3-5 DECKO BRIDGE RANKING (Codex broad, Gemini singular).
+     Codex C3-C5 ranks 5 candidates with mork_ffi at #3.
+     Gemini Section G implicitly ranks mork_ffi at #1 ("lowest-
+     friction").
+     RECONCILED: ABI feasibility ≠ adapter completeness. Both
+     framings preserved as decision input. Cluster pilot does NOT
+     prematurely pick. Source 4's DAS audit will determine whether
+     DAS infrastructure overhead is worth its AtomDB semantics, or
+     whether direct MORK paths are preferable. R3.C5 captures the
+     reconciliation.
+
+V3-6 WEIGHTED-ATOM-SWEEP CRATE LOCATION (Codex more specific).
+     Codex C3-E1 confirms weighted-atom-sweep is a SEPARATE adjacent
+     repo at HEAD `1471ff2c`, NOT inside canonical MORK workspace.
+     Gemini described it as part of MORK without flagging the
+     separate-crate distinction. Adopted into R3.6 / R3.E2.
+
+V3-7 PATHMAP DEPTH (Codex-only).
+     Codex C3-I1, C3-I2 provides extensive PathMap characterization
+     including book-incomplete-database-section detail. Gemini did
+     not explore PathMap depth. Adopted into R3.4 / R3.I1-I4 +
+     wiki-card-candidate flag.
+
+V3-8 BIDIRECTIONAL FORK GRAPHS (Codex-only execution).
+     Codex C3-L3, C3-L4, C3-L5: ran actual bidirectional graphs for
+     MORK-leungmanhin (0/132), MORK-zariuq (0/86), MORK-rejuve-bio
+     (299/167). Gemini relied on HEAD-age + commit-topic only.
+     Per V2-8 methodology: HEAD-age is sufficient for non-narrative-
+     critical classification, but Codex's actual graph runs are
+     stronger evidence and worth recording for archival completeness.
+     Adopted into R3.L3-L5.
+
+
+================================================================================
+SECTION N — STALE-CLAIM VERIFICATIONS
+================================================================================
+
+R3.N1 "MORK is a StorageNode backend" — REFUTED (R3.1).
+
+R3.N2 "MORK integration as DAS backend is only design-only" — REFUTED.
+      Code-real with caveats (R3.2).
+
+R3.N3 "FactorGraph PLN over MORK is implemented" — REFUTED (R3.D1,
+      consistent with PLN cluster pilot Source 8/11).
+
+R3.N4 "500M+ atoms in RAM" — UNSUPPORTED / FALSIFIED by mork_ffi
+      benchmark comments (R3.5).
+
+R3.N5 "Weighted atom sweep is ECAN attention" — REFUTED. Implementation
+      analogy only; no ECAN-currency or AtomSpace-Value bridge code
+      (R3.6).
+
+R3.N6 "MORK is a 7-crate Rust workspace" — REFUTED. 8 crates at HEAD
+      `4cef6f7` (R3.3).
+
+R3.N7 "AttentionBank in MORK" — REFUTED. 0 hits across primary repos
+      (Codex C3-D1).
+
+
+================================================================================
+SECTION O — CROSS-SOURCE FORWARDS (LOCKED FOR SOURCE 4)
+================================================================================
+
+S4.NEW-Q5 [from Source 3 C3-O1] DAS deployment topology + query
+      semantics + delete/writeback gaps + Attention Broker / agents.
+      Treat DAS MorkDB as already CODE-REAL; Source 4 audits depth
+      and fitness for wiki backend.
+
+S4.NEW-Q6 [from Source 3 C3-O2] MORK SERVER BRANCH inclusion.
+      MORK main README points to it; DAS Dockerfile builds it;
+      mork-ts-sdk targets its HTTP API; MORK-rejuve-bio (server-fork)
+      contains the most readable server/client documentation. Source 4
+      MUST include MORK server branch in the integration design memo.
+
+S4.NEW-Q7 [from Source 3 C3-O3] DO NOT recommend atomspace-pgres as
+      lowest-friction Decko seam. Source 2 falsified that. MORK does
+      not revive that path.
+
+S4.NEW-Q8 [from Source 3 C3-O4] If designing Decko -> MORK mirror,
+      define these missing pieces:
+      - card name/type/body mapping to S-expressions
+      - card identity vs rename/aliases
+      - revision/event model
+      - file attachment representation
+      - permissions and published/draft status
+      - read-after-write / rollback semantics
+      - server deployment and backup model
+
+S4.NEW-Q9 [from Source 3 C3-O5] If using mork_ffi directly from Rails,
+      treat as new adapter project, not drop-in binding. Lifecycle,
+      schema, transaction model, error handling all required.
+
+S4.NEW-Q10 [from Source 3 R3.4 / R3.I4] PathMap as separate wiki card.
+      Source 4 should evaluate whether PathMap should be standalone
+      Knowledge Representations card or remain a sub-section under
+      MORK.
+
+S4.NEW-Q11 [from Source 3 R3.B5] DAS Full wiki edit specifics:
+      Required correction wording (per Codex C3-J2) is the proposed
+      replacement for "MORK integration as backend under development."
+
+S4.NEW-Q12 [from Source 3 R3.J / Codex C3-J3] AtomSpace Full wiki
+      should separate FOUR layers: Classical AtomSpace StorageNode /
+      Hyperon Space / DAS AtomDB-with-MorkDB / MORK native kernel.
+
+
+================================================================================
+BOTTOM LINE
+================================================================================
+
+R3.B1 MORK = MORK-NATIVE-RUST-FFI-SDK substrate. Not classical
+      StorageNode. Not Hyperon Space. Not DAS AtomDB. Just MORK.
+
+R3.B2 DAS HAS code-real MorkDB AtomDB backend, but MORK server is
+      on a separate `server` branch with deletion incomplete. The
+      DAS-MORK integration is the most existing AtomDB-shaped path
+      to MORK semantics.
+
+R3.B3 PathMap is a foundational trie substrate that deserves its own
+      wiki card.
+
+R3.B4 The "lowest-friction Decko seam" framing from Source 1 does NOT
+      survive Source 3. There is no zero-friction path; only ranked
+      engineering effort across DAS / MORK-server-HTTP / mork_ffi-FFI
+      paths. Source 4 will determine whether DAS infrastructure value
+      justifies its overhead.
+
+R3.B5 The wiki MORK Full card needs MULTIPLE corrections:
+      - "7-crate" -> "8-member" or durable wording
+      - "500M+ atoms" -> tested-up-to-400M, with 500M as OOM
+      - PLN integration framing -> paper/proposal-only consistent
+        with PLN cluster pilot
+      - Add PathMap as foundational dependency
+      - Distinguish MORK main from server branch
+      - Reframe CountSink as MM2 query primitive, not history counter
+      - Reframe weighted-atom-sweep as adjacent experimental crate
+
+R3.B6 Source 3 produces NO wiki writes, NO design-doc edits, NO
+      commits. All identified delta candidates are queued for cluster
+      close after Source 4.
+
+================================================================================
+END OF SOURCE 3 RECONCILIATION
+================================================================================

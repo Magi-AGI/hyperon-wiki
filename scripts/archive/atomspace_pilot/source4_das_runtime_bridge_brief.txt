@@ -1,0 +1,555 @@
+================================================================================
+ATOMSPACE BACKEND INTEGRATION CLUSTER PILOT
+SOURCE 4 BRIEF — DAS + Runtime Bridge + Integration Design Memo
+================================================================================
+
+§0. SOURCE IDENTITY
+-------------------
+Cluster pilot:    AtomSpace Backend Integration (AtomSpace + MORK + DAS)
+Source number:    4 of 4 (FINAL)
+Source name:      DAS + Runtime Bridge
+                  (singnet/das + das-toolbox + das-metta-parser +
+                   MORK server branch + Decko-side MCP infra +
+                   integration design memo synthesis)
+Pilot brief date: 2026-04-29
+Orchestrator:     Claude Opus 4.7 (1M)
+Reviewers:        Codex + Gemini (cross-model triangulation)
+
+PRIMARY REPOS WITH COMMIT PINS (read all):
+  das               85003446 (2026-03-24) branch=master
+                    Canonical singnet/das. v1.0.5 release. ~5 weeks
+                    old. Active. Has AGENTS.md/CLAUDE.md/GEMINI.md
+                    cross-model workflow. Tree: 3rd_party_slots/,
+                    config/, docs/, experiments/, mkdocs.yml,
+                    notebooks/, scripts/, src/, Makefile.
+                    Source 3 already established: das/src/atomdb/
+                    morkdb/MorkDB.{h,cc} is CODE-REAL (Source 3 R3.2),
+                    subclasses RedisMongoDB, talks to MORK HTTP server.
+                    Delete unsupported (MorkDB.h:57-58).
+
+  das-toolbox       bb73759  (2026-04-07) branch=master
+                    CLI tools for DAS infrastructure management.
+                    TOP COMMIT (3 weeks old): "Fix: metta mork loader
+                    error (#276)" — MORK integration is mid-flight.
+                    Reviewers should pickaxe `mork loader` to
+                    understand current loader state.
+
+  das-metta-parser  41ee42e  (2025-11-14) branch=master
+                    C Flex/Bison parser loading MeTTa expressions
+                    into MongoDB/Redis backends. ~5 months old, less
+                    active. "Reset CHANGELOG" top commit.
+
+  MORK [server branch reference]
+                    The DAS side imports MORK at server-branch commit
+                    `578a759` (2025-07-21, Luke Peterson, "Updating
+                    server to use latest PathMap API").
+                    Source 4 must inspect:
+                    - Compare local/fetched MORK origin/server branch
+                      HEAD against the DAS pin `578a759`. Multiple
+                      server-related branches exist in the local clone
+                      (server, server_command_expr_migration,
+                      server_mergehell, server_self_ref_with_tmp_maps_
+                      hotfix); reviewers should run `git log -1 origin/
+                      server` AFTER pre-extraction pull to determine
+                      current state, and only THEN assess whether the
+                      DAS pin is current or stale.
+                    - Pre-extraction pull is the source-of-truth for
+                      drift state; do not assert drift before that.
+
+  hyperon-experimental 3f76dc46 (Source 2 pin, unchanged)
+                    Already audited in Source 2 for Space API surface.
+                    Source 4 audits the DAS-builtin path specifically:
+                    - lib/Cargo.toml metta-bus-client dep.
+                    - lib/src/metta/runner/builtin_mods/das.rs.
+                    - python/sandbox/sql_space/sql_space.py (NEW SEAM
+                      Source 2 V2-2; not yet evaluated for Decko fit).
+
+SECONDARY REPOS (consult only if §3 findings warrant):
+  PeTTa             eb85359  (2026-04-02) branch=main
+                    Patrick Hammer. Python wrapper around mork_ffi
+                    via SWI-Prolog. Already covered in Source 3 R3.K1
+                    Role 2; Source 4 audits if PeTTa-as-runtime-bridge
+                    has any direct Decko relevance.
+
+  PeTTa2            012e378  (2026-03-11) branch=main
+                    Separate fork. Read only if narrative-critical.
+
+  petta-utils       5ddf398  (2025-11-14) branch=main
+  petta_lib_easypy  acf15c3  (2026-02-17) branch=main
+                    Adjacent. Out of scope unless cross-cluster
+                    relevance surfaces.
+
+  hyperon-wiki/mod/ (orchestrator's own repo — Decko module surface)
+                    9 mod packages: editorial_review, email_fixes,
+                    hyperon_ui, math_rendering, mcp_api,
+                    permission_propagation, review_queue_ui,
+                    url_fixes, wiki_nav_tree.
+                    Source 4 must inspect mod/mcp_api/ to inventory
+                    DECKO-MCP API surface (per Source 2 V1-9 / R2.3
+                    disambiguation) — what tools does the deployed
+                    Decko MCP API actually expose?
+
+PRE-EXTRACTION GIT-PULL OBLIGATION (per memory rule):
+Will be executed before extraction launch and recorded as §0 addendum.
+
+PRE-EXTRACTION PULL EXECUTED 2026-04-29:
+DRIFT FOUND on 2 of 3 DAS-family repos + significant MORK server-
+branch drift. Updated pins:
+  das               85003446 -> f4da3d78  (drift; ff-merge applied)
+  das-toolbox       bb73759  -> b3cf116   (drift; ff-merge applied)
+  das-metta-parser  41ee42e  = upstream (no drift)
+
+MORK SERVER-BRANCH UPDATE (relevant to S4.Q11):
+  origin/server HEAD: `5b04a1d` (2026-04-18, Luke Peterson, "Adding
+                      serverShutdown status broadcast")
+  DAS pin: `578a759` (2025-07-21)
+  Drift: 49 commits behind origin/server.
+  Notable post-pin commits (selected for security/correctness):
+    - 5b04a1d Server shutdown broadcast for status_streams hangs
+    - 08116b0 Cleaning up user status map (empty vec leak)
+    - 205dd91 Fixing deadlock caused by lock held too long
+    - f284ff6 UTF-8 validation feature for symbol pathway
+    - dbf9d50 Adding `cnt` return value to explore command
+    - 7872975 Test pathways for edge-case and malformed symbols
+
+  IMPLICATION FOR S4.Q11: the DAS pin is substantially behind current
+  MORK server. Source 4 reviewers must flag this as a DEPLOYMENT RISK
+  in the integration design memo. Any production prototype using DAS
+  MorkDB inherits the DAS pin's missing 49 commits unless DAS is
+  patched to a newer pin.
+
+Reviewer extraction proceeds against the UPDATED PINS, not the
+original §0 pins. Both reviewers should record the post-pull SHA at
+the start of their findings files.
+
+
+§1. SCOPE AND DELIVERABLE TAXONOMY
+----------------------------------
+
+Source 4 produces TWO DELIVERABLES, not one:
+
+  DELIVERABLE 1: DAS + RUNTIME AUDIT
+  Standard audit format mirroring Sources 1-3. Sections A through M
+  (per §5 deliverable shape) covering:
+  - DAS as wiki backend candidate
+  - Attention Broker characterization
+  - DAS-MORK integration completeness
+  - MeTTa Spaces / DAS / hyperon-experimental bridge inventory
+  - Decko-MCP existing API surface inventory (the
+    other half of the DECKO-MCP / ATOMSPACE-MCP disambiguation)
+  - Per-question answers to all carry-forwards from Sources 1-3
+  - Wiki-card delta candidates
+  - Final fork classifications
+
+  DELIVERABLE 2: INTEGRATION DESIGN MEMO (cluster synthesis)
+  Single document synthesizing all four sources into actionable
+  guidance for Phase 3 (Jan-Apr 2026) prototype work. Contains:
+  - WINNING SEAM SELECTION (or explicit deferral with criteria)
+  - PROPOSED WIKI EDITS catalog (with prose-ready text where possible)
+  - PROPOSED docs/ATOMSPACE-INTEGRATION.md REVISION (specific
+    sections to update; specific replacement text for stale claims)
+  - PROPOSED docs/ROADMAP.md REVISION (Phase 3 acceptance criteria
+    refinement)
+  - NEW WIKI CARD CANDIDATE: PathMap (Source 3 R3.4) — confirm or
+    revise placement
+  - NEW WIKI CARD CANDIDATE: AtomSpace Backend Integration synthesis
+    (Sources 1-3 R1.F5, R2.J4, R3.M1) — confirm or revise placement
+  - PHASE 3 PROTOTYPE SCOPE: minimum viable proof-of-value test
+    against Source 1 acceptance gate (<500ms fetch / <2s acceptable /
+    5+ semantic-insights not visible in PostgreSQL)
+
+CARRY-FORWARD CAUTIONS FROM SOURCES 1-3:
+
+  S4-CARRY-1 (from Source 2 R2.3, R2.K3): The literal `from hyperon
+              import Atomspace, MCP` from docs/ATOMSPACE-INTEGRATION.md
+              is APOCRYPHAL. Source 4 must NOT investigate it as a
+              real API; instead audit what was likely INTENDED
+              (DECKO-MCP existing / ATOMSPACE-MCP proposed) and
+              propose the corrective doc edit.
+
+  S4-CARRY-2 (from Source 2 R2.4, V2-3): DAS is wired into hyperon-
+              experimental as MeTTa builtin via metta-bus-client tag
+              1.0.2 + `new-das!` op. Source 4 builds on this rather
+              than re-discovering it.
+
+  S4-CARRY-3 (from Source 3 R3.2): DAS MorkDB is CODE-REAL with three
+              critical caveats:
+              (a) DAS-side, not in MORK proper.
+              (b) MORK server-branch dependency at `578a759`.
+              (c) Delete unsupported (MorkDB.cc:284-286).
+              Source 4 must propagate ALL THREE caveats into any wiki
+              edit or design memo.
+
+  S4-CARRY-4 (from Source 3 R3.5, V3-1): "PeTTa/MORK 500M+ atoms in
+              RAM" is FALSIFIED. Wiki edit at cluster close uses
+              "tested up to 400M, with 500M reported as out-of-memory"
+              wording.
+
+  S4-CARRY-5 (from Source 3 R3.4): PathMap deserves its own wiki card.
+              Source 4 must finalize whether this lands as
+              "Knowledge Representations+PathMap" OR a sub-card of
+              MORK Full OR something else.
+
+  S4-CARRY-6 (from Source 3 R3.B4): The "lowest-friction Decko seam"
+              framing from Source 1 does NOT survive Source 3. There
+              is NO zero-friction path; only ranked engineering effort
+              across DAS / MORK-server-HTTP / mork_ffi-FFI paths.
+              Source 4 picks based on the DAS audit results.
+
+GEMINI SOURCE-4 STATED FOCUS (acknowledged):
+  - Attention Broker: ECAN-faithfulness vs engineering-surrogate
+  - Delete-Incomplete Status: TODO in MorkDB.h and impact on wiki CRUD
+  - Four-Layer Taxonomy: lock the separation between Classical
+    StorageNode / MeTTa Space / DAS / MORK-Native
+
+
+§2. KEY QUESTIONS (CONSOLIDATED FROM SOURCES 1-3 + GEMINI'S FOCUS)
+------------------------------------------------------------------
+
+S4.Q1 [from Source 1, unchanged] DAS AS WIKI BACKEND.
+      Determine whether DAS is:
+      (a) The correct consumer-facing API for the wiki backend.
+      (b) A deployment layer underneath Atomspace.
+      (c) Irrelevant to a Decko integration.
+      Audit DAS core, das-toolbox, das-metta-parser, Attention Broker,
+      and runtime bridge.
+
+S4.Q2 [from Source 1, unchanged] MeTTa SPACES / lib_spaces.metta /
+      PeTTa / hyperon-experimental as runtime integration seams.
+      Determine whether a wiki backend would call MeTTa, DAS,
+      AtomSpace directly, or only export a shadow mirror.
+
+S4.Q3 [PRE-RESOLVED Source 2 R2.3] Source 1's `from hyperon import
+      Atomspace, MCP` is FALSIFIED. Source 4 audits what was likely
+      INTENDED, NOT the literal symbol. Propose corrective doc edit.
+
+S4.Q4 [from Source 1, R1.C3] PHASE 5 PLN GAME-RULE REASONING vs
+      No-Go theorem. Does the design's symbolic rule representation
+      account for joint-evidence completeness per the No-Go theorem
+      from PLN cluster pilot?
+
+S4.Q5 [from Source 1] INTEGRATION-DESIGN SYNTHESIS against Source 1
+      gates: latency, semantic value, data integrity, rollback,
+      operational complexity, implementation effort.
+      THIS IS THE INTEGRATION DESIGN MEMO. See §1 Deliverable 2.
+
+S4.Q6 [from Source 2 NEW-Q1 / S4.NEW-Q1] VIABLE INTEGRATION
+      ARCHITECTURE selection (HARD LABEL REQUIRED).
+      Reviewers MUST select exactly ONE label from this vocabulary:
+        DECKO-MCP->DAS                  — Decko/MCP middleware routes
+                                          to DAS as backend
+        DECKO-MCP->HYPERON-SPACE->DAS   — Decko/MCP routes through
+                                          Hyperon Space which uses
+                                          DAS underneath
+        READONLY-ATOMSPACE-BRIDGE       — atomspace-bridge for read-
+                                          only mirror; Decko stays
+                                          source of truth
+        DIRECT-MORK-HTTP                — Rails HTTP client to MORK
+                                          server branch
+        DIRECT-MORK-FFI                 — Rails Ruby FFI to mork_ffi
+                                          C ABI
+        HYBRID                          — Multiple seams composed
+                                          (e.g., FFI for reads +
+                                          loader for writes)
+        DEFER                           — Insufficient evidence at
+                                          Phase 3 to choose; remain
+                                          on PostgreSQL primary while
+                                          shadow evaluation continues
+      The label drives the integration design memo (Deliverable 2 §3
+      Winning Seam Selection).
+
+S4.Q7 [from Source 2 NEW-Q2 / S4.NEW-Q2] atomspace-bridge WRITE-BACK
+      DESIRABLE? Source 2 found current write stubs. Source 4 should
+      decide whether implementing write-back is desirable or whether
+      a read-only mirror is safer architecturally.
+
+S4.Q8 [from Source 2 NEW-Q3 / S4.NEW-Q3] DECKO-MCP / ATOMSPACE-MCP
+      SEPARATION. Inventory the existing `mod/mcp_api/` Decko API
+      surface — what tools does it expose? Only call ATOMSPACE-MCP
+      "implemented" if actual AtomSpace query tools exist.
+
+S4.Q9 [from Source 2 NEW-Q4 / S4.NEW-Q4] python/sandbox/sql_space/
+      sql_space.py EVALUATION as candidate for Hyperon-side Decko-SQL
+      bridge alternative to atomspace-bridge.
+
+S4.Q10 [from Source 3 NEW-Q5] DAS DEPLOYMENT TOPOLOGY + QUERY
+      SEMANTICS + DELETE/WRITEBACK GAPS + ATTENTION BROKER / AGENTS.
+      Treat DAS MorkDB as already CODE-REAL; Source 4 audits depth
+      and fitness for wiki backend.
+      Sub-questions:
+      (a) Deployment: Redis + MongoDB + MORK split. K8s? Single-host?
+      (b) Query semantics: Source ↔ Operator ↔ Sink streaming. Latency
+          per element? Backend-agnostic via AtomDB Broker.
+      (c) Delete/writeback gaps beyond MorkDB delete-unsupported. Are
+          there other CRUD holes? Source 1 R1.A2 dual-write rollback
+          requires complete CRUD.
+      (d) Attention Broker: per Gemini focus — ECAN-faithfulness
+          vs engineering-surrogate. Is the Hebbian learning mechanism
+          paper-faithful (ECAN cluster pilot Source 1: 0/4 strict
+          literal in METTa-attention port)? Or another engineering
+          surrogate? Reviewers MUST classify with one of:
+          [ECAN-FAITHFUL] / [ECAN-SURROGATE] / [ECAN-INSPIRED-NEW] /
+          [NOT-ECAN-RELATED].
+
+S4.Q11 [from Source 3 NEW-Q6] MORK SERVER BRANCH inclusion in
+      integration design memo. Source 3 confirmed the DAS Dockerfile
+      pins `578a759` (2025-07-21). Subsequent server branches exist
+      (server, server_command_expr_migration, server_mergehell,
+      server_self_ref_with_tmp_maps_hotfix). Source 4 must:
+      (a) Determine which server branch is the current canonical
+          target.
+      (b) Identify any drift between DAS pin (`578a759`) and current
+          server branch HEAD.
+      (c) Document server-branch deployment requirements.
+
+S4.Q12 [from Source 3 NEW-Q8] If designing Decko -> MORK mirror,
+      define these missing pieces:
+      - card name/type/body mapping to S-expressions
+      - card identity vs rename/aliases
+      - revision/event model
+      - file attachment representation
+      - permissions and published/draft status
+      - read-after-write / rollback semantics
+      - server deployment and backup model
+      Source 4 must EITHER define these pieces (if Phase 3 prototype
+      is feasible) OR explicitly defer them to Phase 4 with an
+      enumerated open-questions list.
+
+S4.Q13 [from Source 3 NEW-Q10] PATHMAP WIKI CARD PLACEMENT.
+      Lock the placement decision:
+      (a) Knowledge Representations+PathMap (standalone)
+      (b) Sub-card under Knowledge Representations+MORK
+      (c) Sub-section in About Hyperon+AtomSpace+AtomSpace Full
+      Source 4 picks one and provides the ID/parent path.
+
+S4.Q14 [from Source 3 NEW-Q11] DAS Full WIKI EDIT SPECIFICS.
+      Codex C3-J2 proposed wording:
+      "DAS contains a code-real MorkDB AtomDB backend that talks to
+      a MORK HTTP server and Mongo-side metadata, but
+      deletion/writeback semantics are incomplete and the MORK server
+      dependency is pinned to a server-branch commit."
+      Source 4 must EITHER adopt this wording OR refine it based on
+      Source 4's deeper DAS audit.
+
+S4.Q15 [from Source 3 NEW-Q12] AtomSpace Full FOUR-LAYER SEPARATION
+      lock-in (Gemini focus area #3):
+      Layer 1: Classical AtomSpace StorageNode (Source 2)
+      Layer 2: Hyperon Space (GroundingSpace/SpaceMut/DynSpace,
+               Source 2)
+      Layer 3: DAS AtomDB (with MorkDB subclass, Source 3)
+      Layer 4: MORK native kernel/server/FFI/SDK (Source 3)
+      Reviewers must:
+      (a) Lock the layer numbering and naming.
+      (b) Provide proposed wiki text for the AtomSpace Full
+          "Implementations" section.
+
+S4.Q16 [NEW Source 4] DECKO-MCP API SURFACE INVENTORY.
+      Inspect `hyperon-wiki/mod/mcp_api/` and produce:
+      (a) List of exposed MCP tools (e.g., `get_card`, `search_cards`,
+          `create_card`, etc.).
+      (b) Authentication model (Source 1 G2: JWT/RS256/JWKS confirmed).
+      (c) Whether any of the tools could be REPURPOSED for AtomSpace
+          query (i.e., the same tool name could route to either
+          Decko-DB or AtomSpace-mirror) — this would be the
+          dual-backend prototype seam.
+      (d) Whether ATOMSPACE-MCP would be a NEW MCP server alongside
+          DECKO-MCP, or a backend-toggle on the existing one.
+
+S4.Q17 [NEW Source 4, Gemini focus #2] DELETE-INCOMPLETE INVESTIGATION.
+      Pickaxe MorkDB.h's TODO + MORK kernel sinks for delete support.
+      (a) What is the actual blocker on MORK side? Per Source 3 R3.2
+          MorkDB.h:57-58 says delete will be implemented "once MORK
+          supports deleting links / S-expressions."
+      (b) Local-only delete-status check: inspect local MORK `git log`
+          for delete-related commit messages, branch names containing
+          "delete" or "remove", and TODO/FIXME comments in the kernel
+          for delete support. Open GitHub issue/PR status is NOT
+          locally verifiable unless a web-enabled lane is explicitly
+          authorized; do not claim issue/PR existence without local
+          evidence.
+      (c) What does the DAS-side workaround look like at present?
+          (Probably: orphan-tracking in Mongo; queries skip-orphans.)
+      (d) Impact on Source 1 R1.A1 (dual-write requirement) and R1.A2
+          (rollback): an integration that cannot DELETE cards is
+          incompatible with Decko trash/restore.
+      Reviewers must produce a DELETE-COMPLETENESS verdict:
+      [READY-FOR-DECKO] / [BLOCKING-INTEGRATION] / [WORKAROUND-EXISTS].
+
+S4.Q18 [NEW Source 4, Gemini focus #1, ECAN cluster cross-relevance]
+      ATTENTION BROKER ECAN-FAITHFULNESS.
+      Per ECAN cluster pilot Source 1: classical ECAN C++ scored
+      0/4 strict-literal compliance against the 2009 Goertzel paper;
+      MeTTa-attention port replicated the same engineered surrogates.
+      Per OpenPsi cluster pilot V4-1: ECAN-PLN executable coupling
+      was deliberately decoupled by 2019.
+      Source 4 must determine where DAS Attention Broker sits on this
+      lineage:
+      (a) Does it implement the 2009 paper's literal equations?
+      (b) Or the same engineered surrogates as Classic / metta-attention?
+      (c) Or new engineering with paper-inspired vocabulary?
+      (d) Or something genuinely novel?
+      Use the ECAN cluster's [0/4-LITERAL] / [SURROGATE-COMPATIBLE] /
+      [PAPER-INSPIRED-NEW] / [NOT-ATTENTION-CURRENCY] vocabulary.
+
+
+§3. PHASE-0 / SOURCES 1-3 INHERITED ANCHORS
+-------------------------------------------
+
+A. Wiki cards in scope for Source-4 cluster-close edits (consolidated
+   list across all four sources):
+   - About Hyperon+AtomSpace                         (ID 4017, Draft)
+   - About Hyperon+AtomSpace+AtomSpace Full          (ID 4403, Draft)
+   - Knowledge Representations+MORK                  (ID 648, Published shell)
+   - Knowledge Representations+MORK+MORK Full        (ID 4194, Draft)
+   - Knowledge Representations+DAS                   (ID 646, Published shell)
+   - Knowledge Representations+DAS+DAS Full          (ID 4200, Draft)
+   - Implementation Families+Attention and Motivation (ID 4751, Draft)
+                                                      [conditional — only
+                                                      if S4.Q18 verdict
+                                                      shifts attention-
+                                                      lineage framing]
+   - NEW: Knowledge Representations+PathMap          [confirm S4.Q13]
+   - NEW: Implementation Families+AtomSpace Backend Integration
+                                                      [synthesis card]
+   - NEW: +AI Draft children for Published shells (648, 646)
+                                                      [if substantive
+                                                      published-card
+                                                      changes proposed]
+
+B. Documentation files in scope:
+   - docs/ATOMSPACE-INTEGRATION.md (4 specific edits already queued
+     per Source 2 R2.J5 + Source 3 corrections)
+   - docs/ROADMAP.md (Phase 3 acceptance criteria refinement per
+     Source 1 R1.F7 + Source 3 carry-forwards)
+
+C. STALE CLAIM HOT SPOTS already verified-and-pending-edit:
+   - "atomspace-pgres lowest-friction" (Source 2)
+   - "from hyperon import Atomspace, MCP" (Source 2)
+   - "MORK 7-crate workspace" (Source 3)
+   - "PeTTa/MORK 500M+ atoms in RAM" (Source 3)
+   - "MORK as DAS backend under development" (Source 3, refined)
+   - "AtomSpace single-backend" (Source 3, four-layer needed)
+   - "_sanitize_card_name" recommendation in adapter sketch (Source 2)
+
+
+§4. METHODOLOGY RULES IN FORCE
+------------------------------
+All eight rules established by prior cluster pilots + Sources 1-3
+apply unchanged. R1-R6 from Source 2 brief; R7-R8 from Source 3 brief.
+Source 4 adds two new rules:
+
+R9 [NEW] DUAL-DELIVERABLE READ-ONLY DISCIPLINE.
+   Source 4 produces TWO deliverables (audit + memo), but BOTH are
+   read-only artifacts. NO wiki writes, NO file edits, NO commits
+   during extraction. The integration design memo (Deliverable 2)
+   is a PROPOSAL, not an enacted change. Cluster-close edits await
+   user authorization in a separate phase.
+
+R10 [NEW] LATERAL-CITATION DISCIPLINE.
+    Source 4's memo synthesizes findings from Sources 1, 2, 3.
+    Every memo claim that derives from a prior source must cite the
+    source's reconciliation file by R-N record (e.g., "per S2 R2.1"
+    or "per S3 R3.2"). This makes the memo auditable against the
+    source-of-truth files.
+
+
+§5. DELIVERABLE SHAPE
+---------------------
+
+DELIVERABLE 1 (audit) — each reviewer returns:
+
+  Section A — DAS AS WIKI BACKEND VERDICT (S4.Q1)
+              with single label from {(a) consumer-API / (b) deployment-
+              layer / (c) irrelevant}.
+  Section B — MeTTa SPACES / lib_spaces.metta / PeTTa / hyperon-
+              experimental SEAM INVENTORY (S4.Q2).
+  Section C — DECKO-MCP API SURFACE INVENTORY (S4.Q16).
+  Section D — DAS DEEP AUDIT (S4.Q10) including Attention Broker
+              classification (S4.Q18) using vocabulary
+              [0/4-LITERAL] / [SURROGATE-COMPATIBLE] /
+              [PAPER-INSPIRED-NEW] / [NOT-ATTENTION-CURRENCY].
+  Section E — DELETE-COMPLETENESS VERDICT (S4.Q17) using vocabulary
+              [READY-FOR-DECKO] / [BLOCKING-INTEGRATION] /
+              [WORKAROUND-EXISTS].
+  Section F — MORK SERVER BRANCH STATUS (S4.Q11) including current
+              canonical branch + DAS pin currency.
+  Section G — atomspace-bridge WRITE-BACK DESIRABILITY (S4.Q7).
+  Section H — sql_space.py EVALUATION (S4.Q9).
+  Section I — Phase 5 PLN GAME RULE No-Go COMPATIBILITY (S4.Q4).
+  Section J — FOUR-LAYER ATOMSPACE TAXONOMY LOCK-IN (S4.Q15) with
+              proposed wiki text.
+  Section K — PATHMAP WIKI CARD PLACEMENT DECISION (S4.Q13).
+  Section L — DAS FULL WIKI EDIT SPECIFICS (S4.Q14).
+  Section M — Reviewer-specific dissents (V4-N).
+
+DELIVERABLE 2 (integration design memo) — each reviewer returns:
+
+  §1 Executive Summary (150 words max)
+  §2 Acceptance Gate Recap (Source 1 R1.2)
+  §3 Winning Seam Selection (or explicit deferral)
+        With justification grounded in S1 acceptance gate, S2 storage
+        ecosystem map, S3 MORK substrate verdict, S4 DAS audit.
+  §4 Phase 3 Prototype Scope (Jan-Apr 2026 — already in window)
+        - Minimum viable proof-of-value test.
+        - Specific cards to mirror (e.g., 100-1000 cards).
+        - Specific PLN/semantic queries to demonstrate.
+        - Rollback procedure.
+  §5 Documentation Edit Catalog (specific replacement text)
+        - docs/ATOMSPACE-INTEGRATION.md (per S2.R2.J5 + S3 carry-
+          forwards)
+        - docs/ROADMAP.md (Phase 3 acceptance criteria)
+  §6 Wiki Edit Catalog (per cluster-close batch)
+        - Specific cards, specific section edits, specific replacement
+          text.
+        - +AI children for Published shells where applicable.
+  §7 Open Questions for Phase 4+
+        - Decko-CRUD-vs-MORK-delete (pending S4.Q17)
+        - Attention Broker fitness for wiki use
+        - Distributed deployment topology
+        - Anything else surfaced during audit
+
+  REVIEWER MEMOS need not be identical; reconciler builds the final
+  cluster-canonical memo from both inputs.
+
+Findings files:
+  scripts/archive/atomspace_pilot/source4_das_runtime_bridge/
+    findings_codex.txt           (Deliverable 1 + Deliverable 2)
+    findings_gemini.txt          (Deliverable 1 + Deliverable 2)
+    findings_reconciled_crossmodel.txt
+    integration_design_memo.txt  (cluster-canonical synthesis)
+
+
+§6. CLUSTER-CLOSE EDIT EXECUTION SEQUENCE (POST-RECONCILIATION)
+---------------------------------------------------------------
+After Source 4 reconciliation closes, execution sequence:
+
+Phase A: User reviews integration_design_memo.txt and authorizes
+         the proposed wiki/doc edit batch.
+Phase B: Orchestrator executes wiki edits per the batch (sequential
+         calls, verify after every write — per memory-rule wiki-edit
+         protocol).
+Phase C: Orchestrator executes documentation edits to
+         docs/ATOMSPACE-INTEGRATION.md and docs/ROADMAP.md.
+Phase D: Orchestrator updates CLAUDE.md (top-level orientation) with
+         AtomSpace cluster pilot summary, mirroring the OpenPsi /
+         ECAN / PLN cluster pilot pattern.
+Phase E: Orchestrator updates Claude memory:
+         - new project memory
+           project_atomspace_cluster_pilot_2026_04_29.md
+         - update MEMORY.md index
+Phase F: User authorizes commit; orchestrator commits.
+
+NONE of phases A-F are part of Source 4 extraction. Source 4 produces
+the proposals; user authorizes; orchestrator executes.
+
+
+§7. NON-WRITE STANCE
+--------------------
+Source 4 extraction is read-only. The integration design memo
+(Deliverable 2) is a PROPOSAL. No wiki writes, no file edits, no
+commits during extraction.
+
+
+================================================================================
+END OF SOURCE 4 BRIEF
+================================================================================

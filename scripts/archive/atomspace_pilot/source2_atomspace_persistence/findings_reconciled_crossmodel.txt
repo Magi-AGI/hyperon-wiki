@@ -1,0 +1,695 @@
+================================================================================
+ATOMSPACE BACKEND INTEGRATION CLUSTER PILOT
+SOURCE 2 RECONCILIATION — AtomSpace API + Persistence Layer
+================================================================================
+
+Pilot:        AtomSpace Backend Integration Cluster Pilot
+Source:       2 of 4 (AtomSpace core + StorageNode persistence ecosystem)
+Date:         2026-04-29
+Orchestrator: Claude Opus 4.7 (1M)
+Reviewers:    Codex (findings_codex.txt) + Gemini (findings_gemini.txt)
+Status:       Reconciled. Source 2 closes for extraction. Cross-source
+              forwards locked. Wiki/file edits deferred to cluster close.
+
+Pre-extraction pull: 2026-04-29, zero drift across all 7 primary repos.
+Post-extraction Codex SHA verification: matches §0 brief pins.
+
+
+================================================================================
+EXECUTIVE SUMMARY (CONSENSUS)
+================================================================================
+
+R2.1 atomspace-pgres = [BACKING-STORE-ONLY]. HARD VERDICT (per brief
+     S2.Q3 negative test). NOT [DECKO-SCHEMA-COMPATIBLE]. Both reviewers
+     converge with independent code-level evidence:
+     - Codex: AtomSpace-owned schema (Spaces, Atoms, Valuations, Values,
+       TypeCodes); zero Decko/Wagn/cards/card_actions/card_changes refs in
+       repo. Cf. atom.sql:21-146; SQLAtomStorage.h:57.
+     - Gemini: Hardcoded `INSERT INTO Atoms (uuid, space, type, name,
+       height, outgoing)` schema; explicit deprecation in README-design.md
+       "As of 2022, the Postgres backend is deprecated."
+     Implication: atomspace-pgres is BOTH wrong-schema AND deprecated.
+     The Source 1 R1.B1 "highest-priority seam" hypothesis is FALSIFIED.
+     Cf. Codex C2-2, C2-C1-C8, K1; Gemini Section C.
+
+R2.2 atomspace-bridge / BridgeStorageNode is the closest existing
+     Decko-applicable seam, BUT currently READ-ONLY.
+     Both reviewers converge: write methods are empty stubs at this
+     snapshot. Reading capability includes dynamic schema introspection
+     via `information_schema.columns` (Gemini) and `pg_tables WHERE
+     schemaname = 'public'` (Codex C2-G4).
+     Cf. Codex C2-3, C2-G1-G12, C2-Z2; Gemini Section G.
+     Limitations: Postgres-only (Codex C2-G3); public-schema-only
+     (Codex C2-G4); naked PK/FK storage without FK-driven atom links
+     (Codex C2-G10); no Decko-specific schema templates (Codex C2-G12).
+
+R2.3 Source 1's `from hyperon import Atomspace, MCP` design-sketch
+     assumption (S1 C13) is FALSIFIED. hyperon-experimental does NOT
+     export an `MCP` symbol. The Python package exposes
+     AbstractSpace/GroundingSpace/SpaceRef/GroundingSpaceRef.
+     Cf. Codex C2-D2, K3.
+     Implication: docs/ATOMSPACE-INTEGRATION.md adapter sketch must be
+     rewritten at cluster close to remove the apocryphal `MCP` import.
+
+R2.4 DAS is ALREADY WIRED into hyperon-experimental as a MeTTa builtin.
+     Codex finding (Gemini did not surface): hyperon-experimental imports
+     `metta-bus-client` from singnet/das at tag 1.0.2; the `new-das!`
+     MeTTa op exists in lib/src/metta/runner/builtin_mods/das.rs.
+     Cf. Codex C2-6, C2-D3, L6, L7. lib/Cargo.toml:31-34, 46, 55;
+     das.rs:15, 36-40, 66-85, 187-194.
+     Implication: PARTIAL pre-resolution of S4.Q1. Source 4 continues
+     with deeper DAS audit, but the wiring path is established.
+
+R2.5 NEW MODERN SEAMS (Gemini-surfaced; Codex did not enumerate):
+     hyperon-experimental contains TWO Python-native seams that bypass
+     classical C++ StorageNode:
+     - python/sandbox/sql_space/sql_space.py — MeTTa-native SQL mapping.
+     - python/sandbox/mork/mork.py — VERY PRELIMINARY HTTP wrapper to
+       a MORK server. Per Codex sign-off review: `query()` returns
+       empty, `add()` is `pass` — this is not a full bridge, it is a
+       skeletal placeholder. Source 3 / Source 4 should treat as
+       evidence of intent rather than functioning code.
+     Both are EXPERIMENTAL ("sandbox/" path). Significant for future
+     architecture but not production-ready at this snapshot.
+     Cf. Gemini Section D. (See V2-2 dissent for status interpretation.)
+
+R2.6 AttentionBank verified GONE in atomspace HEAD (`c8d633bf27`).
+     Both reviewers performed independent grep — zero matches.
+     Confirms the Source 1 R1.C5 stale-claim flag and ECAN cluster
+     pilot finding #2 (deliberate decoupling by 2019). Wiki cards that
+     mention AttentionBank as available must be corrected at cluster
+     close.
+     Cf. Codex C2-K4, F5; Gemini Section K.
+
+R2.7 Decko card name preservation does NOT require sanitization.
+     AtomSpace Node stores `_name` as `std::string` with valid-UTF-8
+     enforcement only; `+`, `:`, spaces all preserve. The Source 1
+     adapter sketch's `_sanitize_card_name` is unnecessary and lossy by
+     design.
+     Cf. Codex C2-B1, C2-E1, K3, J7. Node.h:46, 76; Node.cc:74-78.
+     Implication: cluster-close edit to docs/ATOMSPACE-INTEGRATION.md
+     should remove the sanitization recommendation.
+
+
+================================================================================
+SECTION A — STORAGE NODE / API SURFACE INVENTORY
+================================================================================
+
+R2.A1 StorageNode = CANONICAL classical persistence interface.
+      C++ Atomese object backed by BackingStore virtual interface;
+      exposed through Scheme message/value APIs.
+      Lifecycle: open / open_read_only / close / connected / create /
+      destroy / erase.
+      Read/write: fetch_atom, fetch_value, fetch_incoming_set,
+      fetch_incoming_by_type, store_atom, store_value, store_atomspace,
+      remove_atom.
+      Cf. Codex C2-A1-A6. atomspace-storage StorageNode.h:42, 81-114,
+      169-341; BackingStore.h:54, 76-112; persist.scm:127-1235.
+
+R2.A2 ProxyNode family is part of the canonical ecosystem (Codex-only
+      enumeration; Gemini did not surface):
+      NullProxy / ReadThruProxy / SequentialReadProxy / WriteThruProxy /
+      ReadWriteProxy / WriteBufferProxy / CachingProxy / DynamicDataProxy.
+      Architecturally relevant: these can mirror writes, load-balance
+      reads, buffer writes, cache reads, or compute dynamic values.
+      Cf. Codex C2-A8, F3. storage_types.script:41-77.
+      Cluster relevance: ProxyNode composition could provide the
+      Decko-aware adapter layer atomspace-pgres lacks, IF combined with
+      a custom backing store.
+
+R2.A3 StorageNode is asynchronous; barrier matters.
+      Cf. Codex C2-A7, F2. StorageNode.h:152.
+
+R2.A4 FileStorageNode is the minimal local persistence reference.
+      Implements only some StorageNode APIs; whole AtomSpaces can be
+      read/written and individual atoms can be written; complex queries
+      not supported.
+      Cf. Codex C2-A9.
+
+
+================================================================================
+SECTION B — DECKO REPRESENTATION FEASIBILITY
+================================================================================
+
+R2.B1 AtomSpace Node names preserve Decko card names without
+      sanitization. (Resolves S2.Q5 in the negative on the
+      sanitization-needed claim.)
+      Cf. Codex C2-B1-B2, E1-E5.
+
+R2.B2 Decko card metadata (mutable values) maps cleanly onto AtomSpace
+      Values. atomspace-pgres has separate Valuations/Values tables
+      illustrating the model.
+      Cf. Codex C2-B4. atomspace-pgres atom.sql:78-83, 103, 107-111.
+
+R2.B3 RECOMMENDED MIRROR PATTERN (orchestrator-synthesized from Codex
+      C2-B3, C2-E5):
+      - ConceptNode for card identities (exact title preservation OR
+        `DeckoCard:<id>` for stable identity across renames)
+      - PredicateNode for relation/cardtype/property keys
+      - EvaluationLink / InheritanceLink / StateLink for relations
+      - Values for mutable metadata
+      Final identity choice (title vs ID-based) deferred to Source 4
+      integration memo after AtomSpace/DAS/MORK tradeoffs.
+
+R2.B4 NOT SOLVED by generic StorageNode — REQUIRES custom mapping layer:
+      - Decko revisions / card_actions / authorship / card history
+      - File uploads (binary content + storage path)
+      - RichText body format vs Markdown
+      - Cardtype-specific behavior
+      - Permissions
+      Cf. Codex C2-B5. Source 1 requirements R1.A5-A7 reaffirmed.
+
+
+================================================================================
+SECTION C — atomspace-pgres COMPATIBILITY VERDICT
+================================================================================
+
+LITERAL VERDICT (per brief S2.Q3 hard negative test):
+
+R2.C1 atomspace-pgres = [BACKING-STORE-ONLY].
+
+R2.C2 NOT [DECKO-SCHEMA-COMPATIBLE].
+
+R2.C3 EVIDENCE STACK (consensus):
+      - Owns AtomSpace-specific PostgreSQL schema: Spaces, Atoms,
+        Valuations, Values, TypeCodes (Codex C2-C2, C2-C5;
+        atom.sql:21-146).
+      - Hardcoded INSERT statements use AtomSpace-shaped column lists
+        (`uuid, space, type, name, height, outgoing`) per Gemini.
+      - Setup instructions tell users to pipe `atom.sql` into Postgres
+        (Codex C2-C5; opencog/persist/sql/README.md:424-453).
+      - SQLAtomStorage subclasses StorageNode; exposes
+        PostgresStorageNode (Codex C2-C6).
+      - Repo-wide grep for `cards`, `card_actions`, `card_changes`,
+        `Decko`, `Wagn` returns ZERO matches (Codex C2-C2).
+      - Deletion semantics are AtomSpace-store, not Decko revision-
+        compatible (Codex C2-C7).
+
+R2.C4 ADDITIONAL DEPRECATION FINDING (Gemini-only, V2-1 dissent):
+      atomspace-pgres README-design.md (lines 8-12) and README.md
+      (lines 11-12) explicitly state the Postgres backend is
+      deprecated as of 2022 — not recommended for new projects in
+      favor of RocksDB. Note: the 2025 HEAD does show maintenance
+      still occurred (Sept-Oct 2025 API modernization sweep), so the
+      project is not abandoned, but the maintainers do not encourage
+      new integrations against it.
+      Cf. Gemini Section C deprecation rider. (Codex did not surface
+      this; Codex's evidence focused on schema rather than maintainer
+      intent.)
+
+R2.C5 IMPLICATION FOR docs/ATOMSPACE-INTEGRATION.md:
+      "atomspace-pgres" is no longer a viable [DECKO-SCHEMA-COMPATIBLE]
+      seam. The doc must be revised at cluster close. Suggested wording
+      from Codex C2-J6: "atomspace-pgres can persist an AtomSpace mirror
+      into PostgreSQL, but it cannot operate directly over Decko's
+      existing schema. Direct Decko-DB integration would require
+      atomspace-bridge-style schema import plus Decko-specific mappings,
+      or a custom adapter."
+
+
+================================================================================
+SECTION D — CLASSICAL ATOMSPACE vs HYPERON SPACE API
+================================================================================
+
+R2.D1 FOUR DISTINCT LAYERS, do NOT collapse:
+      (1) Classical AtomSpace StorageNode (C++ + Scheme)
+      (2) Hyperon GroundingSpace / Space / DynSpace / SpaceMut
+          (Rust + Python)
+      (3) DAS DistributedAtomSpace (separate runtime, wired into
+          hyperon-experimental as builtin via singnet/das)
+      (4) MCP tool API (DECKO-MCP exists; ATOMSPACE-MCP would be new)
+      Cf. Codex C2-5, D1-D5. Source 1 V1-9 disambiguation reaffirmed.
+
+R2.D2 hyperon-experimental Python package exposes:
+      AbstractSpace, GroundingSpace, SpaceRef, GroundingSpaceRef.
+      It does NOT expose the literal `Atomspace` or `MCP` symbols
+      that the Source 1 design sketch imports.
+      Cf. Codex C2-D2, K3. python/hyperon/base.py:6, 56, 168, 263.
+
+R2.D3 NEW MODERN SEAMS (Gemini, V2-2 dissent on status):
+      Two sandbox-tier Python files in hyperon-experimental:
+      (a) python/sandbox/sql_space/sql_space.py — MeTTa-native SQL
+          mapping that bypasses C++ StorageNode entirely.
+      (b) python/sandbox/mork/mork.py — bridge code for MORK substrate.
+      Status nuance: "sandbox/" path implies EXPERIMENTAL. Brief's
+      vocabulary applies: classify as EXPERIMENTAL, not BRIDGE-ADAPTER
+      (the brief requires exactly ONE label). Source 4 should evaluate
+      whether sql_space.py is a viable candidate or stalled experiment.
+
+R2.D4 Hyperon DAS is wired-in as MeTTa builtin (Codex):
+      `new-das!` MeTTa op + `metta-bus-client` from singnet/das tag
+      1.0.2. This is HYPERON-NATIVE distributed AtomSpace, not
+      classical StorageNode persistence.
+      Cf. Codex C2-6, D3, L6, L7. lib/Cargo.toml:31-34;
+      builtin_mods/das.rs:15, 66-85, 187-194.
+
+
+================================================================================
+SECTION E — NAME SANITIZATION VERDICT
+================================================================================
+
+R2.E1 Sanitization is UNNECESSARY at the AtomSpace Node layer.
+      AtomSpace Node names accept arbitrary valid UTF-8 including
+      `+`, `:`, spaces. Hashing/equality use raw name.
+      Cf. Codex C2-E1-E3, B1-B2.
+
+R2.E2 The Source 1 sketch's `_sanitize_card_name` is therefore lossy
+      by design and should be removed.
+
+R2.E3 Card title alone is INSUFFICIENT for stable identity (titles can
+      be renamed in Decko). The mirror layer should ALSO carry Decko
+      ID metadata. Recommended pattern: `(ConceptNode "DeckoCard:<id>")`
+      or exact-title ConceptNode plus a State/EvaluationLink to ID
+      metadata. (Final choice deferred to Source 4.)
+      Cf. Codex C2-E4, E5.
+
+
+================================================================================
+SECTION F — DUAL-API LAYER AUDIT (C++ AND SCHEME/MeTTa)
+================================================================================
+
+R2.F1 Classical layer has BOTH C++ and Scheme; Hyperon has Rust + Python.
+      Reviewers searched both layers and found:
+      - C++: StorageNode + BackingStore + concrete backends (verified)
+      - Scheme: cog-open / fetch-atom / fetch-value / fetch-incoming-set
+        / store-atom / store-value / load-atomspace / store-atomspace
+        / fetch-query / proxy-open / set-proxy! / barrier (verified)
+      - Rust: Space / SpaceMut / DynSpace / GroundingSpace + new-space
+        / add-atom / match (verified)
+      - Python: AbstractSpace / GroundingSpace / SpaceRef (verified)
+      Cf. Codex C2-F1-F4, A6, D1.
+
+R2.F2 STALE-CLAIM dual-layer grep results (Codex C2-F5):
+      - AttentionBank / cog-av-sti / cog-set-av: NO active runtime
+        surfaces in primary Source 2 repos.
+      - PLN: documentary refs in atomspace; toy/test refs in
+        hyperon-experimental; historical AttentionValueUTest in
+        atomspace-pgres.
+      Conclusion: NOT active ECAN-PLN storage-layer integration.
+      Confirms ECAN cluster pilot finding #2 + OpenPsi V4-1.
+
+
+================================================================================
+SECTION G — atomspace-bridge / BridgeStorageNode VERDICT
+================================================================================
+
+R2.G1 BridgeStorageNode = BRIDGE-ADAPTER (per brief vocabulary).
+      Currently the closest existing Decko-applicable seam.
+      Cf. consensus across Codex C2-G1-G12 and Gemini Section G.
+
+R2.G2 CURRENT IMPLEMENTATION STATUS:
+      - READ/IMPORT: implemented and functional. `cog-bridge-load-tables`
+        and `cog-bridge-load-rows` Scheme primitives work.
+      - WRITE/UPDATE: EMPTY STUBS. `storeAtom`, `removeAtom`, `storeValue`,
+        `updateValue`, `loadValue`, `loadType`, `loadAtomSpace`,
+        `storeAtomSpace` all have empty bodies.
+      - README claims "should allow both the read and the update" — this
+        is FUTURE INTENT, not current capability.
+      Cf. Codex C2-G8, G9. SQLReader.cc:395-425 vs README.md:23-26.
+
+R2.G3 SCHEMA-DISCOVERY MECHANISM (consensus):
+      Dynamic introspection of PUBLIC schema via:
+      - `pg_tables WHERE schemaname = 'public'` (Codex C2-G4)
+      - `information_schema.columns` (Gemini)
+      Builds SignatureLink representations of SQL tables; routes
+      `fetchIncomingSet` by Atom type (PredicateNode -> table,
+      VariableNode -> columns, ConceptNode/NumberNode -> joined rows).
+      Cf. Codex C2-G4-G7; Gemini Section G.
+
+R2.G4 DECKO-SPECIFIC LIMITATIONS (Codex-surfaced):
+      (a) Postgres-only (Codex C2-G3) — but Decko uses Postgres, so OK.
+      (b) Public-schema-only (Codex C2-G4) — Decko's schema is in
+          `public` by default, so OK.
+      (c) Naked PK/FK storage; punts on FK-driven atom links
+          (Codex C2-G10) — Decko's relational structure (cards →
+          card_actions → card_changes) would not auto-translate to
+          AtomSpace links without custom mapping templates.
+      (d) No Decko-specific templates exist in atomspace-bridge
+          (Codex C2-G12).
+      (e) `fetchIncomingByType` ignores type and delegates to
+          `fetchIncomingSet` — semantic simplification (Codex C2-G7).
+
+R2.G5 INTEGRATION VERDICT:
+      atomspace-bridge is the BEST EXISTING seam for read-side Decko
+      integration but requires:
+      - Custom Decko-specific schema templates / mappings
+      - FK-driven link generation (currently absent)
+      - For write-back, implementation of the empty StorageNode write
+        methods (intent stated; code absent)
+      A read-only Decko-as-AtomSpace mirror via atomspace-bridge is
+      achievable with engineering effort but not zero-friction.
+      Cf. Codex C2-Z2, J6, L9.
+
+
+================================================================================
+SECTION H — atomspace2 BIDIRECTIONAL DIVERGENCE VERDICT
+================================================================================
+
+R2.H1 atomspace2 = EXPERIMENTAL / LEGACY-FORK.
+      Origin: ngeiswei/atomspace.git. HEAD `4cfaa16cb` 2025-05-31.
+      Package version 5.0.5. ~11 months static.
+      Cf. Codex C2-H1-H4.
+
+R2.H2 NOT the canonical AtomSpace. Current canonical is
+      opencog/atomspace at `c8d633bf27` (2026-02-10), actively
+      developed.
+
+R2.H3 atomspace2 still references RocksStorageNode / PostgresStorageNode /
+      CogStorageNode in examples but does not host the active
+      split-repo ecosystem (atomspace-storage / atomspace-pgres /
+      atomspace-rocks / atomspace-cog / atomspace-bridge).
+
+R2.H4 Bidirectional divergence partial; full A..B and B..A commit
+      graph not run (Codex M3 dissent: explicit). Decisive local
+      facts (origin, age, version, current-canonical comparison) are
+      sufficient to classify as LEGACY-FORK without running the full
+      graph. Source 4 may revisit if narrative-critical.
+
+
+================================================================================
+SECTION I — STORAGE-NODE ECOSYSTEM MAP (CANONICAL ARTIFACT)
+================================================================================
+
+Reconciled and sorted by status label. Codex's enumeration is more
+complete; Gemini's complementary coverage merged. Each entry carries
+exactly ONE status label per brief vocabulary.
+
+| Component               | Repo                       | Label                  | Decko-applicable? | Notes |
+|-------------------------|----------------------------|------------------------|-------------------|-------|
+| StorageNode (C++)       | atomspace-storage          | CANONICAL              | n/a (interface)   | Core persistence interface. StorageNode.h:42. |
+| BackingStore (C++)      | atomspace-storage          | CANONICAL              | n/a (interface)   | Backend virtual interface. BackingStore.h:54. |
+| Scheme persist API      | atomspace-storage          | CANONICAL              | n/a (interface)   | cog-open/fetch/store/query. persist.scm:127-1235. |
+| Hyperon Space API       | hyperon-experimental       | CANONICAL              | not via StorageNode | GroundingSpace/Space/DynSpace. Different layer. |
+| FileStorageNode         | atomspace-storage          | BACKEND-IMPLEMENTATION | Mirror only       | Whole-AtomSpace file persistence. Partial API. |
+| PostgresStorageNode     | atomspace-pgres            | BACKEND-IMPLEMENTATION | NO — backing-store-only; deprecated 2022 | AtomSpace-shaped schema. README-design.md deprecation. |
+| RocksStorageNode        | atomspace-rocks            | BACKEND-IMPLEMENTATION | Mirror only       | Single-process RocksDB. Production-recommended substitute for pgres. |
+| MonoStorageNode         | atomspace-rocks            | BACKEND-IMPLEMENTATION | Mirror only       | Single-AtomSpace Rocks variant. README.md:139-146. |
+| ProxyNode family        | atomspace-storage          | BRIDGE-ADAPTER         | Composable        | Null/ReadThru/SeqRead/WriteThru/ReadWrite/WriteBuffer/Caching/DynamicData. |
+| CogStorageNode          | atomspace-cog              | BRIDGE-ADAPTER         | Network only      | Async sockets to CogServer. README:22-33. |
+| CogSimpleStorageNode    | atomspace-cog              | BRIDGE-ADAPTER         | Network only      | Single-threaded variant. CogSimpleStorage.h:42. |
+| BridgeStorageNode       | atomspace-bridge           | BRIDGE-ADAPTER         | YES (read-only)   | Closest existing Decko seam. Public-schema, Postgres-only. Write stubs empty. |
+| Hyperon DAS builtin     | hyperon-experimental       | BRIDGE-ADAPTER         | via DAS (Source 4)| `new-das!` MeTTa op. metta-bus-client from singnet/das. |
+| sql_space.py            | hyperon-experimental/sandbox | EXPERIMENTAL         | TBD               | Python-native SQL→MeTTa mapping. Bypasses C++. |
+| mork.py                 | hyperon-experimental/sandbox | EXPERIMENTAL         | TBD               | MORK substrate bridge code. |
+| atomspace2              | atomspace2                 | LEGACY-FORK            | NO                | ngeiswei/atomspace 2025 snapshot. v5.0.5 static. |
+| atomspace-linas         | atomspace-linas            | LEGACY-FORK (lockstep) | NO                | Identical SHA to canonical atomspace; non-divergent at present. |
+| atomspace-singnet       | atomspace-singnet          | LEGACY-FORK            | NO                | 2021-10-14, ~4.5 years stale. |
+| atomspace-leungmanhin   | atomspace-leungmanhin      | LEGACY-FORK            | NO                | 2022-05-21, ~4 years stale. |
+| atomspace-hansonrobotics| atomspace-hansonrobotics   | LEGACY-FORK            | NO                | 2016-06-24 frozen (per ECAN/OpenPsi Source 4). |
+| atomspace-glicerico     | atomspace-glicerico        | LEGACY-FORK            | NO                | 2019-04-09, ~7 years stale. |
+| atomspace-gpu           | atomspace-gpu              | UNKNOWN                | TBD               | Recent (2026-02-12); GPU acceleration; not audited in depth. |
+| atomspace-bridge writes | atomspace-bridge           | UNKNOWN                | TBD               | README intent stated; code absent. Pickaxe before "never implemented" if pursued. |
+
+INTEGRATION-MAP TAKEAWAYS:
+
+R2.I1 For a CLASSICAL AtomSpace mirror of Decko:
+      Decko → custom mapping layer → AtomSpace → {RocksStorageNode |
+      CogStorageNode}. (Postgres-backing-store via PostgresStorageNode
+      is technically possible but discouraged due to deprecation.)
+
+R2.I2 For DIRECT Decko-PostgreSQL row bridge:
+      Decko Postgres → atomspace-bridge templates/mapping → AtomSpace,
+      currently READ/IMPORT ONLY. Write-back requires implementing the
+      empty stubs.
+
+R2.I3 For HYPERON RUNTIME integration:
+      Decko/MCP or custom adapter → MeTTa Space (or DAS via `new-das!`),
+      NOT through classical StorageNode. Distinct architectural path.
+
+
+================================================================================
+SECTION J — WIKI-CARD DELTA CANDIDATES (RECONCILED)
+================================================================================
+
+R2.J1 About Hyperon+AtomSpace (ID 4017) and AtomSpace Full (ID 4403):
+      MUST distinguish four layers per R2.D1: Classical AtomSpace
+      StorageNode / Hyperon Space / DAS / MCP. Current cards collapse
+      "AtomSpace" into a single backend family — misleading for
+      integration narrative.
+      Cf. Codex C2-J1.
+
+R2.J2 Knowledge Representations+DAS / DAS Full (IDs 646, 4200):
+      Update at Source 4 close to reflect that hyperon-experimental
+      already imports `metta-bus-client` from singnet/das at tag 1.0.2
+      and exposes `new-das!`. DAS is partially-wired runtime, not
+      "under development" relative to Hyperon-side integration.
+      Cf. Codex C2-J3, L6, L7.
+
+R2.J3 Knowledge Representations+MORK / MORK Full (IDs 648, 4194):
+      DEFER to Source 3. Carry forward open question: is MORK a
+      StorageNode-compatible backend, a Hyperon Space backend, a DAS
+      AtomDB backend, or a separate substrate?
+      Cf. Codex C2-J4, L1.
+
+R2.J4 NEW SYNTHESIS CARD (justified at cluster close):
+      "Implementation Families+AtomSpace Backend Integration" or
+      equivalent. The Section I ecosystem map is the seed.
+      Cf. Codex C2-J5; Source 1 R1.F5.
+
+R2.J5 docs/ATOMSPACE-INTEGRATION.md cluster-close edits:
+      (a) Revise atomspace-pgres seam framing to reflect
+          [BACKING-STORE-ONLY] verdict + 2022 deprecation.
+      (b) Remove `_sanitize_card_name` recommendation per R2.E2.
+      (c) Remove apocryphal `from hyperon import Atomspace, MCP`
+          import per R2.3.
+      (d) Add atomspace-bridge as the closest existing seam, with
+          explicit current-state caveats (read-only; public-schema-only;
+          no Decko-specific templates yet).
+      Cf. Codex C2-J6, J7.
+
+R2.J6 docs/ROADMAP.md cluster-close edits (per Source 1 §7):
+      Phase 3 success criteria may need revision if Source 2 verdicts
+      shift the candidate seam list. The "atomspace-pgres direct" path
+      should be removed from Phase 3 acceptance options.
+
+R2.J7 Implementation Families+Attention and Motivation (ID 4751):
+      Source 1 V1-7 flagged as CONDITIONAL. Source 2 finds no
+      attention-layer integration changes; flag remains conditional
+      pending Source 3 (MORK weighted-atom-sweep) / Source 4 (DAS
+      attention broker).
+
+
+================================================================================
+SECTION K — STALE-CLAIM VERIFICATIONS
+================================================================================
+
+R2.K1 atomspace-pgres "lowest-friction seam" — REFUTED (R2.1 + R2.C4).
+
+R2.K2 atomspace-bridge "two-way Decko data movement" — REFUTED at this
+      snapshot. Read-only; write-stubs empty. Future intent stated.
+      Cf. Codex K2.
+
+R2.K3 `from hyperon import Atomspace, MCP` apocryphal symbol —
+      CONFIRMED apocryphal. No `MCP` symbol in inspected hyperon
+      package.
+      Cf. Codex K3, R2.3.
+
+R2.K4 AttentionBank availability in current persistence stack —
+      REFUTED. Independent grep verification by both reviewers.
+      Cf. Codex K4; Gemini Section K.
+
+R2.K5 PLN production-readiness via AtomSpace repos — REFUTED.
+      Documentary references only; no production deduction surface.
+      Confirms PLN cluster pilot finding.
+      Cf. Codex K5.
+
+R2.K6 atomspace2 as modern successor — REFUTED. 2025 fork snapshot;
+      not canonical.
+      Cf. Codex K6.
+
+
+================================================================================
+SECTION L — CROSS-SOURCE FORWARDS (LOCKED FOR SOURCES 3-4)
+================================================================================
+
+FOR SOURCE 3 (MORK production substrate):
+
+  S3.Q1-Q5 (carried from Source 1, unchanged):
+    MORK production-readiness, fork divergence, FactorGraph status,
+    distributed readiness, pickaxe rule.
+
+  S3.NEW-Q1 (from Source 2 C2-L1):
+    Determine whether MORK implements ANY of:
+    (a) Classical StorageNode-compatible API
+    (b) Hyperon Space API
+    (c) DAS AtomDB backend
+    (d) Only its own Rust kernel / FFI / SDK surfaces
+    Source 2 found no MORK in classical StorageNode primary repos.
+
+  S3.NEW-Q2 (from Source 2 C2-L2):
+    Verify whether "MORK integration as DAS backend under development"
+    (per DAS Full wiki card) is code-real, branch-only, design-only,
+    or stale wiki text.
+
+  S3.NEW-Q3 (from Source 2 C2-L3):
+    Check whether mork_ffi / mork-rust-sdk / mork-ts-sdk can serve a
+    Decko bridge WITHOUT passing through classical StorageNode or DAS.
+
+  S3.NEW-Q4 (from Source 2 C2-L4):
+    Re-check PLN Source 8/11 findings from production-storage angle:
+    MORK was substrate-only for FactorGraph PLN. Source 3 should decide
+    whether it is also substrate-only for AtomSpace persistence.
+
+  S3.NEW-Q5 (from Source 2 C2-L5):
+    Audit "weighted atom sweep" and count-sink patterns against the
+    StorageNode proxy/value ecosystem. If MORK weight counters resemble
+    ECAN attention or AtomSpace Values, classify as implementation
+    analogy, NOT identity, unless code proves a bridge.
+
+  S3.NEW-Q6 (from Source 2 R2.5 + R2.D3):
+    Inspect python/sandbox/mork/mork.py in hyperon-experimental.
+    Determine whether this is a viable MORK-side integration seam or
+    a stalled experiment.
+
+FOR SOURCE 4 (DAS + runtime bridge):
+
+  S4.Q1-Q5 (carried from Source 1, unchanged):
+    DAS as wiki backend, MeTTa Spaces / lib_spaces.metta / PeTTa,
+    `from hyperon import Atomspace, MCP` API, No-Go theorem for Phase 5
+    PLN game rules, integration synthesis.
+
+  S4.PRE-RESOLVED (from Source 2 C2-D2, R2.3):
+    The literal `MCP` symbol from `hyperon` is FALSIFIED. Source 4
+    should NOT continue investigating it as a real API; instead audit
+    what was intended (DECKO-MCP existing / ATOMSPACE-MCP proposed).
+
+  S4.PRE-RESOLVED (from Source 2 C2-6, R2.4):
+    DAS is wired into hyperon-experimental as MeTTa builtin via
+    `new-das!`. Source 4 builds on this rather than discovering it.
+
+  S4.NEW-Q1 (from Source 2 C2-L8):
+    Decide the viable integration architecture from this option set:
+    (a) Decko primary + AtomSpace mirror + Rocks/Cog backing store
+    (b) Decko DB read/import via atomspace-bridge
+    (c) Decko/MCP → DAS
+    (d) Decko/MCP → Hyperon Space → DAS
+    (e) Hybrid
+
+  S4.NEW-Q2 (from Source 2 C2-L9):
+    Evaluate whether atomspace-bridge can be extended to write Decko
+    rows safely. Source 2 found current write stubs. Source 4 should
+    decide whether implementing write-back is desirable or whether
+    a read-only mirror is safer architecturally.
+
+  S4.NEW-Q3 (from Source 2 C2-L10):
+    Keep DECKO-MCP and ATOMSPACE-MCP separate. Source 4 should
+    inventory existing `mod/mcp_api/` (the Decko API surface) and
+    only call AtomSpace MCP "implemented" if actual AtomSpace query
+    tools exist.
+
+  S4.NEW-Q4 (from Source 2 R2.D3):
+    Inspect python/sandbox/sql_space/sql_space.py. Evaluate as
+    candidate for Hyperon-side Decko-SQL bridge alternative to
+    atomspace-bridge.
+
+
+================================================================================
+SECTION M — CROSS-MODEL DISSENTS (V2-N RECORDS)
+================================================================================
+
+V2-1 atomspace-pgres DEPRECATION FINDING (Gemini-only).
+     Gemini surfaced README-design.md "As of 2022, the Postgres backend
+     is deprecated." Codex did not surface this; Codex's evidence was
+     schema-shape-based. The deprecation is a SECOND independent reason
+     to refute the Source 1 R1.B1 hypothesis: even if a fork made
+     pgres Decko-schema-compatible, the upstream is in maintenance
+     mode. Adopted into reconciliation R2.C4.
+     Action: cluster-close edit to docs/ATOMSPACE-INTEGRATION.md must
+     reference the deprecation, not just the schema-shape mismatch.
+
+V2-2 SANDBOX-TIER PYTHON SEAMS (Gemini-only).
+     Gemini surfaced two NEW seams: sql_space.py + mork.py. Codex did
+     not enumerate these. Adopted into R2.5, R2.D3, S3.NEW-Q6,
+     S4.NEW-Q4. Status reconciled as EXPERIMENTAL (per brief
+     vocabulary; sandbox/ path implies EXPERIMENTAL).
+
+V2-3 metta-bus-client / DAS-WIRED-IN (Codex-only).
+     Codex found hyperon-experimental Cargo.toml imports
+     `metta-bus-client` from singnet/das tag 1.0.2 and `new-das!` is
+     a MeTTa builtin. Gemini did not surface this. PARTIALLY
+     PRE-RESOLVES Source 4 questions about whether DAS is integrated
+     with Hyperon. Adopted into R2.4 + S4.PRE-RESOLVED.
+
+V2-4 `MCP` SYMBOL ABSENT (Codex-only).
+     Codex grep of `python/hyperon/` found no `MCP` symbol. The
+     Source 1 design sketch's `from hyperon import Atomspace, MCP` is
+     therefore apocryphal. Gemini did not address. Adopted into
+     R2.3, R2.K3, S4.PRE-RESOLVED.
+     Action: docs/ATOMSPACE-INTEGRATION.md edit at cluster close.
+
+V2-5 PUBLIC-SCHEMA / PG_TABLES CONSTRAINT (Codex-only).
+     Codex found atomspace-bridge introspects via
+     `pg_tables WHERE schemaname = 'public'`. Gemini described
+     "dynamic schema-discovery via information_schema.columns" but
+     did not surface the public-schema constraint. Both are accurate;
+     they describe different API call sites in SQLReader.cc. Adopted
+     into R2.G3, R2.G4(b).
+     Note: Decko's default schema IS `public`, so the constraint is
+     not a blocker. Worth flagging in docs as a known limitation.
+
+V2-6 PROXYNODE FAMILY ENUMERATION (Codex-only).
+     Codex enumerated the full family (Null/ReadThru/SeqRead/WriteThru/
+     ReadWrite/WriteBuffer/Caching/DynamicData) from
+     storage_types.script:41-77. Gemini did not enumerate. Adopted
+     into R2.A2.
+     Architecturally relevant: ProxyNode composition could provide
+     the Decko-aware adapter layer that atomspace-pgres lacks IF
+     combined with a custom backing store. Worth highlighting in any
+     cluster-close synthesis card.
+
+V2-7 STATUS-LABEL VOCABULARY DEVIATION (Gemini, methodology).
+     Gemini's table cell "[EXPERIMENTAL-ADAPTER]" combines two labels;
+     the brief required exactly ONE label per the §S2.Q9 status-label
+     requirement. Reconciled per brief: BridgeStorage = BRIDGE-ADAPTER
+     (single label), with a SEPARATE qualifier "current state:
+     read/import only, write-stubs empty" — qualifiers are
+     distinct from status labels. The vocabulary deviation is
+     methodological; substantive content is correct.
+     Action: future Sources 3-4 should hold the vocabulary stricter.
+
+V2-8 BIDIRECTIONAL DIVERGENCE PARTIAL (Codex M3, methodology).
+     Codex did not run full A..B / B..A graph for all AtomSpace forks
+     because origin-attribution and HEAD-age were sufficient to
+     classify. The Source 2 fork classifications (LEGACY-FORK across
+     audited forks) reflect "non-canonical / stale by HEAD age";
+     deeper bidirectional divergence checks were NOT run, so any
+     unique-commit claim about specific forks would be premature.
+     OpenPsi V4-2 (codebase-staleness corollary) is the precedent for
+     accepting HEAD-age + origin as sufficient classification when
+     fork-divergence is not narrative-critical.
+     Action: revisit with full bidirectional graph ONLY if Source 4
+     finds narrative-critical fork divergence requiring per-fork
+     unique-commit characterization.
+
+
+================================================================================
+BOTTOM LINE
+================================================================================
+
+R2.B1 The Source 1 hypothesis "atomspace-pgres is the lowest-friction
+      seam" is FALSIFIED. atomspace-pgres = [BACKING-STORE-ONLY] AND
+      deprecated 2022.
+
+R2.B2 The closest existing Decko-applicable seam is atomspace-bridge,
+      but it is currently READ-ONLY with empty write stubs and lacks
+      Decko-specific schema templates. A read-only Decko-as-AtomSpace
+      mirror via atomspace-bridge is achievable with engineering effort,
+      not zero-friction.
+
+R2.B3 StorageNode remains the canonical classical persistence
+      abstraction. Hyperon Space and DAS are SEPARATE runtime layers;
+      DAS is already partially wired into hyperon-experimental as a
+      MeTTa builtin. These layers must NOT be conflated in subsequent
+      reasoning or wiki edits.
+
+R2.B4 The lowest-risk architecture after Source 2 is unchanged from
+      Source 1: "Decko remains source of truth; AtomSpace is a
+      mirrored/query substrate." A direct replatform of Decko storage
+      onto AtomSpace persistence is NOT supported by Source 2 evidence.
+
+R2.B5 Source 2 produces NO wiki writes, NO design-doc edits, NO commits.
+      All identified delta candidates are queued for cluster close.
+
+================================================================================
+END OF SOURCE 2 RECONCILIATION
+================================================================================

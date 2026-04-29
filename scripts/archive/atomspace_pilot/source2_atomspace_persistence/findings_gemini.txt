@@ -1,0 +1,105 @@
+# Source 2 - AtomSpace API + Persistence Layer - Gemini Findings
+
+Pilot:        AtomSpace Backend Integration Cluster Pilot
+Source:       AtomSpace core + StorageNode persistence ecosystem
+Model lane:   Gemini
+Date:         2026-04-29
+Write policy: no wiki writes; no repo edits during extraction
+
+(Findings provided inline via orchestrator-relayed message; transcribed
+verbatim into this file for archival. Section labels normalized to match
+the Source 2 brief's §5 deliverable shape.)
+
+================================================================================
+
+## Investigation Trail
+
+- Glob CogStorage.h in atomspace-cog → 2 matches confirmed.
+- Glob RocksStorage.h in atomspace-rocks → 2 matches confirmed.
+- SearchText AttentionBank in atomspace HEAD → ZERO matches. AttentionBank
+  removal verified.
+- ReadFile opencog/persist/rocks/RocksStorage.h confirmed RocksStorageNode
+  is [BACKING-STORE-ONLY].
+- Confirmed [BRIDGE-ADAPTER] status of BridgeStorage.
+- Glob hyperon-experimental/**/*.py → 130 matches; identified modern Python
+  integration seams: sql_space.py and mork.py.
+
+
+## Section I — StorageNode Ecosystem Map
+
+| Component        | Status         | Role                   | Description                                                                       |
+|------------------|----------------|------------------------|-----------------------------------------------------------------------------------|
+| AtomSpace Core   | CANONICAL      | API Definition         | Defines StorageNode and BackingStore C++ interfaces.                              |
+| AtomSpace-PGres  | BACKEND-IMPL   | [BACKING-STORE-ONLY]   | Deprecated in favor of RocksDB. Rigid UUID-based schema. Not Decko-compatible.    |
+| AtomSpace-Rocks  | BACKEND-IMPL   | [BACKING-STORE-ONLY]   | Production-ready storage. High performance but rigid atom-as-record mapping.      |
+| AtomSpace-Bridge | BRIDGE-ADAPTER | [EXPERIMENTAL-ADAPTER] | Potential Seam. Dynamically maps arbitrary SQL tables to atoms via SignatureLink. |
+| Hyperon MeTTa    | CANONICAL      | Runtime                | Modern MeTTa Spaces abstraction (lib_spaces.metta). Bypasses C++ StorageNode.     |
+| SQLSpace (MeTTa) | EXPERIMENTAL   | Modern Seam            | python/sandbox/sql_space/sql_space.py. Python-native SQL mapping for MeTTa.       |
+
+
+## Section C — atomspace-pgres Verdict
+
+VERDICT: [BACKING-STORE-ONLY] (Fail for low-friction seam).
+
+Rationale:
+- SQLAtomStore.cc explicitly hardcodes:
+    INSERT INTO Atoms (uuid, space, type, name, height, outgoing)
+- Requires a specific "OpenCog SQL" schema.
+- Provides ZERO capability for overlaying on existing PostgreSQL tables
+  like Decko's.
+
+Deprecation:
+- README-design.md explicitly states: "As of 2022, the Postgres backend
+  is deprecated."
+
+
+## Section G — atomspace-bridge / BridgeStorageNode
+
+The Seam:
+- BridgeStorage.cc and SQLReader.cc implement a dynamic schema-discovery
+  mechanism.
+- Queries information_schema.columns to build SignatureLink representations
+  of SQL tables.
+
+Potential:
+- This is the most promising path for "Low-Friction" integration.
+- Could allow AtomSpace to "see" Decko cards as PredicateNode instances
+  WITHOUT re-platforming the data.
+
+Current Status:
+- Read-only (extraction only).
+- BridgeStorage::storeAtom is currently an empty stub.
+
+
+## Section D — Modern Hyperon-Experimental Seams (NEW)
+
+Two Python-native seams surfaced in hyperon-experimental that bypass the
+classical C++ StorageNode entirely:
+
+1. python/sandbox/sql_space/sql_space.py — A MeTTa-native alternative to
+   the C++ StorageNode. Maps SQL tables to MeTTa grounded atoms,
+   aligning with the hyperon-experimental direction.
+
+2. python/sandbox/mork/mork.py — Bridge code for MORK substrate
+   integration.
+
+
+## Section K — Stale-Claim Verification
+
+AttentionBank Removal: VERIFIED GONE.
+  `git grep -i "AttentionBank"` in opencog/atomspace HEAD returned zero
+  results.
+
+PLN Maturity:
+  C++ atomspace-storage still refers to PLN as a consumer, but no
+  production-ready "Deduction Space" was found in the persistence layer.
+
+
+## Conclusion
+
+The lowest-friction path is NOT atomspace-pgres, but either:
+  (a) atomspace-bridge (C++ legacy, write-stubs unimplemented), or
+  (b) sql_space.py (modern MeTTa-native).
+
+================================================================================
+END OF GEMINI SOURCE 2 FINDINGS

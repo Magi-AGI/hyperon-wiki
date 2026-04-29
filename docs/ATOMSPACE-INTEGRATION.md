@@ -2,16 +2,58 @@
 
 **Project**: magi-archive Hyperon Atomspace Backend
 **Timeline**: Phase 3-4 (Month 3-9, 2026)
-**Status**: Future/Experimental
-**Last Updated**: 2025-10-16
+**Status**: **Conceptual Sketch (Cluster-Pilot Reframed 2026-04-29)** — see "Cluster-Pilot Reframing" section below before treating any code block as runnable.
+**Last Updated**: 2026-04-29
+
+---
+
+## Cluster-Pilot Reframing (2026-04-29)
+
+The AtomSpace Backend Integration Cluster Pilot (cluster archive at `scripts/archive/atomspace_pilot/`) audited this document against current code in the four AtomSpace layers (Classical StorageNode, Hyperon Space, DAS, MORK native). Several premises in this document are now known to be **inaccurate or aspirational**, and the Phase 3 architecture has been narrowed. **Treat the rest of this document as a conceptual sketch, not as engineering specification, until corrected.** The synthesis card `Implementation Families+AtomSpace Backend Integration` (wiki) is the canonical post-pilot statement; this section summarizes the cluster-pilot deltas.
+
+### Bottom-line corrections
+
+1. **The literal `from hyperon import Atomspace, MCP` import is APOCRYPHAL.** Source 2 + Source 4 verified that the `hyperon` Python package does not export an `MCP` symbol. The MCP Adapter pseudocode below uses an API surface that does not exist. Treat all `MCP.Client(...)` / `mcp_client.connect()` / `pln_query(...)` calls as illustrative only.
+
+2. **DECKO-MCP / ATOMSPACE-MCP disambiguation is locked.** The only deployed MCP API in this repo is **Decko MCP** (`mod/mcp_api/config/initializers/mcp_routes.rb`) — JWT-authenticated, full card CRUD + history + files + relations. Any "ATOMSPACE-MCP" reference in this document is conceptual, not real.
+
+3. **`atomspace-pgres` is BACKING-STORE-ONLY and NOT Decko-compatible.** Source 2 R2.1: rigid Atom/Value schema with no card semantics, no permissions, no history. Do **NOT** recommend `atomspace-pgres` as a Decko seam.
+
+4. **MORK is an 8-member workspace (not 7); PeTTa/MORK has been benchmarked to 400M atoms in RAM (NOT 500M+).** `mork_ffi/example_space.metta:13-17` documents 100M/200M/300M/400M successful loads with 500M reported as out-of-memory. The "500M+ atoms" framing was an OOM ceiling, not demonstrated capacity.
+
+5. **DAS-MorkDB link/S-expression delete is BLOCKING-INTEGRATION.** `MorkDB.cc:268-270` hard-fails on link delete; `flush_pattern` + `re_index_patterns` provide only batch-rebuild workarounds. **Any architecture using DAS MorkDB as a MUTABLE backend is automatically out of compliance with Phase 3 acceptance gates** (preserve Decko card model, rollback / dual-write).
+
+6. **`hyperon-experimental/python/sandbox/sql_space.py` + `python/sandbox/mork/mork.py` are SANDBOX, not integration seams.** `mork.py`'s `query()` returns empty BindingsSet; `add()` is `pass`. `sql_space.py` is a psycopg2 SELECT generator with no Decko schema/permission/history/file/RichText awareness.
+
+7. **MORK server-branch 49-commit drift is a deployment risk, not a footnote.** DAS Dockerfile pins MORK `578a759` (2025-07-21); local `origin/server` HEAD as of 2026-04-29 is `5b04a1d` (2026-04-18) with deadlock and UTF-8 fixes in the gap. `das-toolbox` CLI defaults to image tags `1.0.5`. Three potentially-different references (image tag, Dockerfile pin, server-branch HEAD) must be reconciled before production.
+
+### Phase 3 architecture lock-in (READONLY-ATOMSPACE-BRIDGE)
+
+Phase 3 is a **READ-ONLY semantic mirror**, not a write-through replacement for PostgreSQL. Decko/Rails/PostgreSQL stays the source of truth. AtomSpace serves queries that PostgreSQL cannot trivially answer, with caching + periodic re-hydration. **NO write-through to DAS or MORK in Phase 3.** Two viable mechanisms (decision deferred to prototype benchmark against the <500ms fetch gate):
+
+- (a) `atomspace-bridge` style import / small custom exporter (lower complexity).
+- (b) `mork_ffi` for low-latency queries + `mork_loader.py` for periodic hydration (higher engineering effort but directly meets latency).
+
+The Phase 3 / Phase 4 diagrams below show **legacy aspirational architecture** retained for context. The reframed scope is read-only mirror; the dual-write / Atomspace-as-primary architecture is **out of scope for Phase 3** and **blocked for Phase 4** by the MorkDB delete gap and the absence of Decko-semantic mappings (history, RichText, files, permissions).
+
+### Four-layer AtomSpace taxonomy
+
+"AtomSpace" spans four implementation layers; resolve which layer is meant before drawing conclusions:
+
+| # | Layer | Repos | Decko relevance |
+|---|---|---|---|
+| 1 | Classical StorageNode | `atomspace` + `atomspace-storage` + `atomspace-pgres` + `atomspace-rocks` + `atomspace-cog` + `atomspace-bridge` | Read-side SQL import ancestor; not Decko-write-ready |
+| 2 | Hyperon Space | `hyperon-experimental` (`GroundingSpace` / `SpaceMut` / `DynSpace`) | MeTTa-facing demos; not primary Decko backend |
+| 3 | DAS AtomDB + services | `singnet/das` (AtomDB + Query Engine + AttentionBroker; MorkDB) | Candidate later query/deployment layer; delete + server-pin caveats |
+| 4 | MORK native substrate | `trueagi-io/MORK` + PathMap + `mork_ffi` + SDK + server branch | Performance substrate; requires adapter layer for Decko semantics |
 
 ---
 
 ## Executive Summary
 
-This document outlines the architecture for integrating Hyperon Atomspace as the backend knowledge graph for magi-archive, replacing PostgreSQL. The integration enables symbolic reasoning, semantic queries, and distributed knowledge management via MORK.
+This document outlines the architecture for integrating Hyperon Atomspace as the backend knowledge graph for magi-archive. **As reframed by the 2026-04-29 cluster pilot, Phase 3 is a read-only semantic mirror — Decko/Rails/PostgreSQL remains the source of truth.** The integration enables symbolic reasoning and semantic queries beyond what PostgreSQL can trivially answer; distributed knowledge management via MORK is design-stage.
 
-**Key Decision**: This integration is **conditional** - only proceed if Phase 3 prototype proves Atomspace provides clear value over PostgreSQL.
+**Key Decision**: This integration is **conditional** - only proceed if Phase 3 prototype proves Atomspace provides clear value over PostgreSQL **on a read-only mirror, with explicit caveats around PLN completeness (No-Go theorem)**.
 
 ---
 
@@ -231,17 +273,23 @@ Card {
 
 ## MCP Adapter Architecture
 
+> **⚠ CONCEPTUAL SKETCH — APOCRYPHAL API.** The Python below uses `from hyperon import Atomspace, MCP` and `MCP.Client(...)` calls that **do not exist in the real `hyperon` package** (Source 2 + Source 4 audit, 2026-04-29). The real MCP integration in this repo is **Decko MCP** (`mod/mcp_api/`), not an "Atomspace-MCP". Treat all `MCP.Client(...)`, `mcp_client.connect()`, and `pln_query(...)` calls in the code below as illustrative pseudocode only. The `_sanitize` helper that strips `+`, `:`, and spaces is also lossy for Decko card names (Decko cards routinely contain `+` joiners and `:` type prefixes); a real adapter must preserve canonical names rather than mangle them. Phase 3 architecture is **READONLY-ATOMSPACE-BRIDGE** — the WRITE OPERATIONS section below is out of scope for Phase 3 and blocked for Phase 4 by the DAS-MorkDB delete gap (`MorkDB.cc:268-270` hard-fails). The READ OPERATIONS shape is closer to a real Phase 3 surface but still uses the apocryphal API and would need to route through Decko MCP + a real read seam (atomspace-bridge import or mork_ffi/mork_loader).
+
 ### Purpose
 
-The MCP (Model Context Protocol) Adapter translates between:
+The MCP (Model Context Protocol) Adapter would, in principle, translate between:
 - **Decko Card API** (Rails/Ruby) ↔ **Hyperon Atomspace** (symbolic atoms)
 
-### Components
+In practice (post-cluster-pilot), Phase 3 uses **Decko MCP for extraction + a read-only mirror loader** rather than an "Atomspace MCP" client. See "Cluster-Pilot Reframing" section above for the locked-in architecture.
+
+### Components (CONCEPTUAL SKETCH)
 
 ```python
 # mcp_adapter/decko_atomspace_adapter.py
+# WARNING: APOCRYPHAL API — `MCP` is not a real hyperon export.
+# Retained as conceptual sketch only; do not run.
 
-from hyperon import Atomspace, MCP
+from hyperon import Atomspace, MCP  # NOTE: MCP symbol does not exist in hyperon package
 from typing import Dict, List, Optional
 import json
 
@@ -577,14 +625,16 @@ end
 
 ---
 
-## MORK Distributed Backend
+## MORK Native Substrate (formerly described here as "Distributed Backend")
+
+> **⚠ CLUSTER-PILOT CORRECTION (2026-04-29).** MORK proper is a high-performance **single-process triemap substrate** (8-member Rust workspace at HEAD `4cef6f7`, foundational dependency on PathMap as a sibling repo), NOT a "distributed Atomspace backend." Distribution is provided by **DAS** (`singnet/das`) on a separate axis. MORK does have a `server` branch that exposes an HTTP API (the `mork-server` deployment line; `MORK-rejuve-bio` fork is the most documented server variant), but the server branch is single-process per server, not a self-clustering distributed engine. PeTTa/MORK has been benchmarked up to **400M atoms in RAM** (`mork_ffi/example_space.metta:13-17` documents successful 100M/200M/300M/400M loads with 500M reported as out-of-memory); earlier 500M+ framings treated the OOM ceiling as demonstrated capacity. The "horizontal scaling / replication / partitioning" framing in this section is **aspirational** and does not match current code. The diagrams below describe DAS-style distribution, not MORK-native distribution.
 
 ### What is MORK?
 
-MORK (Multi-Organism Replication Kit) is Hyperon's distributed Atomspace backend, enabling:
-- **Horizontal scaling**: Distribute knowledge across multiple nodes
-- **Replication**: Redundancy for reliability
-- **Partitioning**: Split graph by topic/domain
+MORK is Hyperon's high-performance **single-process triemap substrate** (Rust kernel + Polyglot FFI + SDK; foundational PathMap dependency). Within Hyperon, distribution is layered on top via DAS (which can use MORK as one of its AtomDB backends). The framing below conflates DAS distribution with MORK distribution — read it as "DAS+MorkDB distributed deployment" rather than "MORK distributed backend":
+- **Horizontal scaling** (DAS-side, via Redis+MongoDB sharding or DAS service partitioning)
+- **Replication** (DAS-side; CRDT join-semilattices are proposed for the State Management Platform but not yet implemented)
+- **Partitioning** (DAS-side; per-context routing via the AttentionBroker)
 
 ### Architecture
 
@@ -853,6 +903,8 @@ Migration is successful if:
 
 ---
 
-**Last Updated**: 2025-10-16
+**Last Updated**: 2026-04-29 (Cluster-Pilot Reframing applied; conceptual-sketch banners added; Phase 3 narrowed to READONLY-ATOMSPACE-BRIDGE; apocryphal API flagged)
 **Next Review**: Phase 3 kickoff (Month 3)
 **Maintained By**: Lake + Claude Code
+
+**Cluster-pilot canonical record**: `scripts/archive/atomspace_pilot/source*/findings_reconciled_crossmodel.txt` (sources 1–4); synthesis card `Implementation Families+AtomSpace Backend Integration` on the wiki.

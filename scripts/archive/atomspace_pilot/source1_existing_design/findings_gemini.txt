@@ -1,0 +1,167 @@
+# Source 1 - Existing Wiki Backend Integration Design - Gemini Findings
+
+Pilot:        AtomSpace Backend Integration Cluster Pilot
+Source:       in-repo design and operations docs
+Model lane:   Gemini
+Date:         2026-04-29
+Write policy: no wiki writes; no design-doc edits during extraction
+
+(Findings provided inline via orchestrator-relayed message; transcribed
+verbatim into this file for archival. Section labels normalized to match
+the brief's §6 deliverable shape; original Gemini section letters retained
+in parentheses.)
+
+================================================================================
+
+## Executive Summary
+
+G1. Source 1 calibrates the Phase 3 (Jan-Apr 2026) "Atomspace Integration
+    Prototype" against ROADMAP.md and SPEC.md, with the goal of proving
+    superiority over PostgreSQL before committing to Phase 4 ("Atomspace
+    Backend Swap" Apr-Jul 2026, conditional). Phase 5 ("AI Gamemaster
+    Foundation", 2026+) leverages PLN for symbolic game-rule reasoning
+    (e.g., "Fire spells burn wood").
+
+G2. The Phase 2 MCP API is FULLY OPERATIONAL as of Dec 2, 2025 with JWT
+    authentication, RS256 signing, JWKS, and role-based access (user/gm/
+    admin). The MCP middleware is therefore live infrastructure, not a
+    proposed component.
+
+G3. SPEC.md core hypothesis: Decko's structured card model provides better
+    semantic relationships that offset the database operation latency
+    penalty (target: <10x slower than static files). The naming convention
+    `[Type]: [Name] (+Context)` is established and should be mirrored in
+    AtomSpace ConceptNode names.
+
+
+## Section A — Requirements (REQUIREMENT)
+
+(Gemini's "Section A: Choice Points & Assumptions / ARCHITECTURAL-INTENT")
+
+G4. REQUIREMENT: Targeted evolution path. PostgreSQL (Phase 1) -> Dual
+    Backend Prototype (Phase 3) -> AtomSpace Primary (Phase 4).
+
+G5. REQUIREMENT: Conditional commitment. AtomSpace swap is explicitly
+    conditional on proving clear value over PostgreSQL (e.g., semantic
+    reasoning) within the Phase 3 window (Jan-Apr 2026).
+
+G6. REQUIREMENT: Designated middleware pattern. MCP Adapter (Python-based)
+    that exposes a Decko-like Card API to the Rails frontend while
+    managing AtomSpace/MORK atoms in the backend.
+
+
+## Section B — Assumptions To Verify (ASSUMPTION)
+
+(Gemini's "Section B: 9 Open Research Questions / RE-VERIFIED-AS-OPEN")
+
+G7. ASSUMPTION (R1 Representation): Pure symbolic vs. hybrid with
+    embeddings for card content.
+
+G8. ASSUMPTION (R2 PLN Performance): Real-time (<2s) inference for
+    interactive use.
+
+G9. ASSUMPTION (R3 Consistency Model): Eventual (MORK) vs. strong
+    consistency.
+
+G10. ASSUMPTION (R4 Query Language): Raw Atomese vs. high-level query DSL.
+
+G11. ASSUMPTION (R5 Versioning): Handling card history inside AtomSpace.
+
+G12. ASSUMPTION (R6 MORK Hosting): SaaS/Managed vs. Self-hosted cost/
+     complexity.
+
+G13. ASSUMPTION (R7 Network Latency): Multi-node latency in a distributed
+     MORK cluster.
+
+G14. ASSUMPTION (R8 Consistency Conflicts): Handling write-conflicts in
+     a distributed backend.
+
+G15. ASSUMPTION (R9 Backup Strategy): Equivalent to pg_dump for a
+     distributed AtomSpace.
+
+
+## Section C — Stale Claims (STALE-CLAIM)
+
+(Gemini's "Section D: Stale Claims")
+
+G16. STALE: ROADMAP.md § Phase 5 references "Hyperon PLN" reasoning for
+     game rules. FLAG: Must verify if the No-Go theorem (from PLN cluster)
+     is accounted for in rule representation.
+
+G17. STALE: ATOMSPACE-INTEGRATION.md § Rationale mentions "Distributed
+     via MORK." FLAG: Need to verify in Source 3 if MORK's distribution
+     is currently production-ready for this scale.
+
+
+## Section D — Design Options (DESIGN-OPTION) / Integration Seams
+
+(Gemini's "Section E: Integration Seams / CANDIDATE-SEAM")
+
+G18. CANDIDATE-SEAM: `run-card-runner.sh` — production wrapper for direct
+     Ruby-to-Card operations. Located at /home/ubuntu/run-card-runner.sh
+     on the production server. Potential high-value seam for integration
+     testing (administrative/bulk operations).
+
+G19. CANDIDATE-SEAM: `opencog/pgres` (atomspace-pgres) — potential direct
+     link for Decko's existing Postgres data to AtomSpace.
+
+G20. CANDIDATE-SEAM: `lib_spaces.metta` — the MeTTa-native abstraction
+     for pluggable storage.
+
+G21. CANDIDATE-MIDDLEWARE: MCP Adapter (Python) — designated middleware
+     using `hyperon.Atomspace`.
+
+G22. CANDIDATE-WRAPPER: Ruby AtomspaceBackend (Rails) — a prospective
+     `lib/atomspace_backend.rb` wrapper for the MCP adapter.
+
+
+## Section E — Non-Goals (NON-GOAL)
+
+(Implicit in Gemini's framing — not enumerated as a discrete section.)
+
+
+## Section F — Wiki-Card Delta Candidates (WIKI-EDIT-CANDIDATE)
+
+(Gemini's "Section G: Wiki-Content Update Proposals")
+
+G23. DELTA: ID 4751 (Implementation Families+Attention and Motivation) —
+     needs update to reflect the "AtomSpace Backend Integration" pilot
+     findings.
+
+G24. DELTA: ID 4200 (Knowledge Representations+DAS+DAS Full) — needs
+     update regarding the status of "MORK integration as DAS backend."
+
+
+## Section G — Risks / Failure Modes (DOCUMENTED-RISK)
+
+(Gemini's "Section F: Risks & Failure Modes" — out-of-band addition to
+the brief's Section A-H taxonomy; preserved here as supplementary.)
+
+G25. RISK: AtomSpace Slowness — high impact on interactive wiki usage.
+
+G26. RISK: MCP Overhead — high middleware latency.
+
+G27. RISK: MORK Cost — unpredictable self-hosting/SaaS costs.
+
+G28. RISK: Rollback Complexity — dependency on dual-write during
+     transition.
+
+
+## Section H — Acceptance Criteria (BENCHMARK)
+
+(Gemini's "Section C: Benchmark Criteria / ACCEPTANCE-CRITERION")
+
+G29. ACCEPTANCE: Fetch Card Latency — Target <500ms (Acceptable <2s,
+     Unacceptable >5s).
+
+G30. ACCEPTANCE: Search/Create Latency — Target <1s (Acceptable <3s,
+     Unacceptable >10s).
+
+G31. ACCEPTANCE: PLN Inference — Target <2s (Acceptable <5s, Unacceptable
+     >15s).
+
+G32. ACCEPTANCE: Scaling — Handles 1000+ cards without degradation
+     (Prototype) / 10,000+ (Production).
+
+================================================================================
+END OF GEMINI SOURCE 1 FINDINGS

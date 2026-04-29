@@ -1,0 +1,430 @@
+================================================================================
+ATOMSPACE BACKEND INTEGRATION CLUSTER PILOT
+SOURCE 2 BRIEF — AtomSpace API + Persistence Layer
+================================================================================
+
+§0. SOURCE IDENTITY
+-------------------
+Cluster pilot:    AtomSpace Backend Integration (AtomSpace + MORK + DAS)
+Source number:    2 of 4
+Source name:      AtomSpace API + Persistence Layer
+                  (StorageNode contract + Postgres adapter + bridge node +
+                   classical AtomSpace + Hyperon Space API)
+Pilot brief date: 2026-04-29
+Orchestrator:     Claude Opus 4.7 (1M)
+Reviewers:        Codex + Gemini (cross-model triangulation)
+
+PRIMARY REPOS WITH COMMIT PINS (read all):
+  atomspace                 c8d633bf27 (2026-02-10) branch=master
+                            Canonical opencog/atomspace. Linas Vepstas et al.
+  atomspace-storage         ecd88d67   (2026-01-31) branch=master
+                            StorageNode generic interface + ProxyNodes.
+                            Active: JSON encoding, BoolValue, decode logic.
+  atomspace-pgres           6fe9763    (2025-10-10) branch=master
+                            PostgreSQL backend. In API modernization (Sept-
+                            Oct 2025: TruthValue removal, DefaultTV removal,
+                            AtomPtr->Handle). HIGHEST-PRIORITY SEAM per
+                            Source 1 reconciliation R1.B1.
+  atomspace-rocks           6577a5b    (2026-01-21) branch=master
+                            RocksDB-embedded backend. Single-host persistence
+                            reference.
+  atomspace-bridge          40b8af7    (2025-08-15) branch=master
+                            HOME OF BridgeStorageNode. Top commit literally
+                            "Migrate the BridgeStorageNode to here" —
+                            indicates dedicated bridging infrastructure
+                            spun out into its own repo. Highest scrutiny.
+  atomspace-cog             665271d    (2026-01-19) branch=master
+                            CogServer-distributed backend. Legacy reference
+                            for "remote-AtomSpace-via-network" pattern.
+  hyperon-experimental      3f76dc46   (2026-02-11) branch=main
+                            Hyperon Rust reimplementation. Hyperon Space API
+                            + lib_spaces.metta + Python bindings. Source of
+                            Source 1's `from hyperon import Atomspace`
+                            assumption (C13).
+
+SECONDARY REPOS (consult only if §3 findings warrant):
+  atomspace2                4cfaa16cb  (2025-05-31) Linas's next-gen experimental
+                            fork. Possible realization of "Graphs, Metagraphs,
+                            RAM, CPU v2.1.1" paper. Static for ~11 months.
+                            Linas's own commit message ("Claude seems to be
+                            consistently wrong kind of about everything")
+                            indicates AI-assisted contributions had high
+                            correction rate — code here is provisional.
+  atomspace-gpu             fe59f71    (2026-02-12) GPU-acceleration variant.
+                            Read only if integration considers GPU offload.
+  atomspace-metta           119c17f    (2023-05-11) MeTTa-side AtomSpace.
+                            Static for ~3 years. Likely superseded by
+                            hyperon-experimental.
+  atomspace-typescript      78819df    (2022-12-13) TypeScript bindings.
+                            Static. Read only if Decko's Ruby/JS frontend
+                            could surface as a client.
+  atomspace-explorer        c6b26ad    (2022-12-13) Visualization. Out of
+                            scope unless wiki visualization is in play.
+  atomspace-ipfs            8e6950a    (2020-06-25) IPFS-backed. Out of scope.
+  atomspace-websockets      fb866be    (2020-06-06) WebSocket transport.
+                            Out of scope unless transport question arises.
+
+FORK SET FOR BIDIRECTIONAL-DIVERGENCE CHECKS (per OpenPsi V2-1, V4-2):
+  atomspace-linas           c8d633bf27 (2026-02-10) — IDENTICAL SHA to
+                            canonical atomspace. Linas's personal fork is
+                            currently lock-stepped; not divergent.
+  atomspace-singnet         5bc43d3396 (2021-10-14) — post-AttentionBank-
+                            removal-era snapshot. ~4.5 years stale.
+  atomspace-leungmanhin     aa607e05e6 (2022-05-21) — ~4 years stale.
+  atomspace-hansonrobotics  08773653f9 (2016-06-24) — same baseline as
+                            ECAN/OpenPsi Source 4 (`aec9b1f` was the
+                            opencog fork at the same Hanson date). Confirmed
+                            FROZEN snapshot per V4-2; not a divergent
+                            tradition.
+  atomspace-glicerico       cd18fc36c6 (2019-04-09) — 7 years stale.
+
+PRE-EXTRACTION GIT-PULL OBLIGATION (per memory rule):
+Before reviewers begin extraction, orchestrator pulls each PRIMARY repo
+and SECONDARY repo if scope-extending. Commit pins above are the pre-pull
+state; updated pins will be appended at the start of the reviewer findings
+files. No retroactive re-pulls of repos already in extraction.
+
+PRE-EXTRACTION PULL EXECUTED 2026-04-29:
+All 7 primary repos `git fetch`-ed against their upstreams. ZERO DRIFT
+across all repos — the §0 pins are confirmed current at extraction
+launch. Reviewers extract against the pinned SHAs without further pull.
+  atomspace            c8d633bf27 = upstream (no drift)
+  atomspace-storage    ecd88d67   = upstream (no drift)
+  atomspace-pgres      6fe9763    = upstream (no drift)
+  atomspace-rocks      6577a5b    = upstream (no drift)
+  atomspace-bridge     40b8af7    = upstream (no drift)
+  atomspace-cog        665271d    = upstream (no drift)
+  hyperon-experimental 3f76dc46   = upstream (no drift)
+
+
+§1. SCOPE AND DELIVERABLE TAXONOMY
+----------------------------------
+Source 2 audits whether the AtomSpace and AtomSpace-storage stack can
+satisfy the Source 1 acceptance gate (R1.1-R1.4) and the cross-source
+forwards (S2.Q1-S2.Q6). The audit is dual-purpose per user mandate:
+
+  (a) WIKI CONTENT CORRECTNESS — verify every status claim in the
+      About Hyperon+AtomSpace, AtomSpace Full, and any ECAN/MORK/DAS
+      cross-referenced cards against the actual Source 2 repo state.
+      Wiki cards in scope: ID 4017 (concise), ID 4403 (deep dive).
+      AtomSpace Full claims under particular scrutiny: "classical C++
+      AtomSpace v5.0+ mature", "Space API operational", and any
+      backend-readiness claim.
+
+  (b) INTEGRATION USE CASE — answer: which seam, if any, in this
+      Source 2 surface can serve as the Decko-AtomSpace bridge under
+      the Source 1 latency budget (<500ms fetch / <2s acceptable) and
+      Decko-semantics constraints (R1.A5-A7: lossless `+` names,
+      RichText inclusion, file-card behavior).
+
+CODEX SOURCE-2 CARRY-FORWARD CAUTIONS (locked into this brief):
+
+  C2-CARRY-1: atomspace-pgres SCHEMA-COMPATIBILITY DOES NOT IMPLY
+              DECKO-COMPATIBILITY.
+              The key question is NOT "does atomspace-pgres run on
+              PostgreSQL?" — it does. The key question is whether it can
+              read or mirror Decko's existing data model (the cards table,
+              card_actions, card_changes, etc.) or whether it is merely a
+              SEPARATE AtomSpace persistence backend that happens to use
+              PostgreSQL as its physical store. If the latter, the seam
+              still requires a translation/sync layer between two distinct
+              schemas — most of the friction the design assumed it
+              eliminated remains.
+
+  C2-CARRY-2: KEEP "MCP ADAPTER" SPLIT INTO TWO TERMS.
+              Source 1 V1-9 established the disambiguation. Source 2 must
+              not collapse them. If Source 2 surfaces an "MCP" reference,
+              tag it explicitly as either:
+              (a) DECKO-MCP — the deployed Decko card API (live since
+                  2025-12-02; mod/mcp_api/, JWT/RS256/JWKS).
+              (b) ATOMSPACE-MCP — the proposed Python bridge from
+                  docs/ATOMSPACE-INTEGRATION.md (sketch only; no
+                  implementation in the local code tree).
+
+GEMINI SOURCE-2 FOCUS (acknowledged):
+Gemini's stated focus is the StorageNode contract and the PostgreSQL
+adapter. Codex's focus is broader (MORK forks, FFI, classical-vs-Hyperon
+API distinction). Both lanes proceed in parallel; the reconciliation
+will fold both back together.
+
+
+§2. KEY QUESTIONS (FROM SOURCE 1 FORWARDS + CODEX CARRY-FORWARDS)
+-----------------------------------------------------------------
+
+S2.Q1 [from Source 1] STORAGE NODE / API SURFACE INVENTORY.
+      Catalogue the AtomSpace API operations the Source 1 adapter sketch
+      assumes: query (pattern matching), mutation (add/delete), values
+      and metadata (TruthValue/AttentionValue/CustomValue), link typing,
+      and the StorageNode protocol. For each, name the canonical
+      header/source file and the supported operations.
+      Affected repos: atomspace, atomspace-storage.
+      Verify: does the API actually support the adapter's assumed shape?
+
+S2.Q2 [from Source 1] LOSSLESS DECKO REPRESENTATION.
+      Determine whether Decko card identity and hierarchy can be
+      represented losslessly in AtomSpace. Specifically:
+      - `+` hierarchical names (e.g., `Hyperon AI Algorithms+ECAN+AI`)
+      - Original-name metadata (canonical vs sanitized form)
+      - RichText inclusion cards (`{{+child|content}}` syntax) — content
+        cards may differ from inclusion cards in mapping
+      - File cards (binary content + storage path)
+      - Card history / revisions
+      - Permissions
+      Each of the above maps to either a verified ATOM TYPE or a verified
+      VALUE TYPE in the current AtomSpace; if any mapping is lossy or
+      unsupported, flag.
+
+S2.Q3 [HIGH-PRIORITY, from Source 1 R1.B1, expanded by Codex C2-CARRY-1]
+      atomspace-pgres COMPATIBILITY WITH DECKO POSTGRES.
+      Three sub-questions, in order:
+      (a) What schema does atomspace-pgres write to? Catalogue tables,
+          columns, indices. Cite the schema-creation SQL (likely under
+          `opencog/persist/sql/multi-driver/` or `opencog/atomspace/
+          persist/`).
+      (b) Can atomspace-pgres point at an existing Decko-Postgres
+          database without conflicting with Decko's tables (cards,
+          card_actions, card_changes, etc.)? Schema-namespace check.
+      (c) Can atomspace-pgres READ from Decko-shaped tables, or does it
+          require its own schema and a separate sync layer? This is the
+          decisive distinction per Codex C2-CARRY-1.
+      Verify with the README + CMakeLists + actual SQL files at the
+      atomspace-pgres `6fe9763` snapshot.
+
+      HARD NEGATIVE TEST (Codex Source-2 sign-off requirement):
+      Reviewers MUST explicitly distinguish two outcomes and label
+      atomspace-pgres as exactly one of them in Section C:
+      [BACKING-STORE-ONLY] — atomspace-pgres uses PostgreSQL as its
+          internal AtomSpace persistence layer. Its tables are an
+          AtomSpace-shaped schema (atoms, links, values) with no
+          relationship to Decko's card schema. Pointing it at a Decko
+          database either conflicts with Decko tables or simply ignores
+          them. NOT a schema-compatibility win — still requires a sync
+          or translation layer.
+      [DECKO-SCHEMA-COMPATIBLE] — atomspace-pgres can read or write
+          Decko's existing `cards`, `card_actions`, `card_changes`
+          (etc.) tables in their native shape, mapping rows to atoms
+          without intermediate translation. THIS is the schema-
+          compatibility win.
+      Anything other than [DECKO-SCHEMA-COMPATIBLE] is a NO for the
+      "lowest-friction seam" claim. Section C verdict must use one of
+      these two literal labels.
+
+S2.Q4 [from Source 1] CLASSICAL C++ ATOMSPACE vs HYPERON SPACE API.
+      Do NOT collapse. Catalogue the two API surfaces side-by-side:
+      - Classical: opencog/atomspace + opencog/atomspace-storage
+        (StorageNode subclasses)
+      - Hyperon: hyperon-experimental's lib_spaces.metta + Python
+        Atomspace bindings
+      Identify whether the Source 1 design sketch (`from hyperon
+      import Atomspace, MCP`) lands in classical C++ or Hyperon Rust.
+      If Hyperon Rust, verify the `MCP` import. The literal symbol
+      `MCP` from a `hyperon` module is suspect — likely either
+      apocryphal or pre-implementation.
+
+S2.Q5 [from Source 1] NAME-SANITIZATION CORRECTNESS.
+      The Source 1 adapter sketch's `_sanitize` replaces `+`, `:`,
+      spaces with `_`. Verify whether AtomSpace `ConceptNode` names
+      can carry these characters natively (or via escaping). If yes,
+      sanitization is unnecessary and lossy by design; recommend
+      direct-name representation. If no, document the necessary
+      escaping protocol.
+
+S2.Q6 [from Source 1, ECAN Source 4 V0-1 rule]
+      C++ AND SCHEME/MeTTa DUAL-API AUDIT.
+      For any "X is supported / X is not supported" claim about the
+      AtomSpace API, grep BOTH layers:
+      - C++: AtomSpace, getValue, setValue, StorageNode, BackingStore,
+        TruthValue, AttentionValue
+      - Scheme: cog-set-value!, cog-value, cog-stimulate, cog-av-sti
+      - MeTTa: lib_spaces.metta, &storage, get-state, set-state
+      Either layer alone produces false-negatives.
+
+S2.Q7 [NEW per Phase 0 finding] atomspace-bridge / BridgeStorageNode.
+      Inspect the README + opencog/ headers + examples/ at the
+      atomspace-bridge `40b8af7` snapshot. Determine:
+      (a) What does BridgeStorageNode bridge BETWEEN?
+      (b) Was it migrated from atomspace-storage or another repo?
+          (per the commit message, "Migrate the BridgeStorageNode
+          to here" — pickaxe `git log --all -S 'BridgeStorageNode'`
+          across atomspace, atomspace-storage to find the migration
+          source.)
+      (c) Is it a viable Decko<->Atomspace seam, or is it bridging
+          two AtomSpaces (e.g., classical<->Hyperon)?
+
+S2.Q8 [NEW] atomspace2 vs canonical atomspace.
+      Apply the bidirectional-fork-divergence rule (V2-1, V4-2):
+      - `git log atomspace..atomspace2 --shortstat` — what's added.
+      - `git log atomspace2..atomspace --shortstat` — what's behind.
+      Determine whether atomspace2 is a divergent tradition or a stale
+      experimental branch. If divergent, identify the architectural
+      delta. atomspace2 has a pyproject.toml — note any Python-side
+      surface that could simplify the integration.
+
+S2.Q9 [NEW] STORAGE-NODE ECOSYSTEM MAP.
+      Produce a SINGLE-PAGE map of all StorageNode subclasses currently
+      deployed across atomspace-storage + atomspace-pgres + atomspace-
+      rocks + atomspace-cog + atomspace-bridge. Include:
+      - Class name, source file, parent class
+      - "What it persists" + "what it does not"
+      - Tested-vs-untested status
+      - Read-only vs read-write
+      This map is the canonical artifact reviewers should produce.
+
+      STATUS-LABEL REQUIREMENT (Codex Source-2 sign-off):
+      Each entry on the ecosystem map must carry exactly ONE status
+      label drawn from this fixed vocabulary:
+        CANONICAL              — the reference / interface-defining class
+                                 (e.g., StorageNode itself in
+                                 atomspace-storage)
+        BACKEND-IMPLEMENTATION — concrete persistence backend
+                                 (e.g., PostgresStorageNode,
+                                 RocksStorageNode)
+        BRIDGE-ADAPTER         — bridges between two storage layers,
+                                 between AtomSpaces, or between
+                                 AtomSpace and an external system
+                                 (e.g., BridgeStorageNode,
+                                 ProxyStorageNode if extant)
+        LEGACY-FORK            — present in a fork that is stale or
+                                 superseded; preserved for
+                                 archaeological reference only
+        EXPERIMENTAL           — provisional, pre-stable API, or
+                                 explicitly marked as such by the
+                                 author
+        UNKNOWN                — reviewer cannot classify with
+                                 confidence at this snapshot; flag
+                                 for follow-up
+      The map (Section I) MUST be a usable integration map, not
+      repo-by-repo prose. Tabular form preferred.
+
+
+§3. PHASE-0 / SOURCE-1 INHERITED ANCHORS
+----------------------------------------
+
+A. Wiki status claims Source 2 must triangulate (per Source 1 R1.C5):
+   - "MORK and DAS backends operational" (About Hyperon+AtomSpace,
+     ID 4017) — partially Source 2 (the AtomSpace side); MORK/DAS
+     proper are Sources 3/4.
+   - "atomspace-pgres operational" (implied by AtomSpace Full's "Space
+     API operational"). Verify directly.
+   - "classical C++ AtomSpace v5.0+ mature" (AtomSpace Full, ID 4403).
+     Verify the v5.0+ tag exists; verify "mature" against current
+     refactor activity (TruthValue removal in atomspace-pgres, JSON
+     encoding fixes in atomspace-storage are recent — "mature" should
+     mean "stable API surface", not "frozen").
+
+B. Source-1-confirmed STALE CLAIM HOT SPOTS (Source 2 should not re-
+   propagate these):
+   - PLN-as-production-ready language. AtomSpace Full discusses TVs and
+     stored values that PLN consumes — any wording that PLN runs on
+     AtomSpace at production scale should be conditioned per PLN cluster
+     pilot findings.
+   - AttentionBank availability. Removed monorepo-wide 2019-09-06
+     (`318c0b4cb` per ECAN cluster pilot). Verify via grep at the
+     current `atomspace` HEAD that AttentionBank is indeed gone.
+   - ECAN-PLN coupling. Per OpenPsi V4-1, all three executable paths
+     decoupled by 2019. AtomSpace Full's "AttentionValues managed by
+     ECAN" wording should be reviewed.
+
+C. Source-1-recommended SEAM PRIORITY (Source 2 must validate or
+   refute):
+   1. atomspace-pgres direct (lowest friction IF schema-compatible)
+   2. atomspace-bridge / BridgeStorageNode (NEW PRIORITY per Phase 0)
+   3. StorageNode generic + custom subclass
+   4. lib_spaces.metta MeTTa-side
+   5. Python hyperon.Atomspace + custom adapter (the Source 1 sketch)
+   6. MCP bridge (DECKO-MCP exists; ATOMSPACE-MCP would be new)
+
+
+§4. METHODOLOGY RULES IN FORCE
+------------------------------
+All five rules established by prior cluster pilots apply unchanged:
+
+R1 PICKAXE BEFORE "DEAD" (ECAN Source 3 V0-1).
+   Before classifying any feature as deprecated/removed/never-implemented,
+   run `git log --all -S '<token>'` in the relevant repo. Particularly
+   relevant for atomspace-bridge migration history (S2.Q7b).
+
+R2 CALLER-ANALYSIS MUST BE TIME-INDEXED (OpenPsi V4-1).
+   "X is called by Y" must include commit/date snapshot. Pin caller
+   analysis to specific SHAs.
+
+R3 BIDIRECTIONAL FORK-DIVERGENCE (OpenPsi V2-1, V4-2).
+   For atomspace-singnet, atomspace-leungmanhin, atomspace-hansonrobotics,
+   atomspace-glicerico, atomspace2 — run `git log A..B` AND `git log
+   B..A` AND grep both directions before labeling as divergent.
+
+R4 C++ AND SCHEME/MeTTa BOTH (ECAN Source 4 V0-1).
+   Embedded as S2.Q6.
+
+R5 CODE COMMENTS / DOC CLAIMS ARE HYPOTHESES (OpenPsi Source 3 brief #8).
+   atomspace-bridge's commit message "Migrate the BridgeStorageNode to
+   here" is a starting hint, not a verified claim about what the class
+   actually bridges. Verify against the header + README + tests.
+
+ADDITIONAL Source-2-specific rule:
+
+R6 SCHEMA-COMPATIBILITY ≠ STORE-COMPATIBILITY (Codex C2-CARRY-1).
+   "Repo X uses PostgreSQL" does NOT mean "Repo X is compatible with
+   another PostgreSQL-using application's schema." Always verify schema
+   intersection or schema disjointness before claiming low-friction
+   integration.
+
+
+§5. DELIVERABLE SHAPE
+---------------------
+Each reviewer (Codex, Gemini) returns:
+
+  Section A — STORAGE NODE / API SURFACE INVENTORY (S2.Q1)
+  Section B — DECKO REPRESENTATION FEASIBILITY (S2.Q2)
+  Section C — atomspace-pgres COMPATIBILITY VERDICT (S2.Q3)
+              with explicit (a)(b)(c) sub-answers per Codex C2-CARRY-1.
+  Section D — CLASSICAL vs HYPERON API SIDE-BY-SIDE (S2.Q4)
+  Section E — NAME-SANITIZATION VERDICT (S2.Q5)
+  Section F — DUAL-API LAYER AUDIT (S2.Q6)
+  Section G — atomspace-bridge / BridgeStorageNode VERDICT (S2.Q7)
+  Section H — atomspace2 BIDIRECTIONAL DIVERGENCE VERDICT (S2.Q8)
+  Section I — STORAGE-NODE ECOSYSTEM MAP (S2.Q9) — single canonical
+              artifact for the cluster.
+  Section J — Wiki-card delta candidates (per dual-purpose mandate)
+  Section K — Stale-claim verifications (per §3.B hot spots)
+  Section L — Cross-source forwards (questions for Source 3/4)
+  Section M — Reviewer-specific dissents (V2-N) where the reviewer
+              disagrees with brief framing or with Source 1
+              reconciliation premises.
+
+Findings files:
+  scripts/archive/atomspace_pilot/source2_atomspace_persistence/
+    findings_codex.txt
+    findings_gemini.txt
+    findings_reconciled_crossmodel.txt
+
+
+§6. CLUSTER-CLOSE EDIT-TARGET FLAGGING
+--------------------------------------
+Wiki cards on the Source-2 edit candidate list (verified or refuted by
+Source 2 findings):
+
+  About Hyperon+AtomSpace                         (ID 4017, Draft index)
+  About Hyperon+AtomSpace+AtomSpace Full          (ID 4403, Draft deep)
+
+If Source 2 surfaces atomspace-bridge / BridgeStorageNode as a viable
+seam, at least the AtomSpace Full "Implementations" section will need
+an update to mention it.
+
+If Source 2 surfaces a substantive Hyperon-vs-classical-API divergence,
+the AtomSpace Full "Design Evolution and Performance" section may need
+revision.
+
+Design-doc edits remain deferred to cluster close (per Source 1 §7).
+
+
+§7. NON-WRITE STANCE
+--------------------
+Source 2 is read-only. No wiki writes, no file edits, no commits during
+extraction. All identified delta candidates queue for cluster close,
+after Sources 2-4 reconciliations are settled and the user authorizes
+a commit batch.
+
+================================================================================
+END OF SOURCE 2 BRIEF
+================================================================================

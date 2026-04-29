@@ -139,6 +139,68 @@ A four-source content pass over the OpenPsi/motivation cluster (2026-04-27 → 2
 
 Total: 8 cards touched (5 ECAN-cluster carrying the V4-1 addendum + 3 new/annotated OpenPsi-specific). All verified post-write via `get_card`.
 
+## AtomSpace Backend Integration Cluster Pilot — what it is
+
+A four-source content + integration-design pass over the AtomSpace backend integration cluster (2026-04-29), executed under the same cross-model triangulation protocol established by the PLN/ECAN/OpenPsi pilots (Claude orchestrator + Codex + Gemini reviewers, with reconciliation across all three). The pilot has **dual purpose**: (a) wiki content correctness for the AtomSpace / MORK / DAS / PathMap cards; (b) **engineering scope for Phase 3 (Jan-Apr 2026) Decko/Rails/PostgreSQL → AtomSpace integration prototype**. Per-source briefs, per-model findings, and cross-model reconciliations live at `scripts/archive/atomspace_pilot/source*/`. **AtomSpace cluster pilot extraction is closed for this iteration; Phase 3 prototype build is the next engineering step.**
+
+### Cluster-narrative-deciding findings
+
+1. **The AtomSpace ecosystem is FOUR DISTINCT IMPLEMENTATION LAYERS, not a single backend** (Source 4 R4.J1, locked-in across all four sources):
+   - **Layer 1 — Classical AtomSpace StorageNode**: `atomspace` + `atomspace-storage` + `atomspace-pgres` + `atomspace-rocks` + `atomspace-cog` + `atomspace-bridge`. Best read-side SQL import ancestor; not Decko-write-ready.
+   - **Layer 2 — Hyperon Space**: `hyperon-experimental` (`GroundingSpace` / `SpaceMut` / `DynSpace`; `lib_spaces.metta`). MeTTa-facing demos; not primary Decko backend.
+   - **Layer 3 — DAS AtomDB + services**: `singnet/das` (AtomDB + Query Engine + AttentionBroker + agents; MorkDB). Candidate later query/deployment layer; delete + server-pin caveats.
+   - **Layer 4 — MORK native substrate**: `trueagi-io/MORK` + PathMap + `mork_ffi` + SDK + server branch. Performance substrate; requires adapter layer for Decko semantics.
+
+2. **The literal `from hyperon import Atomspace, MCP` snippet in `docs/ATOMSPACE-INTEGRATION.md` is APOCRYPHAL** (Source 2 R2.3, Source 4 re-confirmation). The `hyperon` Python package does not export an `MCP` symbol. The DECKO-MCP / ATOMSPACE-MCP disambiguation is locked: Decko MCP is the only deployed MCP API in this repo (`mod/mcp_api/`); any "ATOMSPACE-MCP" reference is conceptual, not real. Treat legacy design-doc code blocks using this import as conceptual sketches.
+
+3. **`atomspace-pgres` is BACKING-STORE-ONLY and NOT Decko-compatible** (Source 2 R2.1). Rigid Atom/Value schema with no card semantics, no permissions, no history. Do NOT recommend `atomspace-pgres` as the lowest-friction Decko seam — Source 1's "lowest-friction" framing did NOT survive the substrate audit.
+
+4. **DAS-MorkDB is code-real with a SPLIT IMPLEMENTATION** (Source 4 R4.2, R4.L1):
+   - DAS-side AtomDB code is real (`MorkDB.h`/`MorkDB.cc` subclassing `RedisMongoDB`; `AtomDBSingleton.cc`).
+   - The MORK server is pinned through Docker/server-branch path; **link/S-expression delete is hard-failed** at `MorkDB.cc:268-270` ("MORKDB does not support deleting links"). `flush_pattern` + `re_index_patterns` provide batch-rebuild workarounds, NOT live mutable-store CRUD.
+   - **MorkDB delete is BLOCKING-INTEGRATION** for any architecture that uses DAS MorkDB as a mutable Decko backend.
+
+5. **MORK is an 8-member Rust workspace (NOT 7); PeTTa/MORK has been benchmarked to 400M atoms in RAM (NOT 500M+)** (Source 3 R3.3, R3.5). The "500M+ atoms" framing was an OOM ceiling at `mork_ffi/example_space.metta:13-17`, not demonstrated capacity. Wiki MORK Full claim corrected at this cluster close.
+
+6. **MORK's `server` branch is 49 commits ahead of the DAS pin, with deadlock and UTF-8 fixes in the gap** (Source 4 R4.4, V4-4). DAS Dockerfile pins MORK `578a759` (2025-07-21); local `origin/server` HEAD as of 2026-04-29 is `5b04a1d` (2026-04-18). `das-toolbox` CLI defaults to image tags `1.0.5`. **Three potentially-different references** (image tag, Dockerfile pin, server-branch HEAD) must be reconciled for production deployment — engineering risk, not footnote.
+
+7. **DAS AttentionBroker is the THIRD member of the ECAN-engineering-surrogate lineage** (Source 4 R4.D4, extending ECAN cluster pilot finding #1). Implementation: `ExactCountHebbianUpdater` (`HebbianNetworkUpdater.cc:57-96`; weights = count(A→B)/count(A) — NOT Classic ECAN Hebbian Conjunction) + fixed-token `TokenSpreader` (rent rate 0.75; deterministic arity-weighted spreading). Like Classic OpenCog C++ ECAN and the `metta-attention` MeTTa port, it is **0/4 strict-literal** against the 2009 ECAN paper. Classify all three as ECAN-inspired engineering surrogates rather than literal 2009 ECAN.
+
+8. **PathMap is a foundational sibling repo, not a bundled MORK crate** (Source 3 R3.4). Authored by Luke Peterson; declared at `MORK/Cargo.toml:28-32` as `../PathMap/` with `jemalloc`/`arena_compact`/`nightly` features. The `pathmap-book` intro is complete; the database section (`2.00.00_database_intro.md`) is a GOAT/TODO stub. Lean/ZAM formalization theorems exist alongside but are NOT wired into the Rust kernel — citing Lean results as evidence for Rust correctness requires explicit bridge verification.
+
+### Phase 3 architecture lock-in
+
+**Architecture: READONLY-ATOMSPACE-BRIDGE** (Source 4 R4.B1). Decko/Rails/PostgreSQL stays the source of truth. AtomSpace serves a **read-only semantic mirror**. Decko MCP is the extraction API. **NO write-through to DAS or MORK in Phase 3.**
+
+**Implementation mechanism (open question for prototype benchmark):**
+- (a) `atomspace-bridge` style import / small custom exporter (lower complexity).
+- (b) `mork_ffi` for low-latency queries + `mork_loader.py` for periodic hydration (higher engineering effort but directly meets latency).
+
+**Decision criterion**: <500ms fetch gate + simplest Decko-mirror semantics.
+
+**Phase 4+ blockers (preserved for write-through promotion)**: MorkDB link delete, MORK server-branch reconciliation, Decko-semantics-as-AtomSpace-types definitions (history, RichText, files, permissions, sections/TOC, rename/aliases, rollback). The PLN cluster No-Go theorem applies regardless of storage choice — Phase 5 PLN-over-AtomSpace must be characterized as "semantic queries that PostgreSQL cannot trivially answer," not as global PLN inference.
+
+### Wiki-edit audit (AtomSpace cluster pilot, 2026-04-29)
+
+| Card | ID | Action |
+|---|---|---|
+| About Hyperon+AtomSpace+AtomSpace Full+Implementations | 7115 | Prepended four-layer taxonomy lock-in section; cross-links to Layer 3 (DAS Full) and Layer 4 (MORK Full); added DAS first-class feature note |
+| Knowledge Representations+MORK+MORK Full+Architecture and Ecosystem | 7153 | 8-crate workspace correction; PathMap as sibling-repo dependency; server-branch separation; 400M-not-500M correction; PLN paper-only framing; weighted-atom-sweep reframed as adjacent experimental analogy |
+| Knowledge Representations+MORK+MORK Full+Status and Resources | 7155 | Server-branch-versioning Known Limitation; CountSink reframing as MM2 query primitive; RAM scaling 400M correction; MorkDB link-delete blocking note; cluster-pilot archive reference |
+| Knowledge Representations+DAS+DAS Full | 4200 | Cluster-Pilot Lock-In section with R4.L1 wording (split implementation; AttentionBroker engineering surrogate; new-das! bridge; server-branch drift); MORK / MorkDB Storage Backends entry rewritten with delete-incomplete + Docker pin caveats |
+| Implementation Families+Attention and Motivation | 4751 | DAS AttentionBroker added to ECAN repos table + as third member of ECAN-engineering-surrogate lineage; weighted-atom-sweep reframed as analogy not bridge; new Gap on three-implementations-no-strict-literal-track |
+| Knowledge Representations+PathMap | 7429 (new) | Draft card — Luke Peterson author, foundational MORK trie substrate, sibling-repo classification, pathmap-book status, Lean/ZAM caveat |
+| Knowledge Representations+PathMap+tag | 7430 (new) | Pointer (`ai_generated`) |
+| Implementation Families+AtomSpace Backend Integration | 7432 (new) | Draft synthesis card — four-layer taxonomy, Phase 3 lock-in, 7 cluster-narrative findings, Phase 4+ blockers, source archive map |
+| Implementation Families+AtomSpace Backend Integration+tag | 7433 (new) | Pointer (`ai_generated`) |
+
+Total: 9 cards touched (5 existing + 4 new). All verified post-write via `get_card`.
+
+### Documentation-file edits (this repo)
+
+- `docs/ATOMSPACE-INTEGRATION.md` — Cluster-Pilot Reframing block at top (status reframed to "Conceptual Sketch"; bottom-line corrections enumerated); Conceptual-Sketch banner on the MCP Adapter Python (apocryphal API flagged); MORK section corrected from "distributed backend" to "single-process triemap substrate"; sanitization-helper lossiness noted; footer cluster-pilot pointer.
+- `docs/ROADMAP.md` — Phase 3 reframing block (READONLY-ATOMSPACE-BRIDGE; <500ms fetch / 5+ semantic insights gate; PLN No-Go caveat); Phase 4 reframed as blocked until cluster-pilot blockers clear; Decision Point updated to read-only-mirror-as-durable-feature framing.
+
 ## File-system audit (extraction archive)
 
 ### PLN cluster pilot
@@ -180,6 +242,17 @@ Source 4 V0-1 reconciliation (OpenPsi coupling) is the canonical disambiguator f
 - Source 4: `hansonrobotics/opencog` @ `aec9b1f` + `hansonrobotics/ros-behavior-scripting` @ `9cc2cde` + `opencog/loving-ai-ghost` @ `4c170ce` + `leungmanhin/loving-ai-ghost` @ `534c569` (Hanson dialogue/robotics runtime branch archaeology)
 
 Source 4 V4-1 reconciliation (caller-analysis time-indexing) is the canonical record for the OpenPsi default-selector STI path 2016-05/2016-11 lifecycle that the ECAN cluster pilot did not surface. Source 3 reconciliation (HYBRID/PAPER-LEANING) is the canonical record for the MeTTa port's incomplete paper recovery (8 LITERAL / 2 DIVERGENT / 1 ABSENT). The 2014 Harrigan ECAN-PLN paper had its executable-realization timeline retroactively extended at `Publications+Guiding PLN with Attention Allocation` (ID 3057) on 2026-04-28.
+
+### AtomSpace Backend Integration cluster pilot
+
+`scripts/archive/atomspace_pilot/` contains the per-source brief + per-model findings + cross-model reconciliation for sources 1-4:
+
+- Source 1: Existing design docs (`docs/ATOMSPACE-INTEGRATION.md`, `docs/ROADMAP.md`) + acceptance gates + requirements/assumptions/stale-claims/design-options/non-goals taxonomy.
+- Source 2: Classical StorageNode persistence family (`atomspace`, `atomspace-storage`, `atomspace-pgres`, `atomspace-rocks`, `atomspace-cog`, `atomspace-bridge`) + Hyperon Space (`hyperon-experimental` @ `3f76dc46` — `GroundingSpace` / `SpaceMut` / `DynSpace`).
+- Source 3: MORK production substrate — `trueagi-io/MORK` @ `4cef6f7` (8-member workspace) + PathMap @ `cd6f350` + `mork_ffi` @ `4bbc335` + `mork-rust-sdk` @ `5a68049` (skeletal) + `mork-ts-sdk` @ `f02e551` + fork tree (MORK2, MORK-leungmanhin, MORK-zariuq, MORK-rejuve-bio server fork @ `ba04543`, MORK-atomspace-builder deployment-wrapper) + adjacent `weighted-atom-sweep` @ `1471ff2c`.
+- Source 4: DAS deployment layer + runtime bridge — `singnet/das` @ `f4da3d78` (drifted from 85003446 pin) + `singnet/das-toolbox` @ `b3cf116` + `singnet/das-metta-parser` @ `41ee42e` + cross-references into Source 2's `hyperon-experimental` for the `new-das!` MeTTa op + integration design memo.
+
+Source 4 reconciliation Sections A through M plus the Bottom Line is the **canonical integration design memo** (R4.B4). The wiki synthesis card `Implementation Families+AtomSpace Backend Integration` (ID 7432) distills it for ongoing reference. Source 3 R3.4 / R3.I4 + Source 4 R4.K1 jointly establish PathMap's standalone wiki-card placement (now `Knowledge Representations+PathMap`, ID 7429).
 
 ## Source-text gaps remaining
 
@@ -256,20 +329,21 @@ Claude memory at `C:\Users\Lake\.claude\projects\E--GitHub-Magi-AGI-hyperon-wiki
 - `feedback_ecan_audit_token_list.md` — OpenCog audits must cover both C++ and Scheme/MeTTa API layers (ECAN Source 4 V0-1)
 - `feedback_bidirectional_fork_divergence.md` — bidirectional fork-divergence + codebase-staleness corollary (OpenPsi Source 2 V2-1, generalized at Source 4 V4-2)
 - `project_openpsi_cluster_pilot_2026_04_28.md` — OpenPsi cluster pilot summary + key SHAs + archive paths
+- `project_atomspace_cluster_pilot_2026_04_29.md` — AtomSpace Backend Integration cluster pilot summary; four-layer taxonomy; Phase 3 READONLY-ATOMSPACE-BRIDGE lock-in; key SHAs; archive paths
 - `project_user_loving_ai_ghost_history.md` — user has 18 commits in `leungmanhin/loving-ai-ghost`; defer to user recollection on Ghost/OpenPsi/STI design intent
 - `reference_wiki_mcp_quirks.md` — wiki MCP operational quirks
 - `project_repo_orientation_docs.md` — orientation-doc workflow
 - `project_wiki_quality_bar.md` — Ben Goertzel approval bar
 
-For multi-model continuity, the canonical record lives in this repo at `scripts/archive/pln_pilot/`, `scripts/archive/ecan_pilot/`, and `scripts/archive/openpsi_pilot/` (extraction archives) and in the wiki itself (cards listed in the audit tables above).
+For multi-model continuity, the canonical record lives in this repo at `scripts/archive/pln_pilot/`, `scripts/archive/ecan_pilot/`, `scripts/archive/openpsi_pilot/`, and `scripts/archive/atomspace_pilot/` (extraction archives) and in the wiki itself (cards listed in the audit tables above).
 
 ---
 
 ## What's next (post-pilot work)
 
-The PLN cluster pilot extraction is closed; editorial cleanup is in progress. The ECAN/Attention and OpenPsi/Motivation cluster pilots are also closed (2026-04-26 and 2026-04-28 respectively). Other clusters remain (each its own multi-source pilot):
+The PLN cluster pilot extraction is closed; editorial cleanup is in progress. The ECAN/Attention, OpenPsi/Motivation, and AtomSpace Backend Integration cluster pilots are also closed (2026-04-26, 2026-04-28, and 2026-04-29 respectively). Other clusters remain (each its own multi-source pilot):
 
 - Perception / Neural-Symbolic (incl. 2013 FISHGRAM retrieval)
-- MeTTa runtime (`hyperon-experimental`, `MeTTa-IL`, `PeTTa`, MORK production angle)
-- Hyperon DAS / atomspace
+- MeTTa runtime (`hyperon-experimental`, `MeTTa-IL`, `PeTTa`, MORK production angle — note: substantial MORK + AtomSpace + DAS coverage now lives in the AtomSpace Backend Integration cluster pilot 2026-04-29; residual MeTTa-runtime-specific topics include MeTTa-IL semantics, PeTTa runtime closure, and MORK-server deployment topology beyond what the AtomSpace pilot covered)
 - Cross-org sweeps (asi-alliance, fetchai, F1R3FLY-io, Rejuve, Xcceleran-do, gitlab.com/nunet) — note: `hansonrobotics/*` was substantively covered by the OpenPsi cluster pilot Source 4 (2026-04-28); residual non-OpenPsi-touching Hanson repos may need a separate sweep
+- **Phase 3 READONLY-ATOMSPACE-BRIDGE prototype build** — engineering work, not an extraction pilot; benchmarks decide between atomspace-bridge import and `mork_ffi` + `mork_loader.py` mechanism under the read-only umbrella.
