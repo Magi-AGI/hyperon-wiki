@@ -2,7 +2,7 @@
 
 **Purpose**: Bootstrap a fresh agent session (Claude orchestrator, Codex reviewer, or Gemini reviewer) for a new cluster pilot. Each role section below is self-contained — paste the relevant section into the matching agent's first turn.
 
-**Last refined**: 2026-04-30 (after 4 cluster pilots: PLN 2026-04-25, ECAN 2026-04-26, OpenPsi 2026-04-28, AtomSpace 2026-04-29; carry-forward review pending for AtomSpace Source 4 reconciliation + cluster-close edits — see § Pending Cross-Model Review).
+**Last refined**: 2026-04-30 (after 4 cluster pilots: PLN 2026-04-25, ECAN 2026-04-26, OpenPsi 2026-04-28, AtomSpace 2026-04-29; AtomSpace Source 4 carry-forward closed 2026-04-30 with one wiki-only correction — see § Closed Carry-Forward Reviews).
 
 ---
 
@@ -194,11 +194,17 @@ Out of scope:
 
 ---
 
+## Closed Carry-Forward Reviews
+
+| Cluster | Original close | Carry-forward closed | Outcome |
+|---|---|---|---|
+| AtomSpace Backend Integration | 2026-04-29 (`e83f309`) | 2026-04-30 | Codex sign-off in aggregate + V4-Carry-1 dissent (DAS Full card 4200 used ECAN-lineage rent/wage vocabulary in DAS context); Gemini concurred after independent verification against `StimulusSpreader.cc`; resolved by wiki-only `update_card` on ID 4200 (parenthetical replaced with fixed-token model + file:line evidence). Carry-forward archive: `scripts/archive/atomspace_pilot/source4_das_runtime_bridge/findings_codex_carryforward.txt` + addendum at end of `findings_reconciled_crossmodel.txt`. |
+
 ## Pending Cross-Model Review (Carry-Forward)
 
-The **AtomSpace Backend Integration Cluster Pilot** (closed 2026-04-29, commit `e83f309`) closed without Codex review of the final Source 4 reconciliation or the cluster-close edit batch — Codex hit its usage limit after writing `findings_codex.txt` for Source 4 but before the reconciliation and cluster-close edits could be reviewed. Gemini signed off solo on both. Run a carry-forward review pass with a fresh Codex session to close that gap **before** launching the next cluster pilot.
+> _No pending carry-forward at this time._ When a future cluster closes without full bilateral reviewer sign-off, document the gap here using the bootstrap-block template below; once reviewed, move the entry to § Closed Carry-Forward Reviews.
 
-**Carry-forward block (paste into a fresh Codex session alongside the Reviewer (Codex) section above)**:
+**Historical bootstrap-block (AtomSpace 2026-04-30 carry-forward)** — kept inline as a worked example of the pattern. Adapt the paths, SHAs, and review-target lists for any future carry-forward; the structure (read-order list, what-you're-checking sections, output spec) generalizes:
 
 ```
 Carry-forward review: AtomSpace Backend Integration Cluster Pilot (2026-04-29).
@@ -238,7 +244,7 @@ What you're checking:
 Output: a single short report (under ~600 words) — sign off, or list specific dissents as candidate V4-Carry-N records. Save as `scripts/archive/atomspace_pilot/source4_das_runtime_bridge/findings_codex_carryforward.txt` (the user pastes it). If you find substantive dissents, the orchestrator (Claude) will need to amend the reconciliation, the wiki cards, and/or the docs accordingly under the user's authorization. Documentation-only fixes can be applied directly; wiki edits require the standard one-writer protocol with verify-after.
 ```
 
-Once the carry-forward review lands (sign-off or amended), update this section to remove the pending entry, or convert it into a new "## Closed Carry-Forward Reviews" log if the pattern recurs.
+When a carry-forward review lands (sign-off or amended), move its entry from § Pending into § Closed Carry-Forward Reviews with the outcome summary.
 
 ---
 

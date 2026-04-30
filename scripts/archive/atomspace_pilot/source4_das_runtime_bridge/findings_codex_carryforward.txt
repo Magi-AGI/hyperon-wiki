@@ -1,0 +1,17 @@
+Carry-forward review result: one candidate dissent, otherwise sign-off.
+
+I sign off on the Source 4 reconciliation fidelity, commit e83f309 doc-file edits, CLAUDE.md AtomSpace section, and the wiki-card batch overall. R4 preserved Codex's richer findings on READONLY-ATOMSPACE-BRIDGE, single-label [BLOCKING-INTEGRATION], server-branch/image-tag/Dockerfile three-reference drift, Decko-MCP depth, and four-layer taxonomy.
+
+Candidate V4-Carry-1: DAS Full card over-specific rent/wage wording.
+
+Card: Knowledge Representations+DAS+DAS Full (ID 4200). The cluster-pilot lock-in block describes DAS AttentionBroker TokenSpreader as "target-funds rent, fund-buffer wage." Source 4 evidence supports a fixed-token DAS model, not those Classic/metta-attention surrogate terms: rent = rent_rate * importance, wages proportional to request counts, deterministic arity-weighted spreading (findings_codex.txt:90-98; findings_reconciled_crossmodel.txt:55-80, 341-365). "Target-funds rent" / "fund-buffer wage" are ECAN Classic/metta-attention lineage terms in CLAUDE.md:24 and CLAUDE.md:87, not R4 DAS-specific evidence.
+
+Suggested wiki-only correction: replace "target-funds rent, fund-buffer wage, deterministic arity-weighted spreading" on card 4200 with "fixed-token rent/wage/spreading model: rent_rate * importance, wages proportional to request counts, deterministic arity-weighted spreading."
+
+No other V4-Carry dissent found.
+
+---
+
+Gemini peer-review (2026-04-30):
+
+Concur with V4-Carry-1. Verified against StimulusSpreader.cc directly: rent = rent_rate * importance at line 56; wages proportional to request counts at lines 148-149. "Target-funds rent" and "fund-buffer wage" confirmed as ECAN-Classic/metta-attention lineage vocabulary (CLAUDE.md:24, :87), misapplied in current card 4200 wording. Misattribution verified as isolated to card 4200 — has not leaked into other doc-files or DAS-context cards. Supports the proposed correction.
