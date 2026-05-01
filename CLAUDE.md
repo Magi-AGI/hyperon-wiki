@@ -20,7 +20,7 @@ The role of this file is the **wiki-edit audit trail and engineering-roadmap anc
 | ECAN / Attention | 2026-04-26 | 8 | `scripts/archive/ecan_pilot/source1` … `source4` |
 | OpenPsi / Motivation | 2026-04-28 | 8 (5 ECAN-cluster carrying V4-1 addendum + 3 new/annotated) | `scripts/archive/openpsi_pilot/source1` … `source4` |
 | AtomSpace Backend Integration | 2026-04-29 | 9 (5 existing + 4 new) | `scripts/archive/atomspace_pilot/source1` … `source4` |
-| Perception / Neural-Symbolic | 2026-05-01 | 0 (extraction-phase close; wiki edits deferred to a separately-gated pass) | `scripts/archive/perception_pilot/source1` … `source5` |
+| Perception / Neural-Symbolic | 2026-05-01 | 6 (3 existing annotated + 3 new); wiki-edit pass closed 2026-05-01 | `scripts/archive/perception_pilot/source1` … `source5` |
 
 All five are closed for this iteration. Substantive findings live in `HYPERON_CLUSTER_FINDINGS.md` (see header). The wiki-edit audit tables below record which cards in *this* wiki were modified.
 
@@ -102,25 +102,30 @@ Total: 9 cards touched (5 existing + 4 new). All verified post-write via `get_ca
 
 ### Perception cluster pilot (2026-05-01)
 
-The Perception cluster pilot extraction phase closed 2026-05-01 with **zero wiki edits applied** at close — the wiki-edit pass was deferred per Codex's recommendation to a separately-gated session for clean review-after-write cycles. **Pending wiki-edit candidates** (gated on user authorization):
+The Perception cluster pilot extraction phase closed 2026-05-01; the wiki-edit pass executed in a separately-gated session later the same day (per Codex's recommendation for clean review-after-write cycles). **Total: 6 cards touched** (3 existing annotated + 3 new) plus tag subcards.
 
-| Card | ID | Intent (deferred) |
+| Card | ID | Action |
 |---|---|---|
-| Publications+Deep Learning Perception with PLN (2013 FISHGRAM) | 3081 | Reframe per S1: add Gino Yu as 4th co-author; flag that "FISHGRAM" terminology is wiki-side editorial, not in source paper title. |
-| Hyperon AI Algorithms+ECAN+ECAN Full+Development and Historical Context | 7100 | (Optional) Add CF5.4 [PARTIAL-FRAGMENTED-REVIVAL] note about DeSTIN-FISHGRAM-PLN architecture status across the trilateral framing. |
-| Implementation Families+Attention and Motivation | 4751 | (Optional) Add CF4.3 → CF5.2 Linas Vepstas role upgrade from `[LEGACY-AUTHOR-BRIDGE]` to `[HYPERON-ERA-PARALLEL-RESEARCH-PORTFOLIO]`. |
-| Knowledge Representations+Sensory (NEW) | TBD | Synthesis card for opencog/sensory portfolio (S5 PRIMARY): perception/action via AtomSpace, OllamaNode dual characterization, sister-portfolio cross-references, AtomSpace-Scheme stack. |
-| Implementation Families+Neural Pattern Mining (NEW) | TBD | Synthesis card for rejuve-bio/neural-subgraph-matcher-miner (S4): SPMiner-lineage GNN, paradigm-distinct from S3 trio, strictly-empirical no formalization. |
-| About Hyperon+Vision (NEW, optional) | TBD | Card for opencog/vision scaffolding (S4 Surface B): minimal AtomSpace-OpenCV type-wrappers, 5 wired ImageLink types + 1 stub-not-wired. |
-| Tradition map root cards | TBD | (Optional) Trilateral framing introduction: Tradition 1.5 (symbolic) + Tradition 7 candidate (neural) + Tradition 8 candidate (perception/embodiment). |
+| Publications+Deep Learning Perception with PLN (2013 FISHGRAM) | 3081 | Markdown reframe — added Gino Yu as 4th co-author; full DOI/citation; `[PARTIAL-FRAGMENTED-REVIVAL]` cross-link; editorial-terminology note (paper does not use "FISHGRAM"); provenance pointer to retrieved PDF. |
+| Hyperon AI Algorithms+ECAN+ECAN Full+Development and Historical Context | 7100 | RichText subcard — appended "Source 5 Perception cluster pilot addendum (2026-05-01)" section: trilateral framing; bidirectional cross-grep zero-references; pickaxe `[FISHGRAM-CLEAN-BREAK]`; AtomSpace-Scheme vs MeTTa-runtime two-stack finding; OllamaNode dual characterization; Vepstas role upgrade; ECAN/AttentionBank revival implications. |
+| Implementation Families+Attention and Motivation | 4751 | Draft — inserted "Linas Vepstas Hyperon-era research portfolio" paragraph after the Hanson runtime branch with full 5-repo SHA inventory and two-stack framing; added new gap-bullet on AtomSpace-Scheme perception-portfolio non-coupling to attention. |
+| Knowledge Representations+Sensory (NEW) | 7439 | Draft — opencog/sensory synthesis card: 7 wired sensory atom types (table), OllamaNode dual characterization (`[LLM-MEDIATED-PERCEPTION]` vs `[LLM-AS-KNOWLEDGE-SOURCE]`/`[LLM-AS-MEMORY-SUBSTRATE]`), sister-portfolio table (agents/motor/evidence/atomese-simd + co-authored miner/vision), AtomSpace-Scheme stack identity, `[PARTIAL-FRAGMENTED-REVIVAL]` architecture status, trilateral framing. |
+| Knowledge Representations+Sensory+tag | 7440 | Pointer (`ai_generated`). |
+| Implementation Families+Neural Pattern Mining (NEW) | 7442 | Draft — rejuve-bio/neural-subgraph-matcher-miner synthesis card: `[SPMiner-LINEAGE]` / `[GNN-NEURAL-MINING]` / `[PARADIGM-DISTINCT-NEURAL]` / `[STRICTLY-EMPIRICAL]`; verified code-structure (search/ subdirectory not stale README's `search_agents.py`); team authorship breakdown; trilateral tradition map; `[PARALLEL-NON-INTEGRATED]` cross-grep finding. |
+| Implementation Families+Neural Pattern Mining+tag | 7443 | Pointer (`ai_generated`). |
+| About Hyperon+Vision (NEW) | 7445 | Draft — opencog/vision scaffolding card: 6 wired types (2 support `ImageNode`/`ImageValue` + 4 ImageLink operation: blur/write/filter2d/halfsize); 1 `[STUB-NOT-WIRED]` (`ImageRectangleLink`); `[UNIMPLEMENTED]` README ideas; `[SCAFFOLDING-NOT-PIPELINE]` verdict; "What It Is NOT" disambiguation; bridge-to-sensory open question. |
+| About Hyperon+Vision+tag | 7446 | Pointer (`ai_generated`). |
+| About Hyperon+table of contents | 4022 | RichText TOC — added Vision entry between Neural-Symbolic Integration and Self-Modification and Safety. (Knowledge Representations TOC follows a Published-only convention per the PathMap precedent and was not modified for Sensory; Implementation Families has no TOC card.) |
 
-When the wiki-edit pass is authorized, follow the standard one-writer protocol with `get_card` verify-after-write on every call. Source 5 reconciliation (`scripts/archive/perception_pilot/source5_perception_output_boundary/findings_reconciled_crossmodel.txt`) is the canonical reference for verdict labels and findings to anchor against.
+Total: 6 substantive cards + 3 tag subcards + 1 TOC = 10 wiki writes. All verified post-write via `get_card`. Each new card linked back to the cluster-pilot extraction archive at `scripts/archive/perception_pilot/source*/`.
+
+**Tradition-map root cards: deferred (optional).** Trilateral framing is now anchored in 5 cards (Sensory § "Trilateral Tradition Map"; Neural Pattern Mining § "Trilateral Tradition Map"; Vision § "Cluster-Narrative Position"; ECAN Dev/Historical § "Source 5 addendum"; Attention/Motivation § "Linas Vepstas portfolio"). No existing Tradition-map parent infrastructure in the wiki; creating standalone root cards would invent scaffolding for a single use case. Defer to a future session if cross-cutting tradition-map navigation is needed.
 
 ### Documentation-file edits (this repo, Perception cluster pilot)
 
 - `scripts/archive/CLUSTER_PILOT_HANDOFF.md` — "Last refined" line updated to 2026-05-01; Gemini-specific drift guards extended with CF5.6 file-existence verification rule (8/25 dissents = 32% of cluster-pilot V-N-X drift was Gemini source-location/file-identity drift).
 - `E:\GitHub\hyperon reference\HYPERON_CLUSTER_FINDINGS.md` — new "Perception / Neural-Symbolic cluster (closed 2026-05-01)" section with 8 cluster-narrative findings (trilateral framing, AtomSpace-Scheme vs MeTTa-runtime stack distinction, Vepstas portfolio mapping, OllamaNode dual characterization, [PARTIAL-FRAGMENTED-REVIVAL] verdict, sandbox-tier nuance, Surface D vocabulary, methodology lock); pointers to extraction archives updated; "Source-text gaps still open" 2013 FISHGRAM entry removed (paper retrieved); "What's next" updated.
-- `CLAUDE.md` (this file) — cluster-pilot status table extended with Perception row; this section added documenting deferred wiki-edit candidates; "Source-text gaps remaining" 2013 FISHGRAM entry removed (paper retrieved at `publication_texts/2013_Goertzel_Sanders_ONeill_Yu_DeSTIN_PLN.pdf`); "What's next" Perception entry removed; Claude-specific references extended.
+- `CLAUDE.md` (this file) — cluster-pilot status table extended with Perception row (6 cards touched); wiki-edit-audit table populated with 9 actual writes (6 substantive + 3 tag subcards); "Source-text gaps remaining" 2013 FISHGRAM entry removed (paper retrieved at `publication_texts/2013_Goertzel_Sanders_ONeill_Yu_DeSTIN_PLN.pdf`); "What's next" Perception entry removed; Claude-specific references extended.
 
 ---
 
@@ -236,7 +241,6 @@ For multi-model continuity, the canonical record lives:
 
 The PLN, ECAN/Attention, OpenPsi/Motivation, AtomSpace Backend Integration, and Perception/Neural-Symbolic cluster pilots are closed (2026-04-25, 2026-04-26, 2026-04-28, 2026-04-29, 2026-05-01 respectively). Other clusters remain (each its own multi-source pilot):
 
-- **Perception cluster wiki-edit pass** — DEFERRED at the cluster-close phase 2026-05-01 (per Codex recommendation for clean review-after-write cycles). Pending cards documented in the "Perception cluster pilot (2026-05-01)" wiki-edit-audit table above; gated on user authorization at next session.
 - **MeTTa runtime** (`hyperon-experimental`, `MeTTa-IL`, `PeTTa`, MORK production angle — note: substantial MORK + AtomSpace + DAS coverage now lives in the AtomSpace Backend Integration cluster pilot 2026-04-29; residual MeTTa-runtime-specific topics include MeTTa-IL semantics, PeTTa runtime closure, and MORK-server deployment topology beyond what the AtomSpace pilot covered).
 - **Cross-org sweeps** (asi-alliance, fetchai, F1R3FLY-io, Rejuve, Xcceleran-do, gitlab.com/nunet) — note: `hansonrobotics/*` was substantively covered by the OpenPsi cluster pilot Source 4 (2026-04-28) and residual Hanson-era post-2019 perception utilities by the Perception cluster pilot Source 5 (2026-05-01); residual non-OpenPsi-non-perception Hanson repos may still need a separate sweep.
 - **Phase 3 READONLY-ATOMSPACE-BRIDGE prototype build** — engineering work, not an extraction pilot; benchmarks decide between `atomspace-bridge` import and `mork_ffi` + `mork_loader.py` mechanism under the read-only umbrella.
