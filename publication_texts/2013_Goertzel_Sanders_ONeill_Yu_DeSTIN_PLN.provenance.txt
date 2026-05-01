@@ -1,0 +1,41 @@
+Provenance: 2013_Goertzel_Sanders_ONeill_Yu_DeSTIN_PLN.pdf
+==========================================================
+
+Citation:
+  Goertzel, B., Sanders, T., O'Neill, J., Yu, G. (2013).
+  "Integrating Deep Learning Based Perception with Probabilistic Logic
+  via Frequent Pattern Mining."
+  In: Artificial General Intelligence. AGI 2013.
+  Lecture Notes in Computer Science, vol 7999. Springer. pp. 40-49.
+  DOI: 10.1007/978-3-642-39521-5_5
+
+Retrieved via:
+  WebFetch (Claude Code) on 2026-04-30
+  Source URL: https://goertzel.org/agi-13/DeSTIN_PLN_v3.pdf
+  (author-uploaded conference-version PDF on Ben Goertzel's personal site)
+
+File:
+  publication_texts/2013_Goertzel_Sanders_ONeill_Yu_DeSTIN_PLN.pdf
+  Size: 2,132,647 bytes (2.0 MB)
+  10 pages
+
+Cross-references confirmed during retrieval:
+  - Springer:     https://link.springer.com/chapter/10.1007/978-3-642-39521-5_5
+  - ResearchGate: https://www.researchgate.net/publication/262157725
+  - Semantic Scholar (companion paper [1] from refs):
+                  https://www.semanticscholar.org/paper/Perception-Processing-for-General-Intelligence:-the-Goertzel/b363e9fad801649ddd4581cd8e42810b2cfb45c1
+
+Retrieval rationale:
+  Closes the source-text gap flagged in CLAUDE.md (§ Source-text gaps remaining).
+  Canonical retrieval target for the Perception / Neural-Symbolic Cluster Pilot
+  Source 1 brief (scripts/archive/perception_pilot/source1_*).
+
+Note on terminology (worth flagging early):
+  The paper does NOT use the term "FISHGRAM" anywhere. That term is the
+  OpenCog-Python implementation name (file: opencog/python/learning/fishgram/
+  fishgram.py, sentence-case "Fishgram", per the Pattern class docstring at
+  fishgram.py:67 in opencog-singnet @ b31c7e3). The 2013 paper cites Yun Chi's
+  external Frequent Subtree Mining software (Chi et al., IEEE TKDE 2005,
+  reference [13]) as the algorithmic source. Whether the OpenCog Python
+  Fishgram implementation actually uses Yun Chi's algorithm or a different
+  re-implementation is an open question for Sources 1 and 2.

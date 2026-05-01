@@ -1,0 +1,24 @@
+Codex S4 extraction is complete.
+
+I found two candidate reconciliation records:
+
+- V4-1 candidate, ADOPT: neural-subgraph-matcher-miner README has a stale path. It documents subgraph_mining/search_agents.py at README.md:82-85, but that file does not exist. Actual agents are subgraph_mining/search/{base,greedy,mcts,beam}.py, exported by subgraph_mining/search/__init__.py:1-13.
+- V4-2 candidate, WORDING GUARD: SPMiner/NeuroMatch lineage is project-link lineage, not paper-citation lineage. README cites SNAP project pages at README.md:478-483; I found no Yun Chi / Frequent Subtree / paper-title citation in Surface A.
+
+Sign-off findings:
+
+- Surface A rejuve-bio/neural-subgraph-matcher-miner@cfc23f80e213a389aeefb703f0020b90367e483c is [SPMiner-LINEAGE] / [GNN-NEURAL-MINING] / [PARADIGM-DISTINCT-NEURAL] / [STRICTLY-EMPIRICAL]. Core evidence: README.md:5, README.md:39-50; R-GCN path at common/models.py:17-21, common/models.py:266-294; MiniLM label bridge at common/label_encoder.py:37-88; mining entry/load path at subgraph_mining/decoder.py:180-205, :248-270, :504-514, :597-631.
+- Surface A has no Fishgram/sushigram/opencog-miner/hyperon-miner continuity by token search/pickaxe. It is a clean neural-geometric miner, not FISHGRAM inheritance.
+- metta.pkl is a small unsafe-to-load pickle dataset, not MeTTa source. Safe inspection shows pickle protocol bytes and graph-like nodes labels; Makefile:1-15 uses it as dataset input. Commit provenance: 0cac641 metta graph with radial sampling.
+- No formalization layer in Surface A: zero *.lean, *.v, *.agda, *.metta.
+- Surface B opencog/vision@dbaf2fe40fc56a7ecb9686586a90366507e10c21 is [SCAFFOLDING-NOT-PIPELINE]. README states Atomese wrappers over OpenCV and no raw images in AtomSpace (README.md:1-14). Wired operations: ImageNode, ImageValue, ImageBlur, ImageWrite, ImageFilter2D, ImageHalfSize in opencog/atoms/vision/CMakeLists.txt:48-64; examples execute blur/write at examples/blur_and_write.py:24-35.
+- Surface B stub classification: ImageRectangleLink is [STUB-NOT-WIRED], because the type exists at atom_types.script:13 and files exist, but it is excluded from CMakeLists.txt:48-64. Other "More plans" items in README.md:45-69 are [UNIMPLEMENTED].
+- Surface C hyperon-experimental@3f76dc460da6961f57f69f6c3e550c59c74ada83 is [NO-RUNTIME-PERCEPTION-BINDING] for standard built-ins: only random/skel/fileio/json/catalog/das are loaded in lib/src/metta/runner/builtin_mods/mod.rs:4-25.
+- Surface C nuance: sandbox-only LLM/PyTorch bridges exist but are not perception adapters. python/sandbox/neurospace/neurospace.py:36-75 registers OpenAI-backed neural/intent spaces; python/sandbox/pytorch/torchme.py:1-28, :277-314 exposes generic Torch tokens.
+- Surface D is [PRE-HYPERON-ERA] / [HYPERON-ERA-FROZEN]. destin@fed2306... last commit 2016-09-10; DeSTIN uses OpenCV/Python 2/CUDA-era stack (README.md:36-45) and has belief/tree-mining hooks (tree_mining_experiment.py:18-31, :104-145; BeliefExporter.h:10-30, :77-118).
+- semantic-vision@1c672c... is research-doc oriented, not executable integration: SynerGAN symbolic+subsymbolic architecture in README.md:7-22, last commit 2017-10-31.
+- perception_synthesizer@f471418... is a ROS/OpenNI tracker-to-Thingies bridge, not Hyperon/AtomSpace: src/perception_synthesiser.py:12-66, dependencies package.xml:42-51.
+- ros_vision_controller@5dbaf5... is a ROS saliency-to-servo controller: package.xml:3-5, :42-50; subscriber/publisher at src/einstein_ctrl.py:89-113.
+- Network-dependent check: tpsjr7/destin_ted_temp is VERIFIED-EXISTS; GitHub shows it public with README migration notice to opencog/destin: https://github.com/tpsjr7/destin_ted_temp
+
+Overall sign-off: S4 should close with the two V4 candidates above, otherwise the brief's refined scope holds.

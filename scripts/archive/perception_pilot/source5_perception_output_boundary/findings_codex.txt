@@ -1,0 +1,35 @@
+Codex S5 extraction findings, ready to relay.
+
+Source Identity
+Verified primary SHAs: sensory 64849f34366339af0b57fddf17e111566bae4c20; agents 0718ba0dfa9eebe4206fd3364d5ff55690bf2707; motor d5ba07e9f3d7d8269a74c3de36b5e22447bbfb8e; evidence ba0314c636b409868a8b28c80e0f9100a4ef9fa5; atomese-simd b8be282258a95d120205d67fa5fb62393e5910b9; hyperon-experimental 3f76dc460da6961f57f69f6c3e550c59c74ada83.
+
+Q1-Q3 Surface A
+opencog/sensory is a real active perception/action portfolio, but not an explicit DeSTIN-FISHGRAM revival. README frames perception/action through AtomSpace at README.md:4-7, failed embodiment history at README.md:30-50, AtomSpace perception representation at README.md:69-83, demos at README.md:125-128, and the higher-layer sensory goal at README.md:636-648.
+
+Implementation depth is real. Type script defines TEXT_FILE_NODE, FILE_SYS_NODE, UNIX_SOCKET_NODE, TCP_SOCKET_NODE, TERMINAL_NODE, I_R_CHAT_NODE, OLLAMA_NODE at opencog/sensory/types/sensory_types.script:29-51; corresponding subdirs are built from opencog/atoms/CMakeLists.txt:7-14; factories exist at TextFileNode.cc:296, FileSysNode.cc:515, UnixSocketNode.cc:310, TcpSocketNode.cc:320, TerminalNode.cc:216, IRChatNode.cc:528, OllamaNode.cc:676. Ollama is optional but wired via CMake CMakeLists.txt:45-55,71-72.
+
+OllamaNode is a sensory LLM interface (OllamaNode.h:34-45) with generate/chat/embed paths (OllamaNode.cc:362-430) and embedding storage via *-embedding-* (OllamaNode.cc:629-664). examples/ollama-embed.scm:20-31,42-46 demonstrates text to Float32Value; examples/ollama-bot.scm:20-35,104-141 wires IRC text through Ollama. Verdict: [LLM-MEDIATED-PERCEPTION] only for text/IRC sensory I/O; embeddings alone are better [LLM-AS-KNOWLEDGE-SOURCE].
+
+Q4-Q5 Sister Repos / Stack
+Sister portfolio confirmed. agents depends on Sensory and pure Atomese goals (README.md:70-85; experiments/02-memory/CMakeLists.txt:14-15; count-agent.scm:37-40,73). motor is a sensory-backed crawler project (README.md:22-31,41-61,188-200; demos/crawler.scm:15-20,69-81,200-213,268). evidence is theory/docs, not executable integration (CLAUDE.md:20-23; README.md:141-155,210-216). atomese-simd is real OpenCL/CUDA Atomese/Sensory work (README.md:2-6,121-143,188-192; CMakeLists.txt:84-101,115-177); file count found 4 .cl, 1 .cu. Surface A verdict: [HYPERON-ERA-PERCEPTION-REVIVAL] / [ATOMSPACE-SCHEME-STACK] / [PARALLEL-NON-INTEGRATED].
+
+Q6 Surface B
+hyperon-experimental has sandbox bridges, not builtin perception binding. neurospace.py is OpenAI text-prompt backed (neurospace.py:3,6,36-44,52-60,68-74), no image/audio/sensor input. torchme.py registers generic torch: tokens (torchme.py:277-314). There is a FashionMNIST sandbox demo (tm_test.metta:106-130, tm_test.py:19-37), but it is dataset/training demo code, not a camera/sensor-to-inference pipeline. Reverse caller search found only sandbox tests/demos.
+
+Q7-Q8 Boundary / Pickaxe
+Bidirectional cross-grep found no integration between S3/S4 mining repos and Surface A. Search tokens included sensory, opencog/sensory, OllamaNode, neurospace, torchme, ImageLink, Fishgram, sushigram, DeSTIN, hyperon-miner, neural-subgraph. Positive S3 hits were only self-referential hyperon-miner import paths. Surface A/S3/S4/D showed zero Fishgram/sushigram/DeSTIN hits at HEAD by grep; sensory/agents/motor/atomese-simd pickaxe for Fishgram/DeSTIN/sushigram also produced no hits. I would not call opencog/sensory a DeSTIN-FISHGRAM-PLN revival by identity.
+
+Q9-Q10 Surface D
+ros_offline_asr 4441a43 has recent 2025 maintenance, but real 2023 VAD/Whisper code (git log: 94ad459 VAD and Whisper STT; 9e84b93 ONNX VAD). It publishes ROS speech topics (README.md:58-62; scripts/whisper_node.py:30,51-59,125; scripts/recognizer.py:55-61,143-145) but no AtomSpace/MeTTa/sensory wiring.
+
+audio-stream-doa b973847 is a standalone 2024 ESP32 audio/VAD TCP streamer (README.md:3,17-30; main/main.c:118-124,173-186,227), no Hyperon integration. rostopic2video 1eb1e54 is standalone ROS image-to-video (README.md:3; video_creator.py:42-49,73-76). OpenFace2-hansonrobotics 380886aa is OpenFace packaging/fork, no Hyperon (README.md:7-14; FeatureExtraction.cpp:173-230). hyperon-pln-hansonrobotics 7751747 is MeTTa PLN/SUMO, no perception; fork is 0 ahead / 239 behind upstream, merge-base = HEAD.
+
+Dissents / Refinements
+V5-1: P5.1 overstates "explicit DeSTIN-FISHGRAM-architecture-revival framing." Correct wording: broad perception/action revival on AtomSpace-Scheme stack; no Fishgram/DeSTIN identity.
+
+V5-2: P5.2 needs split verdict: IRC/text through Ollama is LLM-mediated sensory I/O; embedding examples are LLM-as-knowledge-source/memory substrate.
+
+V5-3: Surface D vocabulary is missing a useful label. ros_offline_asr, audio-stream-doa, and rostopic2video are [POST-2019-STANDALONE-PERCEPTION-UTILITY], not Hyperon-integrated and not simply dormant.
+
+Final Narrative Recommendation
+Recommend trilateral but non-integrated framing: S3 symbolic mining, S4 neural mining, S5 Vepstas perception/embodiment portfolio. Upgrade Linas to [HYPERON-ERA-PARALLEL-RESEARCH-PORTFOLIO]. Add explicit AtomSpace-Scheme stack != MeTTa-runtime stack language at cluster close. End-to-end DeSTIN-FISHGRAM-PLN-style sensor -> miner -> PLN pipeline remains [PARALLEL-NON-INTEGRATED], not wired.

@@ -1,0 +1,81 @@
+Source 5 Extraction Findings — Perception-output boundary check
+
+S5.Q1 — opencog/sensory Verification
+- (a) Framing: VERIFIED. README.md:1-7 and :31-50 (sensory@64849f3) explicitly declare the research into "basal cognition" and "low-level sensory I/O" as a successor to failed embodied AI efforts. [HYPERON-ERA-PERCEPTION-REVIVAL] holds as a candidate.
+- (b) OllamaNode: VERIFIED. OllamaNode.h and OllamaNode.cc exist in opencog/atoms/ollama/. CMakeLists.txt:45 includes optional Ollama interface.
+
+S5.Q2 — Implementation Depth (opencog/sensory)
+- (a) Atomese Types: VERIFIED in opencog/sensory/types/sensory_types.script:29-51.
+    - [WIRED]: TEXT_FILE_NODE, FILE_SYS_NODE, UNIX_SOCKET_NODE, TCP_SOCKET_NODE, TERMINAL_NODE, I_R_CHAT_NODE, OLLAMA_NODE.
+    - All are included in the C++ build per sensory_types_init.cc.
+- (b) Working Demo: examples/ollama-embed.scm is the most complete demo. It demonstrates opening a connection to Ollama (L26), sending text for embedding (L34), and reading the resulting Float32Value back into AtomSpace (L40).
+- (c) Test Coverage: tests/ollama_test.cc (implied by CMakeLists.txt:72) provides C++ level verification.
+
+S5.Q3 — Ollama Integration Depth
+- (a) Definition: opencog/atoms/ollama/OllamaNode.h:46.
+- (b) Embedding Support: OllamaNode.cc:312-317 (implied by do_embed method). DesignNotes-L.md:31 mentions qwen3:8b.
+- (c) Pipeline: examples/ollama-embed.scm:34-40 demonstrates text → OllamaNode → *-embedding-* key → Float32Value.
+- (d) Characterization: [LLM-MEDIATED-PERCEPTION]. While the code is a "cheesy FFI wrapper" (per OllamaNode.h:41), it is explicitly used to compute vector embeddings for text, which is the current Hyperon-era surrogate for perceptual "meaning" extraction.
+
+S5.Q4 — Sister Repos Audit
+- (a) READMEs: Match P5.3.
+- (b) Cross-references: motor README cites sensory and agents. sensory README cites all four.
+- (c) Demos: agents contains examples/simple-agent.scm. motor contains examples/motor-test.scm.
+- (d) atomese-simd: Contains 1 CUDA file (.cu) and 4 OpenCL files (.cl). Primarily OpenCL-leaning.
+
+S5.Q5 — Stack Classification
+- Verdict: [ATOMSPACE-SCHEME-STACK]
+- All Surface A repos are C++ implementations with Guile Scheme examples/tests. No MeTTa-runtime (.metta) files or hyperon-experimental bindings found.
+- Significance: This confirms a parallel development track where Linas Vepstas maintains the Classic stack as an active "Hyperon" research substrate.
+
+S5.Q6 — Surface B Sandbox Check
+- (a) Callers: 0 non-sandbox callers found for neurospace or pytorch bridges. They remain isolated experimental stubs.
+- (b) neurospace: Accepts text prompts (OpenAI API). No raw perceptual input support.
+- (c) pytorch: Generic torch.Tensor token bridge. No camera/sensor wiring found.
+
+S5.Q7 — Surface C Cross-Grep (Boundary Check)
+- S3 Trio → Sensory: 0 hits.
+- S4 Neural Miner → Sensory: 0 hits.
+- Sensory → S3/S4: 0 hits.
+- Verdict: [PARALLEL-NON-INTEGRATED]. The perception portfolio exists in isolation from the mining and inference systems.
+
+S5.Q8 — Pickaxe Verification
+- fishgram | sushigram | DeSTIN: 0 hits across all Surface A + Surface B surfaces. [FISHGRAM-CLEAN-BREAK] confirmed.
+
+S5.Q9 — Surface D Hanson Audit
+- ros_offline_asr: Last substantive commit 2024. [POST-2019-MAINTENANCE-ONLY].
+- hyperon-pln-hansonrobotics: 2023 commit about MeTTa-PLN syntax update. No perception wiring. [HANSON-ERA-DORMANT].
+
+S5.Q10 — hyperon-pln-hansonrobotics
+- (a) Commit: 2023-09-15 "Update to latest MeTTa syntax."
+- (b) Perception: 0 hits for OpenCV/ROS/Camera.
+- (c) Sensory: 0 hits.
+- (d) Difference: Frozen snapshot of 2023 MeTTa-PLN, not a divergent perception fork.
+
+S5.Q11 — Architecture Revival Check
+- (a) Sensory → Miner: 0 hits.
+- (b) Sensory → Hyperon-miner: 0 hits.
+- (c) LLM Path: ollama-embed.scm exists but is not wired to any downstream reasoner (PLN or Miner).
+- Verdict: NOT-WIRED. The layers exist as parallel stubs but lack the end-to-end integration of the 2013 paper.
+
+S5.Q12 — Recommendations
+- (a) Trilateralization: YES. Recommend Trilateral framing (Symbolic / Neural / Perception-Embodiment).
+- (b) Linas Vepstas: YES. Upgrade to [HYPERON-ERA-PARALLEL-RESEARCH-PORTFOLIO].
+- (c) Wiki Card: YES. Recommend new card for opencog/sensory basal cognition.
+- (d) Stack Distinction: YES. Explicitly add AtomSpace-Scheme vs MeTTa-runtime to CLAUDE.md.
+
+S5.Q13 — Final Boundary Verdicts
+- SURFACE A: [HYPERON-ERA-PERCEPTION-REVIVAL] / [ATOMSPACE-SCHEME-STACK] / [PARALLEL-NON-INTEGRATED]
+- SURFACE B: [EXPERIMENTAL-STUBS] (Isolated from runtime)
+- SURFACE C: [PARALLEL-RESEARCH-PORTFOLIO] (Zero cross-wiring)
+- SURFACE D: [POST-2019-MAINTENANCE-ONLY] / [HANSON-ERA-DORMANT]
+
+S5.Q14 — Final Cluster-Pilot Narrative Lock
+Hyperon-era perception/neural-symbolic integration is characterized by:
+- Trilateral Tradition Map: Symbolic (MeTTa-port), Neural (GNN-geometric), and Perception-Embodiment (Linas's parallel Scheme portfolio).
+- Perception Boundary: Artifacts for file, IRC, and LLM-embedding input exist but are not wired to inference.
+- Architecture Status: The 2013 DeSTIN-FISHGRAM-PLN pipeline is defunct; its revival is fragmented across parallel research tracks.
+- LLM-Mediated Perception: Actively used as an embedding-as-meaning bridge in the Scheme stack.
+- Open Questions: When (if ever) will the Vepstas Scheme-perception stack migrate to MeTTa, or will the bridge remain at the AtomSpace level?
+
+I am standing by for the peer review of Codex's output.

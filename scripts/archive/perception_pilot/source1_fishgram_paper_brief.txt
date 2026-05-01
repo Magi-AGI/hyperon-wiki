@@ -1,0 +1,437 @@
+================================================================================
+PERCEPTION / NEURAL-SYMBOLIC CLUSTER PILOT
+SOURCE 1 BRIEF — 2013 DeSTIN+PLN paper + adjacent neural-symbolic publications
+================================================================================
+
+§0. SOURCE IDENTITY
+-------------------
+Cluster pilot:    Perception / Neural-Symbolic
+Source number:    1 of 5 (locked 2026-04-30 after S3 survey + reviewer concurrence)
+Source name:      Goertzel/Sanders/O'Neill/Yu 2013 DeSTIN+PLN paper bundle
+Pilot brief date: 2026-04-30 (refined after reviewer sign-off)
+Orchestrator:     Claude Opus 4.7 (1M)
+Reviewers:        Codex + Gemini (cross-model triangulation)
+
+Locked 5-source cluster structure:
+  S1 — 2013 paper bundle + adjacent neural-symbolic publications (THIS BRIEF)
+  S2 — OpenCog Classic FISHGRAM Python @ singnet/opencog b31c7e3
+       + current Classic miner (opencog/miner, ngeiswei/miner) absorption check
+  S3 — Hyperon-era SYMBOLIC pattern-mining family
+       (hyperon-miner trio: trueagi-io / iCog-Labs-Dev / zariuq;
+        plus active opencog/miner cross-link from S2)
+  S4 — Hyperon-era NEURAL / perception adapters
+       (rejuve-bio/neural-subgraph-matcher-miner; opencog/vision;
+        any DeSTIN successor; LLM-mediated perception adapters)
+  S5 — Perception-output boundary check (artifact-backed)
+       (PLN/ECAN ingestion paths; AtomSpace Phase 3 mirror semantics;
+        cross-cluster integration constraints)
+
+Primary artifact:
+  publication_texts/2013_Goertzel_Sanders_ONeill_Yu_DeSTIN_PLN.pdf
+  Citation: Goertzel, B., Sanders, T., O'Neill, J., Yu, G. (2013).
+            "Integrating Deep Learning Based Perception with Probabilistic
+            Logic via Frequent Pattern Mining."
+            AGI 2013, LNCS vol 7999. pp 40-49.
+            DOI: 10.1007/978-3-642-39521-5_5
+  Provenance: publication_texts/2013_..._DeSTIN_PLN.provenance.txt
+  Retrieved 2026-04-30 from https://goertzel.org/agi-13/DeSTIN_PLN_v3.pdf
+
+Adjacent papers (boundary checks; only read if the question requires):
+  - 2012 AGI-12: "Perception Processing for General Intelligence: Bridging
+                 the Symbolic/Subsymbolic Gap" — paper [1] in 2013 paper's
+                 references; the proposal-paper that 2013 paper instantiates.
+  - 2011 AAAI Cog Sym: "Integrating a Compositional Spatiotemporal Deep
+                       Learning Network..." — paper [10]; introduces CSDLN
+                       terminology used by 2013 paper.
+  - 2008 PLN book (Goertzel/Ikle/Goertzel/Heljakka) — paper [12]; PLN reference.
+  - Yun Chi et al. 2005 IEEE TKDE "Mining closed and maximal frequent subtrees
+                       from databases of labeled rooted trees" — paper [13];
+                       canonical algorithm cited by 2013 paper.
+  - Arel/Rose/Karnowski 2009 NIPS — paper [4]; canonical DeSTIN paper.
+  - Arel/Rose/Coop 2009 AAAI BICA — paper [5]; second canonical DeSTIN paper.
+
+Existing wiki anchor cards (on the Hyperon Wiki — for closing-batch context):
+  - Publications+Compositional Spatiotemporal Deep Learning  (ID 3108)
+    Status: Markdown stub. Already touched in PLN cluster Phase 3 with
+            FISHGRAM disambiguation note.
+  - Publications+OpenCog NS Hybrid Neural-Symbolic           (ID 3120)
+    Status: Markdown stub. Already touched in PLN cluster Phase 3.
+  - Publications+Deep Learning Perception with PLN           (ID TBD)
+    Status: Markdown stub flagged in CLAUDE.md § Source-text gaps remaining
+            as the wiki anchor for the 2013 paper. Reviewers may need to
+            search for canonical name + ID.
+
+The S1 deliverable feeds into:
+  (a) An upgrade plan for `Publications+Deep Learning Perception with PLN`
+      (or whatever the canonical name is) Markdown stub — the cluster-close
+      edit batch will populate it from S1+S2 evidence.
+  (b) The canonical understanding of what "FISHGRAM" actually means and
+      whether it's a paper-only, paper-leaning hybrid, or
+      legacy-decoupled artifact.
+
+
+§1. SCOPE AND DELIVERABLE
+-------------------------
+S1 is a paper read with a specific orientation: figure out exactly what the
+2013 paper says vs what the wiki + git history suggest the project actually
+built. The paper itself is short (10 pages, 1 main experiment with 7 letter
+images). Do not over-extract; do answer the cross-cluster boundary questions.
+
+Single-deliverable: findings_codex.txt / findings_gemini.txt addressing the
+S1.Q* questions in §5 below. Plain text. Use page/section citations for
+paper claims (e.g., "paper §2 ¶2", "paper p.4 fig.3 caption"); file:line
+for code claims; full-or-unambiguous SHA refs for git claims.
+
+
+§2. ARTIFACTS TO READ
+---------------------
+PRIMARY (must read in full):
+  publication_texts/2013_Goertzel_Sanders_ONeill_Yu_DeSTIN_PLN.pdf  (10 pp)
+
+CROSS-REFERENCE (read targeted sections only when answering specific S1.Q*):
+  E:\GitHub\hyperon reference\opencog-singnet @ b31c7e3
+    - opencog/python/attic/learning/fishgram/fishgram.py
+    - opencog/python/attic/learning/fishgram/adaptors.py
+    - opencog/python/attic/learning/fishgram/pre_fishgram.py
+    - tests/python/old/test_fishgram.py
+  (S2 will fully audit; S1 references for paper-vs-code coherence checks.)
+
+WIKI CARDS (read at orchestrator's request only; cluster-close edit targets):
+  - Publications+Compositional Spatiotemporal Deep Learning (ID 3108)
+  - Publications+OpenCog NS Hybrid Neural-Symbolic         (ID 3120)
+  - Publications+Deep Learning Perception with PLN          (ID TBD)
+
+
+§3. ORCHESTRATOR-PRE-POPULATED PAPER FINDINGS (verify, do not relitigate)
+-------------------------------------------------------------------------
+The orchestrator has read the PDF in full. The following paper-internal
+facts are documented for reviewers to use as reference; reviewers may
+challenge any if they disagree, but do not need to re-extract.
+
+P1. Paper title: "Integrating Deep Learning Based Perception with
+    Probabilistic Logic via Frequent Pattern Mining."
+
+P2. Authors: Ben Goertzel (Novamente LLC + HK PolyU), Ted Sanders, Jade
+    O'Neill (HK PolyU), Gino Yu (HK PolyU). FOUR authors. Some prior wiki
+    references list three; Yu is the 4th.
+
+P3. The term "FISHGRAM" does NOT appear in the paper text. The algorithm
+    cited is "Yun Chi's Frequent Subtree Mining software" (paper ref [13]:
+    Chi, Xia, Yang, Muntz, IEEE TKDE 2005). The cited download URL was
+    http://www.nec-labs.com/~ychi/publication/software.html (footnote 6).
+
+P4. The OpenCog Python "Fishgram" implementation (file: opencog/python/
+    attic/learning/fishgram/fishgram.py at b31c7e3) uses sentence-case
+    "Fishgram" (Pattern class docstring: "Store a basic pattern and other
+    associated data for Fishgram"). The all-caps "FISHGRAM" appears to be
+    a wiki-/discussion-board convention not used in either source artifact.
+    Authors on fishgram.py per `git log` at opencog-singnet:
+      - Jared Wigmore (2012-04 — earliest commits)
+      - Keyvan Mir Mohammad Sadeghi (2012-12 → 2013-01)
+      - Jade O'Neill (2013-01 → 2013-08; same Jade as paper author #3)
+
+P5. Paper architecture (§2 of paper) names six components between DeSTIN
+    and OpenCog:
+      1. DeSTIN State DB
+      2. Frequent Subtree Miner
+      3. Frequent Subtree Recognizer
+      4. Perception Collector (normalizes spatial coords, filters
+         unchanged percepts, translates to Scheme/Atomese)
+      5. Experience DB
+      6. Semantic Feedback (NOT IMPLEMENTED at time of writing)
+
+P6. 2013 status, paper §2 verbatim: "This architecture is not yet fully
+    implemented, but is a straightforward extension of the current OpenCog
+    architecture for processing data from game worlds, and is scheduled
+    for implementation later in 2013 in the course of a funded project
+    involving the use of DeSTIN and OpenCog for humanoid robot control."
+
+P7. Single experiment in paper §3: 7 letter-form images fed to DeSTIN; 8
+    frequent subtrees mined; 17 contained_in evaluations passed to PLN;
+    PLN-derived conclusions {Similarity Image1 Image2 <1, .375>;
+    Similarity Image3 Image5 <.5, .444>}. Personality parameter k=5.
+    Paper acknowledges these conclusions are not useful — toy-data caveat.
+
+P8. PLN translation chain (paper §3.2):
+      Evaluation contains(TreeN ImageM)
+      ==> Member ImageM (SatisfyingSet (Evaluation contains(TreeN *)))
+      ==  Member ImageM hasTreeN  (definition)
+      ==> Inheritance ImageM hasTreeN  (M2I rule)
+
+P9. DeSTIN code repo cited at footnote 3: github.com/tpsjr7/destin_ted_temp
+    (Ted Sanders' "temp" branch). NOT github.com/opencog/destin. The
+    canonical opencog/destin (which is in our local reference tree, frozen
+    2016-09) may not be the same lineage as the 2013 paper's experimental
+    setup.
+
+P10. Paper says (§1.1) DeSTIN was "designed to work together with an
+     accompanying action hierarchy" but no such action hierarchy is
+     described in the paper. References "compositional spatiotemporal
+     deep learning system, or CSDLN" terminology from paper [10].
+
+P11. The "humanoid robot control" project mentioned as the funding context
+     for 2013 implementation: relevant to OpenPsi cluster pilot's Hanson
+     dialogue/robotics runtime branch (Source 4 V4-1). Cross-cluster
+     boundary check.
+
+P12. Paper acknowledges (§2.1) semantic feedback is critical for "human
+     object and event recognition" beyond the 500ms feedforward window,
+     but the feedback path was unimplemented as of 2013.
+
+
+§4. PRE-POPULATED GIT HISTORY (for reviewer cross-reference, do not re-run)
+--------------------------------------------------------------------------
+
+opencog-singnet (= singnet/opencog) at b31c7e3 (2019-09-04):
+  fishgram.py path:    opencog/python/attic/learning/fishgram/fishgram.py
+                       (in attic at this snapshot)
+  Move-to-attic:       commit 00a766d955a7e46aea3b87bc26ec7652a60a4899
+                       2019-07-17 by Linas Vepstas
+                       message: "Move unused code to an attic directory."
+
+  Earliest fishgram-related commits:
+    099dd173b 2013-09-13  "move python code into neat directories"
+    d57fd0680 2012-04-05  "Simple way to make Fishgram dramatically faster
+                          (but it may miss some patterns)"  [Jared Wigmore]
+    b5bc99d40 2012-04-05  "Improve Fishgram to store actions in sequence"  [Jared]
+    93ab61c03 2012-04-09  "Minor hacks to support Fishgram with the remote
+                          AtomSpace. About an order of magnitude faster."  [Jared]
+    d6b1c86fb 2012-04-12  "Added a basic surprise measure to fishgram,
+                          creating sushigram"  [Jared Wigmore]
+
+  Paper-era commits (2013):
+    078ce2fb2 2013-02-01  "Fishgram testing fix. It's still way too slow."  [Jade]
+    c79e146fb 2013-01-18  "Add an option to make Fishgram only process
+                          static properties of objects (and ignore events)"  [Jade]
+    4bc33f950 2013-01-16  "Make Fishgram use the best N patterns at each level"  [Jade]
+    a49c6731b 2013-01-15  "Now Fishgram can convert predicates"  [Jade]
+    afd0f044d 2013-08-12  "Merge jadeoneill/opencog (various fishgram and
+                          PLN changes)"  [Jade]
+
+Hyperon-era miner family (zero fishgram inheritance — see §B2 of S3 survey):
+  - hyperon-miner / hyperon-miner-2 / hyperon-miner-zariuq:
+    fishgram-pickaxe = 0  (no fishgram lineage by name)
+  - opencog/miner / ngeiswei/miner: fishgram-pickaxe = 19 commit-message
+    references but ZERO current files. References in commit messages only.
+
+Sushigram (FISHGRAM variant with surprise measure):
+  - Coined by Jared Wigmore 2012-04-12 in opencog-singnet.
+  - 4 sushigram pickaxe hits in opencog/miner; same pattern as fishgram —
+    references only, not actual code.
+
+
+§5. SPECIFIC QUESTIONS (S1.Q1 ... S1.Q12)
+-----------------------------------------
+
+S1.Q1 — Verify P1-P12 above. Flag any disagreement as a candidate V1-X
+        record. In particular: is Yu correctly listed as the 4th author?
+        Is the algorithm citation [13] (Yun Chi 2005) accurate?
+
+S1.Q2 — Does the 2013 paper actually claim to use Yun Chi's external
+        software, or does it claim a re-implementation? Verify against
+        paper §2 verbatim text. Cite paper page.
+
+S1.Q3 — Code-vs-paper coherence: the OpenCog Python fishgram.py at
+        b31c7e3 (in attic) — does its imported tree.py / logic.py do
+        Yun Chi's algorithm or a different one? File:line evidence.
+        (If too deep for S1, defer to S2.)
+
+S1.Q4 — Architecture-vs-execution gap (P5/P6): of the 6 architecture
+        components named in paper §2, which were actually IMPLEMENTED at
+        the time of paper publication (2013)? Reviewer answers from paper
+        text alone (paper §2 hedges; paper §3 only describes the toy
+        experiment). Defer code verification to S2.
+
+S1.Q5 — Semantic Feedback (P12) status, paper-only scope. Confirm from
+        paper text alone that semantic feedback was unimplemented in 2013
+        (P12). Cite specific page/section. Later-codebase verification is
+        DEFERRED to S2/S4/S5 unless the paper text itself names a specific
+        local artifact path; reviewers must NOT do whole-codebase audits
+        from S1. One paragraph max.
+
+S1.Q6 — DeSTIN repo identity (P9). Pre-resolved by orchestrator 2026-04-30
+        via WebFetch on https://github.com/tpsjr7/destin_ted_temp:
+          - Repo IS accessible. 200 OK.
+          - 406 commits, default branch master, primary language C++ (71.7%).
+          - README contains migration notice: "This repo has been migrated
+            to https://github.com/opencog/destin"
+        Conclusion: tpsjr7/destin_ted_temp and opencog/destin are the SAME
+        lineage. The locally-frozen opencog/destin (master HEAD fed2306,
+        2016-09) is the post-migration canonical home of the 2013 paper's
+        DeSTIN substrate.
+        Reviewer task on Q6: verify the migration notice claim against
+        opencog/destin git history (look for an import/migration commit
+        bringing in tpsjr7's content); confirm no DeSTIN codebase divergence
+        survived as an independent fork. One paragraph.
+
+S1.Q7 — Cross-cluster No-Go applicability. The PLN cluster pilot established
+        that local-rule PLN cannot be globally complete without joint-state
+        info (xiPLN/PLNJointEvidenceNoGo.lean). The 2013 paper feeds
+        Inheritance axioms and computes Similarity conclusions via term-
+        logic rules. Does the paper-described inference chain require
+        joint-evidence-aware reasoning to be sound, or does the toy-
+        example structure dodge the issue? One-paragraph verdict.
+
+S1.Q8 — Cross-cluster ECAN applicability. Paper discusses "neural net like
+        system for allocating attention and assigning credit" (paper §1.1)
+        and proposes Semantic Feedback (paper §2.1, P12) as an attention-
+        modulation pathway. Does this match the historical ECAN coupling
+        pattern uncovered in OpenPsi cluster pilot V4-1 (9-event lifecycle,
+        all decoupled by 2019)? One-paragraph verdict on whether the
+        paper's perception-to-attention vision was ever realized.
+
+S1.Q9 — Adjacent paper boundaries. Read EXISTING WIKI STUBS for cards
+        Publications+Compositional Spatiotemporal Deep Learning (ID 3108)
+        and Publications+OpenCog NS Hybrid Neural-Symbolic (ID 3120). Do
+        the paper [10] (CSDLN, 2011) and any "OpenCog NS Hybrid" paper
+        connect to frequent-pattern-mining → PLN, or are they parallel
+        threads? Per Codex's brief guidance: "don't let them blur FISHGRAM
+        unless their text actually connects to frequent-pattern-mining
+        perception-to-PLN."
+
+S1.Q10 — Paper's own claim of progress. Paper §3 says toy result is "not
+         a useful practical achievement, but rather a very simple
+         illustration." Quote any explicit claim the paper makes about
+         expected performance at full scale. Did this expectation track?
+
+S1.Q11 — Authors' subsequent involvement. Did Goertzel/Sanders/O'Neill/Yu
+         continue to publish or contribute to FISHGRAM-style work after
+         2013? Cross-reference Zarathustra Goertzel's ai-agents +
+         hyperon-miner-zariuq lineage (PLN cluster Source 10) — is there
+         continuity, or a complete handoff to other authors?
+
+S1.Q12 — Verdict label(s) for the paper. CORE-PIPELINE-vs-FULL-ARCHITECTURE
+         CAVEAT: the paper says (paper §1) that the integration details
+         "have been worked out, and implemented in software" — but also
+         says (paper §2) the full architecture "is not yet fully
+         implemented" and (paper §2.1) semantic feedback was unimplemented.
+         Reviewers must apply TWO verdict labels:
+           (a) Core toy pipeline (DeSTIN → frequent subtree mining → PLN
+               axiom emission, demonstrated on 7 letter-form images at
+               paper §3): verdict TBD. Likely [CODE-REAL-OBSOLETE] given
+               the OpenCog Python fishgram lineage that ended in 2019-07
+               attic move.
+           (b) Full architecture (the 6-component pipeline from paper §2
+               including Frequent Subtree Recognizer, Perception Collector,
+               Experience DB, Semantic Feedback, plus the 2013-projected
+               humanoid robot integration): verdict TBD. Likely [PAPER-ONLY]
+               for the unimplemented portion.
+         One sentence justification per label. Do NOT collapse to a single
+         label.
+
+
+§6. VERDICT VOCABULARY (single-label per question where applicable)
+-------------------------------------------------------------------
+
+[CODE-REAL]              Implementation exists at named SHAs, runnable
+[PAPER-LEANING HYBRID]   Partial paper recovery (OpenPsi precedent —
+                         e.g. 8 LITERAL / 2 DIVERGENT / 1 ABSENT)
+[PAPER-ONLY]             Proposal/design with no executable counterpart
+[CODE-REAL-OBSOLETE]     Implementation existed, runnable in its time,
+                         no longer maintained (e.g., FISHGRAM in attic)
+[LEGACY-DECOUPLED]       Historical wire-up since deliberately removed
+                         (ECAN cluster pilot precedent)
+[NEW-IN-HYPERON]         Hyperon-era code with no Classic ancestor
+[LLM-MEDIATED]           Perceptual integration via LLM gateway, not
+                         symbolic feature extraction
+
+
+§7. CROSS-SOURCE FORWARDS (locked findings — do not relitigate)
+---------------------------------------------------------------
+
+From PLN cluster pilot:
+  PF1. Local-rule PLN No-Go theorem applies to any inference chain that
+       requires joint-evidence to be sound.
+  PF2. World-Model PLN paradigm is theorem-level (not runtime-closed).
+
+From ECAN cluster pilot:
+  EF1. 0/4 strict-literal compliance against 2009 ECAN paper across the
+       lineage (Classic C++, metta-attention, DAS AttentionBroker).
+  EF2. Executable PLN-attention coupling existed historically (Misgana
+       Bayetta's 2016 wire-up at 0a0b09912) and was deliberately
+       decoupled (Nil Geisweiller's 2018 unwire at 0b744dbab).
+
+From OpenPsi cluster pilot:
+  OF1. 9-event executable ECAN/STI-coupling lifecycle reconstructed
+       across 2016-03 → 2020-09. All three executable paths
+       (URE forward-chainer, OpenPsi default selector, Loving AI Ghost
+       runtime) deliberately decoupled by 2019.
+  OF2. MeTTa OpenPsi port is HYBRID/PAPER-LEANING (not strict-literal
+       Tradition 6). Verdict-vocabulary precedent for paper-port
+       reporting.
+
+From AtomSpace cluster pilot:
+  AF1. Phase 3 architecture is READONLY-ATOMSPACE-BRIDGE — Decko stays
+       source of truth; AtomSpace serves read-only mirror. No write-
+       through to DAS/MORK in Phase 3.
+  AF2. MorkDB link delete is BLOCKING-INTEGRATION (delete unsupported).
+  AF3. DAS AttentionBroker is third member of ECAN-engineering-surrogate
+       lineage (after Classic C++ and metta-attention).
+
+
+§8. OUTPUT EXPECTATIONS
+-----------------------
+Reviewers produce a plain-text findings file:
+  scripts/archive/perception_pilot/source1_fishgram_paper/findings_codex.txt
+  scripts/archive/perception_pilot/source1_fishgram_paper/findings_gemini.txt
+
+Format: brief-question-by-brief-question, with specific page-and-section
+citations for paper claims, file:line for code claims, full SHAs for
+git claims. Verdict labels from §6 where applicable. V1-X dissent records
+where reviewer disagrees with another model or with orchestrator P1-P12.
+
+Reviewers DO NOT execute git pulls, wiki writes, or doc edits. Output is
+plain text the user pastes into the named files.
+
+Brief sign-off expected from both reviewers BEFORE extraction begins (per
+standing protocol). Reviewers can flag brief errors (e.g., missing
+question, miscited paper section, wrong author name) at sign-off time.
+
+
+§9. METHODOLOGY REMINDERS (apply rigorously)
+--------------------------------------------
+- Pickaxe before "never used" / "never implemented" claims:
+    git log --all -S '<token>'
+- OpenCog audits cover BOTH C++ and Scheme/MeTTa API layers
+- Caller-analysis must be time-indexed (snapshot SHA)
+- Bidirectional fork-divergence + staleness corollary
+- Verify "identity-between-artifacts" claims against source (Gemini drift)
+- RawData fidelity: if S1 produces RawData wiki edits at cluster close,
+  preserve raw paper text; editorial annotations go in synthesis cards.
+
+
+================================================================================
+APPENDIX A — REFINEMENT LOG
+================================================================================
+
+Initial draft (2026-04-30 morning, by Claude) — published for reviewer
+sign-off with 12 questions, 4-or-5 source ambiguity.
+
+Refinements (2026-04-30 afternoon, applied by orchestrator after
+reviewer sign-off):
+
+R1. Source count locked at 5 (Codex + Gemini concurrence). §0 source
+    identity now lists S1-S5 with explicit scope per source.
+
+R2. S1.Q5 narrowed to paper-only scope; later-code verification deferred
+    to S2/S4/S5 explicitly (Codex refinement #4).
+
+R3. S1.Q6 pre-resolved by orchestrator WebFetch on
+    https://github.com/tpsjr7/destin_ted_temp 2026-04-30:
+    repo accessible (200 OK), 406 commits, README migration notice
+    "This repo has been migrated to https://github.com/opencog/destin"
+    confirms tpsjr7/destin_ted_temp and opencog/destin are SAME lineage
+    (Codex optional refinement #5; Gemini's "drift find" framing
+    superseded by migration evidence).
+
+R4. S1.Q12 expanded to TWO-verdict mandate (Codex refinement #2):
+    (a) core toy pipeline likely [CODE-REAL-OBSOLETE]
+    (b) full architecture likely [PAPER-ONLY]
+    Reviewers must NOT collapse into a single label.
+
+R5. §1 deliverable note clarified: page/section citations for paper
+    claims; file:line for code; SHA refs for git (Codex refinement #3).
+
+================================================================================
+END OF SOURCE 1 BRIEF
+================================================================================

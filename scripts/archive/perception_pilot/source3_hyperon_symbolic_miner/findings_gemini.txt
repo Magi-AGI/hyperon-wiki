@@ -1,0 +1,62 @@
+Source 3 Extraction Findings (Gemini) — Hyperon-era SYMBOLIC pattern-mining family audit
+
+S3.Q1 — README Verification (iCog-Labs-Dev)
+- P3.1 (Goal): VERIFIED. README.md L5-7: "The goal of this project is to port the classic Pattern Miner to Hyperon using MeTTa... For this current phase, we are directly porting from the classic implementation."
+- P3.2 (Flow): VERIFIED. README.md L13-23 describe the abstract/specialize/candidate/conjunction flow.
+- P3.3 (Surprisingness): VERIFIED. README.md L26: "For now, we haven't integrated the frequent miner with the surprisingness part..."
+
+S3.Q2 — P3.5 (Zero Fishgram inheritance)
+- VERIFIED: git log --all -i -S 'fishgram' returns 0 hits across the trio. grep -ri 'fishgram' in hyperon-miner-2 returns 0 hits in active code (only Git hook sample). [FISHGRAM-CLEAN-BREAK] holds.
+
+S3.Q3 — Pairwise Fork Mapping
+- VERIFIED: b (iCog) is 903 commits ahead of a (trueagi-io). c (zariuq) is 1 ahead of b. Merge-bases confirmed.
+
+S3.Q4 — opencog/miner Absorption Check
+- (a) Yun Chi Citation: ABSENT. Unlike opencog/miner, the Hyperon MeTTa trio contains zero mentions of "Yun Chi", "2005", or "TKDE". [ALGORITHM-INDIRECT-INHERITANCE] (inherits from opencog/miner which cited Chi, but trio itself is un-cited).
+- (b) Algorithmic Flow: VERIFIED. MeTTa files in experiments/frequent-pattern-miner/ map directly to the classic flow:
+    - abstract-patterns.metta (not in top-level but implied)
+    - build-specialization.metta (specialization)
+    - candidate-patterns.metta (select candidates)
+    - conjunction-expansion.metta (expand conjunction)
+- (c) Data Structures: Inherits min-support (README L16, frequent-pattern-miner.metta:12) and Pattern terminology, but reimplements them as MeTTa Atoms.
+
+S3.Q5 — Token Grep Results
+- MinerUtils: Present in dependent-types/bc-system-prf-test.metta:1 (as hyperon-miner:utils:MinerUtils).
+- support: Ubiquitous; core of frequent-pattern-miner.metta.
+- Atomese: 0 hits in active code (MeTTa transition).
+- cog-mine: 0 hits (MeTTa uses frequent-pattern-miner).
+
+S3.Q6 — MeTTa API Surface
+- Total .metta files: 105.
+- Core Algorithm implementation: experiments/frequent-pattern-miner/
+    - frequent-pattern-miner.metta (3250 bytes): Main entry point; defines frequent-pattern-miner operator.
+    - conjunction-expansion.metta (13551 bytes): Largest file; handles variable mapping and normalization.
+    - build-specialization.metta (4022 bytes): Triple-based specialization.
+- Imports: Chained import! (e.g., !(import! &self utils:MinerUtils.metta)).
+
+S3.Q7 — Primary Verdict
+- iCog-Labs-Dev/hyperon-miner: [METTA-PORT-OF-MINER]
+- The project's own README (L5-12) declares this as the primary goal, and the algorithmic flow (S3.Q4b) faithfully mirrors the opencog/miner URE logic.
+
+S3.Q8 — Secondary Verdict (FISHGRAM)
+- Verdict: [FISHGRAM-CLEAN-BREAK]
+- Zero evidence of 2013 Python code, authorship overlap (S3.Q10), or terminology (fishgram/sushigram).
+
+S3.Q9 — Trio Divergence
+- trueagi-io vs iCog-Labs-Dev: [FORK-BEHIND] (Stale upstream, 903 commits).
+- zariuq vs iCog-Labs-Dev: [TRACKS-iCog +1] (1 merge-PR commit ahead).
+
+S3.Q10 — Authorship
+- Top Contributors: Basliel-Amsalu (199), eyobderese (173), tezena (160).
+- Classic Overlap: ZERO. Nil Geisweiller and Linas Vepstas are absent from the top contributor list.
+- Fishgram Overlap: ZERO. Jared Wigmore and Jade O'Neill are absent.
+- Note: Zarathustra Goertzel's fork tracks iCog; his personal involvement is semantic (PR review/merges), but development is led by the iCog team.
+
+S3.Q11 — Dependent-Types Cross-Link
+- (a) xiPLN Connection: VERIFIED. dependent-types/MinerDTL.metta:1 imports ../../hyperon-pln/metta/synthesis/Synthesize.metta. This explicitly links the miner formalization to the xiPLN synthesis layer found in the PLN pilot (Source 11).
+- (b) Integration: Currently a separate research thread (in dependent-types/) aimed at formalizing pattern mining properties, while the active pipeline (in experiments/) is empirical MeTTa.
+
+S3.Q12 — Final Verdict
+- iCog-Labs-Dev/hyperon-miner: [METTA-PORT-OF-MINER] / [FISHGRAM-CLEAN-BREAK] / [PARTIAL-PORT-WITH-EXTENSIONS] (frequent-pattern-miner ported; surprisingness/integration pending; includes dependent-types formalization).
+- trueagi-io: [STALE-UPSTREAM] / 903 commits behind.
+- zariuq: [TRACKS-iCog +1] / merge-PR-only divergence.

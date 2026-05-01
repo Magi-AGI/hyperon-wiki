@@ -1,0 +1,79 @@
+Source 4 Extraction Findings — Hyperon-era NEURAL pattern-mining + perception adapters
+
+S4.Q1 — README Verification (neural-subgraph-matcher-miner)
+- P4.1 (Algorithm): VERIFIED. README.md:5 explicitly cites "inspired by SPMiner" and mentions NeuroMatch (L16).
+- P4.2 (Lineage): VERIFIED. README.md:29-31 describes order embeddings and max-margin loss.
+- P4.3 (Stack): VERIFIED. Code (e.g., common/models.py) uses PyTorch and PyTorch Geometric.
+- P4.4 (Authorship): VERIFIED. Top contributors (kedistkid, Samrawit) match the iCog/Rejuve profile.
+
+S4.Q2 — opencog/vision Verification
+- P4.5 (Scaffolding): VERIFIED. [SCAFFOLDING-NOT-PIPELINE] holds.
+- (a) ImageLink Types:
+    - [WIRED]: ImageValue, ImageBlurLink, ImageWriteLink, ImageFilter2DLink, ImageHalfSizeLink (all present in CMakeLists.txt).
+    - [STUB-NOT-WIRED]: ImageRectangleLink. Files ImageRectangleLink.cpp and .hpp exist in opencog/atoms/vision, but are omitted from the CMakeLists.txt build set.
+- (b) Test Coverage: 0 tests found in tests/ or examples/ demonstrating end-to-end use.
+- (c) External Calls: NETWORK-UNAVAILABLE-IN-REVIEWER-ENVIRONMENT.
+
+S4.Q3 — hyperon-experimental Absence Check
+- P4.6 (Absence): VERIFIED. [NO-RUNTIME-PERCEPTION-BINDING] holds.
+- Inventory: builtin_mods/ contains only catalog, das, fileio, json, random, skel.
+- BFS Search: find for percept|sensor|vision|image returns 0 directory matches in the entire repo.
+- Types: lib/src/atom/ contains core Atom types; no perception-specific types found.
+
+S4.Q4 — Source Paper Citation
+- (a) Citation: VERIFIED. README.md:5 cites SPMiner.
+- (b) Fidelity: Faithfully implements the neural subgraph isomorphism approach (NeuroMatch) and mining (SPMiner) as described in the Ying/Leskovec lineage.
+- (c) Symbolic Chain: VERIFIED. Zero hits for "Yun Chi" or "Frequent Subtree". [PARADIGM-DISTINCT-NEURAL] holds.
+
+S4.Q5 — Pickaxe Results
+- Symbolic Set: fishgram (0), sushigram (0), opencog/miner (0), PatternMiner (0), Yun Chi (0), MeTTa (0).
+- Positive Control: SPMiner (present), NeuroMatch (present), GNN (present), PyTorch (present).
+
+S4.Q6 — Total Code Surface (neural-subgraph-matcher-miner)
+- Total .py files: ~25.
+- Algorithm Surface:
+    - subgraph_matching/train.py: NeuroMatch training loop (max-margin loss).
+    - subgraph_mining/decoder.py: SPMiner decoder for frequent patterns.
+    - common/models.py: RGCN and GIN backbone implementations.
+
+S4.Q7 — opencog/vision Implementation Depth
+- (a) Inventory: Verified in opencog/atoms/vision. ImageRectangleLink is present as source but not built.
+- (b) CMake: ImageRectangleLink is explicitly excluded from the SOURCES list in CMakeLists.txt.
+- (c) Demo: examples/python/vision_example.py exists (confirmed by 2025-06-10 commit) but is a minimal "wrapper test", not a pipeline.
+
+S4.Q8 — Hyperon-era Data-Flow
+- (a) Hyperon Import: 0 hits. The repo uses NetworkX and PyTorch, not the hyperon Python package.
+- (b) Knowledge Graphs: Refers to generic multi-relational graphs for GNN training, not specifically AtomSpace.
+- (c) metta.pkl: Commit 0cac641 ("metta graph with radial sampling") suggests this is a pickled representation of a graph extracted from or intended for MeTTa, but the code itself operates on the pickle, not a live MeTTa space.
+
+S4.Q9 — Authorship Analysis
+- Confirmed: iCog/Rejuve led.
+- Overlap: Zero overlap with Stanford, FISHGRAM, or Classic Miner authors.
+
+S4.Q10 — Formalization-layer Parity Check
+- Verdict: [STRICTLY-EMPIRICAL]
+- 0 hits for dependent-types, Lean, or coq. No formalization layer exists.
+
+S4.Q11 — Frozen Historical Repos
+- (a) opencog/destin: Frozen 2016-09-10 (Ted Sanders). [PRE-HYPERON-ERA].
+- (b) opencog/semantic-vision: Frozen 2017-10-31. [PRE-HYPERON-ERA].
+- (c) hansonrobotics/perception_synthesizer: Frozen 2014. [PRE-HYPERON-ERA].
+- (d) tpsjr7/destin_ted_temp: ORCHESTRATOR-PRE-RESOLVED (Migrated to opencog/destin).
+
+S4.Q12 — LLM-Mediated Perception
+- (a) hyperon-experimental: Grep for "openai|llm|anthropic" in perception context returns 0 hits.
+- (b) rejuve-bio: Best-effort search found no LLM-perception bridge in the audited surface.
+- Verdict: [NOT-FOUND].
+
+S4.Q13 — Primary Verdicts
+- SURFACE A (rejuve-bio): [SPMiner-LINEAGE] / [PARADIGM-DISTINCT-NEURAL] / [STRICTLY-EMPIRICAL]
+- SURFACE B (vision): [SCAFFOLDING-NOT-PIPELINE] / [PARTIAL-IMPLEMENTATION]
+- SURFACE C (hyperon-experimental): [NO-RUNTIME-PERCEPTION-BINDING]
+- SURFACE D (frozen): 4× [PRE-HYPERON-ERA]
+
+S4.Q14 — Cluster-Narrative Integration
+- CONFIRMED: Hyperon-era perception/neural-mining is paradigm-distinct.
+- Tradition Map: Rejuve-bio's neural mining is a Tradition 7: Neural-Geometric Mining line. It shares no symbolic or algorithmic inheritance with the FISHGRAM or hyperon-miner trio.
+- Cluster-close: Recommend creating a new wiki card for Tradition 7 and documenting the [NO-RUNTIME-PERCEPTION-BINDING] status.
+
+I am standing by for the peer review of Codex's output.

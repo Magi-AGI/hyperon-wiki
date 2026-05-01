@@ -1,0 +1,49 @@
+Perception / Neural-Symbolic Cluster Pilot
+Source 1 - Codex findings
+Date: 2026-04-30
+
+Audited artifacts:
+
+- PDF: publication_texts/2013_Goertzel_Sanders_ONeill_Yu_DeSTIN_PLN.pdf
+- Classic code snapshot: singnet/opencog b31c7e3b9beab7a458c84117f3b654a03ca9ffe2
+- Wiki stubs: cards 3081, 3108, 3120
+
+S1.Q1 - P1-P12 verification
+P1-P12 are verified with one update to P9's interpretation. The title/authors match PDF p.1: Ben Goertzel, Ted Sanders, Jade O'Neill, Gino Yu. Yu is definitely the 4th author. The paper contains no "FISHGRAM/Fishgram" hits in extracted PDF text. It cites Yun Chi's "Frequent Subtree Mining software" in paper §2 / PDF p.3 and ref [13] on PDF p.9. The six-component architecture and semantic-feedback caveat match paper §2-§2.1 / PDF pp.3-4. The DeSTIN repo footnote is tpsjr7/destin_ted_temp, but current GitHub README says it migrated to opencog/destin.
+
+S1.Q2 - Yun Chi software vs reimplementation
+The paper claims use of Yun Chi's external software, not an OpenCog reimplementation: paper §2 says "apply Yun Chi's Frequent Subtree Mining software [13]" and footnote 6 gives the nec-labs download URL. The OpenCog Fishgram code is a separate code question.
+
+S1.Q3 - Code-vs-paper coherence
+At b31c7e3, OpenCog Fishgram does not appear to call or vendor Yun Chi's software. It is an in-house AtomSpace forest/conjunction miner: fishgram.py imports local adaptors/tree machinery (lines 9, 22), defines Pattern/Fishgram (57-90), runs closed_bfs_layers (107-112, 168-201), and finds extensions via its own generator (467-490). adaptors.py extracts AtomSpace links into trees (18-21, 102-153). outputConceptNodes emits ConceptNode/MemberLink structures (597-653), and outputPredicateNodes emits ForAll/Implication/EvaluationLink structures (655-683). Also note a legacy brittleness: fishgram.py imports PLNviz from logic at line 24, but b31c7e3's tree has no logic.py under the audited fishgram surface; S2 should audit runtime viability.
+
+S1.Q4 - Architecture-vs-execution gap
+From paper text alone: DeSTIN, frequent subtree mining, and PLN axiom/inference handoff were demonstrated in the toy experiment. The full six-component architecture was not fully implemented: paper §2 / PDF p.3 says so explicitly. Semantic Feedback is explicitly unimplemented in §2.1 / PDF p.4. The paper does not demonstrate a full Frequent Subtree Recognizer + Perception Collector + Experience DB + Semantic Feedback robot loop.
+
+S1.Q5 - Semantic Feedback
+Paper-only verdict: unimplemented in 2013. Paper §2.1 / PDF p.4 says semantic feedback was "not yet implemented" and frames it as necessary for object/event recognition beyond the ~500ms feedforward window.
+
+S1.Q6 - DeSTIN repo identity
+tpsjr7/destin_ted_temp is reachable and its GitHub README says it migrated to https://github.com/opencog/destin. Local opencog/destin at fed2306dee2f23981b77814201185778fe9a7fdc shows Ted/tpsjr7 history carried into the repo, e.g. merges from tpsjr7 branches and Ted Sanders commits through 2014. I find no evidence in S1 that an independent tpsjr7 DeSTIN line survived separately.
+
+S1.Q7 - PLN No-Go applicability
+The toy example mostly dodges the No-Go theorem because it only feeds a small set of local Inheritance axioms and computes Similarity from the provided subtree evidence. The paper itself admits later evidence would change the Similarity strength (paper §3.2 / PDF p.7). At full scale, semantic feedback/object recognition would require represented joint context/evidence, so the PLN No-Go caveat applies.
+
+S1.Q8 - ECAN applicability
+The paper's "neural net like system for allocating attention and assigning credit" reference is general OpenCog/ECAN context, not an executable perception-to-ECAN integration. Semantic Feedback is proposed as cognitive/perceptual modulation, but paper §2.1 says it is unimplemented. Per locked ECAN/OpenPsi findings, the historical executable STI couplings were narrow and deliberately decoupled by 2019. S1 evidence does not show this perception-to-attention vision survived as executable code.
+
+S1.Q9 - Adjacent paper boundaries
+Card 3108 is correctly a 2011 CSDLN conceptual precursor: it discusses dynamic adaptive linkage / semantic CSDLNs and explicitly distinguishes itself from the 2013 FISHGRAM paper. Card 3120 is a broader 2010 OpenCog NS architecture proposal: HANN attractors, MemberLink grounding, and NN activation <-> STI conversion, but not frequent-subtree-mining -> PLN. Card 3081 exists and needs correction: it currently lists only three authors and summarizes via "FISHGRAM," while the paper has four authors and does not use that term.
+
+S1.Q10 - Paper's progress claim
+The paper claims "significant conceptual and practical progress" in §1 / PDF p.1, but §3.2 / PDF p.7 says the toy PLN conclusions are "not useful" and presents the example only as an illustration. It expected generalization to realistic images/inferences and robot vision. Current S1/S3 evidence suggests that expectation did not track as a maintained Fishgram lineage: Fishgram was moved to attic by 00a766d955a7e46aea3b87bc26ec7652a60a4899 on 2019-07-17 and removed by 147e2206e1463dc49bd64a459e0018ed46753a1f on 2020-06-25.
+
+S1.Q11 - Authors' subsequent involvement
+Jade O'Neill continued in Fishgram during 2013 and then PLN work in 2014; Ted Sanders continued DeSTIN/opencog-destin work into 2014; I found no local code evidence for Gino Yu continuing Fishgram-style implementation. Goertzel continued conceptually as author, but not as code maintainer in the audited Fishgram path. S3 survey says hyperon-miner / hyperon-miner-2 / hyperon-miner-zariuq have fishgram-pickaxe = 0, so Zarathustra Goertzel's later miner fork should not be treated as direct Fishgram continuity without S3 evidence.
+
+S1.Q12 - Verdict labels
+(a) Core toy pipeline: [CODE-REAL-OBSOLETE]. The paper's DeSTIN -> subtree mining -> PLN axiom/inference demo had a real OpenCog-era Fishgram code lineage, but that lineage was attic'd in 2019 and removed in 2020.
+(b) Full architecture: [PAPER-ONLY]. The six-component architecture including Semantic Feedback and humanoid robot integration was explicitly not fully implemented in the paper, and S1 evidence does not show completion.
+
+Reviewer-specific notes
+No V1 dissent against P1-P12. Candidate close-edit items: add Gino Yu to card 3081; clarify that "FISHGRAM/Fishgram" is implementation/wiki terminology, not the 2013 paper's own term; preserve the two-verdict split between core toy pipeline and full architecture.

@@ -1,0 +1,668 @@
+================================================================================
+PERCEPTION / NEURAL-SYMBOLIC CLUSTER PILOT
+SOURCE 5 (FINAL) — Perception-output boundary check
+                    (artifact-backed audit; closes cluster-pilot
+                    extraction phase)
+CROSS-MODEL RECONCILIATION
+================================================================================
+
+Reconciliation date: 2026-05-01
+Orchestrator:        Claude Opus 4.7 (1M)
+Reviewers:           Codex + Gemini (cross-model triangulation)
+
+Audit snapshots:
+- Surface A (Linas Vepstas Hyperon-era research portfolio):
+    opencog/sensory      @ 64849f34366339af0b57fddf17e111566bae4c20 (master, 2026-02-24)
+    opencog/agents       @ 0718ba0dfa9eebe4206fd3364d5ff55690bf2707 (master, 2026-02-25)
+    opencog/motor        @ d5ba07e9f3d7d8269a74c3de36b5e22447bbfb8e (master, 2025-01-24)
+    opencog/evidence     @ ba0314c636b409868a8b28c80e0f9100a4ef9fa5 (master, 2025-04-30)
+    opencog/atomese-simd @ b8be282258a95d120205d67fa5fb62393e5910b9 (master, 2026-02-08)
+- Surface B (sandbox-tier carry-forward):
+    hyperon-experimental @ 3f76dc460da6961f57f69f6c3e550c59c74ada83 (master)
+- Surface C (boundary-check cross-grep): S3 + S4 surfaces from prior closed sources
+- Surface D (Hanson-era post-2019):
+    ros_offline_asr             @ 4441a43 (2025-12-04)
+    audio-stream-doa            @ b973847 (2024-03-22)
+    rostopic2video              @ 1eb1e54 (2024-09-06)
+    OpenFace2-hansonrobotics    @ 380886aa (2020-12-21)
+    hyperon-pln-hansonrobotics  @ 7751747 (2023-09-15)
+
+Inputs:
+- findings_codex.txt
+- findings_gemini.txt
+- Pre-extraction brief: scripts/archive/perception_pilot/source5_perception_output_boundary_brief.txt
+
+================================================================================
+§A. CROSS-MODEL CONSENSUS (R5.x)
+================================================================================
+
+R5.1 — opencog/sensory framing verified, with V5-1 wording correction
+       (S5.Q1).
+       Both reviewers confirmed README.md @ 64849f3 explicitly frames
+       perception/action research on AtomSpace as a successor to
+       failed embodied AI efforts (Hanson Sophia, Minecraft ROCCA,
+       Unity pet-dog avatars, Ethiopian soccer-robothon).
+       Codex anchors: README.md:4-7 (perception/action through AtomSpace),
+       :30-50 (failed embodiment history), :69-83 (perception
+       representation in AtomSpace), :125-128 (demos), :636-648
+       (higher-layer sensory goal).
+       Gemini anchors: README.md:1-7 (basal cognition), :31-50
+       (failed efforts).
+       Verdict: [HYPERON-ERA-PERCEPTION-REVIVAL] holds — but as a
+       BROAD perception/action revival on AtomSpace-Scheme stack,
+       NOT as an explicit DeSTIN-FISHGRAM identity revival
+       (V5-1 correction; see §B).
+
+R5.2 — Surface A implementation depth verified (S5.Q2).
+       Both reviewers confirmed 7 wired sensory atom types:
+         TEXT_FILE_NODE, FILE_SYS_NODE, UNIX_SOCKET_NODE,
+         TCP_SOCKET_NODE, TERMINAL_NODE, I_R_CHAT_NODE, OLLAMA_NODE
+       Locations:
+         opencog/sensory/types/sensory_types.script:29-51 (type-script
+         declarations)
+         opencog/atoms/CMakeLists.txt:7-14 (subdirectory builds)
+         Per-type factory functions (Codex evidence):
+           TextFileNode.cc:296
+           FileSysNode.cc:515
+           UnixSocketNode.cc:310
+           TcpSocketNode.cc:320
+           TerminalNode.cc:216
+           IRChatNode.cc:528
+           OllamaNode.cc:676
+       All 7 are [WIRED] per the 3-state classification (no STUB-NOT-WIRED
+       and no UNIMPLEMENTED in this set). Ollama is OPTIONAL via CMake
+       FIND_PROGRAM gate (CMakeLists.txt:45-55, 71-72).
+       (See V5-6 for a Gemini phantom-test-file claim.)
+
+R5.3 — OllamaNode integration depth + dual characterization (S5.Q3,
+       split per V5-2).
+       Both reviewers confirmed OllamaNode is real with substantial
+       implementation:
+         Definition: OllamaNode.h:34-45 (Codex) / :46 (Gemini)
+         Generate/chat/embed paths: OllamaNode.cc:362-430 (Codex)
+         Embedding storage via *-embedding-* key: OllamaNode.cc:629-664
+         (Codex)
+         Examples (Codex anchors, orchestrator-verified file existence):
+           examples/ollama-embed.scm:20-31, :42-46
+           examples/ollama-bot.scm:20-35, :104-141 (IRC text → Ollama)
+       Per V5-2 split-verdict resolution:
+         IRC text-stream wiring (ollama-bot.scm) =
+           [LLM-MEDIATED-PERCEPTION] — sensory I/O where LLM is the
+           intermediate language-understanding layer.
+         Embedding extraction (ollama-embed.scm) =
+           [LLM-AS-KNOWLEDGE-SOURCE] / [LLM-AS-MEMORY-SUBSTRATE]
+           — embeddings as semantic-memory primitives, not as
+           sensor-input transformations.
+       Both characterizations co-exist in the same OllamaNode
+       implementation but address different use-cases.
+
+R5.4 — Sister portfolio cohesion confirmed (S5.Q4).
+       Both reviewers concur:
+         opencog/agents @ 0718ba0 — pure-Atomese learning agents
+           (README.md:70-85; experiments/02-memory/CMakeLists.txt:14-15;
+           count-agent.scm:37-40, 73)
+         opencog/motor @ d5ba07e — sensory-backed crawler project
+           (README.md:22-31, 41-61, 188-200;
+           demos/crawler.scm:15-20, 69-81, 200-213, 268)
+         opencog/evidence @ ba0314c — theory/docs, not executable
+           integration (CLAUDE.md:20-23; README.md:141-155, 210-216)
+         opencog/atomese-simd @ b8be282 — OpenCL/CUDA Atomese/Sensory
+           work (README.md:2-6, 121-143, 188-192;
+           CMakeLists.txt:84-101, 115-177)
+           File count: 4 .cl + 1 .cu (consensus from both reviewers)
+       Cross-references in READMEs (Codex + Gemini):
+         sensory README cites evidence, motor, agents, atomese-simd
+         motor README cites sensory and agents
+       (See V5-4 + V5-5 for Gemini phantom file/path claims that do
+       not affect the portfolio confirmation.)
+
+R5.5 — Surface A is [ATOMSPACE-SCHEME-STACK], not MeTTa-runtime
+       (S5.Q5; P5.4 confirmed).
+       Both reviewers concur:
+         All Surface A repos are C++ implementations with Guile Scheme
+         examples/tests.
+         No .metta files in Surface A.
+         No hyperon-experimental bindings.
+         opencog/sensory uses cpp-httplib for Ollama HTTP, AtomSpace
+         C++ API + Scheme bindings throughout.
+       Significance (cluster-narrative-deciding): Hyperon ecosystem
+       supports parallel development tracks at the
+       Classic-AtomSpace/Scheme stack (Vepstas portfolio + opencog/miner)
+       AND the Hyperon MeTTa-runtime stack (hyperon-experimental,
+       hyperon-miner trio, neural-subgraph-matcher-miner). CF5.3
+       (CANDIDATE → LOCKED).
+
+R5.6 — Surface B sandbox-tier verdict (S5.Q6, CF4.5 follow-through).
+       Both reviewers concur:
+         (a) Zero non-sandbox callers for neurospace or torchme
+             bridges (Gemini's reverse caller analysis confirmed
+             Codex's structural finding).
+         (b) neurospace.py:3, 6, 36-44, 52-60, 68-74 — OpenAI text-prompt
+             backed; NO image/audio/sensor input support.
+         (c) torchme.py:277-314 — generic torch token bridge; no
+             camera/sensor wiring.
+         (d) FashionMNIST sandbox demo at tm_test.metta:106-130 +
+             tm_test.py:19-37 (Codex; orchestrator-verified files
+             exist) — but it is dataset/training demo, NOT
+             sensor-to-inference pipeline.
+       Verdict: [EXPERIMENTAL-STUBS] (Gemini) /
+                "sandbox bridges, not builtin perception binding"
+                (Codex) — both agree on the substantive finding.
+       CF4.5 finally resolved: sandbox-tier bridges exist but do
+       not constitute a perception pathway.
+
+R5.7 — Surface C bidirectional cross-grep result (S5.Q7).
+       Both reviewers concur on bidirectional zero cross-references:
+         Forward: S3 trio + S4 rejuve-bio → opencog/sensory etc.
+                  ZERO references found.
+         Reverse: opencog/sensory + sister repos → S3 trio /
+                  S4 rejuve-bio / hyperon-pln / hyperon-miner.
+                  ZERO references found.
+       Codex token search list: sensory, opencog/sensory, OllamaNode,
+       neurospace, torchme, ImageLink, Fishgram, sushigram, DeSTIN,
+       hyperon-miner, neural-subgraph.
+       Positive S3 hits were only self-referential hyperon-miner
+       import paths (already-known from S3 reconciliation).
+       Verdict: [PARALLEL-NON-INTEGRATED] confirmed. The Linas
+       Vepstas perception portfolio operates in code-isolation from
+       iCog/Rejuve mining + Hanson runtime.
+
+R5.8 — Pickaxe verification (S5.Q8, CF1.3 + CF2.1 + CF3.1
+       carry-forward closure).
+       Both reviewers confirmed across all S5 surfaces (A + B + D)
+       plus Surface C (S3 + S4 cross-references):
+         fishgram, sushigram, DeSTIN: 0 hits at HEAD via grep
+         git log --all -i -S 'fishgram' | -S 'DeSTIN' | -S 'sushigram':
+           0 commits in Surface A repos
+       [FISHGRAM-CLEAN-BREAK] confirmed at the cluster-wide level.
+       The 2013 paper architecture is NOT inherited by token-level
+       continuity in any active Hyperon-era code.
+
+R5.9 — Surface D verdict matrix (S5.Q9, with V5-3 vocabulary
+       extension).
+       Per V5-3 [POST-2019-STANDALONE-PERCEPTION-UTILITY] vocabulary
+       addition:
+         ros_offline_asr @ 4441a43:
+           Real 2023 VAD/Whisper code (commits 94ad459 VAD/Whisper STT;
+           9e84b93 ONNX VAD); 2025 commits are maintenance only
+           (license/dependency). Publishes ROS speech topics
+           (README.md:58-62; whisper_node.py:30, 51-59, 125;
+           recognizer.py:55-61, 143-145). NO AtomSpace/MeTTa/sensory
+           wiring.
+           Verdict: [POST-2019-STANDALONE-PERCEPTION-UTILITY]
+           (Codex) refines Gemini's [POST-2019-MAINTENANCE-ONLY] —
+           both apply but Codex's is more specific.
+         audio-stream-doa @ b973847:
+           Standalone 2024 ESP32 audio/VAD TCP streamer
+           (README.md:3, 17-30; main/main.c:118-124, 173-186, 227);
+           NO Hyperon integration.
+           Verdict: [POST-2019-STANDALONE-PERCEPTION-UTILITY].
+         rostopic2video @ 1eb1e54:
+           Standalone ROS image-to-video conversion utility
+           (README.md:3; video_creator.py:42-49, 73-76); NO Hyperon.
+           Verdict: [POST-2019-STANDALONE-PERCEPTION-UTILITY].
+         OpenFace2-hansonrobotics @ 380886aa:
+           OpenFace packaging/fork (README.md:7-14;
+           FeatureExtraction.cpp:173-230); NO Hyperon.
+           Verdict: [HANSON-ERA-DORMANT] (just past 2019 cutoff at
+           2020-12-21; effectively pre-Hyperon).
+         hyperon-pln-hansonrobotics @ 7751747:
+           MeTTa PLN/SUMO; NO perception wiring; orchestrator-verified
+           fork divergence is exactly 0 ahead / 239 behind upstream;
+           merge-base = HEAD (per Codex; orchestrator git rev-list
+           --count confirmed). Frozen 2023-09-15 snapshot.
+           Verdict: [HANSON-ERA-DORMANT].
+
+R5.10 — DeSTIN-FISHGRAM-PLN architecture revival check (S5.Q11,
+       CF4.6 resolution).
+       Both reviewers concur with the same verdict:
+         Sensory → Miner: 0 hits
+         Sensory → Hyperon-miner: 0 hits
+         LLM-mediated path via OllamaNode: exists but NOT wired to
+         any downstream reasoner (PLN or Miner)
+       Final verdict: [PARALLEL-NON-INTEGRATED] / [NOT-WIRED]
+       end-to-end. The 2013 paper architecture
+       (DeSTIN belief-tree → FISHGRAM → PLN) has fragments scattered
+       across parallel research tracks but no end-to-end runtime
+       pipeline. CF5.4 candidate-revival resolves to:
+       [PARTIAL-FRAGMENTED-REVIVAL] — opencog/sensory provides the
+       perception layer; opencog/miner provides the symbolic-mining
+       layer; chaining/hyperon-pln provides the inference layer; but
+       the layers are not interconnected at the runtime level.
+
+R5.11 — Cluster-narrative recommendations (S5.Q12).
+       All recommendations have unanimous reviewer concurrence:
+         (a) Trilateral framing — both reviewers YES.
+             Symbolic (S3 hyperon-miner trio) +
+             Neural (S4 rejuve-bio) +
+             Perception/Embodiment (S5 Vepstas portfolio).
+             Locks CF5.1 from CANDIDATE to LOCKED for cluster-close.
+         (b) Linas Vepstas role upgrade — both YES.
+             [LEGACY-AUTHOR-BRIDGE] →
+             [HYPERON-ERA-PARALLEL-RESEARCH-PORTFOLIO].
+             Locks CF5.2 from CANDIDATE to LOCKED.
+         (c) New wiki card for opencog/sensory — both YES.
+             Cluster-close authorization required.
+         (d) AtomSpace-Scheme vs MeTTa-runtime distinction in CLAUDE.md
+             — both YES. Locks CF5.3.
+
+R5.12 — Final boundary verdicts (S5.Q13).
+       Both reviewers' final verdict labels:
+         SURFACE A (Vepstas portfolio):
+           [HYPERON-ERA-PERCEPTION-REVIVAL] / [ATOMSPACE-SCHEME-STACK] /
+           [PARALLEL-NON-INTEGRATED]
+         SURFACE B (sandbox-tier):
+           [EXPERIMENTAL-STUBS] (Gemini) / "sandbox bridges, not
+           perception binding" (Codex). Consensus: not a perception
+           pathway.
+         SURFACE C (cross-grep boundary):
+           [PARALLEL-RESEARCH-PORTFOLIO] / [PARALLEL-NON-INTEGRATED]
+         SURFACE D (Hanson-era post-2019):
+           ros_offline_asr / audio-stream-doa / rostopic2video:
+             [POST-2019-STANDALONE-PERCEPTION-UTILITY] (per V5-3)
+           OpenFace2-hansonrobotics / hyperon-pln-hansonrobotics:
+             [HANSON-ERA-DORMANT]
+
+R5.13 — Final cluster-pilot narrative lock (S5.Q14, both reviewers).
+       Hyperon-era perception/neural-symbolic integration at
+       2026-04-30 to 2026-05-01 cluster-pilot snapshot:
+         (1) TRILATERAL TRADITION MAP:
+             Symbolic mining tradition (Tradition 1.5):
+               hyperon-miner trio (S3) — [METTA-PORT-OF-MINER];
+               iCog-Labs-Dev/hyperon-miner active development.
+             Neural mining tradition (Tradition 7 candidate):
+               rejuve-bio/neural-subgraph-matcher-miner (S4) —
+               [SPMiner-LINEAGE] / [PARADIGM-DISTINCT-NEURAL] /
+               [STRICTLY-EMPIRICAL]; iCog/Rejuve team leadership.
+             Perception/embodiment tradition (Tradition 8 candidate):
+               opencog/sensory + sister portfolio (S5) —
+               [HYPERON-ERA-PERCEPTION-REVIVAL] /
+               [ATOMSPACE-SCHEME-STACK] /
+               [PARALLEL-NON-INTEGRATED]; Linas Vepstas
+               sole authorship.
+         (2) PERCEPTION BOUNDARY:
+             Artifacts for file, IRC, terminal, socket, and
+             LLM-embedding input EXIST and are runtime-wired in
+             opencog/sensory; but they are NOT downstream-wired
+             to inference (no sensory → miner → PLN pipeline).
+         (3) ARCHITECTURE STATUS:
+             The 2013 DeSTIN-FISHGRAM-PLN pipeline is defunct.
+             Its revival is fragmented across parallel research
+             tracks, none of which interconnect at runtime.
+         (4) LLM-MEDIATED PERCEPTION:
+             Actively used in the Scheme stack for both
+             [LLM-MEDIATED-PERCEPTION] (text/IRC sensory I/O via
+             OllamaNode) and [LLM-AS-MEMORY-SUBSTRATE] (embedding
+             vectors as semantic-memory primitives). The dual
+             characterization is a cluster-pilot resolution
+             (V5-2 split).
+         (5) STACK-LEVEL PARALLEL DEVELOPMENT:
+             Hyperon ecosystem has TWO active stacks:
+               AtomSpace-Scheme stack (Vepstas portfolio +
+               opencog/miner)
+               MeTTa-runtime stack (hyperon-experimental,
+               hyperon-miner trio, neural-subgraph-matcher-miner)
+             This is NOT obvious from current CLAUDE.md framing
+             and is a cluster-close edit candidate.
+
+================================================================================
+§B. DISSENTS AND RESOLUTIONS (V5-X)
+================================================================================
+
+V5-1 (Codex, ADOPTED) — P5.1 wording overstatement on FISHGRAM-DeSTIN
+       revival framing.
+       CLAIM: Codex flagged that P5.1's "[HYPERON-ERA-PERCEPTION-REVIVAL]
+              + 'explicit DeSTIN-FISHGRAM-architecture-revival framing'"
+              language is too strong. opencog/sensory's README does
+              describe a perception-revival narrative, but does NOT
+              cite DeSTIN, FISHGRAM, or the 2013 paper architecture
+              by name.
+       ORCHESTRATOR VERIFICATION: Pickaxe across opencog/sensory and
+              sister portfolio for fishgram/DeSTIN/sushigram tokens
+              returns ZERO hits at HEAD AND in git history (R5.8).
+              README failed-embodiment list (README.md:30-50) cites
+              Sophia/Minecraft/Unity/soccer-robothon, NOT
+              DeSTIN-FISHGRAM-PLN. Codex correct.
+       RESOLUTION: ADOPTED. R5.1 reframes the verdict:
+              [HYPERON-ERA-PERCEPTION-REVIVAL] holds, but as a
+              BROAD perception/action revival on AtomSpace-Scheme
+              stack, NOT as an explicit identity-level revival of
+              the 2013 paper architecture. CF5.4 reframed accordingly:
+              [PARTIAL-FRAGMENTED-REVIVAL] not [DESTIN-FISHGRAM-REVIVAL].
+
+V5-2 (Codex, ADOPTED) — OllamaNode dual characterization.
+       CLAIM: Codex flagged that P5.2's single-verdict
+              [LLM-MEDIATED-PERCEPTION] characterization conflates
+              two distinct uses of OllamaNode:
+              (a) IRC text-stream / chat input wiring (ollama-bot.scm)
+                  — this IS LLM-mediated sensory I/O.
+              (b) Embedding-vector extraction (ollama-embed.scm) —
+                  this is LLM-as-knowledge-source / memory-substrate,
+                  not perception per se.
+       RESOLUTION: ADOPTED. R5.3 records the split verdict:
+              [LLM-MEDIATED-PERCEPTION] for IRC/text streams
+              [LLM-AS-KNOWLEDGE-SOURCE] / [LLM-AS-MEMORY-SUBSTRATE]
+                for embedding extraction
+              Both characterizations co-exist in OllamaNode but
+              address different use-cases. The S5 cluster-narrative
+              should preserve this distinction.
+
+V5-3 (Codex, ADOPTED) — NEW Surface D vocabulary
+       [POST-2019-STANDALONE-PERCEPTION-UTILITY].
+       CLAIM: Codex flagged that ros_offline_asr / audio-stream-doa /
+              rostopic2video do not fit either
+              [POST-2019-MAINTENANCE-ONLY] (too narrow — there's
+              real algorithmic content) OR [HANSON-ERA-DORMANT]
+              (wrong era classification — these are post-Hyperon
+              standalone perception utilities). New vocabulary needed.
+       RESOLUTION: ADOPTED.
+              [POST-2019-STANDALONE-PERCEPTION-UTILITY]
+              applied to ros_offline_asr, audio-stream-doa, and
+              rostopic2video in R5.9. The earlier
+              [POST-2019-MAINTENANCE-ONLY] verdict (S4 brief P5.5
+              candidate) is REFINED to this more accurate label.
+
+V5-4 (Orchestrator + Codex, Gemini phantom-file REJECTED) —
+       Gemini claim of `agents/examples/simple-agent.scm`.
+       CLAIM (Gemini S5.Q4c): "agents contains examples/simple-agent.scm."
+       ORCHESTRATOR VERIFICATION:
+              ls "agents/examples/" → DIRECTORY DOES NOT EXIST.
+              `agents` repo at @0718ba0 has experiments/ subdirectory
+              (per Codex evidence at experiments/02-memory/CMakeLists.txt
+              and count-agent.scm), but NO `examples/` directory.
+       RESOLUTION: V5-4 ADOPTED. Gemini phantom-directory inference;
+              the actual demo location for `agents` is `experiments/`,
+              not `examples/`. Codex's references at
+              experiments/02-memory/CMakeLists.txt:14-15 and
+              count-agent.scm:37-40, 73 are correct.
+       This is the 6th instance of Gemini source-location/file-identity
+       drift across the cluster pilot (V1-2, V2-3, V2-4, V3-4, V4-3,
+       V5-4). CF4.4 methodology lock continues to apply.
+
+V5-5 (Orchestrator + Codex, Gemini phantom-file REJECTED) —
+       Gemini claim of `motor/examples/motor-test.scm`.
+       CLAIM (Gemini S5.Q4c): "motor contains examples/motor-test.scm."
+       ORCHESTRATOR VERIFICATION:
+              ls "motor/examples/" → contains:
+                filesys-api.py, filesys-api.scm, README.md, rewrite.scm
+              ls "motor/demos/" → contains:
+                crawler.scm, crawler-interactive.scm
+              No `motor-test.scm` exists in either location.
+       RESOLUTION: V5-5 ADOPTED. Gemini phantom-file inference;
+              the actual motor demos are at `demos/crawler.scm`
+              (Codex correct citation: demos/crawler.scm:15-20,
+              69-81, 200-213, 268).
+       7th instance of Gemini drift in this cluster.
+
+V5-6 (Orchestrator + Codex, Gemini implied-claim REJECTED) —
+       Gemini claim of `tests/ollama_test.cc (implied by CMakeLists.txt:72)`.
+       CLAIM (Gemini S5.Q2c): "tests/ollama_test.cc (implied by
+              CMakeLists.txt:72) provides C++ level verification."
+       ORCHESTRATOR VERIFICATION:
+              ls "sensory/tests/" →
+                CMakeLists.txt
+                sensory/   (subdirectory)
+              ls "sensory/tests/sensory/" →
+                CMakeLists.txt, filedir/, ollama/, sockets/
+              find "sensory/tests/" -name '*ollama*' →
+                tests/sensory/ollama/
+                tests/sensory/ollama/ollama-embed-test.scm
+              No `ollama_test.cc` file exists at the top-level
+              `tests/` path Gemini claimed. The ACTUAL Ollama-related
+              test file is `tests/sensory/ollama/ollama-embed-test.scm`
+              (Scheme, nested two levels deeper than Gemini's claim,
+              not C++). Codex's findings correctly attest to real
+              sensory test infrastructure under tests/sensory/, even
+              if his Q2 line did not enumerate the per-file paths.
+              Gemini hedged with "(implied by CMakeLists.txt:72)"
+              but inferred a non-existent file at the wrong path.
+       RESOLUTION: V5-6 ADOPTED. Gemini implied-file claim REJECTED.
+              The actual sensory tests do exist, but at
+              tests/sensory/ollama/ollama-embed-test.scm (Scheme),
+              not at the top-level tests/ollama_test.cc (C++) path
+              Gemini inferred. Reviewers should NOT infer file
+              existence + extension + path from CMake references —
+              multiple valid build patterns (conditional inclusion,
+              externally-provided test files, generated tests,
+              language-different actual tests) can produce
+              CMake-mentioned-but-not-as-claimed files.
+       8th instance of Gemini source-location/file-identity drift
+       in this cluster pilot.
+
+================================================================================
+§C. STALE/SOURCE-OF-TRUTH CHECKS (SC5.x)
+================================================================================
+
+SC5.1 — README anchors verified under CF4.4.
+       opencog/sensory README.md @ 64849f3 is 705 lines (Codex
+       pre-extraction verification, confirmed during reconciliation).
+       Codex used line ranges :4-7, :30-50, :69-83, :125-128,
+       :636-648 — orchestrator did not exhaustively re-verify
+       each but the spread is consistent with a 705-line README.
+       Gemini used :1-7, :31-50 — narrower but consistent with
+       Codex's wider range.
+       No drift in either reviewer's cited line numbers.
+
+SC5.2 — V5-4 / V5-5 / V5-6 collectively — Gemini's source-location
+       drift pattern across the cluster pilot.
+       Cumulative count of Gemini source-location/file-identity
+       dissents in this 5-source pilot:
+         V1-2 (S1)  — Card 3120 framing/identity confusion
+         V2-3 (S2)  — line-citation drift
+         V2-4 (S2)  — README file-identity / line confusion
+         V3-4 (S3)  — TRUE phantom-file (`abstract-patterns.metta`)
+         V4-3 (S4)  — TRUE phantom-file (`examples/python/vision_example.py`)
+         V5-4 (S5)  — phantom-directory (`agents/examples/`)
+         V5-5 (S5)  — phantom-file (`motor/examples/motor-test.scm`)
+         V5-6 (S5)  — implied-but-nonexistent file
+                       (`tests/ollama_test.cc` "implied by ...")
+       8 instances out of ~25 V-N-X dissents total in the cluster
+       pilot (~32%). The methodology lock CF4.4 is therefore the
+       most-invoked methodology rule of the cluster.
+
+SC5.3 — opencog/sensory README failed-embodiment list does NOT
+       cite DeSTIN-FISHGRAM-PLN (V5-1 verification).
+       README.md:30-50 lists Hanson Sophia (ROS+Blender), Minecraft
+       (MineRL+Malmo+ROCCA), Unity pet-dog avatars, soccer-robothon.
+       The 2013 paper DeSTIN-FISHGRAM-PLN architecture is NOT
+       cited. This means opencog/sensory's revival narrative is
+       PERCEPTION-IS-HARD (general) not specifically
+       FISHGRAM-WAS-RIGHT (algorithm-revival).
+
+SC5.4 — Parallel Claude session generated
+       E:\GitHub\hyperon reference\HYPERON_CLUSTER_FINDINGS.md
+       (orchestrator-aware as of 2026-05-01).
+       The file documents cluster pilot findings from PLN, ECAN,
+       OpenPsi, AtomSpace pilots (predates perception cluster
+       pilot). Cluster-close edits should ADD perception cluster
+       findings to this file in addition to the wiki-side cards.
+       Also: CLAUDE.md was trimmed by parallel session from
+       ~600 lines to 216 lines. Cluster-close edits should
+       reconcile against the trimmed version.
+       Both files are at the cluster-close phase; gated on user
+       authorization.
+
+SC5.5 — Cluster pilot extraction phase is now CLOSED.
+       Sources audited (5 of 5):
+         S1: 2013 FISHGRAM paper artifact
+         S2: Classic FISHGRAM Python miner @ b31c7e3 + opencog/miner
+             cross-link
+         S3: Hyperon-era SYMBOLIC mining (hyperon-miner trio)
+         S4: Hyperon-era NEURAL mining + perception adapters
+             (rejuve-bio/neural-subgraph-matcher-miner +
+             opencog/vision + hyperon-experimental absence-check +
+             frozen historical perception family)
+         S5: Perception-output boundary check (Linas Vepstas
+             portfolio + sandbox-tier check + cross-grep boundary)
+       Closed-archive paths:
+         scripts/archive/perception_pilot/source*/findings_*.txt
+       Total: 5 reconciliations + 5 briefs + ~50 individual finding
+       documents.
+       Next phase: cluster-close edits, gated on user authorization.
+
+================================================================================
+§D. CROSS-SOURCE FORWARDS (CF5.x — RESOLVED FROM CANDIDATE TO LOCKED)
+================================================================================
+
+CF5.1 (LOCKED for cluster-close, RESOLVED FROM CANDIDATE) —
+       Cluster-narrative trilateralization.
+       Hyperon-era perception/neural-symbolic integration is
+       TRILATERAL, not bilateral:
+         Symbolic mining (Tradition 1.5):
+           hyperon-miner trio (S3) — MeTTa port of opencog/miner
+         Neural mining (Tradition 7 candidate):
+           rejuve-bio/neural-subgraph-matcher-miner (S4) —
+           SPMiner-lineage GNN-based
+         Perception/embodiment (Tradition 8 candidate):
+           opencog/sensory + sister repos (S5) — Vepstas
+           AtomSpace-Scheme portfolio
+       Both reviewers concur (R5.11). Locks CF4.2 from "bilateral"
+       to "trilateral" for cluster-close framing.
+       Cluster-close edit recommendation: update CLAUDE.md
+       tradition map and CF4.2 framing accordingly.
+
+CF5.2 (LOCKED for cluster-close, RESOLVED FROM CANDIDATE) —
+       Linas Vepstas role upgrade.
+       FROM: [LEGACY-AUTHOR-BRIDGE] (CF4.3 framing)
+       TO:   [HYPERON-ERA-PARALLEL-RESEARCH-PORTFOLIO]
+       Evidence: 5-repo sole-authored Hyperon-era effort
+       (sensory ~733 / agents 89 / motor 76 / evidence 30 /
+       atomese-simd 372), plus 2 co-authored repos
+       (opencog/miner with Nil Geisweiller; opencog/vision with
+       Adrian Borucki). Total contemporary commits dwarf any
+       single-effort threshold.
+       Both reviewers concur (R5.11).
+
+CF5.3 (LOCKED for cluster-close, RESOLVED FROM CANDIDATE) —
+       AtomSpace-Scheme-vs-MeTTa-runtime stack distinction.
+       The Hyperon ecosystem includes BOTH:
+         AtomSpace-Scheme stack: Vepstas perception portfolio +
+                                 opencog/miner (still active 2025-2026)
+         MeTTa-runtime stack:   hyperon-experimental + hyperon-miner
+                                 trio + neural-subgraph-matcher-miner
+       This was NOT obvious from current CLAUDE.md framing.
+       Cluster-close edit recommendation: add explicit stack
+       distinction to CLAUDE.md tradition map.
+
+CF5.4 (LOCKED for cluster-close, RESOLVED FROM CANDIDATE,
+       REFRAMED PER V5-1) —
+       DeSTIN-FISHGRAM-PLN architecture revival status:
+       [PARTIAL-FRAGMENTED-REVIVAL].
+       The 2013 paper architecture has fragments across parallel
+       research tracks:
+         Perception: opencog/sensory (S5)
+         Pattern miner: opencog/miner (S2 active) +
+                        hyperon-miner trio (S3) +
+                        neural-subgraph-matcher-miner (S4)
+         PLN/inference: hyperon-pln runtime + chaining
+       But the layers are NOT interconnected at runtime; no
+       end-to-end sensor → miner → PLN pipeline exists.
+       Reframed per V5-1: this is NOT an explicit identity-level
+       revival of the 2013 architecture (no DeSTIN/FISHGRAM
+       reference in any current Hyperon-era code); it is a
+       fragmented parallel-development recurrence of the same
+       generic architectural concerns.
+
+CF5.5 (LOCKED for future cluster pilots) — Cross-org sweeps remain
+       open.
+       This pilot covered: opencog, trueagi-io, iCog-Labs-Dev,
+       zariuq, rejuve-bio, hansonrobotics. Other organizations
+       potentially relevant but not audited:
+         asi-alliance, fetchai, agi-bio, F1R3FLY-io, Xcceleran-do
+         gitlab.com/nunet
+       Recommend: future cluster pilot for cross-org ML/perception
+       sweep.
+
+CF5.6 (NEW LOCKED, methodology) — CF4.4 methodology lock now
+       cluster-pilot-default for any future Gemini extraction.
+       Cumulative SC5.2 evidence (8 of ~25 dissents) makes
+       CF4.4 source-location/file-identity verification a
+       MANDATORY default, not a contingent rule. Future cluster
+       pilots should:
+         (a) Verify all Gemini file-existence claims via
+             ls/Glob before adopting in reconciliation.
+         (b) Verify all Gemini line-range citations via direct
+             read or git show.
+         (c) Verify all Gemini "X is Y" identity assertions
+             against source.
+         (d) Document methodology lock as cluster-default at S1
+             of any future pilot, not as an emergent finding.
+
+CF5.7 (NEW LOCKED, cluster-narrative) — Hyperon ecosystem stack
+       paradigms identified.
+       Three axes of paradigm distinction now established:
+         Axis 1: AtomSpace-Scheme stack vs MeTTa-runtime stack
+                 (CF5.3)
+         Axis 2: Symbolic mining vs Neural mining vs
+                 Perception/embodiment (CF5.1 trilateral)
+         Axis 3: Single-author research portfolio (Vepstas) vs
+                 Team-led engineering (iCog/Rejuve) vs
+                 Hanson-era frozen artifacts
+       These three axes are orthogonal-ish — they don't fully
+       partition repos but do explain most Hyperon-era diversity.
+
+================================================================================
+§E. SUMMARY — S5 NET CLOSURE + CLUSTER-PILOT FINAL CLOSURE
+================================================================================
+
+S5 closes with one paradigm finding (the Linas Vepstas
+AtomSpace-Scheme perception/embodiment portfolio is the
+previously-unmapped Hyperon-era perception bridge, but it operates
+in code-isolation from the iCog/Rejuve mining lines and the
+Hanson runtime), 13 consensus points (R5.1-R5.13), 6 dissent
+records (V5-1 through V5-6; all resolved per §B; 3 from Codex,
+3 from orchestrator), 5 stale/source-of-truth checks (SC5.1-SC5.5),
+and 7 cross-source forwards (CF5.1-CF5.7; 4 resolved from candidate,
+2 newly locked methodology + cluster-narrative, 1 carried forward
+for future pilots).
+
+The PERCEPTION / NEURAL-SYMBOLIC CLUSTER PILOT EXTRACTION PHASE
+IS NOW CLOSED.
+
+Final cluster-narrative position: Hyperon-era perception/
+neural-symbolic integration is TRILATERAL but PARALLEL-NON-INTEGRATED:
+- Symbolic mining (Tradition 1.5): iCog-Labs-Dev/hyperon-miner trio,
+  MeTTa-runtime stack, faithful port of opencog/miner.
+- Neural mining (Tradition 7 candidate):
+  rejuve-bio/neural-subgraph-matcher-miner, SPMiner-lineage,
+  paradigm-distinct GNN-geometric approach, strictly-empirical
+  with no formalization layer.
+- Perception/embodiment (Tradition 8 candidate):
+  Linas Vepstas's opencog/sensory + agents + motor + evidence +
+  atomese-simd portfolio, AtomSpace-Scheme stack, single-author
+  parallel research effort, OllamaNode for LLM-mediated
+  text/IRC sensory I/O AND for embedding-as-memory primitives.
+The three traditions have ZERO algorithmic, code, or author
+overlap. Each operates on its own stack. The 2013
+DeSTIN-FISHGRAM-PLN architecture is not revived as such — its
+generic architectural concerns recur in fragmented form across
+the three traditions but no end-to-end runtime pipeline exists.
+
+Open downstream questions (post-pilot):
+- (Cluster-close, gated on user authorization)
+  - Update CLAUDE.md tradition map with trilateral framing
+  - Update CLAUDE.md with AtomSpace-Scheme vs MeTTa-runtime
+    stack distinction
+  - Update CLAUDE.md to upgrade Linas Vepstas role
+  - Add HYPERON_CLUSTER_FINDINGS.md perception cluster entry
+    (parallel session created file; cluster-close should add
+    perception findings)
+  - Card 3081 reframe (S1 disposition; FISHGRAM paper card)
+  - CLAUDE.md source-text-gaps removal entry for retrieved 2013
+    FISHGRAM paper (S1)
+  - New wiki cards for: opencog/sensory portfolio (S5), rejuve-bio
+    neural-subgraph-matcher-miner (S4), opencog/vision scaffolding
+    (S4 optional), Tradition 7+8 framing
+  - Cluster-close commit
+- (Future cluster pilot)
+  - Cross-org ML/perception sweep (CF5.5)
+  - asi-alliance, fetchai, F1R3FLY-io, Rejuve, Xcceleran-do,
+    gitlab.com/nunet
+
+Reviewers are released. Cluster pilot extraction phase closed
+2026-05-01.
+
+================================================================================
+END OF SOURCE 5 RECONCILIATION
+END OF PERCEPTION / NEURAL-SYMBOLIC CLUSTER PILOT EXTRACTION PHASE
+================================================================================

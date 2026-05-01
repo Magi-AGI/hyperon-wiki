@@ -1,0 +1,227 @@
+================================================================================
+PERCEPTION / NEURAL-SYMBOLIC CLUSTER PILOT
+SOURCE 3 PRE-EXTRACTION REPO SURVEY (orchestrator-side)
+================================================================================
+
+Survey performed: 2026-04-30 by Claude Opus 4.7 (1M)
+Purpose:          Provide reviewers with current SHAs / branches / activity
+                  state of all candidate Perception/Neural-Symbolic repos
+                  in the local reference tree at E:\GitHub\hyperon reference\,
+                  so the Source 3 brief can pin specific SHAs and reviewers
+                  do not re-run git surveys.
+
+Per Codex's Source 3 guidance: "Survey first. Don't assume iCog-Labs-Dev/
+hyperon-miner is the right home until git/repo discovery confirms it."
+
+Per Gemini's Source 3 guidance: "While iCog-Labs-Dev/hyperon-miner is the
+leading candidate, searching for PatternMiner or NeuralAtom in the trueagi-io
+and hyperon-experimental organizations will prevent us from missing a
+'Tradition 1' reference implementation."
+
+
+§A. CANDIDATE REPOS (current local-clone state, branch HEAD as of 2026-04-30)
+-----------------------------------------------------------------------------
+
+Hyperon-era pattern-mining (active 2025-2026):
+
+[hyperon-miner]
+  remote: https://github.com/trueagi-io/hyperon-miner.git
+  branch: master  HEAD: b5d8bcd
+  last:   2025-01-30 10:01:58 -0500  Merge pull request #10 from tanksha/curried
+  Activity: master HEAD is 2025-01; lower commit count vs forks.
+
+[hyperon-miner-2]  (= iCog-Labs-Dev/hyperon-miner; suffix is local convention)
+  remote: https://github.com/iCog-Labs-Dev/hyperon-miner.git
+  branch: experiments-local-changes  HEAD: 51963a7
+  last:   2025-11-10 13:45:54 +0300  Merge pull request #127 from iCog-Labs-Dev/tezena-patch-2
+  Activity: HIGH; 127+ PRs merged at iCog-Labs-Dev fork; experiments branch
+            ahead of master. Effectively the active development line.
+
+[hyperon-miner-zariuq]  (= zariuq/hyperon-miner; Zarathustra Goertzel fork)
+  remote: https://github.com/zariuq/hyperon-miner.git
+  branch: master  HEAD: 1ad4820
+  last:   2025-11-10 17:05:04 +0300  Merge pull request #124 from iCog-Labs-Dev/experiments
+  Activity: HIGH; tracks iCog-Labs-Dev experiments; Zar-specific work expected.
+
+[neural-subgraph-matcher-miner]  (DIFFERENT PARADIGM)
+  remote: https://github.com/rejuve-bio/neural-subgraph-matcher-miner.git
+  branch: main  HEAD: cfc23f8
+  last:   2026-04-22 12:20:58 +0300  Merge pull request #30 from AlexKalll/refactor-miner
+  Activity: VERY RECENT (8 days ago at survey time). Distinct paradigm:
+            neural subgraph matching, not symbolic frequent-pattern mining.
+            FISHGRAM-pickaxe = 0.
+
+Classic Scheme/C++ pattern-miner family (still active surprisingly):
+
+[miner]  (= opencog/miner; canonical Classic PatternMiner)
+  remote: https://github.com/opencog/miner.git
+  branch: master  HEAD: 444eb6474
+  last:   2025-09-24 01:05:54 -0500  Moving to new API somethow broke the tests.
+  Activity: STILL ACTIVE in late 2025. fishgram-pickaxe = 19 commits but
+            ZERO current files (refs only in commit messages / removed code).
+            Lead per git log: Nil Geisweiller.
+
+[miner2]  (= ngeiswei/miner; Nil Geisweiller's personal fork)
+  remote: https://github.com/ngeiswei/miner.git
+  branch: master  HEAD: 339cc494e
+  last:   2025-06-17 07:54:10 +0300  Merge pull request #68 from ngeiswei/add-proof-comment
+  Activity: ACTIVE 2025-06. Adds proof-comment annotation work.
+
+[miner-leungmanhin]
+  remote: https://github.com/leungmanhin/miner.git
+  branch: master  HEAD: 9b3e7cfd9
+  last:   2022-04-07  STALE (4 years old).
+
+[miner-singnet]
+  remote: https://github.com/singnet/miner.git
+  branch: master  HEAD: 67971716a
+  last:   2021-08-12  STALE (5 years old).
+
+[pattern-index]  (singnet repo — different paradigm)
+  remote: https://github.com/singnet/pattern-index.git
+  branch: master  HEAD: a72459e
+  last:   2020-07-24  STALE.
+  Notes: Likely the "Pattern Inverted Index" referenced in DAS docs;
+         pattern indexing rather than pattern mining.
+
+Classic perception substrate (mostly stale):
+
+[destin]
+  remote: https://github.com/opencog/destin.git
+  branch: master  HEAD: fed2306
+  last:   2016-09-10  FROZEN since 2016.
+  Notes: Canonical opencog/destin. The 2013 paper actually cited a different
+         repo: github.com/tpsjr7/destin_ted_temp (Ted Sanders' temp branch).
+         tpsjr7/destin_ted_temp is NOT in local reference tree.
+
+[semantic-vision]
+  remote: https://github.com/opencog/semantic-vision.git
+  branch: master  HEAD: 1c672c2
+  last:   2017-10-31  FROZEN.
+
+[vision]
+  remote: https://github.com/opencog/vision.git
+  branch: main  HEAD: dbaf2fe
+  last:   2025-06-10  RECENTLY ACTIVE (surprising).
+  Notes: Worth investigating in S3 — what was added in 2025?
+
+[perception_synthesizer]
+  remote: https://github.com/hansonrobotics/perception_synthesizer.git
+  branch: master  HEAD: f471418
+  last:   2014-05-27  FROZEN. Hanson era.
+
+[ros_vision_controller]
+  remote: https://github.com/hansonrobotics/ros_vision_controller.git
+  branch: master  HEAD: 5dbaf5d
+  last:   2014-06-12  FROZEN. Hanson era.
+
+Classic monorepo (for FISHGRAM lookup; cross-cluster baseline):
+
+[opencog-singnet]  (= singnet/opencog fork of pre-split monorepo)
+  remote: https://github.com/singnet/opencog.git
+  branch: master  HEAD: 68d0e5531
+  Pinned baseline used by ECAN S4 + OpenPsi S1: b31c7e3 (2019-09-04).
+  Source 2 will use b31c7e3 for consistency baseline.
+
+
+§B. KEY FINDINGS FROM SURVEY (worth flagging in S3 brief)
+---------------------------------------------------------
+
+B1. THREE active divergent Hyperon-era miner-family lineages (Codex's
+    "split to 5 if survey finds two real active families" trigger):
+    (i)  hyperon-miner trio (trueagi-io / iCog-Labs-Dev / zariuq) — MeTTa
+         port of pattern-mining. Bidirectional fork-divergence rule applies
+         (per memory feedback_bidirectional_fork_divergence.md).
+    (ii) opencog/miner + ngeiswei/miner — Classic Scheme/C++ PatternMiner
+         still active in 2025. Same naming-collision pattern that triggered
+         the "miner-singnet"/"miner-leungmanhin" suffix convention.
+    (iii) rejuve-bio/neural-subgraph-matcher-miner — DIFFERENT paradigm
+         (neural subgraph matching, not frequent-pattern mining).
+    Recommendation for orchestrator: split S3 into S3a (Classical+Hyperon
+    symbolic miner family) + S3b (neural-subgraph-matcher-miner) becomes
+    a 5-source cluster, OR keep S3 unified with internal Q3a/Q3b split.
+    DECIDE WITH USER + REVIEWERS.
+
+B2. FISHGRAM is NOT a Hyperon-era inheritance. fishgram-pickaxe = 0 in
+    all hyperon-miner-family repos and in neural-subgraph-matcher-miner.
+    The 19 fishgram pickaxe hits in opencog/miner + ngeiswei/miner are
+    references in commit messages from when the miner repo was extracted
+    from the pre-split monorepo, NOT actual fishgram code in those repos.
+
+B3. opencog/miner + ngeiswei/miner are STILL ACTIVE in 2025 — surprising
+    given that the 2019-09-06 AttentionBank removal (commit 318c0b4cb in
+    opencog-singnet) supposedly cleared out the Classic ecosystem. The
+    miner is operating on AtomSpace independent of AttentionBank/ECAN.
+    This is consistent with the ECAN cluster pilot finding that the
+    AttentionBank consumers were narrow (Ghost, NLP fuzzy, Python web API,
+    OpenPsi) and the AtomSpace itself remained productive.
+
+B4. opencog/vision was active in 2025-06. Last commit "Add working python
+    example" — needs investigation in S3.
+
+B5. iCog-Labs-Dev/hyperon-miner has 127+ merged PRs (vs 10 at
+    trueagi-io/hyperon-miner). Active development moved to iCog-Labs-Dev.
+    The trueagi-io repo may be the upstream-canonical-but-stale pattern,
+    similar to opencog/openpsi vs iCog-Labs-Dev/hyperon-openpsi observed
+    in OpenPsi cluster pilot.
+
+B6. The DeSTIN code referenced by the 2013 paper at footnote 3 is
+    `tpsjr7/destin_ted_temp`, NOT `opencog/destin`. This is "Ted Sanders'
+    temp branch" — likely a pre-merge fork. Not in the local reference
+    tree. May still exist on GitHub at github.com/tpsjr7/destin_ted_temp.
+    S2 should attempt to retrieve or document it as missing.
+
+
+§C. NOT FOUND IN LOCAL TREE (gaps)
+----------------------------------
+
+- `tpsjr7/destin_ted_temp` (Ted Sanders DeSTIN branch cited in 2013 paper)
+- Any direct Hyperon-era DeSTIN successor (no `metta-destin`, `hyperon-destin`,
+  `destin-mc`, etc.)
+- Any LLM-mediated perception adapter under `hyperon-experimental/lib/src/
+  metta/runner/builtin_mods/` that I have searched. (Worth verifying in S4.)
+
+
+§D. REPOS TO PIN IN SOURCE BRIEFS
+---------------------------------
+
+S2 (Classic FISHGRAM):
+  - opencog-singnet @ b31c7e3 (consistency with ECAN/OpenPsi baseline)
+    Audit surface: opencog/python/{,attic/}learning/fishgram/
+                   tests/python/old/test_fishgram.py
+  - opencog/miner @ 444eb6474 (current Classic Scheme PatternMiner — for
+    "did the C++/Scheme line absorb FISHGRAM concepts?" question)
+
+S3 (Hyperon-era pattern-mining):
+  - hyperon-miner @ b5d8bcd (trueagi-io upstream)
+  - hyperon-miner-2 @ 51963a7 (iCog-Labs-Dev, active fork)
+  - hyperon-miner-zariuq @ 1ad4820 (zariuq fork)
+  - neural-subgraph-matcher-miner @ cfc23f8 (rejuve-bio, distinct paradigm)
+  - opencog/vision @ dbaf2fe (recently-active, surprising)
+  - opencog/miner @ 444eb6474 (still-active Classic; bridge to S2)
+
+S4 (perception-output consumers/adapters):
+  - hyperon-experimental @ HEAD (LLM-mediated perception, neural-Atom adapters)
+  - DAS @ HEAD (does AtomDB ingest perceptual streams?)
+  - cross-references to PLN cluster (No-Go theorem applicability), ECAN
+    cluster (executable-coupling lifecycle), AtomSpace cluster (Phase 3
+    READONLY-ATOMSPACE-BRIDGE constraint).
+
+
+§E. PER GEMINI: VERIFY UPSTREAM SHAS BEFORE PINNING
+---------------------------------------------------
+
+"For Source 2 (OpenCog Classic baseline) and any 'Tradition 1' production
+repos in Source 3, you should pull-fresh or verify the current main-branch
+SHAs against the upstream singnet and trueagi-io organizations to ensure we
+aren't auditing stale or modified local work."
+
+Action: orchestrator runs `git fetch origin` + `git log origin/master..HEAD`
+on each pinned repo before S2/S3 brief publication. Drift = finding, not
+bug. Record in brief addendum if any local clone is ahead-of-or-different-from
+upstream.
+
+
+================================================================================
+END OF SOURCE 3 PRE-EXTRACTION SURVEY
+================================================================================

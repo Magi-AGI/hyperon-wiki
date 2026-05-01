@@ -1,0 +1,465 @@
+================================================================================
+PERCEPTION / NEURAL-SYMBOLIC CLUSTER PILOT
+SOURCE 3 BRIEF — Hyperon-era SYMBOLIC pattern-mining trio + opencog/miner
+                  cross-link (S2 baseline)
+================================================================================
+
+§0. SOURCE IDENTITY
+-------------------
+Cluster pilot:    Perception / Neural-Symbolic
+Source number:    3 of 5
+Source name:      Hyperon-era SYMBOLIC pattern-mining family audit
+                  (hyperon-miner trio: trueagi-io / iCog-Labs-Dev /
+                  zariuq) + cross-link to opencog/miner (S2 baseline)
+Pilot brief date: 2026-04-30
+Orchestrator:     Claude Opus 4.7 (1M)
+Reviewers:        Codex + Gemini (cross-model triangulation)
+
+S3 SCOPE BOUNDARY (Codex constraint, locked):
+  S3 is STRICTLY SYMBOLIC. Do NOT pull into S3:
+    - rejuve-bio/neural-subgraph-matcher-miner (S4 territory, neural)
+    - opencog/vision (S4 territory, perception)
+    - opencog/destin (S4 territory, perception)
+    - hansonrobotics/perception_synthesizer (S4 territory)
+    - any LLM-mediated perception adapter (S4 territory)
+  opencog/miner @ 444eb6474 is the S2 BASELINE for comparison only,
+  not a full S3 source. S3 audits the trio AGAINST opencog/miner;
+  do not re-audit opencog/miner itself.
+
+Audited surfaces:
+
+SURFACE A: trueagi-io/hyperon-miner @ b5d8bcdd9f2d69e0096738df0aef8ef8a19c69c4
+  Branch: master. Status: STALE-UPSTREAM (903 commits behind active
+  development at iCog-Labs-Dev — orchestrator-pre-verified, see §4).
+
+SURFACE B: iCog-Labs-Dev/hyperon-miner @ 51963a7c7095eb26551e2e233b0cb696bd6c93b9
+  Branch: experiments-local-changes. Status: ACTIVE DEVELOPMENT.
+  This is the operative fork.
+
+SURFACE C: zariuq/hyperon-miner @ 1ad48205c6c7a3f20c5482d7c114caa2c6bd4b32
+  Branch: master. Status: TRACKS iCog-Labs-Dev (+1 merge commit:
+  "Merge pull request #124 from iCog-Labs-Dev/experiments"). Effectively
+  same content as iCog (orchestrator-pre-verified, see §4).
+
+CROSS-LINK: opencog/miner @ 444eb6474c304775c457410592fa47a51455e36c
+  S2 baseline; the hyperon-miner trio is the MeTTa port target.
+
+
+§1. SCOPE AND DELIVERABLE
+-------------------------
+
+S3 deliverable: findings_codex.txt + findings_gemini.txt addressing
+the S3.Q* questions in §5 below.
+
+Critical constraints:
+
+C1. STRICTLY SYMBOLIC PATTERN-MINING. See §0 boundary list.
+
+C2. CARRY-FORWARD CF1.3 (FROM S1) + CF2.1 (FROM S2): the hyperon-miner
+    trio is downstream of opencog/miner, NOT of opencog/python/learning/
+    fishgram. S3 audits hyperon-miner-* against opencog/miner for
+    absorption/divergence, NOT against fishgram.py. The clean-break
+    from FISHGRAM was already established (S1.R1.6 + S2.R2.5).
+    Reviewers verify that fishgram lineage is NOT inherited (zero
+    pickaxe), but the operative comparison is against opencog/miner.
+
+C3. CARRY-FORWARD CF2.2 (FROM S2): the three-level Yun Chi paper
+    distinction must be preserved. If hyperon-miner cites Chi 2005,
+    determine WHICH Chi 2005 paper (TKDE algorithm vs Survey/Overview)
+    and at what level (paper-faithful-recovery vs algorithm-family
+    inspiration vs Atomese adaptation).
+
+C4. CARRY-FORWARD CF2.5 (FROM S2): Gemini line-citation drift
+    methodology lock applies. Reviewers default to Codex + orchestrator
+    git verification on line-number disputes.
+
+C5. BIDIRECTIONAL FORK-DIVERGENCE RULE: apply per-pair (a-vs-b,
+    a-vs-c, b-vs-c) using `git log A..B` AND `git log B..A` AND
+    `git diff A..B --shortstat`. Pre-resolved by orchestrator in §4.
+
+C6. METTA-SPECIFIC API LAYER: hyperon-miner is MeTTa, not C++/Scheme.
+    The "OpenCog audits cover BOTH C++ and Scheme/MeTTa API layers"
+    rule from prior clusters becomes "cover BOTH .metta and any
+    Python/Rust/JS runners + tests + docs" for this source. Required
+    grep targets in §6.
+
+C7. NO WIKI EDITS. S3 is extraction only.
+
+
+§2. ARTIFACTS TO READ
+---------------------
+
+PRIMARY (must read for the active fork — iCog-Labs-Dev):
+  E:\GitHub\hyperon reference\hyperon-miner-2 (= iCog-Labs-Dev/
+  hyperon-miner @ 51963a7, branch experiments-local-changes)
+
+  Top-level structure (orchestrator-pre-verified):
+    AGENTS.md, CLAUDE.md, GEMINI.md  — model-specific orientation docs
+    LICENCE                            — license
+    README.md                          — project description (see §3)
+    data/                              — input data
+    dependent-types/                   — Lean/DTL formalization layer
+                                         (e.g., MinerCurriedDTLTest.metta,
+                                          MinerDTL.metta)
+    experiments/                       — experimental subprojects
+                                         (incl. frequent-pattern-miner/)
+    match/                             — matching subsystem
+    prolog/                            — Prolog-side artifacts
+    requirements.txt                   — Python deps
+    scripts/                           — runner scripts
+    utils/                             — utility modules
+
+CROSS-LINK (must read for S3.Q comparisons):
+  E:\GitHub\hyperon reference\hyperon-miner   (trueagi-io upstream,
+  master HEAD b5d8bcd; for upstream-vs-active comparison)
+
+  E:\GitHub\hyperon reference\hyperon-miner-zariuq  (zariuq fork,
+  master HEAD 1ad4820; for tracking-relation confirmation)
+
+  E:\GitHub\hyperon reference\miner  (opencog/miner @ 444eb6474;
+  S2 baseline for absorption/divergence claims)
+
+REFERENCE FROM PRIOR SOURCES (do not re-audit):
+  scripts/archive/perception_pilot/source1_fishgram_paper/
+    findings_reconciled_crossmodel.txt       (S1 closed; CF1.1-1.5)
+  scripts/archive/perception_pilot/source2_classic_fishgram_miner/
+    findings_reconciled_crossmodel.txt       (S2 closed; CF2.1-2.6)
+
+
+§3. ORCHESTRATOR-PRE-POPULATED FINDINGS (verify, do not relitigate)
+-------------------------------------------------------------------
+
+P3.1 — README.md:5,7 of iCog-Labs-Dev/hyperon-miner explicitly states
+  goal: "The goal of this project is to port the classic Pattern Miner
+  to Hyperon using MeTTa, the language of OpenCog Hyperon. Pattern
+  Miner is used to identify not only frequent patterns but also
+  interesting or surprising patterns in the large hypergraph space
+  (Atomspace). ... For this current phase, we are directly porting
+  from the classic implementation, following the same flow, algorithms,
+  and structure. However, the actual implementation adheres to
+  Hyperon concepts and leverages MeTTa's capabilities for reasoning
+  and pattern manipulation."
+
+  This is a PROJECT-DECLARED [METTA-PORT-OF-MINER] verdict — locks the
+  framing for S3.Q7. Reviewers verify against the README; the verdict
+  comes from the project itself, not interpretation.
+
+P3.2 — README.md:13-23 describes the algorithmic flow:
+  "**To Mine Frequent Patterns:**
+   - Mine Abstract Patterns: Query link nodes, form abstract patterns
+     with variables, and filter by minimum support.
+   - Specialize Patterns: Break abstract patterns into triplets, apply
+     valuations (including nested expressions), and build
+     specializations.
+   - Select Candidate Patterns: Evaluate support for specialized
+     patterns and keep those meeting the support threshold.
+   - Expand via Conjunction: Combine candidate patterns through
+     variable mapping, remove redundancy, and normalize structure."
+
+  This terminology directly mirrors opencog/miner concepts (minimum
+  support, candidate patterns, conjunction expansion). Confirms the
+  port relationship.
+
+P3.3 — README.md:26 — Surprisingness phase is staged but unintegrated
+  as of HEAD: "After having frequent patterns, they will be processed
+  by the surprisingness scoring part. For now, we haven't integrated
+  the frequent miner with the surprisingness part, but both phases
+  can be run independently to see their results."
+
+  This is a [PARTIAL-PORT] caveat: frequent-pattern phase ported, but
+  full integration with surprisingness phase pending.
+
+P3.4 — Dependent-types subdirectory at hyperon-miner-2/dependent-types/
+  contains MinerDTL.metta + MinerCurriedDTLTest.metta. Possible
+  cross-link to PLN cluster pilot Source 11 (xiPLN dependent-type
+  formalization, Lean/Mettapedia). S3.Q11 surfaces this question.
+
+P3.5 — Zero fishgram inheritance in any trio member. Orchestrator
+  pre-verified:
+    git -C hyperon-miner    grep -i 'fishgram'  →  0 hits at HEAD
+    git -C hyperon-miner-2  grep -i 'fishgram'  →  0 hits at HEAD
+    git -C hyperon-miner-zariuq grep -i 'fishgram' → 0 hits at HEAD
+    git -C <each> log --all -i -S 'fishgram'  →  0 commits
+  Confirms CF1.3 + CF2.1 carry-forward: clean break from FISHGRAM
+  Python lineage. Reviewers verify; do not relitigate.
+
+
+§4. ORCHESTRATOR-PRE-RESOLVED FORK MAPPING
+-------------------------------------------
+
+Pre-verified by orchestrator 2026-04-30 via `git remote add` +
+`git fetch` + bidirectional `git rev-list --count`:
+
+§4.A Pairwise divergence (a=trueagi-io upstream, b=iCog-Labs-Dev
+     experiments-local-changes, c=zariuq master):
+
+  a-vs-b: merge-base = b5d8bcdd (= a HEAD)
+          a ahead of merge-base: 0
+          b ahead of merge-base: 903
+          ⇒ b is [STRICT-FORK-AHEAD] of a by 903 commits.
+
+  a-vs-c: merge-base = b5d8bcdd (= a HEAD)
+          a ahead of merge-base: 0
+          c ahead of merge-base: 904
+          ⇒ c is [STRICT-FORK-AHEAD] of a by 904 commits.
+
+  b-vs-c: merge-base = 51963a7c (= b HEAD)
+          b ahead of merge-base: 0
+          c ahead of merge-base: 1
+          ⇒ c is [STRICT-FORK-AHEAD] of b by exactly 1 commit.
+
+§4.B Lineage interpretation:
+  trueagi-io  (a, master, b5d8bcd, last 2025-01-30)
+        ↓  (903 commits of active development on iCog's branch)
+  iCog-Labs-Dev (b, experiments-local-changes, 51963a7, last 2025-11-10)
+        ↓  (1 merge commit: "Merge pull request #124 from
+            iCog-Labs-Dev/experiments")
+  zariuq      (c, master, 1ad4820, last 2025-11-10)
+
+  - trueagi-io is the STALE-UPSTREAM (likely the original fork from
+    opencog/miner; behind active development by ~10 months and 903
+    commits).
+  - iCog-Labs-Dev is the ACTIVE-DEVELOPMENT line.
+  - zariuq tracks iCog-Labs-Dev with effectively zero personal divergence
+    (one merge-PR commit). For semantic-claim purposes, zariuq ≈ iCog
+    at the audit snapshot.
+
+§4.C Operational implication for S3.Q-set:
+  - The "active operative fork" is iCog-Labs-Dev.
+  - For absorption/divergence claims about hyperon-miner-as-a-tradition,
+    audit iCog-Labs-Dev as the canonical state.
+  - For trueagi-io-vs-iCog claims, treat trueagi-io as a frozen
+    earlier-snapshot of the same line, NOT as a divergent tradition
+    (memory: feedback_bidirectional_fork_divergence — staleness
+    corollary).
+  - For zariuq-specific Zarathustra-Goertzel-authorship claims,
+    inspect zariuq's 1-commit ahead — confirmed orchestrator-side as
+    just a PR-merge.
+
+
+§5. SPECIFIC QUESTIONS (S3.Q1 ... S3.Q12)
+------------------------------------------
+
+S3.Q1 — Verify P3.1, P3.2, P3.3 against iCog-Labs-Dev README.md.
+        Anchor verification: P3.1 cites README.md:5,7; P3.2 cites
+        README.md:13-23; P3.3 cites README.md:26. Cite line numbers
+        (per CF2.5, Codex/orchestrator default; Gemini cross-checks).
+        Flag any deviation as a candidate V3-X.
+
+S3.Q2 — Verify P3.5 (zero fishgram inheritance). Run pickaxe on each
+        trio member: `git log --all -i -S 'fishgram'`. Independently
+        confirm zero hits. If ANY hit found, document and reframe.
+
+S3.Q3 — Verify §4 pairwise fork mapping. Run independently:
+          git rev-list --count <X>..<Y>
+        for the three pairs. Confirm orchestrator's counts (903 / 904
+        / 1) and the merge-base claims. Flag drift.
+
+S3.Q4 — opencog/miner ABSORPTION CHECK (CF2.1, CF2.5). Apply CF2.2
+        three-level Chi paper distinction:
+        (a) Does iCog-Labs-Dev/hyperon-miner cite a specific Yun Chi
+            paper? Which one (TKDE algorithm or Survey/Overview)?
+            File:line citations. NOTE: "no specific Chi citation in
+            Hyperon miner" is a VALID result — Codex pre-check
+            indicates the active hyperon-miner appears to have no Yun
+            Chi / Frequent Subtree hits, so absence-of-citation is the
+            expected outcome. Reviewers report citation status either
+            way (negative result is fine).
+        (b) Does it implement opencog/miner's algorithm flow (mine
+            abstract → specialize → select candidates → expand
+            conjunction) in MeTTa? Map specific MeTTa file:line
+            equivalents to opencog/miner C++/Scheme equivalents.
+        (c) Does it inherit specific opencog/miner data structures
+            and primitives — Pattern / MinerParameters / support
+            memoization / subsampling or bootstrapped empirical-
+            probability structures? File:line evidence either way.
+
+S3.Q5 — Required pickaxes/greps in iCog-Labs-Dev/hyperon-miner @ HEAD
+        (Codex token list):
+          fishgram | sushigram | Yun Chi | Frequent Subtree |
+          cog-mine | PatternMiner | MinerUtils | shallow | support |
+          subtree | hypergraph | Atomese | MeTTa
+        For each token: report hit count + file:line for first 3
+        hits. Helps locate algorithm-pattern, terminology, and any
+        residual Classic-OpenCog reference.
+
+S3.Q6 — METTA API SURFACE inspection. SCOPE GUARD: the active fork
+        contains 105 .metta files in total (Codex pre-check). Do NOT
+        produce a full per-file inventory.
+        Required:
+          - Total inventory count of .metta files in iCog-Labs-Dev
+            HEAD (verify the 105 figure).
+          - Identify the CANONICAL MINING SURFACE: the small set of
+            .metta files that constitute the actual pattern-mining
+            algorithm pipeline (mine abstract → specialize → select
+            → expand → surprisingness). Flag the canonical-surface
+            files explicitly.
+          - For EACH CANONICAL-SURFACE .metta file (only):
+              - File path + line count
+              - Declared imports (MeTTa `import!` etc.)
+              - Top-level functions/operators defined
+              - Test coverage at tests/ or experiments/
+          - For the remaining ~95-100 .metta files, summarize by
+            directory (e.g., "experiments/X — N files, purpose Y";
+            "dependent-types/ — M files, purpose Z"). Do not enumerate
+            individually.
+
+S3.Q7 — Apply primary verdict to iCog-Labs-Dev/hyperon-miner: one of
+        [METTA-PORT-OF-MINER] / [CONCEPTUAL-ABSORPTION-FROM-MINER] /
+        [CLEAN-SHEET-METTA] / [PARTIAL-PORT-WITH-EXTENSIONS]
+        (specify what's been ported and what's outstanding).
+        Justify with cite to README + algorithm-flow evidence.
+
+S3.Q8 — Apply secondary verdict on FISHGRAM lineage:
+        [FISHGRAM-CLEAN-BREAK] / [PARTIAL-FISHGRAM-INHERITANCE]
+        (with specific file:line evidence either way).
+        Default expectation: [FISHGRAM-CLEAN-BREAK] per CF1.3 +
+        CF2.1, but reviewers verify.
+
+S3.Q9 — Apply trio-divergence verdicts (per §4):
+        - trueagi-io vs iCog-Labs-Dev: [FORK-AHEAD] (which side
+          ahead?) / [FORK-BEHIND] / [BIDIRECTIONAL-DIVERGENCE]
+        - zariuq vs iCog-Labs-Dev: same vocabulary
+        - zariuq's 1-commit-ahead content: report commit message,
+          author, date, file changes
+        Confirm orchestrator §4 conclusions.
+
+S3.Q10 — AUTHORSHIP analysis on iCog-Labs-Dev/hyperon-miner. Top 5
+         contributors per `git shortlog -sn HEAD`. Are there any
+         opencog/miner authors (Nil Geisweiller, Linas Vepstas, Kasim)
+         visible? Are there any FISHGRAM Python authors (Jared Wigmore,
+         Keyvan Mir Mohammad Sadeghi, Jade O'Neill) visible? Map
+         contributor identities.
+
+S3.Q11 — DEPENDENT-TYPES CROSS-LINK. The dependent-types/ subdirectory
+         contains MinerDTL.metta + MinerCurriedDTLTest.metta. Two
+         questions:
+         (a) Does this connect to PLN cluster pilot Source 11's xiPLN
+             / Lean / Mettapedia work (Zarathustra Goertzel + "Oruži")?
+             Check authorship of dependent-types/ files; check imports.
+         (b) Is dependent-types/ a separate research thread within
+             hyperon-miner, or integrated with the main mining pipeline?
+
+S3.Q12 — Final verdict labels combining S3.Q7, S3.Q8, S3.Q9:
+         Format:
+           "iCog-Labs-Dev/hyperon-miner: [primary-verdict] /
+           [fishgram-lineage] / [partial-port-status]"
+         For trueagi-io: include staleness verdict.
+         For zariuq: include tracking verdict.
+
+
+§6. VERDICT VOCABULARY (Codex-locked)
+--------------------------------------
+
+Primary (S3.Q7):
+  [METTA-PORT-OF-MINER]              MeTTa implementation directly
+                                      ports opencog/miner concepts,
+                                      structure, terminology
+  [CONCEPTUAL-ABSORPTION-FROM-MINER] Inherits some opencog/miner
+                                      concepts but with substantial
+                                      reframing
+  [CLEAN-SHEET-METTA]                 MeTTa pattern miner with no
+                                      inheritance from opencog/miner
+  [PARTIAL-PORT-WITH-EXTENSIONS]      Port with significant
+                                      project-original extensions
+                                      (e.g., dependent-types layer)
+
+FISHGRAM lineage (S3.Q8):
+  [FISHGRAM-CLEAN-BREAK]              Zero fishgram pickaxe / current
+                                      file hits. Default expectation.
+  [PARTIAL-FISHGRAM-INHERITANCE]      Some inheritance found
+                                      (specify file:line)
+
+Fork divergence (S3.Q9):
+  [FORK-AHEAD]                        Strictly ahead of comparison
+                                      target
+  [FORK-BEHIND]                       Strictly behind (= staleness)
+  [BIDIRECTIONAL-DIVERGENCE]          Both sides have unique commits
+
+Combinations (S3.Q12, examples):
+  "iCog-Labs-Dev: [METTA-PORT-OF-MINER] / [FISHGRAM-CLEAN-BREAK] /
+   [PARTIAL-PORT-WITH-EXTENSIONS] (frequent-pattern-miner ported;
+   surprisingness-integration pending)"
+  "trueagi-io: [STALE-UPSTREAM] / 903 commits behind iCog active
+   development"
+  "zariuq: [TRACKS-iCog +1] / merge-PR-only divergence"
+
+
+§7. CROSS-SOURCE FORWARDS (locked findings — for S4-S5 reviewers)
+-----------------------------------------------------------------
+
+CF3.1 (locked for S4): If S3 confirms [METTA-PORT-OF-MINER] for the
+      symbolic-trio, S4's audit of the neural/perception family
+      (rejuve-bio/neural-subgraph-matcher-miner + opencog/vision +
+      DeSTIN successors) is a paradigm-distinct lineage — NOT a
+      different MeTTa port of opencog/miner. S4 must NOT collapse the
+      symbolic and neural lineages.
+
+CF3.2 (locked for S4): If S3 confirms [PARTIAL-PORT-WITH-EXTENSIONS]
+      with a dependent-types layer (S3.Q11), S4 should check whether
+      the neural lineage has any analogous formalization layer or is
+      strictly empirical/ML.
+
+CF3.3 (locked for S5): The hyperon-miner trio is a query/inference
+      tool over AtomSpace, not a perception-input pipeline. S5's
+      perception-output boundary check should NOT find a perception-
+      to-hyperon-miner pathway in current Hyperon code (consistent
+      with CF2.4 "no executable bridge" finding from S2 for Classic
+      OpenCog era). Whether such a pathway exists in any current
+      Hyperon code is the open S5 question.
+
+CF3.4 (cluster-narrative carry-forward): If S3 closes with
+      [METTA-PORT-OF-MINER] verdict, this is consistent with the
+      "Tradition 1: Production Local-Rule PLN" + "Tradition 2:
+      Historical OpenCog" pattern from PLN cluster (CLAUDE.md
+      five-tradition map). Hyperon-miner is a Tradition 1.5: faithful
+      MeTTa port of OpenCog Classic substrate. S5 cluster-close edits
+      should integrate this into the existing tradition map, not
+      invent a new tradition.
+
+
+§8. OUTPUT EXPECTATIONS
+-----------------------
+
+Reviewers produce plain-text findings:
+  scripts/archive/perception_pilot/source3_hyperon_symbolic_miner/
+    findings_codex.txt
+    findings_gemini.txt
+
+Format: question-by-question. file:line citations for code claims;
+SHA refs for git claims. Verdict labels from §6.
+V3-X dissent records where reviewer disagrees with another model or
+with orchestrator §3-§4 pre-resolution.
+
+Brief sign-off expected from BOTH reviewers BEFORE extraction begins.
+Reviewers can flag brief errors at sign-off time.
+
+Special CF2.5 reminder for Gemini: prioritize narrower file ranges
+when citing line numbers; default to ground-truth verification before
+asserting specific line numbers.
+
+
+§9. METHODOLOGY REMINDERS (apply rigorously)
+--------------------------------------------
+
+- Pickaxe before "never used" / "never implemented" claims:
+    git log --all -S '<token>'
+- MeTTa-equivalent of OpenCog C++/Scheme audits: cover .metta files +
+  Python/Rust/JS runners + tests + docs (Codex C6).
+- Caller-analysis must be time-indexed (snapshot SHA).
+- Bidirectional fork-divergence + staleness corollary
+  (memory: feedback_bidirectional_fork_divergence). Pre-applied in
+  §4 — reviewers verify.
+- Verify "identity-between-artifacts" claims against source
+  (Gemini drift on identity assertions per V1-2 + V2-2 precedents).
+- CF2.5 line-citation methodology: default to Codex + orchestrator
+  for line numbers; Gemini's high-level claims valuable but
+  cross-checked.
+- Don't collapse paper-vs-code distinctions:
+  "uses Yun Chi's algorithm" ≠ "ports opencog/miner" ≠ "continues
+  FISHGRAM."
+
+
+================================================================================
+END OF SOURCE 3 BRIEF
+================================================================================

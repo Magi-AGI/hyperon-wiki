@@ -1,0 +1,463 @@
+================================================================================
+PERCEPTION / NEURAL-SYMBOLIC CLUSTER PILOT
+SOURCE 3 — Hyperon-era SYMBOLIC pattern-mining family audit
+            (hyperon-miner trio + opencog/miner cross-link)
+CROSS-MODEL RECONCILIATION
+================================================================================
+
+Reconciliation date: 2026-04-30
+Orchestrator:        Claude Opus 4.7 (1M)
+Reviewers:           Codex + Gemini (cross-model triangulation)
+
+Audit snapshots:
+- Surface A: trueagi-io/hyperon-miner          @ b5d8bcdd9f2d69e0096738df0aef8ef8a19c69c4 (master, last 2025-01-30)
+- Surface B: iCog-Labs-Dev/hyperon-miner       @ 51963a7c7095eb26551e2e233b0cb696bd6c93b9 (experiments-local-changes, last 2025-11-10)
+- Surface C: zariuq/hyperon-miner              @ 1ad48205c6c7a3f20c5482d7c114caa2c6bd4b32 (master, last 2025-11-10)
+- Cross-link baseline: opencog/miner            @ 444eb6474c304775c457410592fa47a51455e36c (S2 baseline)
+
+Inputs:
+- findings_codex.txt
+- findings_gemini.txt
+- Pre-extraction brief: scripts/archive/perception_pilot/source3_hyperon_symbolic_miner_brief.txt
+
+================================================================================
+§A. CROSS-MODEL CONSENSUS (R3.x)
+================================================================================
+
+R3.1 — README declarations verified (S3.Q1).
+       Both reviewers verified P3.1 (README.md:5,7), P3.2 (README.md:13-23),
+       and P3.3 (README.md:26) against iCog-Labs-Dev/hyperon-miner @ 51963a7
+       README.md. Verdict-locking line for [METTA-PORT-OF-MINER]:
+         README.md:5,7: "The goal of this project is to port the classic
+         Pattern Miner to Hyperon using MeTTa, the language of OpenCog
+         Hyperon. ... For this current phase, we are directly porting from
+         the classic implementation, following the same flow, algorithms,
+         and structure."
+       Pre-extraction anchors held under CF2.5 verification.
+
+R3.2 — Zero FISHGRAM inheritance across the trio (S3.Q2, S3.Q8).
+       Both reviewers independently verified:
+         git log --all -i -S 'fishgram'   → 0 commits in all three repos
+         git log --all -i -S 'sushigram'  → 0 commits in all three repos
+         grep -ri 'fishgram'              → 0 hits in active code
+                                            (Gemini: only Git hook sample)
+       Verdict locked: [FISHGRAM-CLEAN-BREAK] for all three trio members.
+       This is the consensus closure of CF1.3 (S1) + CF2.1 (S2) carry-forward
+       at the Hyperon-era symbolic-mining layer.
+
+R3.3 — Pairwise fork mapping verified (S3.Q3, S3.Q9).
+       Both reviewers reproduced orchestrator's §4 counts:
+         a-vs-b: a=0, b=903 commits ahead → b is [STRICT-FORK-AHEAD] of a
+         a-vs-c: a=0, c=904 commits ahead → c is [STRICT-FORK-AHEAD] of a
+         b-vs-c: b=0, c=1 commit ahead    → c is [STRICT-FORK-AHEAD] of b
+       Merge-bases: b5d8bcdd (a/b and a/c), 51963a7c (b/c). All confirmed.
+       (See V3-2 for refinement of the b-vs-c content interpretation.)
+
+R3.4 — No direct Yun Chi citation in any trio member (S3.Q4a).
+       Both reviewers found ZERO hits for "Yun Chi", "2005", "TKDE",
+       "Frequent Subtree" in any hyperon-miner repo. Codex's pre-check
+       (negative-result allowance) verified.
+       Implication: The trio is a MeTTa port of opencog/miner, not a
+       direct paper-citation port of Chi 2005. The Chi-citation chain
+       is broken at the opencog/miner → hyperon-miner transition (Chi was
+       cited in opencog/miner README.md:731 + Miner.h:42 per S2 resolved
+       citations; not carried into the MeTTa port). CF2.2 three-level
+       distinction holds per: hyperon-miner = MeTTa port of opencog/miner
+       (one-step absorption from a library that itself cited Chi 2005).
+
+R3.5 — Algorithmic flow inheritance verified (S3.Q4b).
+       Both reviewers map the README flow to MeTTa file:line equivalents:
+         abstract-pattern    →  frequent-pattern-miner.metta:19-29
+                                (NOT a separate "abstract-patterns.metta"
+                                file — see V3-4)
+         pipeline orchestrator → frequent-pattern-miner.metta:45-55
+         specialization      →  build-specialization.metta:48-72
+         candidate filter    →  candidate-patterns.metta:36-48
+         conjunction expand  →  conjunction-expansion.metta:317-390
+       opencog/miner correspondences (Codex):
+         MinerParameters/support threshold → opencog/miner/Miner.h:40-59
+         recursive specialization/support  → Miner.cc:79-97,170-225
+         Scheme cog-mine                   → scm/miner/miner-utils.scm:584-665
+       Verdict for the algorithmic-flow map: [METTA-PORT-OF-MINER]
+       confirmed at the file-level.
+
+R3.6 — Data-structure inheritance: Pattern + min-support primitives,
+       reimplemented in MeTTa (S3.Q4c).
+       Codex's Q4(c) framing (Pattern / MinerParameters / support memoization /
+       subsampling or bootstrapped empirical-probability) verified.
+       Gemini's framing: "Inherits min-support (README L16,
+       frequent-pattern-miner.metta:12) and Pattern terminology, but
+       reimplements them as MeTTa Atoms."
+       Both consistent. Empirical-probability surface inherited via
+       freq-pat/main.py + emp-tv-bs/main.py (Codex Q6) — the bootstrapped/
+       subsample primitives are present in Python helpers, not MeTTa-only.
+
+R3.7 — MeTTa API surface (S3.Q6).
+       Active iCog repo total .metta count: 105 (both reviewers confirmed).
+       Canonical mining surface (Codex: 5 files; Gemini: 3 files —
+       reconciled set of 5 below):
+         experiments/pattern-miner/pattern-miner.metta            71 lines
+         experiments/frequent-pattern-miner/frequent-pattern-miner.metta  59 lines
+         experiments/frequent-pattern-miner/build-specialization.metta    75 lines
+         experiments/frequent-pattern-miner/candidate-patterns.metta      48 lines
+         experiments/frequent-pattern-miner/conjunction-expansion.metta  391 lines
+       Optional scoring surface: surprisingness/{isurp-old,isurp,jsd}.metta;
+       truth-values/{emp-tv,est-tv}.metta; Python atoms freq-pat/main.py:185-203,
+       conj-exp/main.py:110-121, emp-tv-bs/main.py:147-159 (Codex).
+       Remaining ~95-100 .metta files: data/, dependent-types/, match/,
+       prolog-side, tests, validation, utils — summarized by directory per
+       brief §S3.Q6 scope guard.
+
+R3.8 — Primary verdict for the operative fork (S3.Q7, S3.Q12).
+       Both reviewers concur:
+         iCog-Labs-Dev/hyperon-miner @ 51963a7:
+           [METTA-PORT-OF-MINER]  AND  [PARTIAL-PORT-WITH-EXTENSIONS]
+       Ported: frequent-pattern-mining pipeline (mine-abstract → specialize
+              → select → expand-conjunction).
+       Outstanding: surprisingness phase staged but not root-documented as
+              integrated (V3-1 refinement: integration paths exist in code
+              at experiments/pattern-miner/pattern-miner.metta:45-67 and
+              experiments/miner/main.metta:93-101, but README.md:26 says
+              "we haven't integrated"). PARTIAL-PORT-WITH-EXTENSIONS reads:
+              core mining ported; full integration + dependent-types layer
+              + Python-runner-driven empirical-probability surface are
+              project-original extensions.
+
+R3.9 — Authorship: iCog team-led, no overlap with opencog/miner or
+       FISHGRAM-Python authors (S3.Q10).
+       Whole-repo top five (Codex):
+         Basliel-Amsalu 199, eyobderese 173, tezena 160,
+         Tewodros Nibret Adal 74, nolawicode 60.
+       experiments/* path-limited top five (Codex):
+         tezena 127, Basliel-Amsalu 111, eyobderese 97,
+         nolawicode 54, tezena19 24.
+       Classic OpenCog authors absent: Nil Geisweiller, Linas Vepstas,
+       Kasim, Misgana Bayetta — none in author-name grep.
+       FISHGRAM-Python authors absent: Jared Wigmore, Keyvan Mir Mohammad
+       Sadeghi, Jade O'Neill — none in author-name grep.
+       Implication: hyperon-miner trio is an iCog-Labs-Dev original MeTTa
+       port effort, not a continuation of any specific OpenCog Classic author
+       lineage. Gemini's note that Zarathustra Goertzel's role on the zariuq
+       fork is "semantic (PR review/merges)" rather than core-development
+       confirmed by the zariuq +1 commit being a merge-PR (R3.11; V3-2).
+
+R3.10 — dependent-types/ is a separate legacy/formalization thread (S3.Q11).
+       Both reviewers concur:
+         - Not integrated with the main experiments/ pipeline.
+         - dependent-types/MinerDTL.metta:1 imports
+           ../../hyperon-pln/metta/synthesis/Synthesize.metta.
+         - dependent-types/MinerCurriedDTLTest.metta:1-4 imports
+           chaining:dtl:* (chaining repo).
+         - AGENTS.md:5 labels dependent-types as "legacy directories" and
+           AGENTS.md:49 confirms: "Legacy DTL code still depends on sibling
+           repos: `dependent-types/MinerDTL.metta` imports from
+           `../../hyperon-pln`, and DTL tests register `../../chaining`."
+       The hyperon-pln target of this import is Tradition-2-aligned legacy
+       formalization, NOT the xiPLN/Mettapedia/Lean formalization line of
+       PLN pilot Source 11. See V3-3 for the misattribution resolution.
+
+R3.11 — Trio divergence verdicts (S3.Q9, S3.Q12).
+       trueagi-io/hyperon-miner @ b5d8bcd:  [STALE-UPSTREAM]
+                                            903 commits behind iCog active
+                                            development; last commit
+                                            2025-01-30. Per memory:
+                                            feedback_bidirectional_fork_divergence
+                                            staleness corollary — frozen
+                                            earlier-snapshot, NOT a divergent
+                                            tradition.
+       zariuq/hyperon-miner @ 1ad4820:      [TRACKS-iCog +1 SUBSTANTIVE-MERGE]
+                                            (V3-2 refinement). Single-commit
+                                            divergence is a merge-PR
+                                            ("Merge pull request #124 from
+                                            iCog-Labs-Dev/experiments" by
+                                            Eyob Derese Asefa) but the merge
+                                            pulled 24 files / 1395+ / 470-
+                                            of upstream content. Not
+                                            personal-tradition divergence;
+                                            not content-identical to iCog
+                                            HEAD.
+
+R3.12 — Final verdict labels (consensus).
+       iCog-Labs-Dev/hyperon-miner @ 51963a7:
+         [METTA-PORT-OF-MINER] / [FISHGRAM-CLEAN-BREAK] /
+         [PARTIAL-PORT-WITH-EXTENSIONS]
+         (frequent-pattern-miner core ported; surprisingness integration
+         staged but not root-documented; dependent-types legacy
+         formalization layer; Python helpers for empirical-probability
+         surface)
+       trueagi-io/hyperon-miner @ b5d8bcd:
+         [STALE-UPSTREAM] / 903 commits behind iCog
+       zariuq/hyperon-miner @ 1ad4820:
+         [TRACKS-iCog +1 SUBSTANTIVE-MERGE] / merge-PR pulling 24 files of
+         iCog upstream (not a separate tradition)
+
+================================================================================
+§B. DISSENTS AND RESOLUTIONS (V3-X)
+================================================================================
+
+V3-1 (Codex) — P3.3 wording refinement: integration-paths-in-code exist.
+       CLAIM: Codex flagged that the brief's P3.3 paraphrase ("we haven't
+              integrated") is README-faithful but understates code state.
+              experiments/pattern-miner/pattern-miner.metta:45-67 and
+              experiments/miner/main.metta:93-101 contain integration paths
+              that wire frequent-pattern-mining to surprisingness scoring.
+       ORCHESTRATOR VERIFICATION: Both files exist (verified via ls).
+              Reading: experiments/pattern-miner/pattern-miner.metta is
+              71 lines and clearly orchestrates a multi-stage pipeline;
+              experiments/miner/main.metta is the alternate-chainer entry
+              point.
+       RESOLUTION: ADOPTED. P3.3 reframed in R3.8 as "surprisingness phase
+              staged but not root-documented as integrated" — code-level
+              integration paths exist; the README still describes them as
+              independent runnable components. The [PARTIAL-PORT-WITH-
+              EXTENSIONS] label captures this nuance.
+
+V3-2 (Codex) — zariuq "≈ iCog" wording requires content guard.
+       CLAIM: The brief's "zariuq ≈ iCog at the audit snapshot" is too
+              strong. Although +1 commit, that commit is a merge-PR pulling
+              24 files / 1395 insertions / 470 deletions of upstream content
+              — substantial content motion, not zero divergence.
+       ORCHESTRATOR VERIFICATION: Codex's git show --stat HEAD evidence
+              cited (24 files / 1395+ / 470-). Authentic merge-PR, not a
+              content-rewrite by zariuq personally.
+       RESOLUTION: ADOPTED. New verdict [TRACKS-iCog +1 SUBSTANTIVE-MERGE]
+              captures: (a) zero personal-tradition divergence; (b)
+              non-content-identical because the merge pulled real upstream
+              motion. R3.11 + R3.12 use the refined label.
+       VERDICT VOCABULARY UPDATE (S3 → cluster vocabulary): add
+              [TRACKS-X +N SUBSTANTIVE-MERGE] for forks that consist of N
+              merge-PR commits each pulling substantive upstream motion;
+              distinguish from [TRACKS-X +N TRIVIAL] for cosmetic-only
+              divergences.
+
+V3-3 (Orchestrator + Codex) — Gemini misidentified hyperon-pln as xiPLN.
+       CLAIM (Gemini S3.Q11): "dependent-types/MinerDTL.metta:1 imports
+              ../../hyperon-pln/metta/synthesis/Synthesize.metta. This
+              explicitly links the miner formalization to the xiPLN
+              synthesis layer found in the PLN pilot (Source 11)."
+       ORCHESTRATOR VERIFICATION: The import target is `hyperon-pln/metta/
+              synthesis/Synthesize.metta`. The hyperon-pln repository
+              corresponds to PLN cluster pilot SOURCE 5 (lineage of
+              leungmanhin's 2023 0.2 MP hack — runtime/MeTTa-PLN line per
+              CLAUDE.md). PLN cluster pilot SOURCE 11 is the late-breaking
+              formalization bundle: xiPLN.tex, World-Model Calculus,
+              MORK-PathMap formalization, Markov-de Finetti formalization,
+              the Mettapedia/Logic/PLNJointEvidenceNoGo.lean repo. xiPLN
+              and hyperon-pln are NOT the same artifact; xiPLN is a Lean/
+              Mettapedia formalization, hyperon-pln is a MeTTa runtime line.
+       AGENTS.md:49 (orchestrator-read): "Legacy DTL code still depends
+              on sibling repos: `dependent-types/MinerDTL.metta` imports
+              from `../../hyperon-pln`, and DTL tests register
+              `../../chaining`." This labels the import as
+              legacy/inherited from Classic OpenCog Tradition 2, not as
+              a forward-looking xiPLN cross-link.
+       Codex's findings explicitly state: "No Zarathustra/Oruži/Mettapedia
+              string evidence found." Codex correct.
+       RESOLUTION: V3-3 ADOPTED with Codex's framing. dependent-types/ is
+              [LEGACY-FORMALIZATION-INHERITED-FROM-CLASSIC]. The
+              hyperon-pln import maps to PLN pilot Source 5
+              (hyperon-pln runtime), NOT Source 11 (xiPLN paper-bundle/Lean).
+              Gemini's "xiPLN connection" claim is REJECTED. Gemini drift
+              on identity-between-artifacts (per CLAUDE.md memory:
+              feedback_attribution_verify_against_git: "Gemini in
+              particular drifts on V-N-X identity assertions").
+       This dissent generates CF3.5 (see §D).
+
+V3-4 (Orchestrator) — Gemini phantom-file inference for "abstract-patterns.metta".
+       CLAIM (Gemini S3.Q4b): "MeTTa files in experiments/frequent-pattern-
+              miner/ map directly to the classic flow: abstract-patterns.metta
+              (not in top-level but implied), build-specialization.metta
+              (specialization), candidate-patterns.metta (select candidates),
+              conjunction-expansion.metta (expand conjunction)."
+       ORCHESTRATOR VERIFICATION:
+              ls experiments/frequent-pattern-miner/ →
+                build-specialization.metta
+                candidate-patterns.metta
+                conj-exp/
+                conjunction-expansion.metta
+                freq-pat/
+                frequent-pattern-miner.metta
+                frequent-pattern-miner-superpose.metta
+                jsd-surpr/
+                README.md
+                tests/
+                use-python.metta
+              No file named `abstract-patterns.metta` exists in this
+              directory (or anywhere else in the repo per Codex Q5
+              token-grep results).
+              Codex correctly maps the abstract-pattern logic to
+              frequent-pattern-miner.metta:19-29 (inline within the main
+              pipeline file, not a separate file).
+       RESOLUTION: V3-4 ADOPTED. Gemini phantom-file inference; the
+              abstract-pattern stage is implemented as inline code at
+              frequent-pattern-miner.metta:19-29, not as a standalone
+              file. Codex's Q4(b) mapping is authoritative.
+       This dissent reinforces CF2.5 line-citation methodology + extends
+              it to file-existence claims (CF3.6).
+
+V3-5 (Orchestrator) — Gemini introduced [ALGORITHM-INDIRECT-INHERITANCE]
+       label outside the brief §6 locked verdict vocabulary.
+       CLAIM (Gemini S3.Q4a): "Yun Chi Citation: ABSENT. Unlike opencog/miner,
+              the Hyperon MeTTa trio contains zero mentions of 'Yun Chi',
+              '2005', or 'TKDE'. [ALGORITHM-INDIRECT-INHERITANCE] (inherits
+              from opencog/miner which cited Chi, but trio itself is
+              un-cited)."
+       ORCHESTRATOR ASSESSMENT: The intent is sound (one-step transitive
+              inheritance through opencog/miner), but the label is not in
+              the brief §6 locked vocabulary. The locked primary-verdict
+              labels are [METTA-PORT-OF-MINER] /
+              [CONCEPTUAL-ABSORPTION-FROM-MINER] / [CLEAN-SHEET-METTA] /
+              [PARTIAL-PORT-WITH-EXTENSIONS]; CF2.2 distinguishes
+              "paper-faithful-recovery vs algorithm-family inspiration vs
+              Atomese adaptation" at the opencog/miner layer.
+       RESOLUTION: V3-5 NON-BLOCKING. Gemini's intent is captured by
+              R3.4 ("Chi-citation chain is broken at the opencog/miner →
+              hyperon-miner transition"). The verdict for the trio is
+              [METTA-PORT-OF-MINER], not a new label. The "indirect
+              inheritance" framing is preserved in R3.4 prose without
+              minting a new code-label.
+       Reminder for future cluster pilots: reviewers should constrain
+              themselves to brief §6 locked vocabulary; new labels go via
+              dissent + orchestrator approval.
+
+================================================================================
+§C. STALE/SOURCE-OF-TRUTH CHECKS (SC3.x)
+================================================================================
+
+SC3.1 — README.md anchor verification under CF2.5.
+       Both reviewers cited README.md:5,7 / :13-23 / :26 per the brief's
+       tightened anchors. Orchestrator pre-verification matches.
+       No drift in either model. CF2.5 methodology held in S3.
+
+SC3.2 — Wiki Hyperon AI Algorithms+Pattern Miner+Pattern Miner Full
+       (or equivalent existing card) — IF such a card exists, it should
+       reflect the [METTA-PORT-OF-MINER] / [PARTIAL-PORT-WITH-EXTENSIONS]
+       lineage and the iCog-Labs-Dev fork as the operative line, not
+       trueagi-io. Action gated on cluster-close authorization +
+       pre-edit search_cards lookup. (Reminder for cluster-close phase.)
+
+SC3.3 — CLAUDE.md PLN cluster Source 5 description: "hyperon-pln (lineage
+       of leungmanhin's 2023 0.2 MP hack)". hyperon-miner-2 dependent-
+       types/ inherits from hyperon-pln Source 5, not Source 11. This
+       implies PLN cluster pilot's hyperon-pln narrative thread now has a
+       DOWNSTREAM TOUCHPOINT in the perception cluster: dependent-types/
+       MinerDTL formalization is built on the hyperon-pln synthesis layer.
+       NOT a new tradition; an existing-tradition cross-cluster usage.
+       (Cluster-close edit candidate: optional cross-link in PLN cluster
+       Source 5 narrative or in CLAUDE.md PLN-cluster section.)
+
+SC3.4 — Wiki card 3081 (FISHGRAM-paper-related, identified at S1) was
+       flagged for a possible cluster-close reframe (add Gino Yu, FISHGRAM
+       terminology not in source). S3 does not change that disposition.
+       Still gated on cluster-close authorization.
+
+SC3.5 — Active iCog-Labs-Dev branch is `experiments-local-changes`, not
+       `master`. The repo's master is at b5d8bcd (= trueagi-io b5d8bcd —
+       trueagi is the upstream; iCog-Labs-Dev shares master with trueagi
+       and uses experiments-local-changes for active work). Standard
+       monorepo-fork-with-feature-branch pattern. Reviewers/orchestrator
+       all aware; no error introduced by the branch difference.
+
+================================================================================
+§D. CROSS-SOURCE FORWARDS (CF3.x — locked findings for S4 / S5 / cluster-close)
+================================================================================
+
+CF3.1 (LOCKED for S4) — Symbolic vs neural lineage separation.
+       The hyperon-miner trio is [METTA-PORT-OF-MINER]: a faithful symbolic
+       MeTTa port of opencog/miner. S4's audit of the neural/perception
+       family (rejuve-bio/neural-subgraph-matcher-miner, opencog/vision,
+       DeSTIN successors, LLM-mediated perception) is a paradigm-distinct
+       lineage — DO NOT collapse symbolic and neural lineages into one
+       "Hyperon-era pattern miner" tradition.
+
+CF3.2 (LOCKED for S4) — Formalization-layer parity question.
+       The trio includes [PARTIAL-PORT-WITH-EXTENSIONS] with a
+       dependent-types/ legacy formalization layer (R3.10). S4 should check
+       whether the neural lineage has any analogous formalization layer
+       (e.g., Lean/coq/agda formalization of neural-subgraph matching) or
+       is strictly empirical/ML.
+
+CF3.3 (LOCKED for S5) — Direction of data flow for hyperon-miner trio.
+       hyperon-miner is a query/inference tool over AtomSpace, NOT a
+       perception-input pipeline. S5's perception-output boundary check
+       should NOT find a perception-to-hyperon-miner pathway in current
+       Hyperon code. (Consistent with CF2.4 "no executable bridge" finding
+       from S2 for Classic OpenCog era.) Whether such a pathway exists in
+       any current Hyperon code is the open S5 question. Default
+       expectation: no executable bridge.
+
+CF3.4 (LOCKED for cluster-narrative) — Tradition-1.5 framing.
+       The [METTA-PORT-OF-MINER] verdict makes hyperon-miner the
+       Hyperon-era equivalent of "Tradition 1: Production Local-Rule" +
+       "Tradition 2: Historical OpenCog" pattern from PLN cluster
+       (CLAUDE.md five-tradition map): a faithful MeTTa port of OpenCog
+       Classic substrate. Cluster-close edits should integrate this into
+       the existing tradition map, NOT invent a new tradition.
+
+CF3.5 (NEW, LOCKED for cluster-close + reverse cross-cluster touch) —
+       hyperon-miner dependent-types/ → PLN pilot Source 5 cross-cluster
+       touchpoint.
+       dependent-types/MinerDTL.metta:1 imports
+       ../../hyperon-pln/metta/synthesis/Synthesize.metta. The hyperon-pln
+       repo is PLN pilot Source 5 (leungmanhin's 0.2 MP hack lineage),
+       NOT Source 11 (xiPLN paper-bundle / Lean / Mettapedia). When wiki
+       narrative or CLAUDE.md cites this dependent-types layer, framing
+       must be:
+         - LEGACY-FORMALIZATION-INHERITED-FROM-CLASSIC (per AGENTS.md:49).
+         - Build on hyperon-pln runtime synthesis layer.
+         - NOT cross-link to xiPLN/Mettapedia/Lean (Source 11) without
+           explicit Synthesize.metta-vs-xiPLN.tex content verification.
+       Reverse implication for PLN cluster: PLN cluster Source 5
+       (hyperon-pln) has a documented downstream consumer — the perception
+       cluster's dependent-types/ formalization layer.
+
+CF3.6 (NEW, LOCKED methodology for S4 + S5) — Phantom-file inference
+       methodology lock.
+       Pattern observed: V3-4 (this source) + V2-3 + V2-4 (S2) + V1-2 (S1)
+       all instantiate Gemini-side inferences asserting file-existence,
+       line-numbers, or class-locations that orchestrator + Codex verify
+       as not-present. CF2.5 already locked LINE-citation methodology;
+       CF3.6 EXTENDS that to FILE-existence claims.
+       Rule for S4 + S5: Reviewers asserting "file X exists" or "implied
+       file X" should run `ls`/`Glob` first; orchestrator default-verifies
+       Gemini file-existence claims via direct ls before adopting in
+       reconciliation.
+
+================================================================================
+§E. SUMMARY — S3 NET CLOSURE
+================================================================================
+
+S3 closes with one paradigm finding (the trio is a faithful MeTTa port of
+opencog/miner with a partial integration of the surprisingness phase and a
+legacy formalization layer in dependent-types/), 12 consensus points
+(R3.1-R3.12), 5 dissent records (V3-1 through V3-5; all resolved per §B),
+5 stale/source-of-truth checks (SC3.1-SC3.5), and 6 locked cross-source
+forwards (CF3.1-CF3.6 — two new forwards, CF3.5 and CF3.6, generated by
+S3 dissents).
+
+Final cluster-narrative position: hyperon-miner trio is consistent with
+PLN cluster's Tradition-1/Tradition-2 pattern at the symbolic-mining
+layer — a faithful Hyperon-era MeTTa port of OpenCog Classic substrate
+(opencog/miner), not a paradigm-distinct extension. The dependent-types/
+layer is legacy/inherited from Classic-OpenCog hyperon-pln (PLN Source 5),
+not xiPLN (PLN Source 11). The trio has no perception-input pathway and
+no fishgram-Python lineage. Authorship is iCog-Labs-Dev-led with no
+overlap to OpenCog Classic miner authors or FISHGRAM Python authors.
+
+Open downstream questions:
+- S4: Does the neural-perception-mining family (rejuve-bio/neural-subgraph-
+  matcher-miner et al.) inherit any structure from this symbolic miner,
+  or is it a clean parallel paradigm?
+- S5: Is there any current Hyperon code that wires perception-input
+  through to the hyperon-miner trio (consistent with CF3.3 "no executable
+  bridge" expectation)?
+- Cluster-close: card 3081 reframe (S1 disposition); CLAUDE.md
+  source-text-gaps removal entry for retrieved 2013 FISHGRAM paper;
+  optional cross-link in PLN cluster Source 5 narrative for the
+  dependent-types touchpoint (per CF3.5).
+
+Reviewers stand by for S4 brief.
+
+================================================================================
+END OF SOURCE 3 RECONCILIATION
+================================================================================

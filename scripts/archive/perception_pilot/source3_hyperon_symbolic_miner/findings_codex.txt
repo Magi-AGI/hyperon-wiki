@@ -1,0 +1,30 @@
+Codex findings — S3 Hyperon symbolic miner
+
+Audit snapshots:
+
+- iCog-Labs-Dev/hyperon-miner 51963a7c, branch experiments-local-changes.
+- trueagi-io/hyperon-miner b5d8bcdd.
+- zariuq/hyperon-miner 1ad48205.
+- opencog/miner baseline 444eb647.
+
+Q1. P3.1-P3.3 verified with one wording caveat. README.md:5,7 declares a direct MeTTa port of Classic Pattern Miner. README.md:13-23 gives the abstract/specialize/select/expand flow. README.md:26 says frequent miner and surprisingness are not yet integrated, but code does contain integration paths: experiments/pattern-miner/pattern-miner.metta:45-67 and alternate chainer path experiments/miner/main.metta:93-101. Candidate V3-1: treat P3.3 as "full/root-documented integration pending," not "no code-level integration path."
+
+Q2. Fishgram clean-break verified. git log --all -i -S fishgram and -S sushigram return zero commits in all three hyperon-miner repos; current text greps are also zero. Verdict: [FISHGRAM-CLEAN-BREAK].
+
+Q3/Q9. Fork counts verified: trueagi→iCog 0/903, trueagi→zariuq 0/904, iCog→zariuq 0/1. Candidate V3-2: the "zariuq ≈ iCog" wording needs a content guard. Zariuq's one merge commit is "Merge pull request #124 from iCog-Labs-Dev/experiments" by Eyob Derese Asefa, but git show --stat HEAD reports 24 files changed, 1395 insertions, 470 deletions. Not personal tradition divergence, but not content-identical. Verdict: [TRACKS-iCog +1 SUBSTANTIVE-MERGE].
+
+Q4/Q7. Hyperon miner does not cite Yun Chi or "Frequent Subtree" directly. It is a project-declared MeTTa port of opencog/miner, not a Chi-paper citation port. It maps opencog/miner's flow conceptually: Classic MinerParameters and support threshold at opencog/miner/Miner.h:40-59; Classic recursive specialization/support at Miner.cc:79-97,170-225; Scheme cog-mine parameters at scm/miner/miner-utils.scm:584-665. Hyperon equivalents: abstract-pattern at frequent-pattern-miner.metta:19-29, pipeline at :45-55, specialization at build-specialization.metta:48-72, candidate support filter at candidate-patterns.metta:36-48, conjunction expansion at conjunction-expansion.metta:317-390. Verdict: [METTA-PORT-OF-MINER] plus [PARTIAL-PORT-WITH-EXTENSIONS].
+
+Q5. Token counts in active iCog repo: fishgram 0; sushigram 0; Yun Chi 0; Frequent Subtree 0; cog-mine 4 (experiments/miner/miner.metta:105,112); PatternMiner 0 but "Pattern Miner" phrase 53; MinerUtils 53; shallow 8; support 406; subtree 5; hypergraph 3 (README.md:5,10); Atomese 1; MeTTa 229 (README.md:5,7).
+
+Q6. Active repo has 105 .metta files. Canonical functional surface: experiments/pattern-miner/pattern-miner.metta 71 lines; experiments/frequent-pattern-miner/frequent-pattern-miner.metta 59; build-specialization.metta 75; candidate-patterns.metta 48; conjunction-expansion.metta 391. Optional scoring surface: surprisingness/{isurp-old,isurp,jsd}.metta, truth-values/{emp-tv,est-tv}.metta, and Python atoms such as freq-pat/main.py:185-203, conj-exp/main.py:110-121, emp-tv-bs/main.py:147-159. Local metta --version is 0.2.10; a smoke run of test-candidate-patterns.metta hit the known hardcoded module path issue (test-candidate-patterns.metta:2 imports hyperon-miner, not this hyperon-miner-2 checkout).
+
+Q10. Authorship, whole repo top five: Basliel-Amsalu 199, eyobderese 173, tezena 160, Tewodros Nibret Adal 74, nolawicode 60. Path-limited experiments/* top five: tezena 127, Basliel-Amsalu 111, eyobderese 97, nolawicode 54, tezena19 24. No Nil Geisweiller/Linas/Kasim or FISHGRAM Python authors found in author-name grep.
+
+Q11. dependent-types/ is a separate legacy/formalization thread, not integrated with main experiments/ pipeline. Evidence: MinerDTL.metta:1 imports ../../hyperon-pln/metta/synthesis/Synthesize.metta; DTL tests import chaining:dtl:* at MinerCurriedDTLTest.metta:1-4; repo docs label it legacy/inherited at AGENTS.md:7,49. No Zarathustra/Oruži/Mettapedia string evidence found.
+
+Final labels:
+
+- iCog-Labs-Dev/hyperon-miner: [METTA-PORT-OF-MINER] / [FISHGRAM-CLEAN-BREAK] / [PARTIAL-PORT-WITH-EXTENSIONS].
+- trueagi-io/hyperon-miner: [STALE-UPSTREAM], 903 commits behind active iCog.
+- zariuq/hyperon-miner: [TRACKS-iCog +1 SUBSTANTIVE-MERGE], not a separate tradition.

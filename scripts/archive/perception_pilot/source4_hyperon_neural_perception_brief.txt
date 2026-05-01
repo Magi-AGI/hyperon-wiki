@@ -1,0 +1,725 @@
+================================================================================
+PERCEPTION / NEURAL-SYMBOLIC CLUSTER PILOT
+SOURCE 4 BRIEF — Hyperon-era NEURAL pattern-mining + perception adapters
+                  (rejuve-bio neural-subgraph-matcher-miner +
+                  opencog/vision + opencog historical perception family +
+                  hyperon-experimental absence-check)
+================================================================================
+
+§0. SOURCE IDENTITY
+-------------------
+Cluster pilot:    Perception / Neural-Symbolic
+Source number:    4 of 5
+Source name:      Hyperon-era NEURAL pattern-mining + perception adapters
+                  (paradigm-distinct partner of S3 symbolic miner)
+Pilot brief date: 2026-04-30
+Orchestrator:     Claude Opus 4.7 (1M)
+Reviewers:        Codex + Gemini (cross-model triangulation)
+
+S4 SCOPE BOUNDARY (locked, per CF3.1):
+  S4 is STRICTLY NEURAL/perception-oriented. S3 was the symbolic
+  partner. Do NOT collapse the symbolic and neural lineages into one
+  "Hyperon pattern-mining" tradition. Specifically:
+    - hyperon-miner trio (S3 territory) is OUT OF S4 SCOPE except
+      as cross-link reference for fork-isolation-checks.
+    - opencog/miner (S2 baseline) is OUT OF S4 SCOPE except as a
+      fishgram/symbolic-cross-link sanity reference.
+    - Anything SYMBOLIC pattern-mining stays in S3.
+  S4 INCLUDES:
+    - Neural pattern miners (rejuve-bio/neural-subgraph-matcher-miner).
+    - Perception adapters (opencog/vision, opencog/semantic-vision,
+      opencog/destin, hansonrobotics/perception_synthesizer +
+      ros_vision_controller).
+    - hyperon-experimental builtin_mods inspection (perception
+      absence-check).
+    - LLM-mediated perception adapters IF any are found in
+      hyperon-experimental or a Hyperon-era integration repo.
+  S5 IS the perception-OUTPUT boundary check (different scope: does
+  current Hyperon code wire perception-input through to a downstream
+  consumer?). S4 is the perception/neural-mining INVENTORY itself.
+
+Audited surfaces:
+
+SURFACE A (PRIMARY — Hyperon-era active neural mining):
+  rejuve-bio/neural-subgraph-matcher-miner @
+    cfc23f80e213a389aeefb703f0020b90367e483c (main)
+  Last commit: 2026-04-22 (8 days before this brief).
+  Status: VERY ACTIVE; iCog/Rejuve-led PyTorch-Geometric/R-GCN
+  GNN-based neural subgraph matching + mining. Self-described as
+  "inspired by SPMiner" with NeuroMatch matching component.
+
+SURFACE B (current minimal perception scaffolding):
+  opencog/vision @
+    dbaf2fe40fc56a7ecb9686586a90366507e10c21 (main)
+  Last commit: 2025-06-10.
+  Status: AtomSpace ↔ OpenCV type-wrapper scaffolding. Linas Vepstas
+  (38 commits) + Adrian Borucki (25 commits). Minimal feature set —
+  ImageValue, ImageBlurLink, ImageWriteLink, ImageHalfSize,
+  ImageFilter2D. NOT a vision pipeline; per README:5-9, it's an
+  "abstract processing tree" of image transformations represented as
+  Atomese, with the actual images held outside AtomSpace.
+
+SURFACE C (Hyperon-runtime absence-check):
+  hyperon-experimental @
+    3f76dc460da6961f57f69f6c3e550c59c74ada83 (master)
+  Inspected: lib/src/metta/runner/builtin_mods/
+  Modules present: catalog, das, fileio, json, random, skel.
+  Modules absent: NO perception/sensor/vision/image module.
+  Status: ZERO perception bindings in the current Hyperon-experimental
+  runtime's built-in module set (orchestrator-pre-verified, see §4).
+  This is a cluster-narrative-deciding absence: it sets up CF3.3
+  verification in S5 by establishing that perception input has no
+  default route INTO Hyperon-runtime AtomSpace.
+
+CROSS-LINK D (frozen historical context — included for traceability):
+  opencog/semantic-vision @ 1c672c2 (master, frozen 2017-10-31).
+    SynerGAN proposal. Research-initiative, never reached production.
+  opencog/destin @ fed2306 (master, frozen 2016-09-10).
+    Classic DeSTIN; CUDA-based; the canonical predecessor cited by
+    the 2013 FISHGRAM paper at footnote-3 (where the actual cited
+    repo was tpsjr7/destin_ted_temp — see §3 P4.5).
+  hansonrobotics/perception_synthesizer @ f471418 (master, frozen 2014).
+  hansonrobotics/ros_vision_controller @ 5dbaf5d (master, frozen 2014).
+  These are historical context, NOT operative S4 surfaces; their
+  treatment is short-form (verdict: [HYPERON-ERA-FROZEN]).
+
+
+§1. SCOPE AND DELIVERABLE
+-------------------------
+
+S4 deliverable: findings_codex.txt + findings_gemini.txt at
+scripts/archive/perception_pilot/source4_hyperon_neural_perception/,
+addressing the S4.Q* questions in §5 below.
+
+Critical constraints:
+
+C1. STRICTLY NEURAL/PERCEPTION. See §0 boundary list. S3 territory
+    (symbolic mining) is excluded.
+
+C2. CARRY-FORWARD CF3.1 (FROM S3): Symbolic vs neural lineage
+    separation. The neural-subgraph-matcher-miner is paradigm-distinct
+    from S3's hyperon-miner. Reviewers verify (zero hyperon-miner-trio
+    pickaxe inheritance) but do NOT relitigate S3's verdict on the
+    symbolic side.
+
+C3. CARRY-FORWARD CF3.2 (FROM S3): Formalization-layer parity check.
+    The S3 trio has dependent-types/ (LEGACY-FORMALIZATION-INHERITED-
+    FROM-CLASSIC, hyperon-pln Source 5 imports). Question for S4:
+    does the neural lineage have any analogous formalization layer
+    (Lean/coq/agda/Mettapedia formalization of neural subgraph
+    matching) or is it strictly empirical/ML?
+
+C4. CARRY-FORWARD CF3.3 (FROM S3, refines for S5): Pre-survey result
+    confirmed that hyperon-experimental builtin_mods has zero
+    perception modules. This is the S4-side confirmation of CF3.3
+    "no perception-to-pattern-miner pathway in current Hyperon" hypothesis.
+    S5 picks up the question of whether ANY external Hyperon-era
+    integration code (outside builtin_mods) wires perception through.
+    S4 must clearly document the absence at the runtime layer to
+    make S5's question well-posed.
+
+C5. CARRY-FORWARD CF1.3 (FROM S1) + CF2.1 (FROM S2): the FISHGRAM
+    Python lineage clean-break must be re-verified for the neural
+    family. Default expectation: zero fishgram pickaxe across all
+    SURFACE A + SURFACE B + SURFACE C + SURFACE D repos. Reviewers
+    confirm.
+
+C6. CARRY-FORWARD CF2.2 (FROM S2 → recast for S4): The S3 trio
+    [METTA-PORT-OF-MINER] verdict was about symbolic miner inheritance
+    from opencog/miner (which itself cited Yun Chi 2005 Survey).
+    The S4 analog question: does neural-subgraph-matcher-miner cite a
+    specific source paper (likely SPMiner = Ying/Leskovec 2020 or
+    similar)? At what level (paper-faithful-recovery vs algorithm-
+    family inspiration vs original work)?
+
+C7. CARRY-FORWARD CF2.5 (FROM S2): Gemini line-citation drift
+    methodology lock applies. Reviewers default to Codex + orchestrator
+    git verification on line-number disputes.
+
+C8. CARRY-FORWARD CF3.6 (NEW FROM S3): File-existence claims —
+    reviewers asserting "file X exists" or "implied file X" should
+    run `ls`/`Glob` first; orchestrator default-verifies Gemini
+    file-existence claims via direct ls before adopting in
+    reconciliation. (Gemini phantom-file pattern, see V3-4 + V2-3 +
+    V2-4 + V1-2.)
+
+C9. NO WIKI EDITS. S4 is extraction only.
+
+
+§2. ARTIFACTS TO READ
+---------------------
+
+PRIMARY (must read for the active neural fork):
+  E:\GitHub\hyperon reference\neural-subgraph-matcher-miner
+    branch: main, HEAD: cfc23f8
+
+  Top-level structure (orchestrator-pre-verified):
+    .github/workflows/                  — CI
+    Dockerfile / Dockerfile.semantic    — container builds
+    Makefile                            — convenience targets
+    README.md                           — project description (see §3)
+    requirements.txt / requirements-semantic.txt  — Python deps (PyTorch,
+                                          PyG, R-GCN dependencies)
+    converter.py / test.py / run.sh     — top-level runners
+    analyze/                            — Jupyter analyses
+    app/                                — FastAPI service
+    ckpt/                               — model checkpoints
+    common/                             — shared utilities
+                                          (data.py, models.py, utils.py,
+                                           combined_syn.py,
+                                           feature_preprocess.py,
+                                           label_encoder.py)
+    scripts/                            — helper scripts
+    subgraph_matching/                  — NeuroMatch implementation
+                                          (train.py, test.py, alignment.py,
+                                           config.py, hyp_search.py)
+    subgraph_mining/                    — SPMiner implementation
+                                          (decoder.py, search_agents.py,
+                                           config.py)
+    visualizer/                         — visualization module
+    *.pkl                               — pickled artifacts (directed.pkl,
+                                          undirected.pkl, graph.pkl,
+                                          metta.pkl)
+
+ALSO PRIMARY (current minimal perception scaffolding):
+  E:\GitHub\hyperon reference\vision  (= opencog/vision @ dbaf2fe)
+    Top-level structure:
+      AGENTS.md, CLAUDE.md, GEMINI.md, README.md, LICENSE
+      CMakeLists.txt, configure.sh
+      examples/, lib/, opencog/
+
+ALSO PRIMARY (Hyperon-runtime absence-check — narrow targeted reads):
+  E:\GitHub\hyperon reference\hyperon-experimental
+    Inspect: lib/src/metta/runner/builtin_mods/ (full inventory)
+    Inspect: lib/src/space/ (any image/perception type definitions?)
+    Search: any path matching *percept*, *sensor*, *vision*, *image*
+    Search: any path matching *perception_synthesizer* or related
+    NOTE: orchestrator pre-survey (§4) established absence at
+    builtin_mods. Reviewers verify breadth.
+
+CROSS-LINK D (short-form historical reads):
+  E:\GitHub\hyperon reference\semantic-vision (frozen 2017)
+  E:\GitHub\hyperon reference\destin           (frozen 2016)
+  E:\GitHub\hyperon reference\perception_synthesizer (frozen 2014)
+  E:\GitHub\hyperon reference\ros_vision_controller   (frozen 2014)
+    Read README only; document last-commit dates + frozen status.
+
+REFERENCE FROM PRIOR SOURCES (do not re-audit):
+  scripts/archive/perception_pilot/source1_fishgram_paper/
+    findings_reconciled_crossmodel.txt       (S1 closed; CF1.1-1.5)
+  scripts/archive/perception_pilot/source2_classic_fishgram_miner/
+    findings_reconciled_crossmodel.txt       (S2 closed; CF2.1-2.6)
+  scripts/archive/perception_pilot/source3_hyperon_symbolic_miner/
+    findings_reconciled_crossmodel.txt       (S3 closed; CF3.1-3.6)
+
+
+§3. ORCHESTRATOR-PRE-POPULATED FINDINGS (verify, do not relitigate)
+-------------------------------------------------------------------
+
+P4.1 — neural-subgraph-matcher-miner README declares the algorithm family.
+  README.md:5: "Central to this framework is a neural subgraph miner
+  inspired by **SPMiner**, integrated with modern **Graph Neural Network
+  (GNN)** techniques for scalable motif discovery."
+  README.md:39-57 (collapsible "<details>" block) describes the system
+  as TWO complementary tasks:
+    - NeuroMatch (subgraph matching)  — README.md:16-37
+    - SPMiner (frequent subgraph mining) — README.md:39-57
+  with PyTorch implementations + R-GCN backbone (common/models.py:266
+  RGCNBasisGNN; :108 SkipLastGNN; :395 GINConv weighted-edges variant).
+  This is a PROJECT-DECLARED [SPMiner-LINEAGE] / [GNN-NEURAL-MINING]
+  verdict.
+
+P4.2 — Algorithmic-family details from README:
+  - Order embeddings + max-margin loss (README.md:29-31)
+  - MLP / Neural Tensor Network alternative + cross-entropy loss
+    (README.md:28)
+  - Pipeline: train encoder on synthetic graphs (README.md:48-50)
+    → mining-phase decoder ranks frequent subgraph patterns
+    (README.md:50)
+  Mathematical/architectural lineage is GNN-based subgraph
+  isomorphism prediction + neural pattern extraction. NOT symbolic
+  rule-based pattern mining.
+
+P4.3 — Core ML stack:
+  - PyTorch + PyTorch Geometric (common/utils.py:633 device-selection
+    helper; common/data.py:24 PyG dataset loaders)
+  - R-GCN-based label encoder (common/label_encoder.py:38) for
+    "trainable adapter that compresses frozen text features for the GNN"
+  - Multi-relational graphs (R-GCN) AND single-relation graphs
+    (SkipLastGNN, GINConv variants)
+  - This is mainstream geometric-ML, NOT OpenCog-specific.
+
+P4.4 — neural-subgraph-matcher-miner authorship is iCog/Rejuve team:
+  Top contributors at HEAD: kedistkid (123), Samrawit Gebremaryam Bahta
+  (65), DagmawiKK (32), AlexKalll (27), Kedist Shegute (24),
+  tarikuamisganaw (20), abel ashenafi (19). All names are consistent
+  with the iCog-Labs-Dev / Rejuve.bio engineering team profile (cf.
+  S3.Q10 finding: iCog-Labs-Dev/hyperon-miner top contributors are
+  Basliel-Amsalu, eyobderese, tezena — same team-name pattern).
+  ZERO opencog/miner / FISHGRAM-Python author overlap.
+  ZERO Stanford Leskovec-lab author overlap (no Rex Ying, Dylan Bates,
+  Leskovec).
+
+P4.5 — opencog/vision @ dbaf2fe is minimal AtomSpace-OpenCV scaffolding.
+  Per README.md:1-9: "Atomese wrappers around a subset of OpenCV. ...
+  ImageValues will hold a handle to the image being processed, and the
+  ImageBlurLink, and other things of that kind specify the kinds of
+  transformations to be applied to the image. The actual images are
+  never in the AtomSpace, only the abstract processing tree."
+  Status section (README.md:11-14):
+    - "It is possible to read an image from a file using ImageNode"
+    - "There are a few OpenCV operations"
+    - "Saving images supported with ImageWriteLink"
+  Library exposes: Image, ImageBlur, ImageWrite, ImageHalfSize,
+  ImageFilter2D (README.md:38-44).
+  "More plans and ideas" (README.md:45-69) lists future intentions
+  including thresholding, HaarWaveletLink, ImageRectangleLink.
+  IMPORTANT — STUB-VS-WIRED-VS-UNIMPLEMENTED distinction (per Codex
+  S4 refinement #2):
+    Some "planned" types have a SOURCE/TYPE STUB but are NOT wired
+    into the build. ImageRectangleLink.cpp/.hpp exists in the source
+    tree and atom_types.script:13 declares IMAGE_RECTANGLE_LINK, BUT
+    opencog/atoms/vision/CMakeLists.txt:48-64 does NOT include
+    Rectangle in the built source/header lists. So this is
+    "source/type stub exists but is NOT library-wired,"
+    NOT simply "unimplemented." Reviewers should treat each
+    "More plans and ideas" item as one of three states:
+      [WIRED]      — included in CMakeLists.txt source/header set
+      [STUB-NOT-WIRED] — source file exists but excluded from build
+      [UNIMPLEMENTED]  — neither source nor type-script declaration
+  Authorship: Linas Vepstas (38 = 13 + 25 commits across name spellings),
+  Adrian Borucki (25 commits). Two-author repo.
+  Recent activity: 2025-06-10 "Add working python example".
+  Verdict candidate: [SCAFFOLDING-NOT-PIPELINE]: this is a
+  type/wrapper layer, not a vision system.
+
+P4.6 — hyperon-experimental builtin_mods has ZERO perception modules.
+  Inspected E:\GitHub\hyperon reference\hyperon-experimental\lib\src\
+  metta\runner\builtin_mods\:
+    catalog (.metta + .rs) — module catalog
+    das     (.metta + .rs) — DAS interaction
+    fileio  (.metta + .rs) — file I/O
+    json    (.metta + .rs) — JSON
+    mod.rs                  — module dispatcher
+    random  (.metta + .rs) — randomness
+    skel    (.metta + .rs) — skeleton/template
+  Absent: any perception, sensor, vision, image, audio, multimodal,
+  embedding, LLM-perception module.
+  Wider tree pre-survey result via `find -iname "*percept*" -o
+  -iname "*sensor*" -o -iname "*vision*" -o -iname "*image*"`:
+  ZERO directory matches. (Reviewers verify the targeted-find.)
+  Verdict candidate: [NO-RUNTIME-PERCEPTION-BINDING] — current
+  Hyperon-runtime has no built-in perception adapter at the standard
+  module location.
+
+P4.7 — Frozen historical surfaces are HYPERON-ERA-FROZEN, not active.
+  - opencog/destin           @ fed2306 last 2016-09-10 (CUDA, Classic)
+  - opencog/semantic-vision  @ 1c672c2 last 2017-10-31 (SynerGAN proposal)
+  - hansonrobotics/perception_synthesizer @ f471418 last 2014-05-27
+  - hansonrobotics/ros_vision_controller   @ 5dbaf5d last 2014-06-12
+  These are NOT Hyperon-era operative; verdict: [HYPERON-ERA-FROZEN].
+  Treatment: short-form documentation of last-commit dates + verdict
+  application. Do NOT do deep audit — frozen-history-context only.
+
+
+§4. ORCHESTRATOR-PRE-RESOLVED SURVEY STATE
+-------------------------------------------
+
+§4.A neural-subgraph-matcher-miner pickaxe pre-checks (orchestrator,
+     2026-04-30 via Grep + git log):
+  - fishgram | sushigram        →  0 hits at HEAD; needs git log -i -S
+                                    pickaxe (reviewers run).
+  - opencog/miner | hyperon-miner | PatternMiner | FrequentSubtree
+                                →  0 hits at HEAD.
+  - "SPMiner" / "NeuroMatch"    →  Present in README + code comments.
+                                    Project's declared algorithm family.
+  - PyTorch / GNN / R-GCN       →  Pervasive (common/, subgraph_*).
+  - OpenCog Atomese / Scheme    →  ZERO hits (orchestrator confirms).
+  - Yun Chi / Frequent Subtree  →  0 hits (different algorithm family).
+
+§4.B opencog/vision pre-survey (orchestrator):
+  - File count: small (CMakeLists.txt + examples/ + lib/ + opencog/).
+  - Authorship: Linas Vepstas + Adrian Borucki (only 2 contributors).
+  - Status: minimal Atomese-OpenCV wrappers; "More plans and ideas"
+    section is largely unimplemented per the README's own language.
+
+§4.C hyperon-experimental perception absence-check (orchestrator):
+  - builtin_mods directory: catalog/das/fileio/json/random/skel.
+  - Targeted find for percept|sensor|vision|image: zero directories.
+  - Implication: no Hyperon-runtime built-in perception adapter.
+
+§4.D Frozen-historical authorship cross-link:
+  - opencog/destin: dominantly Ted Sanders (per CLAUDE.md memory and
+    survey notes — actual cited 2013 paper destin code was at
+    tpsjr7/destin_ted_temp, not opencog/destin).
+  - opencog/semantic-vision: Ben Goertzel + multi-author research-
+    initiative project from the OpenCog Foundation 2017 era.
+  - hansonrobotics/*: Hanson dialogue stack, OpenPsi-cluster Source 4
+    territory (2014-era).
+
+§4.E Operational implication for S4.Q-set:
+  - Active operative neural-mining surface is rejuve-bio.
+  - Active operative perception-adapter surface is opencog/vision
+    (despite being minimal scaffolding).
+  - Hyperon-runtime has no perception built-in (P4.6).
+  - Frozen historical surfaces are documentation-only.
+
+
+§5. SPECIFIC QUESTIONS (S4.Q1 ... S4.Q14)
+------------------------------------------
+
+S4.Q1 — Verify P4.1, P4.2, P4.3, P4.4 against neural-subgraph-matcher-miner
+        README.md and code. Cite line numbers (per CF2.5 + CF3.6 — verify
+        file existence before citing). Flag any deviation as candidate
+        V4-X.
+        IMPORTANT line-anchor check: README.md:5 (SPMiner), :16-37
+        (NeuroMatch), :39-57 (SPMiner pipeline). Codex may need to also
+        confirm the README's collapsible "<details>" structure if
+        offsets differ.
+
+S4.Q2 — Verify P4.5 against opencog/vision README.md. Cite line numbers.
+        Confirm the [SCAFFOLDING-NOT-PIPELINE] candidate verdict by
+        examining lib/ + opencog/ for actual implementation depth.
+        Specifically:
+        (a) How many actual ImageLink types are implemented (in code,
+            not in "More plans and ideas")?
+        (b) Is there any test coverage demonstrating end-to-end use?
+        (c) Is it called/imported by any other Hyperon-era repo
+            (orchestrator-side check unlikely; reviewers confirm via
+            external search if possible)?
+
+S4.Q3 — Verify P4.6 hyperon-experimental absence-of-perception claim.
+        Run breadth-first search of hyperon-experimental for any
+        perception-related code:
+        (a) `find` for percept/sensor/vision/image/audio/multimodal
+            anywhere in the tree (orchestrator pre-checked builtin_mods
+            and top-level — confirm and extend).
+        (b) Grep for "ImageLink" / "PerceptionNode" / similar Atomese
+            type names.
+        (c) Inspect lib/src/atom/ + lib/src/space/ + python bindings
+            for any perception-related type definitions.
+        Default expectation: ZERO. If any hits found, document.
+
+S4.Q4 — neural-subgraph-matcher-miner SOURCE PAPER CITATION (CF2.2 analog).
+        Apply 3-level distinction:
+        (a) Does the README or any code file explicitly cite a paper
+            for the SPMiner algorithm? Likely candidates:
+              - Ying et al. 2020 "Neural Subgraph Matching" (Stanford)
+              - Ying et al. 2018 "Hierarchical Graph Representation
+                Learning with Differentiable Pooling" (HGNN)
+              - Schlichtkrull et al. 2018 "Modeling Relational Data
+                with Graph Convolutional Networks" (R-GCN)
+            File:line citation for each found.
+        (b) Does it implement the cited paper's algorithm faithfully,
+            or with substantial deviations?
+        (c) NOTE: Codex pre-check showed Yun Chi 2005 / Frequent Subtree
+            terminology = 0 hits (it's a different algorithm family).
+            Negative result for symbolic-miner-citation chain is the
+            EXPECTED finding (paradigm-distinct lineage, per CF3.1).
+
+S4.Q5 — Required pickaxes/greps in neural-subgraph-matcher-miner @ HEAD:
+          fishgram | sushigram | opencog/miner | hyperon-miner |
+          PatternMiner | FrequentSubtree | Yun Chi | Atomese |
+          AtomSpace | MeTTa | Hyperon
+        For each token: report hit count + file:line for first 3 hits
+        (or "0" if absent). Critical: the [PARADIGM-DISTINCT-NEURAL]
+        verdict requires zero hits in the symbolic-mining pickaxe set.
+        Also add positive-control pickaxes:
+          SPMiner | NeuroMatch | GNN | R-GCN | order embedding |
+          PyTorch
+        These should be present (positive-result control).
+
+S4.Q6 — neural-subgraph-matcher-miner TOTAL CODE SURFACE inspection.
+        SCOPE GUARD: Don't enumerate every file. Required:
+          - Total .py file count.
+          - Identify the canonical algorithm-implementation surface:
+            subgraph_matching/{train,test,alignment,config,hyp_search}.py +
+            subgraph_mining/{decoder,search_agents,config}.py +
+            common/{data,models,utils,combined_syn,feature_preprocess,
+                    label_encoder}.py
+          - For each canonical-surface .py file: file path + line count
+            + top-level function/class names + key algorithmic
+            references (paper, layer, loss).
+          - For app/ + analyze/ + visualizer/: summarize purpose + file
+            counts; do NOT enumerate.
+
+S4.Q7 — opencog/vision IMPLEMENTATION DEPTH.
+        Inspect E:\GitHub\hyperon reference\vision\opencog\ for actual
+        Atomese type implementations. Required:
+        (a) Inventory of *.cc / *.cpp / *.h / *.hpp files defining
+            ImageValue + ImageBlurLink + ImageWriteLink + ImageHalfSize
+            + ImageFilter2D.
+        (b) Apply the THREE-STATE classification per P4.5 to each type:
+              [WIRED]          — file included in
+                                 opencog/atoms/vision/CMakeLists.txt
+                                 source/header lists.
+              [STUB-NOT-WIRED] — source/header file exists in tree AND
+                                 declared in atom_types.script, BUT
+                                 not in CMakeLists.txt source/header
+                                 set. Pre-known case: ImageRectangleLink
+                                 (Codex S4 refinement #2).
+              [UNIMPLEMENTED]  — no source file and no type-script
+                                 declaration; only README mention.
+            For each "More plans and ideas" item (README:45-69),
+            classify into one of these three states. Cite specific
+            file paths + atom_types.script line + CMakeLists.txt line.
+        (c) Does examples/ have a demo that runs end-to-end?
+        (d) Summary: of README:45-69 "More plans and ideas",
+            distribution of WIRED / STUB-NOT-WIRED / UNIMPLEMENTED
+            counts.
+
+S4.Q8 — Hyperon-era DATA-FLOW question (PRIMARY):
+        Does neural-subgraph-matcher-miner connect to AtomSpace?
+        Specifically:
+        (a) Does it import/export from `hyperon` Python package (as
+            opposed to working purely on networkx graphs)?
+        (b) The README mentions "knowledge graphs" — does this mean
+            AtomSpace knowledge graphs, or generic graph data?
+        (c) Is the metta.pkl file (top-level) related to MeTTa?
+            SAFETY NOTE (Codex S4 refinement #3): inspect ONLY via
+            safe metadata commands. Do NOT pickle.load an arbitrary
+            repository pickle file during review (untrusted-pickle
+            arbitrary-code-execution risk). Acceptable inspection
+            approaches:
+              - `file metta.pkl` (file-type detection)
+              - `head -c 256 metta.pkl | strings` (header bytes only)
+              - `ls -la metta.pkl` (size + dates)
+              - git log -- metta.pkl (commit history)
+              - any commit message that introduced the file
+            Goal: determine the PROVENANCE/PURPOSE of metta.pkl
+            without deserializing it.
+        Default expectation: NEURAL-MINER-INDEPENDENT-OF-METTA
+        (paradigm-distinct, CF3.1). If AtomSpace integration found,
+        document it.
+
+S4.Q9 — Authorship analysis on neural-subgraph-matcher-miner.
+        Confirm P4.4 top contributors: kedistkid 123, Samrawit
+        Gebremaryam Bahta 65, DagmawiKK 32, AlexKalll 27, Kedist Shegute
+        24. Check for:
+        (a) Stanford Leskovec-lab authors (Rex Ying, Jure Leskovec,
+            Hongbo Wang, etc.) — ABSENT-EXPECTED.
+        (b) FISHGRAM-Python authors (Jared Wigmore, Jade O'Neill,
+            Keyvan Mir Mohammad Sadeghi) — ABSENT-EXPECTED per CF1.3.
+        (c) opencog/miner authors (Nil Geisweiller, Linas Vepstas) —
+            ABSENT-EXPECTED per CF3.1.
+        (d) iCog-Labs-Dev/hyperon-miner team-overlap (Basliel-Amsalu,
+            eyobderese, tezena) — likely zero direct overlap, but
+            same iCog/Rejuve professional context.
+
+S4.Q10 — FORMALIZATION-LAYER PARITY CHECK (CF3.2).
+         Does neural-subgraph-matcher-miner have ANY analogous
+         formalization layer (Lean / coq / agda / Mettapedia / xiPLN)?
+         (a) Any imports from `dependent-types` directories (per S3
+             precedent)?
+         (b) Any Lean/coq files in the repo?
+         (c) Any cross-link to xiPLN / Mettapedia papers in README/docs?
+         Default expectation: NO formalization layer (paradigm is
+         empirical/ML; formalization is symbolic). [STRICTLY-EMPIRICAL]
+         is the expected verdict.
+
+S4.Q11 — opencog/destin + opencog/semantic-vision + hansonrobotics
+         frozen-history short-form audit.
+         For EACH of 4 frozen repos:
+         (a) Last-commit date + author.
+         (b) One-line README synthesis.
+         (c) Verdict: [HYPERON-ERA-FROZEN] / [PRE-HYPERON-ERA].
+         (d) tpsjr7/destin_ted_temp existence: GitHub URL accessibility
+             check (`git ls-remote`-style, no clone). Was the cited
+             2013 FISHGRAM paper code retrievable? Does it still exist
+             on github.com/tpsjr7/destin_ted_temp at any version?
+             NETWORK-DEPENDENT CHECK (Codex S4 refinement #4):
+             Acceptable recorded outcomes are:
+               - "VERIFIED-EXISTS" + URL + last-activity timestamp
+               - "VERIFIED-DOES-NOT-EXIST" + 404 response
+               - "ORCHESTRATOR-PRE-RESOLVED" if orchestrator already
+                 resolved this independently
+               - "NETWORK-UNAVAILABLE-IN-REVIEWER-ENVIRONMENT" if
+                 reviewer cannot reach github.com
+             Do NOT block extraction on this check; record outcome
+             whichever way it lands.
+
+S4.Q12 — LLM-MEDIATED PERCEPTION ADAPTER question.
+         Per the cluster narrative, LLM-mediated perception is a
+         possible Hyperon-era replacement for the symbolic+neural
+         compositional perception line of opencog/semantic-vision.
+         (a) Search hyperon-experimental for any LLM-perception
+             adapter or sensory-LLM bridge: grep for
+             "openai" | "anthropic" | "llm" | "embedding" anywhere
+             that intersects perception-context.
+         (b) Search rejuve-bio organization repos and zariuq workspace
+             for any LLM-mediated perception adapter.
+             NETWORK-DEPENDENT CHECK (Codex S4 refinement #4):
+             Acceptable recorded outcomes are:
+               - "VERIFIED-FOUND" + repo + file:line evidence
+               - "VERIFIED-NOT-FOUND" via local-clone scan
+               - "ORCHESTRATOR-PRE-RESOLVED" if pre-checked
+               - "NETWORK-UNAVAILABLE-IN-REVIEWER-ENVIRONMENT" if
+                 organization-wide GitHub search unreachable
+             Local-clone scan is sufficient for the recorded outcome;
+             do NOT block on network access.
+         (c) Default expectation: NOT-FOUND. If found, document the
+             repo + integration depth.
+
+S4.Q13 — Apply primary verdict to each S4 surface (S4.Q12 → primary
+         verdict). Locked vocabulary in §6.
+         Format:
+           SURFACE A (rejuve-bio/neural-subgraph-matcher-miner):
+             [primary-verdict] / [paradigm-distinction] /
+             [formalization-layer-status]
+           SURFACE B (opencog/vision):
+             [primary-verdict] / [implementation-depth]
+           SURFACE C (hyperon-experimental):
+             [primary-verdict on perception absence]
+           SURFACE D (frozen historical):
+             4× [HYPERON-ERA-FROZEN] / [PRE-HYPERON-ERA] verdicts
+
+S4.Q14 — CLUSTER-NARRATIVE INTEGRATION.
+         Given S4.Q13 verdicts, assess whether the cluster-narrative
+         hypothesis (entered the pilot via S1: "Hyperon-era perception
+         + neural-symbolic integration is paradigm-distinct from
+         Classic FISHGRAM and from the symbolic miner trio") is
+         CONFIRMED, REFINED, or REFUTED.
+         (a) Is rejuve-bio's neural mining a tradition-distinct line
+             that should be added to the CLAUDE.md tradition map (e.g.,
+             "Tradition 7: Neural-Geometric Mining")?
+         (b) Or is it sub-tradition of an existing line (e.g., a
+             modern descendant of opencog/semantic-vision SynerGAN
+             concept)?
+         (c) Recommend cluster-close edit handling.
+
+
+§6. VERDICT VOCABULARY (Codex-locked carrying S3 precedents)
+-------------------------------------------------------------
+
+Primary (S4.Q13 main verdicts):
+  [SPMiner-LINEAGE]                    Direct algorithmic descendant
+                                        of SPMiner / NeuroMatch
+                                        (Ying/Leskovec-style GNN
+                                        subgraph mining)
+  [GNN-NEURAL-MINING]                  Generic neural pattern-mining
+                                        (R-GCN/GIN/MLP-based);
+                                        broader than SPMiner-specific
+  [SCAFFOLDING-NOT-PIPELINE]           Type/wrapper layer; minimal
+                                        actual pipeline implementation
+  [NO-RUNTIME-PERCEPTION-BINDING]      Hyperon-runtime has zero
+                                        built-in perception adapter
+
+Paradigm distinction (S4.Q5 → S4.Q9):
+  [PARADIGM-DISTINCT-NEURAL]           Zero symbolic-miner inheritance;
+                                        confirms CF3.1
+  [PARTIAL-NEURAL-INHERITANCE]         Some inheritance from symbolic
+                                        line found
+  [NEURAL-LLM-MEDIATED]                LLM-based perception integration
+                                        (default: not found, but
+                                        verdict allowed if surfaced)
+
+Formalization parity (S4.Q10):
+  [STRICTLY-EMPIRICAL]                 No formalization layer
+                                        (CF3.2 paradigm-distinct
+                                        confirmation)
+  [PARTIAL-FORMALIZATION-LAYER]        Some formalization found
+
+Implementation depth (S4.Q2 + S4.Q7):
+  [PIPELINE-DEMONSTRATED]              End-to-end demo runs
+  [PARTIAL-IMPLEMENTATION]             Major features implemented;
+                                        gaps documented
+  [SCAFFOLDING-NOT-PIPELINE]           Type/wrapper layer only;
+                                        no end-to-end pipeline
+
+Frozen historical (S4.Q11):
+  [HYPERON-ERA-FROZEN]                 No commits since the
+                                        Hyperon split (2019-2020 cutoff)
+  [PRE-HYPERON-ERA]                    Frozen before the Hyperon
+                                        platform existed (2014-2017)
+
+
+§7. CROSS-SOURCE FORWARDS (locked findings — for S5 + cluster-close)
+--------------------------------------------------------------------
+
+CF4.1 (locked for S5): If S4 confirms [PARADIGM-DISTINCT-NEURAL] +
+      [NO-RUNTIME-PERCEPTION-BINDING] + [HYPERON-ERA-FROZEN] for
+      historical perception family, then S5's perception-output
+      boundary check question becomes well-posed:
+      Does ANY external Hyperon-era integration code (outside
+      builtin_mods) wire perception input through to AtomSpace, the
+      hyperon-miner trio, or neural-subgraph-matcher-miner?
+      Default expectation per S4: NO. Reviewers should expect to
+      find a clean negative result, with the open question being
+      whether LLM-mediated perception adapters constitute a partial
+      bridge.
+
+CF4.2 (locked for cluster-close): If S4 confirms
+      [PARADIGM-DISTINCT-NEURAL], the rejuve-bio neural-mining lineage
+      may warrant a separate cluster-close note in CLAUDE.md or a
+      separate wiki card. Distinguish from S3's
+      [METTA-PORT-OF-MINER] hyperon-miner trio. Suggested
+      cluster-narrative framing: "Hyperon-era pattern mining is
+      bilateral — symbolic (Tradition 1.5 = MeTTa port of opencog/miner)
+      AND neural (rejuve-bio SPMiner-lineage)."
+
+CF4.3 (locked for cluster-close + reverse cross-cluster touchpoint):
+      The opencog/vision authorship is Linas Vepstas + Adrian Borucki.
+      Linas Vepstas is also a major contributor to opencog/miner
+      (S2 finding) + AtomSpace family (AtomSpace cluster pilot
+      finding). This is a single-author bridge from the Classic
+      OpenCog era into the current minimal Hyperon-perception
+      scaffolding. Document this in cluster-narrative as
+      [LEGACY-AUTHOR-BRIDGE] — a person-level continuity, not an
+      algorithmic-tradition continuity.
+
+CF4.4 (orchestrator-locked methodology for S5): The CF3.6 phantom-file
+      methodology lock continues to apply. S5 reviewers asserting
+      file-existence should run `ls`/`Glob` first.
+
+
+§8. OUTPUT EXPECTATIONS
+-----------------------
+
+Reviewers produce plain-text findings:
+  scripts/archive/perception_pilot/source4_hyperon_neural_perception/
+    findings_codex.txt
+    findings_gemini.txt
+
+Format: question-by-question. file:line citations for code claims;
+SHA refs for git claims. Verdict labels from §6.
+V4-X dissent records where reviewer disagrees with another model or
+with orchestrator §3-§4 pre-resolution.
+
+Brief sign-off expected from BOTH reviewers BEFORE extraction begins.
+Reviewers can flag brief errors at sign-off time.
+
+Special CF3.6 reminder for Gemini (carry-forward from S3): Verify
+file-existence claims with `ls`/`Glob` BEFORE asserting that a file
+exists. Phantom-file inferences will be flagged as V4-X dissents.
+
+Special CF2.5 reminder for Gemini: prioritize narrower line ranges
+when citing line numbers; default to ground-truth verification before
+asserting specific line numbers.
+
+
+§9. METHODOLOGY REMINDERS (apply rigorously)
+--------------------------------------------
+
+- Pickaxe before "never used" / "never implemented" claims:
+    git log --all -S '<token>'
+- File-existence claims require `ls`/`Glob` verification (CF3.6).
+- Caller-analysis must be time-indexed (snapshot SHA).
+- Bidirectional fork-divergence + staleness corollary
+  (memory: feedback_bidirectional_fork_divergence). Apply if any
+  fork is encountered.
+- Verify "identity-between-artifacts" claims against source
+  (Gemini drift on identity assertions per V1-2 + V2-2 + V3-3
+  precedents). Particularly: "X is a port of Y" claims must be
+  verified by grep/code-citation, not by similar-names inference.
+- CF2.5 line-citation methodology: default to Codex + orchestrator
+  for line numbers; Gemini's high-level claims valuable but
+  cross-checked.
+- Don't collapse paper-vs-code distinctions:
+  "uses SPMiner concepts" ≠ "ports the SPMiner paper" ≠
+  "implements the Stanford code".
+- Don't collapse symbolic and neural lineages (CF3.1).
+
+
+================================================================================
+END OF SOURCE 4 BRIEF
+================================================================================

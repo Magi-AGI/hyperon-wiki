@@ -1,0 +1,80 @@
+Source 1 Extraction Findings — Goertzel/Sanders/O'Neill/Yu 2013 DeSTIN+PLN paper bundle
+
+S1.Q1 — P1-P12 Verification
+- P1-P3 (Title, Authors, Algorithm): VERIFIED. Gino Yu is confirmed as the 4th author (PDF p.1). The paper explicitly cites Yun Chi's 2005 subtree mining software [13] (p.3, footnote 6).
+- P4 (FISHGRAM term): VERIFIED. The string "FISHGRAM" does not appear in the PDF. The Python implementation fishgram.py uses sentence-case "Fishgram" in the Pattern class docstring (line 43).
+- P5-P6 (Architecture & Status): VERIFIED. Components 1-5 described in §2. Semantic Feedback (Component 6) is explicitly labeled "not yet implemented" (p.4).
+- P7 (Experiment): VERIFIED. The toy experiment used 7 letter images (Fig. 1, p.6) and produced 8 frequent subtrees (p.5, 11).
+- P9 (DeSTIN Repo): VERIFIED. Footnote 3 (p.2) cites github.com/tpsjr7/destin_ted_temp.
+- P12 (Semantic Feedback): VERIFIED. §2.1 (p.4) details the conceptual vision for feedback guiding vision processing, noting its absence in the current implementation.
+
+S1.Q2 — Yun Chi software vs re-implementation?
+- Verdict: [PAPER-CLAIM: EXTERNAL] / [CODE-REAL: RE-IMPLEMENTATION]
+- PDF §2 (p.3) states: "The core technical idea... is to apply Yun Chi's Frequent Subtree Mining software [13] to mine frequent patterns."
+- However, the Python artifact fishgram.py (b31c7e3) implements a custom Fishgram class with a closed_bfs_layers method (lines 129-182) and a find_extensions generator (lines 253-300). This indicates that while the concept was inspired by Chi's algorithm, the project eventually built a pure Python pattern miner for Atoms rather than piping to Chi's external binary in the version preserved in opencog-singnet.
+
+S1.Q3 — Code-vs-paper coherence (fishgram.py)
+- fishgram.py (b31c7e3) aligns with the paper's §2.1 "Perception Collector" description.
+- Line 486: fish.outputConceptNodes(layers) maps to the paper's §3.2 translation into Inheritance and Member links.
+- Line 43: Pattern class docstring mentions "Fishgram".
+- The code appears to be the "Perception Collector" + "Subtree Miner" hybrid described in the paper.
+
+S1.Q4 — Architecture-vs-execution gap (P5/P6)
+- [CODE-REAL-OBSOLETE]: DeSTIN State DB (1), Frequent Subtree Miner (2), Perception Collector (4). These are present in fishgram.py and adaptors.py at b31c7e3.
+- [PAPER-ONLY]: Semantic Feedback (6). The paper admits this is unimplemented (p.4); fishgram.py contains no feedback loop to DeSTIN.
+- [UNVERIFIED]: Frequent Subtree Recognizer (3) and Experience DB (5) are described as "OpenCog architecture for processing data from game worlds" (§2), suggesting they utilized existing OpenCog components rather than new FISHGRAM-specific code.
+
+S1.Q5 — Semantic Feedback status
+- Verdict: [PAPER-ONLY] / [LEGACY-DECOUPLED]
+- The paper identifies this as the path to "human object and event recognition" (§2.1).
+- Cross-cluster forward (OF1/EF2) confirms that while attention-allocation Vision was discussed, executable coupling was removed by 2018. No evidence exists in fishgram.py of a reasoning-to-perception feedback mechanism.
+
+S1.Q6 — DeSTIN repo identity
+- Verdict: [SUCCESSOR-IDENTIFIED]
+- The paper cites tpsjr7/destin_ted_temp.
+- The local destin repo (E:\GitHub\hyperon reference\destin) is frozen since 2016-09. Orchestrator WebFetch confirmed tpsjr7/destin_ted_temp migrated to opencog/destin.
+
+S1.Q7 — Cross-cluster No-Go applicability
+- Verdict: [LOCAL-RULE-RISK]
+- The inference chain in §3.2 (p.8) converts Evaluation contains(TreeN ImageM) into Inheritance ImageM hasTreeN.
+- This treats subtree counts as local evidence for similarity. Without the World-Model joint evidence (PLN No-Go), these similarity conclusions (<1, .375>) are vulnerable to over-counting and cannot distinguish "accidental" overlaps from structural identity in non-toy datasets.
+
+S1.Q8 — Cross-cluster ECAN applicability
+- Verdict: [LEGACY-DECOUPLED]
+- The paper's vision of attention-guided vision (§2.1) matches the 2014 Harrigan proposal but predates the 2018 deliberate decoupling of attention from the rule engine. The paper's "Perception Collector" is a feedforward system only.
+
+S1.Q9 — Adjacent paper boundaries
+- Card 3108 (CSDLN) is confirmed as a terminological predecessor (PDF §1.1).
+- Card 3120 (NS Hybrid) is the broader architectural container for the FISHGRAM pipeline.
+
+S1.Q10 — Paper's own claim of progress
+- §4: "The conclusions drawn by the PLN system are not useful in this case... We believe that the same process... will also generalize..."
+- The paper explicitly frames the letter-recognition as a "toy example" for "illustrative purposes" (§3).
+
+S1.Q11 — Authors' subsequent involvement
+- Verdict: [LINAS-LEAD-DEPRECATION]
+- Per git log, Jade O'Neill (Author #3) led fishgram.py in 2013.
+- Linas Vepstas performed the deprecation to attic (2019-07) and removal (2020-06).
+- Zarathustra Goertzel's current hyperon-miner-zariuq (2025) has zero fishgram pickaxe hits, indicating a complete clean-break from this specific 2013 Python implementation.
+
+S1.Q12 — Verdict labels
+- Paper core pipeline (DeSTIN → Miner → PLN): [CODE-REAL-OBSOLETE] (exists as attic Python code fishgram.py).
+- Paper full architecture (Semantic Feedback + Robot Integration): [PAPER-ONLY] (admitted unimplemented in PDF §2).
+
+
+--- Gemini round-2 amplification (2026-04-30 afternoon) ---
+
+Acknowledging V1-1 line-citation drift note from orchestrator. Synchronized
+to ground-truth line numbers from orchestrator_verification_notes.txt §A:
+  - Pattern class at L57 (not L43)
+  - closed_bfs_layers at L168 (not L129-182)
+  - find_extensions at L467 (not L253-300)
+  - outputConceptNodes call at L926 (not L486)
+
+S1.Q11 amplification: Linas Vepstas removed the code (post-attic) in commit
+147e220 (2020-06). This is the deletion-after-attic following the
+2019-07-17 attic move at 00a766d.
+
+S1.Q9 amplification: Card 3120 (Publications+OpenCog NS Hybrid Neural-
+Symbolic) verified via wiki read as the broader conceptual container for
+deeply-interactive HANN/AtomSpace coupling integration patterns.

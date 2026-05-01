@@ -1,0 +1,34 @@
+Codex S2 extraction findings.
+
+Surface A: Fishgram @ singnet/opencog b31c7e3
+
+S2.Q1: §3.A line numbers verified. fishgram.py has import adaptors at :9, from tree import * at :22, from logic import PLNviz at :24, Pattern at :57, Fishgram at :89, closed_bfs_layers at :168, find_extensions at :467, outputConceptNodes at :597, outputPredicateNodes at :655, and callsite fish.outputConceptNodes(layers) at :926. No drift.
+
+S2.Q2: adaptors.py is 579 lines. Major structures: ForestExtractor :18, extractTree :85, extractForest :102, GephiOutput :302, DottyOutput :372, SubdueTextOutput :436, GephiMindAgent :520. It also has a notable abandoned bridge hint: "miner-friendly output" / "external miners (abandoned)" at adaptors.py:30-33.
+
+S2.Q3: Commit metadata mostly verified, with one correction. 00a766d955... on 2019-07-17 moved the Fishgram implementation files to attic: adaptors.py, fishgram.py, pre_fishgram.py. It did NOT move tests/python/old/test_fishgram.py; that test had already moved from tests/python/test_fishgram.py to tests/python/old/test_fishgram.py in b55464187 on 2013-10-17. 147e2206e... on 2020-06-25 deleted all four: three attic Fishgram files plus tests/python/old/test_fishgram.py. Candidate V2-1: brief §3.C overstates the 2019 move set by including test_fishgram.py.
+
+S2.Q4: Verdict at b31c7e3 is firmly [BROKEN-OBSOLETE]. logic.py is absent from the tree, and PLNviz appears only in fishgram.py:24 and :100. Pickaxe found no pln_old.logic / from pln_old update in Fishgram. Breakage is guaranteed after 74eecfbb8 deleted opencog/python/pln_old/logic.py on 2018-06-29. It was likely broken under standard source-tree paths after 951431df2 renamed pln to pln_old on 2015-04-21, but the exact onset depends on external PYTHONPATH/cogserver setup.
+
+S2.Q5: pre_fishgram.py is 68 lines; test_fishgram.py is 168 lines. pre_fishgram.py imports load_scm_file :2, m_util :3, fishgram :4, m_adaptors :5, adaptors :6; dependencies exist at attic/utility/load_scm_file.py, attic/dingjie/m_util.py, and attic/dingjie/m_adaptors.py. But pre_fishgram.py:4 and test_fishgram.py:13 import fishgram, so the broken logic.py import propagates. No independent runnable toy-pipeline surface found.
+
+S2.Q6: sushigram was not a separate file. d6b1c86fb says "Added a basic surprise measure to fishgram, creating sushigram" and modifies opencog/python/fishgram.py plus adaptors.py. At b31c7e3, no sushigram token remains; only surprise methods/comments remain in fishgram.py:433, :456, :529.
+
+Surface B: Classic miner absorption
+
+S2.Q7: opencog/miner @ 444eb6474 has no current Fishgram-specific terms (fishgram, sushigram, ForestExtractor, closed_bfs, find_extensions). It is a C++/Scheme Atomese pattern miner: Miner at opencog/miner/Miner.h:88, MinerUtils at MinerUtils.h:42, Scheme cog-mine at opencog/miner/scm/miner/miner-utils.scm:584. It cites/mimics Yun Chi subtree-mining literature (README.md:12-15, README.md:731, Miner.h:42). Label: [PAPER-FAITHFUL-RECOVERY] at the Chi/algorithm-family level, with [NO FISHGRAM CONCEPTUAL-ABSORPTION].
+
+S2.Q8: ngeiswei/miner @ 339cc494e has the same absorption profile. Fork relation is [STRICT-FORK-BEHIND]: in the opencog/miner clone, merge-base is exactly 339cc494e; opencog/miner is 8 commits ahead, fork-only count is 0.
+
+S2.Q9: Exact "Mining closed and maximal frequent subtrees..." title not found. The repo cites "Yun Chi et al. Frequent Subtree Mining -- An Overview. (2005)" and implements a URE/Atomese adaptation, not vendored Yun Chi software and not Fishgram code.
+
+S2.Q10: Path-limited miner authorship is Nil-led: git shortlog -- README.md opencog/miner examples/miner tests/miner gives Nil Geisweiller 132 commits, Linas Vepstas/Vepštas 58 combined, Kasim 43 combined. Jared Wigmore, Keyvan, and Jade have no commits on the current miner surface.
+
+S2.Q11: No executable bridge found from Fishgram/perception into opencog/miner. The only Fishgram-side hint is the abandoned "external miners" output mode in adaptors.py:30-33; no cog-mine/PatternMiner call exists in the Fishgram surface.
+
+S2.Q12: Labels:
+(a) Fishgram toy pipeline at b31c7e3: [BROKEN-OBSOLETE].
+(b) opencog/miner absorption: [PAPER-FAITHFUL-RECOVERY], not Fishgram continuation.
+(c) ngeiswei/miner vs opencog/miner: [STRICT-FORK-BEHIND].
+
+No further Codex dissents beyond candidate V2-1.

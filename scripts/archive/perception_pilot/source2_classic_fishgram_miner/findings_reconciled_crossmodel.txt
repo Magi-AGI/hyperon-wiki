@@ -1,0 +1,547 @@
+================================================================================
+PERCEPTION / NEURAL-SYMBOLIC CLUSTER PILOT
+SOURCE 2 RECONCILIATION — Classic FISHGRAM Python @ b31c7e3 + Classic miner
+================================================================================
+
+Pilot:        Perception / Neural-Symbolic Cluster Pilot
+Source:       2 of 5
+Date:         2026-04-30
+Orchestrator: Claude Opus 4.7 (1M)
+Reviewers:    Codex (findings_codex.txt) + Gemini (findings_gemini.txt)
+Brief:        ../source2_classic_fishgram_miner_brief.txt (R1-R3 refined)
+Forwards:     ../source1_fishgram_paper/findings_reconciled_crossmodel.txt
+              (CF1.1-CF1.5 honored)
+
+Audited artifacts:
+- singnet/opencog @ b31c7e3b9beab7a458c84117f3b654a03ca9ffe2
+  Files: opencog/python/attic/learning/fishgram/{fishgram.py, adaptors.py,
+         pre_fishgram.py}
+         tests/python/old/test_fishgram.py
+         opencog/python/attic/utility/{tree.py, util.py, load_scm_file.py}
+         opencog/python/attic/dingjie/{m_util.py, m_adaptors.py}
+- opencog/miner @ 444eb6474c304775c457410592fa47a51455e36c (master HEAD)
+- ngeiswei/miner @ 339cc494ebd2fb29c3537176fa446f21b39c5d83 (master HEAD)
+
+
+================================================================================
+EXECUTIVE SUMMARY (R2.X consensus statements)
+================================================================================
+
+R2.1 — FISHGRAM TOY PIPELINE AT b31c7e3 IS [BROKEN-OBSOLETE]. fishgram.py
+       imports `from logic import PLNviz` at L24, but logic.py is absent
+       from the entire b31c7e3 tree (verified by both reviewers and
+       orchestrator). The toy pipeline cannot execute. PLNviz appears at
+       only two locations in b31c7e3: fishgram.py:24 (the import) and
+       fishgram.py:100 (an internal reference) — and zero file in the
+       tree defines `class PLNviz`.
+
+R2.2 — BREAKAGE DATE PINNED: 2018-06-29 GUARANTEED, 2015-04-21 PROBABLE.
+       Codex pickaxe + orchestrator pickaxe converged: ZERO occurrences
+       of `pln_old.logic` or `from pln_old` in any fishgram surface.
+       fishgram.py's import path was never updated to track Nil
+       Geisweiller's pln/ -> pln_old/ rename (commit 951431df2,
+       2015-04-21). Therefore:
+       - Guaranteed break: 2018-06-29 (commit 74eecfbb8 deleted
+         pln_old/logic.py — unrecoverable from this date).
+       - Probable break: 2015-04-21 (rename without import-update
+         renders the import non-resolving under standard source-tree
+         PYTHONPATH; depends only on cogserver/test-runner config).
+       - Lower bound: ~13 months broken before attic move (2019-07-17).
+       - Upper bound: ~4 years 3 months broken before attic move.
+       The exact onset depends on external runtime config not captured
+       in the source tree.
+
+R2.3 — CHAINED IMPORT BREAKAGE PROPAGATES TO ALL FISHGRAM SURFACES. Both
+       reviewers verified: pre_fishgram.py:4 (`import fishgram`) and
+       test_fishgram.py:13 (`import fishgram`) inherit the broken
+       import. NO independent runnable surface exists. Codex pinned
+       file sizes: pre_fishgram.py = 68 lines, test_fishgram.py = 168
+       lines, adaptors.py = 579 lines (orchestrator-verified).
+
+R2.4 — sushigram WAS NEVER A SEPARATE FILE OR CLASS. The 2012-04-12
+       commit d6b1c86fb's message "Added a basic surprise measure to
+       fishgram, creating sushigram" referred to inline additions to
+       fishgram.py + adaptors.py, NOT a new file. At b31c7e3, NO
+       sushigram token survives in any file content (grep returns 0
+       hits); only "surprise" methods/comments remain at fishgram.py:
+       L165, L414, L433, L436, L442, L444, L445, L449, L452, L456.
+       Historical exception (V2-5 corollary): the token sushigram
+       appeared as a parenthetical label in a Scheme comment at
+       opencog/embodiment/unity_attitude_processor.scm:13 from
+       2011-12-19 (added by a3363f92b) to 2015-09-10 (removed by
+       060a1ed56 "Remove multiverse and unity scheme rule files").
+       The comment read "...incorporating learning algorithms like
+       fishgram(sushigram etc.)..." — a parenthetical reference, not
+       executable code. Verdict unchanged: [INLINE-ONLY] /
+       [PHANTOM-LABEL].
+
+R2.5 — opencog/miner IS [PAPER-FAITHFUL-RECOVERY] / [NO-ABSORPTION]. The
+       Classic miner is a C++/Scheme Atomese pattern miner built on the
+       URE (Unified Rule Engine), an entirely different substrate from
+       fishgram.py's manual Python loop. ZERO Fishgram-specific terms
+       (fishgram, sushigram, ForestExtractor, closed_bfs, find_extensions)
+       appear in the current miner surface (verified by Codex).
+
+R2.6 — DIFFERENT YUN CHI PAPER. opencog/miner cites:
+       "Yun Chi et al. Frequent Subtree Mining -- An Overview. (2005)"
+       at opencog/miner/README.md:731 and opencog/miner/Miner.h:42
+       (orchestrator-verified).
+       This is NOT the same Chi paper that the 2013 FISHGRAM paper
+       cited. The 2013 paper cited:
+       "Chi, Y., Xia, Y., Yang, Y., Muntz, R.R.: Mining closed and
+        maximal frequent subtrees from databases of labeled rooted
+        trees. IEEE Trans. Knowledge and Data Engineering (2005)"
+       Both are Chi 2005, but different works. The 2013 paper's cited
+       paper is the IEEE TKDE algorithm; opencog/miner cites the survey/
+       overview paper. CF1.4 paper-vs-code distinction holds: opencog/
+       miner is paper-faithful at the algorithm-FAMILY level (Chi
+       lineage), not the specific IEEE TKDE paper FISHGRAM cited.
+
+R2.7 — ngeiswei/miner IS [STRICT-FORK-BEHIND] opencog/miner. Definitive
+       orchestrator verification:
+         - merge-base = 339cc494e (= ngeiswei HEAD exactly)
+         - opencog/miner is 8 commits ahead of merge-base
+         - ngeiswei/miner has 0 fork-only commits
+       opencog/miner's 8 ahead-commits include: "Moving to new API
+       somethow broke the tests" (444eb6474), "Port away from obsolete
+       API" (2643f54ab), "Modernize CMakefile" (18113ca73), "Move
+       function out of AtomSpace to here" (f283b86d5), "Remove obsolete
+       cog-filter" (55b6de428), "Fix build break due to missing header"
+       (3f0bc163e), "Merge pull request #69 from opencog/tree-from-
+       cogutil" (caf6199a4), "Copy tree.h from cogutil to here"
+       (7d667b43c). All maintenance, no new functionality.
+       This refutes Gemini's [BIDIRECTIONAL-DIVERGENCE] claim — see
+       V2-2 below.
+
+R2.8 — ZERO AUTHORSHIP OVERLAP between FISHGRAM and opencog/miner. Codex
+       path-limited analysis: Nil Geisweiller (132 commits), Linas
+       Vepstas combined (58), Kasim combined (43). Jared Wigmore,
+       Keyvan Mir Mohammad Sadeghi, and Jade O'Neill (the 2012-2013
+       FISHGRAM Python authors) have ZERO commits on the current miner
+       surface. (Gemini's total-repo shortlog showing Jared as 5th at
+       551 is not refuted but is OUT OF SCOPE — for the absorption
+       check, path-limited authorship is the relevant measure. See V2-3
+       framing note.)
+
+R2.9 — NO EXECUTABLE BRIDGE FROM PERCEPTION TO opencog/miner ([NEVER-
+       WIRED]). Codex caller analysis: no `cog-mine` or `PatternMiner`
+       call from any perception/Fishgram path. Concrete supporting
+       evidence: fishgram.py / adaptors.py have no opencog/miner
+       imports; opencog/miner examples target SUMO/MOZI-AI datasets,
+       not perception streams.
+
+R2.10 — IMPORTANT NEW SEED (PARTIALLY-INFERENCE): adaptors.py:30-33
+        reveals an ABANDONED external-miners output path. Codex caught
+        this; orchestrator verified the exact text at adaptors.py:32:
+          "Whether to create miner-friendly output, rather than
+           human-friendly output. ... Not relevant to the Fishgram
+           algorithm, only to external miners (abandoned)"
+
+        SOURCE FACT (verified in code):
+        - An "external miners" output mode existed in adaptors.py.
+        - The comment explicitly labels it "abandoned."
+        - The miner_friendly flag at adaptors.py:33 is set to True at
+          b31c7e3, suggesting the abandoned-output mode toggle was kept
+          even in the final state.
+
+        INFERENCE (not source-confirmed; flagged for downstream
+        sources to corroborate or refute):
+        - The abandoned "external miners" path may correspond to the
+          2013 paper's claimed integration with Yun Chi's software.
+        - If so, this would refine S1's R1.3: paper-vs-code gap was
+          not "paper claims X, code does Y" but "paper claims X, code
+          attempted X then abandoned to Y."
+        - Without git-archaeology on the specific commits that
+          introduced and abandoned the external-miners branch (a S2
+          deliverable not yet performed), the link to Yun Chi remains
+          inference rather than fact. Could equally well be a
+          different external miner (e.g., Subdue, gSpan, FreqT) — the
+          adaptors.py SubdueTextOutput class at L436 hints at Subdue
+          integration as an alternative or additional target.
+
+        S2 closes with the inference status preserved; CF2.6 forwards
+        the open archaeology question to S3+ if relevant.
+
+R2.11 — V2-1 DISSENT RESOLVES IN CODEX'S FAVOR. Brief §3.C overstated the
+        2019-07-17 attic-move set. test_fishgram.py was ALREADY at
+        tests/python/old/test_fishgram.py at the b31c7e3 snapshot
+        because Cosmo Harrigan moved it from tests/python/test_fishgram.py
+        to tests/python/old/test_fishgram.py in commit b554641878002a
+        7681441dd98929cd2025586195 on 2013-10-17. The 2019-07-17 attic
+        move (00a766d) only moved adaptors.py + fishgram.py +
+        pre_fishgram.py — NOT test_fishgram.py. The 2020-06-25 removal
+        (147e220) deleted all four files together.
+        Brief §3.C will be implicitly corrected in cluster-close
+        documentation; this reconciliation is the canonical record.
+
+R2.12 — FISHGRAM RUNTIME CONTEXT: pre_fishgram.py and fishgram.py are
+        designed to be run inside the cogserver shell (per fishgram.py
+        L1-2 docstring: "You can test at the cogserver shell, using
+        import adaptors; reload(adaptors); import fishgram; reload(
+        fishgram); from fishgram import *; fish = FishgramMindAgent();
+        fish.run(a)"). Cogserver auto-loads opencog.cogserver and
+        opencog.atomspace; standalone Python runs would need additional
+        PYTHONPATH setup. This narrows the breakage analysis: the only
+        runtime that mattered in 2013-2018 was cogserver, and cogserver
+        config likely changed when pln/ was renamed to pln_old/ in 2015.
+
+
+================================================================================
+SECTION-BY-SECTION VERDICTS
+================================================================================
+
+S2.Q1 (fishgram.py line numbers)
+--------------------------------
+CONSENSUS: Both reviewers confirmed §3.A line numbers (Pattern L57,
+Fishgram L89, closed_bfs_layers L168, find_extensions L467,
+outputConceptNodes L597, outputPredicateNodes L655, callsite L926).
+Codex added detail: import adaptors L9, from tree import * L22, from
+logic import PLNviz L24. PLNviz also at L100 (internal reference).
+
+S2.Q2 (adaptors.py structure)
+-----------------------------
+CONSENSUS WITH V2-3 DISSENT (orchestrator-verified). Codex's claims
+match ground truth:
+  Total lines: 579 (Codex correct; Gemini said 472 — DRIFT)
+  ForestExtractor: L18 (both correct)
+  extractTree:     L85 (Codex correct; Gemini said L108 — DRIFT)
+  extractForest:   L102 (Codex correct; Gemini said L128 — DRIFT)
+  GephiOutput:     L302 (Codex correct; Gemini said L231 — DRIFT)
+  DottyOutput:     L372 (Codex correct; Gemini said L287 — DRIFT)
+  SubdueTextOutput:L436 (Codex correct; Gemini said L341 — DRIFT)
+  GephiMindAgent:  L520 (Codex correct; Gemini said L431 — DRIFT)
+adaptors.py:30-33 abandoned external-miners comment: Codex correct
+(orchestrator-verified at L32). Gemini missed this finding entirely.
+
+S2.Q3 (removal-commit metadata)
+-------------------------------
+CONSENSUS WITH V2-1 RESOLUTION. Codex correctly flagged that
+test_fishgram.py was moved 2013-10-17 (b55464187 by Cosmo Harrigan),
+NOT 2019-07-17. The 2019-07-17 attic move (00a766d) touched only the
+3 implementation files. The 2020-06-25 removal (147e220) deleted all 4.
+See V2-1 record.
+
+S2.Q4 (CF1.2 verdict / breakage date)
+-------------------------------------
+CONSENSUS: [BROKEN-OBSOLETE] at b31c7e3. Date: at minimum 2018-06-29
+guaranteed; very likely 2015-04-21 with no PYTHONPATH workaround.
+Both reviewers agree on the verdict; both agree on the lower bound;
+Codex correctly hedges on the upper bound (PYTHONPATH dependency);
+Gemini commits to 2015-04-21. The actual onset is unprovable from
+source tree alone.
+
+S2.Q5 (pre_fishgram + test_fishgram audit)
+------------------------------------------
+CONSENSUS: Chained-import breakage propagates. No independent
+runnable surface. Codex pinned line counts (pre_fishgram.py = 68;
+test_fishgram.py = 168). Reviewer convergence; no dissent.
+
+S2.Q6 (sushigram lifecycle)
+---------------------------
+CONSENSUS: [INLINE-ONLY] / [PHANTOM-LABEL]. sushigram never existed
+as a separate file or class. The 2012 commit message that "created
+sushigram" referred to inline additions only. No surviving sushigram
+references at b31c7e3.
+
+S2.Q7 (opencog/miner absorption)
+---------------------------------
+CONSENSUS: [PAPER-FAITHFUL-RECOVERY] / [NO-ABSORPTION] from FISHGRAM.
+Different substrate (URE/Atomese vs Python loop). ZERO Fishgram-
+specific terms in current miner. Reviewers converge.
+
+S2.Q8 (ngeiswei/miner divergence)
+---------------------------------
+CONSENSUS WITH V2-2 RESOLUTION (orchestrator-verified): [STRICT-FORK-
+BEHIND]. ngeiswei is 0 ahead, 8 behind. Codex correct; Gemini's
+[BIDIRECTIONAL-DIVERGENCE] is refuted. See V2-2.
+
+S2.Q9 (Yun Chi citation)
+------------------------
+CONSENSUS: opencog/miner cites Yun Chi 2005, but a DIFFERENT paper
+than the 2013 FISHGRAM paper cited (R2.6). Codex's specific lines:
+opencog/miner/Miner.h:42 (preamble) + opencog/miner/README.md:731
+(formal citation). Both orchestrator-verified. Gemini's lines (Miner.h:
+20, README.md:120) are wrong — V2-4 line-citation drift, same pattern
+as V1-1 and V2-3.
+
+S2.Q10 (authorship)
+-------------------
+CONVERGENT WITH SCOPE NOTE. Codex's path-limited shortlog is the
+relevant measure for the absorption check (R2.8). Gemini's total-repo
+shortlog gives a broader view but is less actionable. No factual
+contradiction; framing-only difference. See V2-3 framing note.
+
+S2.Q11 (caller analysis)
+------------------------
+CONSENSUS: [NEVER-WIRED]. No bridge from perception path to
+opencog/miner. Codex caught the abandoned-external-miners hint at
+adaptors.py:30-33 (R2.10) — partial corroboration of the absence-of-
+integration verdict.
+
+S2.Q12 (verdict labels)
+-----------------------
+Both reviewers concur:
+  (a) FISHGRAM at b31c7e3:        [BROKEN-OBSOLETE]
+  (b) opencog/miner absorption:   [PAPER-FAITHFUL-RECOVERY] / [NO-ABSORPTION]
+  (c) ngeiswei/miner divergence:  [STRICT-FORK-BEHIND] (Codex) vs
+                                   [BIDIRECTIONAL-DIVERGENCE] (Gemini)
+                                   — V2-2 resolves to STRICT-FORK-BEHIND.
+
+
+================================================================================
+CROSS-MODEL DISSENTS (V2-X records)
+================================================================================
+
+V2-1: test_fishgram.py was NOT moved by 00a766d (2019-07-17). Brief
+   §3.C overstated the move set.
+   FINDING (Codex). Brief §3.C said the attic move (00a766d 2019-07-17)
+   moved fishgram.py + adaptors.py + pre_fishgram.py + tests/python/old/
+   test_fishgram.py. Codex pickaxe found that test_fishgram.py was
+   moved earlier, in commit b554641878002a7681441dd98929cd2025586195
+   on 2013-10-17 by Cosmo Harrigan (commit message "Add Python example
+   code. Enhance docstring content and formatting.") from tests/python/
+   test_fishgram.py to tests/python/old/test_fishgram.py.
+   EVIDENCE. `git show --name-status b55464187` confirmed the 4 R100
+   renames (test_fishgram.py + test_logic.py + test_tree.py +
+   test_util.py all moved into tests/python/old/). `git show
+   --name-status 00a766d` confirmed it touched only the 3 fishgram
+   implementation files, not test_fishgram.py.
+   ORCHESTRATOR VERIFICATION. Both git show outputs matched Codex's
+   claims exactly.
+   STATUS. RESOLVED in Codex's favor. Brief §3.C will be retroactively
+   read with this correction. The reconciliation R2.11 is the
+   canonical record.
+
+V2-2: ngeiswei/miner divergence framing — STRICT-FORK-BEHIND vs
+   BIDIRECTIONAL-DIVERGENCE.
+   FINDING. Codex computed the proper bidirectional fork-divergence
+   (per memory feedback_bidirectional_fork_divergence) and reported
+   ngeiswei is 0 ahead, opencog/miner is 8 ahead, merge-base = ngeiswei
+   HEAD. Verdict: [STRICT-FORK-BEHIND].
+   Gemini reported [BIDIRECTIONAL-DIVERGENCE] citing "ngeiswei/miner
+   has unique commits related to valuation and is_in to contains
+   refactors (e.g., cc5578d4e 2021-08-12)" but those commits are
+   BEFORE the merge-base, NOT unique to ngeiswei.
+   EVIDENCE. Orchestrator verified: `git merge-base 444eb6474
+   339cc494e` returns 339cc494e exactly; `git rev-list --count
+   339cc494e..444eb6474` = 8; `git rev-list --count
+   444eb6474..339cc494e` = 0.
+   STATUS. RESOLVED in Codex's favor. ngeiswei/miner is strict-
+   ancestor of opencog/miner. Standing rule:
+   feedback_bidirectional_fork_divergence — apply `git log A..B` AND
+   `git log B..A` not shortlog or activity-snippet inspection.
+
+V2-3: Gemini line-citation drift (adaptors.py classes, README/Miner.h
+   citation lines). PATTERN-RECURRENCE of V1-1 from S1.
+   FINDING. Gemini's S2.Q2 and S2.Q9 line citations are systematically
+   wrong by 70-90 lines short on adaptors.py classes (e.g., GephiOutput
+   L231 actual L302, drift = +71; SubdueTextOutput L341 actual L436,
+   drift = +95; GephiMindAgent L431 actual L520, drift = +89), and on
+   the wrong file/line for the Yun Chi citations (Miner.h:20 actual
+   :42; README.md:120 — actual is opencog/miner/README.md:731 in a
+   different README).
+   EVIDENCE. Orchestrator-verified ground truth in §A of this
+   reconciliation; full file structure listed at R2.X above.
+   STATUS. RESOLVED in Codex's favor. Adopting Codex's line numbers
+   throughout. METHODOLOGY-PATTERN: Gemini line-citation reliability
+   is the same drift profile as V1-1 (S1) — the high-level claims are
+   accurate but specific line numbers are systematically off. Future
+   sources should default to Codex's line citations and verify
+   against orchestrator git output, NOT Gemini's.
+   Possible cause hypothesis (cannot confirm): Gemini may be reading
+   truncated content (max_content_length cutoffs in MCP tools, or
+   pagination), or estimating line numbers from a partial read.
+
+V2-4: README citation file-identity confusion.
+   FINDING. opencog/miner has TWO README.md files: the repo-root
+   README.md (64 lines) with no Yun Chi citation; the per-package
+   opencog/miner/README.md (731 lines) with Chi citations at L12-15
+   ([overview](#chi2005) anchor) and L731 (formal citation). Codex
+   correctly disambiguated by citing `opencog/miner/README.md:731`.
+   Gemini's "README.md:120" is wrong on file (only 64 lines for
+   repo-root), or wrong on line (per-package README has Chi cite at
+   L12 + L731, not L120).
+   STATUS. Documentation finding — orchestrator notes the dual-README
+   structure for cluster-close edits. Resolves into Codex's framing.
+
+
+================================================================================
+FRAMING NOTES
+================================================================================
+
+FN-A: Authorship scope — path-limited vs total-repo (related to S2.Q10).
+   Gemini's total-repo shortlog (Linas 4451, Nil 1873, Joel 666, Jared
+   551 as 5th) and Codex's path-limited shortlog (Nil 132, Linas 58,
+   Kasim 43; Jared/Keyvan/Jade ZERO) are both factually correct given
+   different scopes. For the absorption check (does opencog/miner
+   inherit FISHGRAM authors' work?), path-limited is the operative
+   measure: zero overlap on the current miner surface. Total-repo
+   counts include legacy work (cogutil, atomspace, etc.) that the
+   miner repo carries forward via copied files. No factual dissent;
+   Codex's framing serves the cluster-pilot question.
+
+FN-B: "Different Chi 2005 paper" finding (R2.6) is significant for
+   cluster-close. The wiki cards 3081 (FISHGRAM-side) and the future
+   miner-side cards should preserve the distinction between Chi 2005
+   IEEE TKDE (algorithm paper, cited by 2013 FISHGRAM) and Chi 2005
+   "Frequent Subtree Mining -- An Overview" (survey paper, cited by
+   opencog/miner). Both exist; both are by Yun Chi; they are different
+   works. R2.6 documents this for downstream sources.
+
+
+================================================================================
+STALE-CLAIM VERIFICATIONS
+================================================================================
+
+SC-S2-1: Brief §3.C 2019-07-17 attic-move set was incorrect (included
+   test_fishgram.py). RESOLVED via R2.11 / V2-1. The brief is a
+   working document; reconciliation is canonical.
+
+SC-S2-2: From S1, brief P9 footnote on tpsjr7/destin_ted_temp framed
+   as missing substrate. RESOLVED in S1; not re-litigated.
+
+SC-S2-3: From S1, the Yun Chi paper-vs-code distinction (CF1.4) is
+   refined here at R2.6: opencog/miner cites Chi 2005 SURVEY paper,
+   NOT Chi 2005 IEEE TKDE. Both papers are real; CF1.4 distinction
+   stands at the algorithm-family level.
+
+
+================================================================================
+CROSS-SOURCE FORWARDS (locked findings — for S3-S5 reviewers)
+================================================================================
+
+CF2.1 (locked for S3): The SYMBOLIC pattern-mining lineage in Hyperon
+      (hyperon-miner family) is downstream of opencog/miner, NOT
+      opencog/python/learning/fishgram. The 2013 Python FISHGRAM
+      lineage is a pre-2015 dead branch. S3 audits hyperon-miner-*
+      against opencog/miner for absorption / divergence, NOT against
+      fishgram.py.
+
+CF2.2 (locked for S3-S4): The Yun Chi paper-vs-code distinction has
+      THREE levels at b31c7e3 / current Hyperon era:
+        Level 1: Chi 2005 IEEE TKDE algorithm paper (Mining closed
+                 and maximal frequent subtrees from databases of
+                 labeled rooted trees) — cited by 2013 FISHGRAM paper
+                 as the algorithm.
+        Level 2: Chi 2005 "Frequent Subtree Mining -- An Overview"
+                 (survey paper) — cited by opencog/miner as the
+                 algorithm-family reference.
+        Level 3: opencog/miner's Atomese/URE adaptation — implements
+                 algorithm-FAMILY ideas but is its own design.
+      S3-S4 must NOT collapse these three levels. "Hyperon miner
+      uses Yun Chi's algorithm" is too imprecise.
+
+CF2.3 (locked for S3): adaptors.py:30-33 reveals that the 2013-era
+      FISHGRAM had an abandoned external-miners integration path.
+      This affects S3's framing of why hyperon-miner is a clean break
+      from FISHGRAM: the break was already in motion in 2013 (external
+      miners abandoned in favor of in-house Python re-implementation),
+      and post-2018 the entire Python lineage was abandoned.
+
+CF2.4 (locked for S5): No executable bridge between perception pipeline
+      and opencog/miner ([NEVER-WIRED]). S5's perception-output
+      boundary check should NOT find a perception->miner pathway in
+      Classic OpenCog. Whether such a pathway exists in Hyperon-era
+      code is the S5 question.
+
+CF2.5 (locked methodology for all sources): Gemini line-citation
+      reliability is consistently weaker than Codex's (V1-1, V2-3,
+      V2-4). When dissent arises on specific line numbers, default
+      to Codex + orchestrator git verification. Gemini's high-level
+      claims remain valuable but should be cross-checked.
+
+CF2.6 (open question for S3+ archaeology, optional): The "external
+      miners (abandoned)" output mode at adaptors.py:30-33 has an
+      open paper-vs-code archaeology question (R2.10). If S3 or later
+      audit can pickaxe the introduction/abandonment of the
+      miner_friendly output path, the paper-vs-code gap framing for
+      the FISHGRAM lineage can be sharpened. SubdueTextOutput at
+      adaptors.py:436 hints at Subdue as one candidate external
+      miner; Yun Chi's binary is another. Both unverified.
+
+
+================================================================================
+BOTTOM LINE
+================================================================================
+
+The 2013 FISHGRAM Python implementation lived briefly (2012-2015 active
+maintenance), broke quietly when its dependency tree was reorganized
+in 2015, sat broken for 4 years, was attic'd in 2019, and removed in
+2020. The toy pipeline never reached robot-vision scale. The
+"abandoned external-miners" comment in adaptors.py:30-33 hints that
+even the 2013-era implementation had given up on Yun Chi's external
+binary integration in favor of an in-house Python re-implementation,
+which itself was then orphaned.
+
+opencog/miner is a CLEAN-SHEET URE/Atomese pattern miner that cites
+the algorithm-family literature (Chi 2005 survey paper) without any
+inheritance from FISHGRAM's Python code or specific data structures.
+Authorship dominance shifted to Nil Geisweiller + Linas Vepstas, with
+zero involvement from the 2012-2013 FISHGRAM Python authors. ngeiswei/
+miner is a strict-ancestor fork (8 commits behind, 0 ahead).
+
+For S3 onward, the operative reference is opencog/miner, NOT
+opencog/python/learning/fishgram. The clean-break narrative locked in
+S1 (CF1.3) is reinforced here.
+
+Cluster-close edit candidates from S2:
+  - Brief §3.C will be implicitly corrected via this reconciliation
+    (test_fishgram.py was moved 2013-10-17, not 2019-07-17).
+  - Card 3081 cluster-close edit (planned in S1) should reference
+    opencog/miner as a paper-faithful-recovery sibling-track, NOT a
+    FISHGRAM continuation.
+  - Possible new wiki card for opencog/miner @ Knowledge Representations
+    or Hyperon AI Algorithms namespace — pending S3 audit of Hyperon-
+    era miners.
+
+================================================================================
+SIGN-OFFS
+================================================================================
+
+Gemini sign-off (2026-04-30): Concurs with all 12 R2.x consensus
+statements and accepts V2-1 through V2-4 in Codex's favor. Specifically
+acknowledges the V2-2 analytical failure (citing pre-merge-base
+commits as "fork-only") and the V1-1/V2-3 line-citation drift as a
+"systemic weakness in current output." Will prioritize narrower
+read_file ranges in Source 3 to improve precision. Accepts CF2.5
+methodology lock. Accepts R2.6 three-level Yun Chi paper distinction.
+Ready for Source 3.
+
+Codex sign-off (2026-04-30): Concurs except for one narrow correction
+(V2-5 below) and one wording guard on R2.10. Both applied by
+orchestrator on 2026-04-30. All other R2 findings, V2-1 through V2-4
+resolutions, and CF2.1-CF2.5 accepted.
+
+V2-5: R2.4 sushigram-token overstatement (resolved in Codex's favor).
+   FINDING. Codex pickaxe found that a parenthetical sushigram token
+   appeared at opencog/embodiment/unity_attitude_processor.scm:13 in
+   commit a3363f92b (2011-12-19) and was removed in commit 060a1ed56
+   (2015-09-10, "Remove multiverse and unity scheme rule files").
+   Original R2.4 claim "zero sushigram tokens in any file content at
+   any historical snapshot" was therefore overstated.
+   EVIDENCE. Orchestrator verified via `git log --all -i -S 'sushigram'`
+   and `git show a3363f92b:opencog/embodiment/unity_attitude_processor
+   .scm` — comment "But once incorporating learning algorithms like
+   fishgram(sushigram etc.), hopefully we can make the avatar learn
+   rules based on experience." At b31c7e3, `git grep -i 'sushigram'`
+   returns 0 hits — the token is fully gone.
+   STATUS. RESOLVED. R2.4 corrected to specify the historical
+   parenthetical comment + the b31c7e3 zero-token state. Verdict
+   ([INLINE-ONLY] / [PHANTOM-LABEL]) unchanged because the comment
+   never represented executable code or class.
+
+R2.10 wording guard (Codex): "possibly Yun Chi" / "attempted Yun Chi
+integration" should be marked as INFERENCE rather than source fact.
+APPLIED 2026-04-30: R2.10 reorganized into SOURCE FACT (the abandoned
+external-miners output path with miner_friendly flag at L33) vs
+INFERENCE (the link to Yun Chi specifically). SubdueTextOutput at
+L436 noted as alternative external-miner candidate. CF2.6 opened to
+forward the archaeology question for S3+ if relevant.
+
+Source 2 closes here. S3 (Hyperon-era SYMBOLIC pattern-mining family —
+hyperon-miner trio + active opencog/miner cross-link) is the next
+extraction target. Both reviewers ready.
+
+================================================================================
+END OF SOURCE 2 RECONCILIATION
+================================================================================

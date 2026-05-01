@@ -1,0 +1,61 @@
+Source 2 Extraction Findings (Gemini) — Classic FISHGRAM Python @ b31c7e3 + Classic miner absorption
+
+S2.Q1 — Line number verification (fishgram.py @ b31c7e3)
+- VERIFIED: Structure matches §3.A.
+- L24: from logic import PLNviz (present).
+- L57: class Pattern: (present).
+- L89: class Fishgram: (present).
+- L168: def closed_bfs_layers(self): (present).
+- L467: def find_extensions(self, prev_layer): (present).
+- L597: def outputConceptNodes(self, layers): (present).
+
+S2.Q2 — adaptors.py structure
+- Line count: 472 lines.
+- Classes: ForestExtractor (L18), GephiOutput (L231), DottyOutput (L287), SubdueTextOutput (L341), GephiMindAgent (L431).
+- Methods: extractTree (L108), extractForest (L128).
+
+S2.Q3 — Removal-commit metadata
+- VERIFIED: 00a766d (2019-07-17) move to attic and 147e220 (2020-06-25) removal.
+- The removal commit (147e220) also touched other "archaic" Python code including relex utility wrappers and old learning modules (attention, importance).
+
+S2.Q4 — CF1.2 Verdict (Breakage Date)
+- Verdict: [BROKEN-OBSOLETE] since 2015-04-21.
+- Pickaxe results show zero hits for pln_old.logic or from pln_old in the fishgram.py history.
+- The import from logic import PLNviz was never updated to reflect the pln -> pln_old rename by Nil Geisweiller in commit 951431df2 (2015-04-21). Thus, the code has been non-runnable due to dependency decay for over 4 years before its attic move.
+
+S2.Q5 — pre_fishgram.py and test_fishgram.py audit
+- pre_fishgram.py: Imports fishgram (L4). Breakage propagates; it is not executable.
+- test_fishgram.py: Imports fishgram, tree, adaptors (L14). Breakage propagates; the unit tests are also [BROKEN-OBSOLETE].
+
+S2.Q6 — sushigram lifecycle
+- Verdict: [INLINE-ONLY] / [PHANTOM-LABEL]
+- Pickaxe for "sushigram" in opencog-singnet history returns 0 hits in the file content.
+- However, commit d6b1c86fb (2012-04-12) by Jared Wigmore states: "Added a basic surprise measure to fishgram, creating sushigram." This confirms sushigram was a conceptual label for fishgram.py with the surprise measure added, not a separate file or class.
+
+S2.Q7 — opencog/miner @ 444eb6474 Absorption Check
+- Verdict: [PAPER-FAITHFUL-RECOVERY] / [NO-ABSORPTION]
+- opencog/miner README and Miner.h explicitly cite Yun Chi et al. 2005 (Miner.h:20, README.md:120).
+- The code is built on the URE (Unified Rule Engine), a completely different substrate than the fishgram.py manual Python loop.
+- No instances of ForestExtractor or Fishgram terminology found in the C++ or Scheme layers of opencog/miner.
+
+S2.Q8 — ngeiswei/miner @ 339cc494e Divergence
+- Verdict: [BIDIRECTIONAL-DIVERGENCE]
+- ngeiswei/miner has unique commits related to valuation and is_in to contains refactors (e.g., cc5578d4e 2021-08-12).
+- opencog/miner has unique commits from 2025 (444eb6474) porting away from obsolete APIs.
+- The absorption status is identical to upstream: [PAPER-FAITHFUL-RECOVERY].
+
+S2.Q9 — Yun Chi 2005 citation
+- VERIFIED: Both opencog/miner and ngeiswei/miner explicitly cite Yun Chi's "Frequent Subtree Mining -- An Overview" (2005).
+
+S2.Q10 — Authorship of opencog/miner
+- Top Contributors: Linas Vepstas (4451), Nil Geisweiller (1873), Joel Pitt (666).
+- Authorship overlap: Jared Wigmore (Author of fishgram.py) is the 5th contributor (551), but his commits to miner are unrelated to the 2013 Python implementation. The miner repo is dominated by the Vepstas/Geisweiller URE-era rewrite.
+
+S2.Q11 — Time-indexed caller analysis
+- Verdict: [NEVER-WIRED]
+- No evidence found of a caller bridge from any perception pipeline (DeSTIN/Vision) to opencog/miner. opencog/miner appears to be a general-purpose symbolic miner used for datasets like MOZI-AI and SUMO (per examples/ directory).
+
+S2.Q12 — Verdict Labels
+- (a) FISHGRAM toy pipeline (b31c7e3): [BROKEN-OBSOLETE] (since 2015-04-21).
+- (b) opencog/miner absorption: [PAPER-FAITHFUL-RECOVERY] (cites Yun Chi; clean-sheet URE design).
+- (c) ngeiswei/miner divergence: [BIDIRECTIONAL-DIVERGENCE].

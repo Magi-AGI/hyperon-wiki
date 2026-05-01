@@ -1,0 +1,110 @@
+Orchestrator-side verification notes (Source 1, Perception cluster pilot)
+=========================================================================
+
+Purpose: Pre-record orchestrator's source-of-truth verifications BEFORE
+reconciliation, so V1-X dissent records can be grounded.
+
+Protocol basis: Standing rule (memory feedback_attribution_verify_against_git
++ feedback_pickaxe_for_dead_code) requires cross-checking reviewer "Verified"
+claims against source. Gemini in particular has historically drifted on
+identity-between-artifacts and on specific line citations.
+
+Author: Claude Opus 4.7 (orchestrator)
+Date: 2026-04-30
+
+
+§A. Ground truth: fishgram.py at singnet/opencog @ b31c7e3
+----------------------------------------------------------
+Path: opencog/python/attic/learning/fishgram/fishgram.py
+Total lines: 928
+
+Verified by `git show b31c7e3:opencog/python/attic/learning/fishgram/
+fishgram.py | grep -n` against the singnet/opencog clone at
+E:\GitHub\hyperon reference\opencog-singnet on 2026-04-30:
+
+  Line  57:  class Pattern:
+  Line  58:  (Pattern class docstring '''Store a basic pattern and other
+             associated data for Fishgram.''' — sentence-case "Fishgram"
+             confirmed)
+  Line 111:  a = [layer for layer in self.closed_bfs_layers()]
+  Line 135:  for layer in self.closed_bfs_layers():    (caller)
+  Line 153:  '''Just a helper function for closed_bfs_layers'''
+  Line 168:  def closed_bfs_layers(self):              (method definition)
+  Line 344:  for (ptn, s) in self.find_extensions(prev_layer):  (caller)
+  Line 467:  def find_extensions(self, prev_layer):    (method definition)
+  Line 597:  def outputConceptNodes(self, layers):     (method definition)
+  Line 926:  fish.outputConceptNodes(layers)           (top-level callsite,
+                                                        the "main" call)
+
+
+§B. Gemini findings_gemini.txt — line-citation drift
+----------------------------------------------------
+Findings file: scripts/archive/perception_pilot/source1_fishgram_paper/
+findings_gemini.txt (relayed 2026-04-30, saved as evidence)
+
+| Gemini claim          | Actual line at b31c7e3 | Drift          |
+|-----------------------|-------------------------|----------------|
+| L43 docstring         | L57 class def + L58 ds  | ~14 off        |
+| L129-182 closed_bfs   | L168 def                | ~39 off        |
+| L253-300 find_ext     | L467 def                | ~200+ off      |
+| L486 outputConcept    | L597 def, L926 callsite | ~440 off       |
+
+Status of each high-level claim:
+  - Pattern class with "Fishgram" docstring: CONFIRMED (line 57-58 not 43)
+  - closed_bfs_layers method: CONFIRMED (line 168 not 129-182)
+  - find_extensions generator: CONFIRMED (line 467 not 253-300)
+  - outputConceptNodes top-level call: CONFIRMED (line 926 not 486)
+
+The claims are correct in substance; the line numbers are unreliable.
+
+Likely cause: Gemini may have read a different version of fishgram.py
+(perhaps from a different branch or from an earlier git history snapshot)
+or estimated line numbers without counting from the current file. Cannot
+distinguish between snapshot drift and citation hallucination without
+asking Gemini to re-cite.
+
+Effect on extraction: Gemini's high-level S1.Q3 finding ("fishgram.py
+aligns with paper §2.1 Perception Collector description ... line 486
+fish.outputConceptNodes(layers) maps to paper §3.2 translation into
+Inheritance and Member links") is plausible at the high level, but the
+specific line-486 claim is wrong (actual top-level callsite is L926).
+Reconciliation will record this as V1-1 dissent and use the corrected
+line numbers from §A above.
+
+
+§C. Other Gemini claims worth pre-checking before Codex extracts
+----------------------------------------------------------------
+The following Gemini claims should be re-verified during reconciliation
+once Codex's independent findings land:
+
+  - "Linas Vepstas performed the deprecation to attic (2019-07) and
+    REMOVAL (2020-06)." — Brief P4 records the 2019-07-17 attic move
+    (commit 00a766d955a7e46aea3b87bc26ec7652a60a4899). The "removal
+    2020-06" claim is NEW and not yet verified by orchestrator. Needs
+    a `git log --all --diff-filter=D -- 'opencog/python/attic/learning/
+    fishgram/*'` check at reconciliation.
+
+  - "Zarathustra Goertzel's current hyperon-miner-zariuq (2025) has
+    zero fishgram pickaxe hits, indicating a complete clean-break." —
+    Verified by orchestrator in S3 survey (§B2): hyperon-miner-zariuq
+    fishgram-pickaxe = 0. CONFIRMED.
+
+  - S1.Q9 "Card 3120 (NS Hybrid) is the broader architectural container
+    for the FISHGRAM pipeline." — This needs a wiki get_card 3120 read
+    at reconciliation; orchestrator has not verified the claim yet.
+
+
+§D. Pre-Codex-extraction status
+-------------------------------
+Codex stands by for independent extraction (will read the brief, the
+PDF, and the singnet/opencog source tree from scratch; does NOT see
+Gemini's findings). When Codex's findings land, reconciliation will:
+  1. Compare line citations against §A ground truth
+  2. Record V1-1 dissent on Gemini's line-citation drift
+  3. Verify the new claims in §C
+  4. Produce the canonical findings_reconciled_crossmodel.txt
+
+
+================================================================================
+END OF ORCHESTRATOR VERIFICATION NOTES (Source 1, Perception cluster)
+================================================================================
