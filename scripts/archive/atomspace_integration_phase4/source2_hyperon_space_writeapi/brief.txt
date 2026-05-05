@@ -1,0 +1,458 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 2
+hyperon-experimental Hyperon Space write-API audit
+================================================================================
+
+Date opened: 2026-05-03
+Cluster pilot: atomspace_integration_phase4
+Source #: 2 of 7
+Orchestrator: Claude (this session)
+Cross-model reviewers: Codex + Gemini (separate sessions)
+Reconciliation deliverable: findings_reconciled_crossmodel.txt
+Spec input: feeds the eventual SPEC_DRAFT.md at cluster close.
+
+This is the GATING source for the Phase 4 architectural decision.
+Source 1 reconciliation identified two re-evaluation conditions:
+  (i)  If Hyperon Space supports atom-write hooks  → Option D confirmed.
+  (ii) If Hyperon Space is read-only-at-HEAD      → Option C fallback required;
+                                                     Phase 4 timeline expands.
+Source 2 must produce a definitive answer with file:line citations.
+
+--------------------------------------------------------------------------------
+1. CONTEXT
+--------------------------------------------------------------------------------
+
+Phase 4 (B)+(L1) co-canonical AtomSpace+Postgres write-through with agent-
+writable atoms. Source 1 (atomspace-bridge) closed with consensus: bridge is
+[READ-ONLY-BY-DESIGN] [BULK-IMPORT-THEN-READ], NOT viable as Phase 4 write
+substrate. Recommendation: Option D (Decko-callback-driven AtomSpace mirror).
+
+For Option D to work, the AtomSpace mirror must:
+  - Accept atom writes from Decko-side change-event consumers (post-commit).
+  - Accept atom writes from agents (the L1 self-improvement loop).
+  - Notify observers (agents subscribed to changes; Decko callbacks for
+    write-back to durable Postgres).
+  - Provide read-side query/match for agent reasoning.
+  - Handle reasonable concurrency without serializing the entire mirror.
+
+The cluster-pilot Source 2 R2.B4 (closed 2026-04-29) classified
+hyperon-experimental's Hyperon Space as Layer 2: "GroundingSpace / SpaceMut /
+DynSpace; lib_spaces.metta — MeTTa-facing demos; not primary Decko backend."
+Source 2 here verifies and EXTENDS that classification with a write-API
+audit specifically scoped to Phase 4 needs.
+
+--------------------------------------------------------------------------------
+2. INHERITED CONCLUSIONS (do not re-derive)
+--------------------------------------------------------------------------------
+
+From AtomSpace cluster pilot (closed 2026-04-29):
+  - Hyperon Space is Layer 2 of the four-layer taxonomy.
+  - hyperon-experimental is the Rust reference implementation; declares
+    metta-bus-client from singnet/das tag 1.0.2 with default-enabled `das`
+    feature; new-das! at das.rs:156-199 constructs a DistributedAtomSpace
+    (Layer 3 bridge already wired).
+  - hyperon-experimental classified as "MeTTa-facing demos; not primary
+    Decko backend" by R2.B4 — that classification was about Decko durability,
+    not about API capabilities. Source 2 must distinguish.
+
+From Source 1 (closed 2026-05-03):
+  - Bridge is not viable for Phase 4 write-through.
+  - Option D recommended: Decko callbacks → AtomSpace mirror.
+  - Source-of-truth for the SpaceEvent/SpaceObserver model is the AtomSpace
+    mirror substrate; Source 2 is the audit of whether that's Hyperon Space.
+
+Outside Source 2 scope (covered elsewhere):
+  - Source 3: atomspace-linas Design Notes A–D + cpp-mcp.
+  - Source 4: MORK + PathMap + mork_ffi + DAS + atomspace-rocks.
+  - Source 5: Decko semantics inventory.
+  - Source 6: agent-facing MCP surface design.
+  - Source 7: Magus plan reconciliation.
+
+--------------------------------------------------------------------------------
+3. REPO STATE SNAPSHOT (pre-populated; agents read, don't re-run git)
+--------------------------------------------------------------------------------
+
+Path:        E:\GitHub\hyperon reference\hyperon-experimental\
+Remote:      https://github.com/trueagi-io/hyperon-experimental
+HEAD commit: 3f76dc460da6961f57f69f6c3e550c59c74ada83
+HEAD date:   2026-02-11 14:04:17 +0300
+HEAD author: Vitaly Bogdanov
+HEAD msg:    "Merge pull request #1075 from vsbogd/update-version"
+Latest tag:  v0.2.10 (the version bump merged at HEAD).
+Branches at origin (relevant):
+  main                  HEAD
+  pr-852                EventAgent / event-driven agent architecture
+                        (cross-ref: Magi Archive ID 2447 "Hyperon EventAgent
+                         PR #852 Analysis - MAGUS Implementation")
+  add_python_oper_ext   Python extension API additions
+  artur-das-v102        Active DAS-integration work (Artur)
+  experimental          Long-running experimental
+  pyrust                Python+Rust binding work
+
+Status snapshot: clean tree except 3 untracked top-level files (AGENTS.md,
+CLAUDE.md, GEMINI.md) — these are local per-model orientation files from
+prior reference-tree refresh passes. Per Source 1 V0-Gemini-bidirectional +
+F1 lessons: orientation-file claims must be CF5.6-verified against code, NOT
+adopted at face value.
+
+Recent activity (HEAD…HEAD~25):
+  3f76dc46 Merge pull request #1075 from vsbogd/update-version
+  5a2675b6 Update version to 0.2.10
+  3eab571d Merge pull request #1074 from vsbogd/fix-metta-spec
+  f2d18ca7 Fix empty result handling by the metta_call function
+  329dec44 Fix typo
+  d791628b Merge pull request #1073 from vsbogd/print-mod-docs
+  07dff7dd Prevent printing No documentation found when result is not empty
+  61e2a25f Improve case function implementation
+  7b4b0741 Print documentation of the module if it is passed to the help! function
+  226ce160 Merge pull request #1072 from trueagi-io/artur-das-doc
+  97af6eb8 Add das.metta into module space.       ← DAS-module documentation
+  2f3cccff Add das module documentation.          ← DAS-module documentation
+  9c5951c4 Merge pull request #1069 from vsbogd/format-docs
+  0bebcb83 Format modules documentation add link
+  cf317338 Merge pull request #1068 from vsbogd/prevent-committing
+  e5370eb6 Prevent committing generated documentation
+  e129557c Merge pull request #1067 from vsbogd/doc-catalog
+  610410da Document catalog module contents
+  815885ae Merge pull request #1066 from vsbogd/sort-docs
+  4c827c07 Sort function documentation by name of the function
+  a6bac859 Add sort-strings function to sort an expression of strings
+  41894e50 Merge pull request #1065 from vsbogd/fix-stdlib-docs
+  73df16aa Import fileio in mkdocs.metta script
+  791ba842 Merge pull request #1064 from vsbogd/stdlib-docs
+  e72a5743 Add step to build MeTTa standard library documentation into CI
+
+Key takeaways:
+- HEAD activity is documentation-focused; the v0.2.10 tag is mostly docs and
+  helpers. Code-level Space API is stable through this period.
+- DAS module documentation just landed (97af6eb8 + 2f3cccff, late January 2026
+  per the artur-das-doc PR merge). Phase 4's `das` module path is canonical.
+- pr-852 (EventAgent) is unmerged; relevant for L1 agent loops. Pickaxe its
+  diff at HEAD but do not assume it's part of the mainline API.
+
+Workspace refactoring discovered: hyperon-space is now a SEPARATE TOP-LEVEL
+CRATE (alongside hyperon-atom, hyperon-common, hyperon-macros, lib/, c/,
+python/, repl/) rather than only a subdirectory inside lib/src/. The lib/src/
+space/ subdirectory still exists with grounding/, mod.rs, module.rs.
+Reviewers must determine the relationship: is hyperon-space the new
+authoritative crate and lib/src/space/ a legacy/glue layer, or are they
+parallel implementations? Cargo.toml dependency graph is the source of truth.
+
+--------------------------------------------------------------------------------
+4. KEY FILES INVENTORY
+--------------------------------------------------------------------------------
+
+Top-level workspace:
+  Cargo.toml                       Workspace manifest. Lists members; declares
+                                   metta-bus-client / DAS feature flag.
+  hyperon-atom/                    Atom representation (Symbol, Variable,
+                                   Expression, Grounded). Crate.
+  hyperon-common/                  Common utilities. Crate.
+  hyperon-macros/                  Procedural macros. Crate.
+  hyperon-space/                   Space implementation. Crate.
+    Cargo.toml
+    benches/                       Benchmark suite — KEY for Q6 performance
+                                   inference.
+    src/
+      lib.rs                       ENTRY POINT. SpaceEvent, SpaceObserver,
+                                   public Space API surface.
+      index/                       Indexing/query implementation.
+  hyperon-bus/  (likely; check)    DAS metta-bus-client integration.
+  lib/                             Main hyperon crate.
+    src/
+      lib.rs                       Top-level re-exports.
+      metta/                       MeTTa interpreter, runner, types, text I/O.
+        runner/
+          builtin_mods/
+            das.metta              DAS module MeTTa-side. NEW at 97af6eb8.
+                                   ENTRY POINT FOR Q9 (DAS integration).
+      space/                       Space integration with MeTTa runtime.
+        grounding/                 GroundingSpace impl (or glue?). KEY FOR Q1.
+          mod.rs
+        mod.rs
+        module.rs                  Space-as-MeTTa-module integration.
+  python/
+    hyperon/
+      __init__.py                  Public Python API surface.
+      atoms.py                     Atom Python wrappers.
+      base.py                      DynSpace base class likely here.
+      metta.py                     MeTTa runner Python interface.
+      runner.py                    Runner-side interface.
+      ext.py / exts/               Extension API (cf. add_python_oper_ext branch).
+  c/                               C ABI surface.
+  repl/                            REPL implementation.
+  integration_tests/               Cross-component integration tests — write
+                                   tests live here if anywhere.
+
+KEY EVIDENCE PRE-DISCOVERED (verify in agent passes):
+
+At hyperon-space/src/lib.rs lines 1-50 (orchestrator pre-read):
+  - SpaceEvent enum: Add(Atom), Remove(Atom), Replace(Atom, Atom).
+  - SpaceObserver trait with notify(&mut self, event: &SpaceEvent) method.
+  - Doc-comment example showing:
+        let mut space = GroundingSpace::new();
+        let observer = space.common().register_observer(MyObserver{...});
+        space.add(sym!("A"));
+        space.replace(&sym!("A"), sym!("B"));
+        space.remove(&sym!("B"));
+
+This is direct evidence that:
+  (a) Hyperon Space provides write API (add/remove/replace).
+  (b) Hyperon Space provides observer pattern (register_observer + notify).
+  (c) The example is part of the public API surface, not internal.
+
+Source 1 re-evaluation condition (i) is therefore likely TO BE CONFIRMED;
+Phase 4 Option D is likely viable. Reviewers must verify and characterize
+the API more precisely (Q1–Q12 below). Do NOT pre-decide based on the
+pre-read evidence; verify independently per CF5.6.
+
+NEGATIVE FINDING TO VERIFY:
+  - lib_spaces.metta — referenced by AtomSpace cluster pilot R2.B4 but Glob
+    against the repo at HEAD returned no results. Either renamed, removed,
+    or the cluster-pilot citation was inaccurate. Reviewers must:
+      (a) git log --all -S 'lib_spaces.metta' to find any historical
+          presence + commit that removed/renamed it.
+      (b) Verify whether the equivalent content lives at lib_spaces.metta's
+          successor (likely das.metta or another builtin_mods/*.metta file).
+      (c) Update Source 2 V-N-X dissents accordingly.
+
+--------------------------------------------------------------------------------
+5. RESEARCH QUESTIONS
+--------------------------------------------------------------------------------
+
+Q1. SPACE WRITE API (CORE GATING QUESTION).
+    Audit hyperon-space/src/lib.rs and lib/src/space/grounding/mod.rs for
+    the actual public write API. Answer:
+      (a) What write methods exist on the public Space surface? Cite each
+          method's signature (file:line).
+      (b) Are write methods on a single Space type, or split across types
+          (Space trait vs SpaceMut trait vs GroundingSpace concrete vs
+          DynSpace dyn-dispatch)?
+      (c) Are there abstract Space traits (read-only) and SpaceMut sub-
+          traits (mutable)? If so, which Spaces implement which?
+      (d) For Phase 4 Option D (Decko callbacks → mirror), which write
+          method is the right entry point?
+
+Q2. SPACEEVENT + SPACEOBSERVER PATTERN.
+    Per orchestrator pre-read, hyperon-space/src/lib.rs declares SpaceEvent
+    {Add, Remove, Replace} + SpaceObserver trait with notify(). Verify and
+    characterize:
+      (a) Is observer registration explicit (register_observer call) or
+          implicit (every observer auto-notified)?
+      (b) Are observers per-Space or global?
+      (c) What happens if an observer panics or returns an error from
+          notify()?
+      (d) Does notify() run synchronously (in the writer's stack frame)
+          or queued/async?
+      (e) Is the observer set thread-safe?
+      (f) For Phase 4: can a Decko-side process register an observer that
+          forwards SpaceEvents back to Decko's change-data-capture?
+
+Q3. PERSISTENCE / DURABILITY MODEL.
+    Hyperon-experimental's Space is in-memory. Phase 4 (B) keeps Postgres as
+    durability. Question: how does Hyperon Space integrate with persistent
+    backends?
+      (a) Is there a PersistentSpace trait or hook? If yes, what's its API?
+      (b) The `das` feature + new-das! op constructs a DAS-backed DynSpace
+          (per cluster pilot). Audit the path from DynSpace → DAS calls.
+          Where is the boundary?
+      (c) Does Hyperon Space expose snapshot / dump / load primitives that
+          Phase 4 could use for crash recovery + Decko-mirror reconciliation?
+
+Q4. CONCURRENCY MODEL.
+    Audit how Hyperon Space handles multi-threaded readers/writers:
+      (a) RefCell-based (single-threaded interior mutability)? Per the
+          pre-read at lib.rs:8 (use std::cell::RefCell), this looks like
+          single-threaded.
+      (b) Or Arc<Mutex>/Arc<RwLock> wrappers for thread-safe access?
+      (c) Or is Send/Sync handled at a higher layer (DynSpace wrapper)?
+      (d) For Phase 4 Option D: Decko's Rails workers are multi-process;
+          inter-process communication to Hyperon Space requires either
+          (i) a Hyperon Space process with IPC/HTTP boundary, or (ii) a
+          per-worker Hyperon Space synced via the observer pattern.
+          Which is the natural fit given the API?
+
+Q5. DYNSPACE / SPACEMUT / GROUNDINGSPACE TAXONOMY.
+    Cluster pilot R2.B4 named three: GroundingSpace, SpaceMut, DynSpace.
+    Verify the taxonomy at HEAD:
+      (a) GroundingSpace — concrete impl. Where? hyperon-space crate or
+          lib/src/space/grounding/?
+      (b) SpaceMut — trait or struct? Difference from base Space?
+      (c) DynSpace — dyn-dispatch wrapper for Box<dyn Space>?
+      (d) Are there other Space variants? (CompositeSpace, ProxySpace,
+          remote Space wrappers?)
+      (e) Phase 4 entry point: which type does a Decko-callback consumer
+          most naturally instantiate?
+
+Q6. PERFORMANCE / SCALE.
+    The hyperon-space/benches/ directory is the source of truth. Audit:
+      (a) What benchmarks exist? Read/write/query/match?
+      (b) What atom counts are exercised?
+      (c) What's the throughput ballpark? (Cite bench numbers if in repo;
+          per Source 1 V2-Q10/14 lesson, do NOT extrapolate quantitative
+          ceilings without benchmark evidence.)
+      (d) Indexing strategy? hyperon-space/src/index/ subdirectory.
+          Is there a single-key index, or pattern-matched indexing?
+      (e) Memory footprint per atom (compare to MORK's ~64 bytes/atom
+          per cluster pilot Source 3).
+
+Q7. ATOM IDENTITY UNDER MUTATION.
+    Source 1 Q11 found bridge has content-addressed atom identity, no PK
+    flagging. Hyperon Space is also content-addressed (atoms are
+    structurally hashed). Question:
+      (a) Is `replace(old, new)` a true in-place identity-preserving
+          mutation, or does it create a new atom and remove the old? If
+          the latter, does the SpaceEvent::Replace observer get the OLD
+          atom or just an Add+Remove pair?
+      (b) Does Hyperon Space support primary-key-style stable identity
+          atoms (e.g., a NodeId(N) + value-relation pattern)?
+      (c) For Phase 4 (L1) round-trip: an agent reads Card 7432, modifies
+          its content, writes back. What's the canonical mutation pattern
+          in Hyperon Space terms?
+
+Q8. PYTHON BINDINGS COVERAGE.
+    Decko is Ruby; Phase 4 callbacks fire from Rails. Cross-language
+    integration options:
+      (a) Decko Rails worker → HTTP → Python service → hyperon Python →
+          Hyperon Space.
+      (b) Decko Rails worker → spawn child Python process per event.
+      (c) Decko Rails worker → message queue → Python consumer → Hyperon
+          Space.
+    Audit python/hyperon/ to determine:
+      (a) Is the Space write API exposed to Python? Does Python's DynSpace
+          (or equivalent) support add/remove/replace?
+      (b) Is the SpaceObserver pattern accessible from Python? If yes,
+          can a Python-defined observer receive events from a Rust-side
+          Hyperon Space?
+      (c) What's the Python concurrency model? Are GIL/threading concerns
+          relevant?
+      (d) Is there an existing Python HTTP/RPC server pattern (e.g., FastAPI
+          + hyperon)? (Cross-ref: Magi Archive `Notes+MAGUS Research+Event
+          Driven Agent Architecture Analysis - Hyperon Experimental` ID 2454
+          may have prior work.)
+
+Q9. DAS MODULE INTEGRATION (recently-landed).
+    Commits 97af6eb8 + 2f3cccff added das.metta + documentation. Audit:
+      (a) What's the canonical DAS-from-MeTTa API (new-das! and surrounds)?
+      (b) Does the das module itself expose write hooks back into the
+          parent Hyperon Space?
+      (c) Is the DAS feature default-on (per cluster pilot R2.B4) at HEAD?
+          Verify via Cargo.toml.
+      (d) For Phase 4: if we use Hyperon Space as the mirror but want
+          eventual DAS deployment for distributed access, does the API
+          generalize cleanly?
+
+Q10. PR #852 EVENTAGENT (unmerged).
+    The pr-852 branch is mentioned in the Magi Archive (ID 2447, "Hyperon
+    EventAgent PR #852 Analysis - MAGUS Implementation"). Audit:
+      (a) git log pr-852 ^main: what's added on the branch?
+      (b) Does it add an event-driven agent loop pattern Phase 4 could
+          model on?
+      (c) Is the branch active or stale (last commit date)?
+      (d) Cross-ref the Magi Archive analysis card for prior thinking.
+
+Q11. CLUSTER-PILOT FINDING VERIFICATION (R2.B4 lib_spaces.metta drift).
+    R2.B4 cited "lib_spaces.metta" as a key file. Glob at HEAD returns no
+    matches. Resolve:
+      (a) git log --all --oneline -S 'lib_spaces' to find historical mentions.
+      (b) git log --all --diff-filter=D --name-only -- '*lib_spaces*' to
+          find deletions.
+      (c) Determine successor: is it das.metta? Another builtin_mods file?
+          A renamed location?
+      (d) If genuinely missing, this is a CF5.6 inheritance from the
+          cluster pilot — flag as V-N-X for the reconciliation. Update the
+          R2.B4 source-of-truth note in this Source 2's reconciliation.
+
+Q12. DECKO-CALLBACK INTEGRATION TARGET.
+    Synthesizing Q1–Q11: design the canonical Phase 4 Option D wiring:
+      (a) Decko Rails after_save callback fires.
+      (b) Rails worker enqueues a change event (bug/permission state /
+          before-after card content).
+      (c) Mirror-side process (in-process Python or out-of-process IPC?)
+          consumes the event.
+      (d) Mirror-side translates the event to Hyperon Space write calls
+          (add/replace/remove).
+      (e) Agent observers receive SpaceEvent notifications.
+      (f) Agent writes back to Hyperon Space via add/replace/remove.
+      (g) (How?) Agent writes propagate back to Decko via a Decko-mediated
+          API that creates legitimate card_actions / card_changes (Source 6
+          territory; Source 2 just identifies the seam).
+
+    For each step, state:
+      - Is it possible with Hyperon Space at HEAD?
+      - Is it possible with the API on a feature branch (pr-852,
+        artur-das-v102)?
+      - Does it require new code in hyperon-experimental? If yes, what?
+      - Does it require new code on the Decko side? (Source 5 territory.)
+
+--------------------------------------------------------------------------------
+6. STANDING PROTOCOLS REMINDER
+--------------------------------------------------------------------------------
+
+Inherited from Source 1 reconciliation:
+
+- CF5.6 (Gemini source-location/file-identity drift) was confirmed FIVE
+  TIMES in Source 1 alone. Continue verifying every Gemini file/line claim
+  via direct Read or Glob before adoption. The ll-pg-cxx.cc:58 / atom_types.
+  script:15 / README.md:12 errors were caught only by direct re-read.
+
+- V1-Q1 (Source 1 lesson, NEW): pickaxe for "never implemented" claims must
+  run WITHOUT a path filter when the file/directory has been renamed mid-
+  project. Apply to Q11 (lib_spaces.metta — likely renamed/removed) and any
+  "never implemented" claim about Hyperon Space methods.
+
+- V2-Q10/14 (Codex methodological lesson): quantitative ceiling estimates
+  require benchmark evidence. For Q6 (performance), cite the bench files
+  directly; do NOT extrapolate beyond what bench output supports.
+
+- F1 (orientation-file drift): hyperon-experimental has untracked CLAUDE.md /
+  AGENTS.md / GEMINI.md at the top level. Treat their write-API claims with
+  skepticism; cite README.md and code only.
+
+Standard cluster-pilot rules:
+- C++/Rust dual-API audit: verify both Rust API (lib.rs, hyperon-space crate)
+  AND Python wrapper API (python/hyperon/*) — same pattern as the ECAN
+  C++/Scheme dual-layer rule.
+- Time-indexed caller analysis: HEAD as of 2026-02-11 is the relevant
+  snapshot; ~2.5 months idle as of pilot date, but that's normal for a
+  v0.2.x release between point releases.
+- Bidirectional fork-divergence: verify origin/main is current; check
+  pr-852 + artur-das-v102 + experimental + pyrust for divergent capability.
+
+--------------------------------------------------------------------------------
+7. DELIVERABLE FORMAT (per agent)
+--------------------------------------------------------------------------------
+
+Each model produces:
+  scripts/archive/atomspace_integration_phase4/source2_hyperon_space_writeapi/
+    findings_claude.txt
+    findings_codex.txt
+    findings_gemini.txt
+
+Format follows Source 1's findings pattern:
+  - Q1–Q12 in order.
+  - [VERIFIED] / [INFERRED] / [NOT FOUND] / [CO-VERIFIED] / [NEW] tags.
+  - Direct file:line citations for all VERIFIED claims.
+  - Pickaxe (without path filter) for any negative-existence claim.
+  - For Q12, a recommended Phase 4 wiring with explicit dependencies on
+    other Sources, NOT a vote.
+
+After all three findings land, orchestrator (Claude) produces:
+  findings_reconciled_crossmodel.txt
+
+Reconciliation includes:
+  - Per-question consensus
+  - V-N-X dissents (V = Claude/Codex/Gemini, N = question, X = sub-issue)
+  - Source-of-truth checks (CF5.6 verifications)
+  - Bottom Line for SPEC_DRAFT.md, with explicit answer to:
+      "Is Option D confirmed, or do we need Option C fallback?"
+  - Dependency conditions for Sources 3/4/5/6/7.
+
+Prediction (orchestrator, low-confidence): Hyperon Space's SpaceEvent +
+SpaceObserver pattern at hyperon-space/src/lib.rs:14-50 (pre-read) suggests
+Option D will be confirmed. The deeper questions are about Q3 (persistence
+hooks), Q4 (concurrency model — single-threaded RefCell vs thread-safe),
+Q8 (Python coverage), and Q12 (full wiring). These determine HOW Phase 4
+implements Option D, not WHETHER.
+
+================================================================================

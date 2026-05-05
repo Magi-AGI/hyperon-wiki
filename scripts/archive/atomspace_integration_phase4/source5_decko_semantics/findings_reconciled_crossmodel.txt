@@ -1,0 +1,1199 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 5 CROSS-MODEL RECONCILIATION
+Decko semantics inventory — Codex + Gemini reviewer findings + orchestrator
+synthesis
+================================================================================
+
+Date:           2026-05-04
+Cluster pilot:  atomspace_integration_phase4
+Source #:       5 of 7
+Orchestrator:   Claude (this session)
+Inputs:
+  brief.txt                                  1246 lines
+  findings_codex.txt                          297 lines
+  findings_gemini.txt                         143 lines
+  findings_claude.txt                         (NOT PRODUCED — parallel
+                                               session may add later
+                                               per Source 4 precedent;
+                                               if so, cluster orchestrator
+                                               will append a v2 addendum)
+
+Drift signature for Source 5 (orchestrator observation):
+  Source 1 → file-identity drift.
+  Source 2 → line-citation drift.
+  Source 3 → orchestrator brief-path drift.
+  Source 4 → BUILD-READINESS dependency-graph drift.
+  Source 5 → DESIGN-CHOICE drift on policy questions where the codebase
+             does not constrain the answer (Q8 trash policy: Gemini drifted
+             toward "lean mirror = Remove"; Codex grounded Replace via 5
+             file:line citations on the actual Decko delete-state model).
+
+V4-PROTOCOL-4 carry-forward: brief-flagged "verify X" obligations (Q3.b,
+Q4.b, Q2.c, Q2.f, Q10.a) were ALL discharged at extraction time by Codex
+and/or Gemini. Reconciled answers populated below.
+
+================================================================================
+A. PER-QUESTION CONSENSUS
+================================================================================
+
+--------------------------------------------------------------------------------
+Q1. DIRECTOR PHASE MODEL + EVENT HOOKS.
+--------------------------------------------------------------------------------
+
+CONSENSUS [VERIFIED]: Decko Director has 9 canonical stages across 3
+phases. Both reviewers cite the same source-of-truth files and produce
+identical lists.
+
+  Validation phase     before_validation : initialize, prepare_to_validate,
+                                            validate
+  Storage phase        around_save        : prepare_to_store, store,
+                                            finalize
+  Integration phase    after_commit       : integrate, after_integrate,
+                                            integrate_with_delay
+
+  Citation: card/lib/card/director/stages.rb:5-7
+  Citation: card/lib/card/director/phases.rb:2-4 (Codex-added: explicit
+            Rails callback wiring before_validation/around_save/after_commit)
+
+CONSENSUS [VERIFIED]: integration-stage events are wrapped in
+`rescuing_if_integration` (event.rb:147), so mirror failures do NOT roll
+back the saved card; exceptions are reported, not propagated.
+
+CONSENSUS [VERIFIED]: `on: :save` is shorthand for `[:create, :update]`,
+NOT delete. A Phase 4 mirror that wants delete coverage must either use
+`on: %i[create update delete]` or define a delete companion event.
+  Citation (Codex): card/lib/card/set/event/options.rb:69-70
+
+CONSENSUS [VERIFIED]: integrate_with_delay is ActiveJob-backed; delayed
+events enqueue `IntegrateWithDelayJob.set(...).perform_later(...)` and
+pass `Card::Env.serialize` and `Card::Auth.serialize`.
+  Citation (Codex): card/lib/card/set/event/delayed_event.rb:47-67, 95-104
+
+VERDICT: [INTEGRATE-WITH-DELAY-IS-CANONICAL-MIRROR-HOOK]. integrate_with_delay
+is the right Phase 4 hook (matches brief Q1.d prediction). Codex adds the
+critical refinement that integrate_with_delay's job body must produce a
+stable IPC payload — see Q9 reconciliation.
+
+--------------------------------------------------------------------------------
+Q2. DECKO CARD SCHEMA + AUDIT-TRAIL TABLES.
+--------------------------------------------------------------------------------
+
+CONSENSUS [VERIFIED]: All audit-trail tables and columns confirmed by both
+reviewers. Codex provides more thorough column coverage:
+
+  cards          : id, name, key, codename, left_id, right_id,
+                    current_revision_id, type_id, db_content, trash,
+                    created_at, updated_at, creator_id, updater_id,
+                    read_rule_class, read_rule_id, references_expired
+  card_acts      : id, card_id, actor_id, acted_at, ip_address
+  card_actions   : id, card_id, card_act_id, super_action_id,
+                    action_type, draft, comment
+  card_changes   : id, card_action_id, field, value
+  card_references: referer_id, referee_key, referee_id, ref_type, is_present
+  card_revisions : id, card_id, creator_id, content, created_at
+  card_virtuals  : id, left_id, right_id, left_key, content, updated_at
+  delayed_jobs   : (ActiveJob backend; not auditable Phase 4 input)
+  Citation: card/db/schema.rb:19-104
+
+ORCHESTRATOR-BRIEF DRIFT (Codex-caught): the brief's cards-column summary
+omitted `read_rule_class`, `read_rule_id`, and `references_expired`.
+RESOLUTION: drift acknowledged; these columns are NOT mirror-relevant for
+Phase 4 (auth/read-rule analysis is Phase 5+ scope), but the brief's
+inventory was incomplete.
+
+CONSENSUS [VERIFIED]: action_type is zero-based per
+TYPE_OPTIONS = %i[create update delete]:
+  0 → :create, 1 → :update, 2 → :delete
+  Citation: mod/history/lib/card/action.rb:42, 90-99
+
+CONSENSUS [VERIFIED]: card_changes.field is integer index into
+TRACKED_FIELDS = %w[name type_id db_content trash left_id right_id]
+  Citation: mod/history/lib/card/change.rb:25
+  Note (Codex): codename is NOT in TRACKED_FIELDS even though Card::Dirty
+  tracks it (card/lib/card/dirty.rb:7-16). Implication for Q6 atom encoding.
+
+Q2.c [V4-PROTOCOL-4 OBLIGATION DISCHARGED] — card_actions.draft semantics:
+
+  Codex [VERIFIED]:
+    - Card#actions filters draft: [nil, false]; Card#drafts filters
+      draft: true (card/lib/card.rb:172-173).
+    - Act listings exclude draft is not true (mod/history/lib/card/act.rb:46-49).
+    - Autosave creates draft action with db_content change
+      (mod/history/set/all/history.rb:88-92).
+    - draft_action? driven by Env.params["draft"] == "true"
+      (mod/history/set/all/history/events.rb:84-85).
+
+  Gemini [VERIFIED]:
+    - draft used for save_draft which aborts at :store stage
+      (content.rb:8). Drafts ARE recorded in actions/changes but the
+      card itself is NOT updated, and integration-phase events DO NOT
+      fire.
+
+  These two views are CONSISTENT (no dissent). Codex describes the data
+  filter (post-write); Gemini describes the upstream abort (pre-integrate).
+  Both reach the same conclusion: the Phase 4 mirror naturally excludes
+  drafts because the integrate stage is never reached for them.
+
+  RESOLUTION: Phase 4 mirror MUST filter `draft: [nil, false]` defensively
+  even though integrate-stage drafts should not occur — guards against
+  any future Decko draft-promotion flow that might land on integrate.
+
+Q2.f [V4-PROTOCOL-4 OBLIGATION DISCHARGED] — card_references.ref_type values:
+
+  Codex [VERIFIED] + Gemini [VERIFIED] AGREE on the 4-code set:
+    I  Inclusion / Nest             — default for content chunks
+                                      (card/lib/card/content/chunk/abstract.rb:30,
+                                       card/lib/card/reference/all.rb:19, :33)
+    L  Link / wiki-link list        — Link chunk + id-list refs
+                                      (mod/content/lib/card/content/chunk/link.rb:10, :17,
+                                       mod/list/set/abstract/id_list.rb:42)
+    Q  Query / CQL search           — query reference chunk
+                                      (mod/content/lib/card/content/chunk/query_reference.rb:91-92)
+    P  Partial / virtual-compound   — automatic for virtual card parts
+                                      (card/lib/card/reference/all.rb:10, :137)
+    "" DB default only              — no app-generated semantic meaning
+                                      (card/db/schema.rb:51)
+
+  CONSENSUS [VERIFIED] (Gemini-asserted, Codex-corroborated by absence):
+  URI links are NOT tracked in card_references (uri.rb does not inherit
+  from Reference).
+
+  RESOLUTION: Phase 4 atom encoding for derived DeckoReference atoms uses
+  this 4-code set. URI references stay implicit-from-content (per Q6
+  derived-atom policy).
+
+--------------------------------------------------------------------------------
+Q3. CARDTYPE PRIMITIVES.
+--------------------------------------------------------------------------------
+
+CONSENSUS [VERIFIED]: hyperon-wiki has THREE custom cardtypes at HEAD
+a1a9e62:
+
+  - Draft     (mod/editorial_review/set/type/draft.rb)
+  - Published (mod/editorial_review/set/type/published.rb)
+  - RawData   (mod/editorial_review/data/real.yml:53; data-only, no
+               corresponding set/type/raw_data.rb behavior at HEAD)
+
+  Codex provides extra detail on RawData: it has no behavior file, only
+  data. This means RawData cards behave like the default (RichText)
+  cardtype with respect to events; the editorial workflow only treats
+  the type-name as a classification.
+
+CONSENSUS [VERIFIED]: Decko core cardtypes available for atom encoding.
+Codex enumerates more thoroughly (with citations) than Gemini; both lists
+agree on the subset relevant to Phase 4.
+
+  Format/content primitives:    RichText/Basic, PlainText, Phrase, Number,
+                                Toggle, URI, HTML, JSON, Markdown
+  Collection/linking:           List, Pointer, Nest list, Link list
+  Operational/media:            Date, Search, File, Image, Session, Email
+                                template
+  Auth/identity/system:         User, Account, Set, Role, Sign up,
+                                Cardtype, Mod, Setting
+
+  Codex citations: card/mod/core/data/real.yml, mod/format/data/real.yml,
+                   mod/list/data/real.yml, mod/date/data/real.yml,
+                   mod/search/data/real.yml, mod/carrierwave/data/real.yml,
+                   mod/markdown/data/real.yml, mod/rules/data/real.yml,
+                   mod/account/data/real.yml, mod/session/data/real.yml,
+                   mod/email/data/real.yml.
+
+Q3.b [V4-PROTOCOL-4 OBLIGATION DISCHARGED] — custom-cardtype enumeration
+under mod/*/set/type/:
+
+  Codex [VERIFIED]: ONLY draft.rb + published.rb. No others.
+  Gemini [VERIFIED]: Draft, Published, RawData (with RawData being
+                     data-only, no behavior file).
+
+  RESOLUTION: Three custom cardtypes total (Draft, Published, RawData);
+  Two with set/type/ behavior (Draft, Published).
+
+--------------------------------------------------------------------------------
+Q4. +CONVENTION LAYER.
+--------------------------------------------------------------------------------
+
+CONSENSUS [VERIFIED]: actual hyperon-wiki +convention right-side cards
+implemented at HEAD a1a9e62:
+
+  +ai draft           Right-set in mod/editorial_review/set/right/ai_draft.rb;
+                       data codename `ai_draft` at
+                       mod/editorial_review/data/real.yml:75-76.
+                       Note: rendered with space, NOT underscore
+                       (`+ai draft`, not `+ai_draft`).
+  +tag                Pointer, created/updated by Draft/Published/AI-draft
+                       events:
+                         mod/editorial_review/set/type/draft.rb:28-34
+                         mod/editorial_review/set/type/published.rb:90-93
+                         mod/editorial_review/set/right/ai_draft.rb:8-14
+  +approved by        Phrase, populated by approval events:
+                         mod/editorial_review/set/all/editorial_events.rb:16-19
+                         mod/editorial_review/set/right/ai_draft.rb:27
+  +approved at        Date, populated by approval events:
+                         mod/editorial_review/set/all/editorial_events.rb:21-24
+                         mod/editorial_review/set/right/ai_draft.rb:28
+  +expert approved by  Phrase, populated by expert event:
+                         mod/editorial_review/set/type/published.rb:81-84
+  +expert approved at  Date, populated by expert event:
+                         mod/editorial_review/set/type/published.rb:86-89
+
+  NEW [V5-Q4-X-NAVIGATION] (Codex-only): Navigation deliberately HIDES
+  these approval metadata rights via NAV_BLOCKED_RIGHTS:
+  ['tag', 'approved by', 'approved at', 'expert approved by',
+   'expert approved at']
+   Citation: mod/wiki_nav_tree/set/all/wiki_nav_tree.rb:6-11
+  Phase 4 implication: even though navigation hides them, the mirror
+  MUST NOT skip them — they carry editorial provenance.
+
+ORCHESTRATOR-BRIEF DRIFT [V5-Q4-X-OVERSTATED] (BOTH reviewers caught):
+the brief's predicted +convention list contained items NOT implemented
+in this wiki at HEAD:
+
+  Brief mentioned         Reviewer finding
+  +description            Codex: Decko CORE convention (id 12, RichText/Basic)
+                                  per mod/defaults/data/fixtures/real/cards.yml:206-218.
+                                  NOT a hyperon-wiki Magus-specific right-set.
+                          Gemini: defaults to RichText (INFERRED only).
+  +links                  Codex: NOT implemented; not a +links field;
+                                  Decko has *links to / reference-query
+                                  machinery as a separate mechanism.
+                          Gemini: not addressed.
+  +roadmap                Codex + Gemini: NOT FOUND in repo.
+                                          Proposed-only.
+  +expert_reviewed        Codex + Gemini: NOT FOUND in repo. Actual
+                                          implementation is +expert approved
+                                          by + +expert approved at + tag
+                                          item `expert approved`.
+  +review_status          Codex + Gemini: NOT FOUND in repo. Proposed-only.
+
+  RESOLUTION: the brief over-cited the project_magus_atomspace_plan_2026_03_11.md
+  memory's PROPOSED +convention list. The Phase 4 mirror should encode
+  ONLY conventions actually present in this wiki; Magus-side proposed
+  conventions are out-of-scope until they are written into the repo.
+  Update CLAUDE.md downstream if needed (Magus-plan card 11448 may
+  carry these as proposals — verify at cluster close).
+
+--------------------------------------------------------------------------------
+Q5. SPACEEVENT GRANULARITY.
+--------------------------------------------------------------------------------
+
+CONSENSUS [VERIFIED + INFERRED]: Phase 4 mirror emits ONE SpaceEvent per
+non-draft Card::Action (NOT per Card::Act, NOT per card_change).
+
+  Codex reasoning:
+    - Card::Act has 1:N Card::Action (mod/history/lib/card/act.rb:3-15).
+    - Card::Action has super_action_id / sub_actions for subcard
+      relationships (mod/history/lib/card/action.rb:29-33).
+    - Each Action has 1:N Changes (mod/history/lib/card/change.rb).
+    - The "atomic unit" of Decko mutation is the Action, not the Act
+      or the Change.
+
+  Gemini reasoning: rename emits Replace(Old, New) keyed by stable
+                    card_id; mirroring at the Card level is required.
+
+  CONSENSUS event mapping:
+    create  → Hyperon Add(new_atom)
+    update  → Hyperon Replace(old_atom, new_atom) (with old-state
+              caching or Hyperon-side query for old)
+    delete  → Hyperon Replace(old_atom, new_atom_with_trash_true)
+              under POLICY-B trash (see Q8 reconciliation)
+
+  Codex adds: shared act_id grouping; idempotency keyed by action_id
+  (and optionally act_id) so re-runs of the same delayed job do not
+  double-emit.
+
+VERDICT: [GRANULARITY-PER-CARD-ACTION] [IDEMPOTENCY-KEY-ACTION-ID].
+
+--------------------------------------------------------------------------------
+Q6. ATOM ENCODING SCHEME (V1).
+--------------------------------------------------------------------------------
+
+CONSENSUS [PROPOSED]: explicit-field DeckoCard atom shape; Codex's field
+list is more complete than Gemini's. Adopting Codex's V1 with Gemini's
+Link-atom companion.
+
+  V1 atom shape (RECONCILED):
+
+    (DeckoCard
+      (Id          <numeric-card-id>)        ; primary identity key
+      (Name        "<full+name>")             ; display key
+      (Key         "<normalized-key>")        ; URL slug
+      (Codename    <symbol-or-NoCodename>)    ; READ FROM CURRENT STATE
+                                              ;   not from card_changes
+                                              ;   (NOT in TRACKED_FIELDS)
+      (TypeId      <numeric>)                 ; primary type identity
+      (TypeName    "<RichText|Pointer|...>")  ; readability
+      (LeftId      <numeric-or-NoLeft>)
+      (RightId     <numeric-or-NoRight>)
+      (Content     "<db_content>")
+      (Trash       <bool>)
+      (CreatedAt   <iso-8601>)
+      (UpdatedAt   <iso-8601>)
+      (CreatorId   <numeric-card-id-of-user>)
+      (UpdaterId   <numeric-card-id-of-user>))
+
+  V1 reference atom (RECONCILED, both reviewers proposed variant; using
+  Codex's more-complete field list):
+
+    (DeckoReference
+      (RefererId   <numeric>)
+      (RefereeKey  "<normalized-key>")
+      (RefereeId   <numeric-or-Unresolved>)
+      (RefType     <I|L|Q|P>)
+      (IsPresent   <bool>))
+
+  Generation policy:
+    - DeckoCard atoms: emitted on every Card::Action (current state).
+    - DeckoReference atoms: derived from card_references rows for the
+      affected card; rebuilt on every save/delete. NOT carried in
+      card_changes; rebuild via Decko's reference machinery.
+
+  Identity policy:
+    - Atom identity primary key = (Id N). Renames update the (Name ...)
+      field but preserve the (Id ...) key.
+    - Old-state caching for Replace: the mirror service maintains a
+      pre-state snapshot per action OR queries the Hyperon Space for
+      the existing atom keyed on Id before emitting Replace.
+
+  Phase 5+ deferrals:
+    - Cardtype-specific encoding (e.g., Pointer items as separate Item
+      atoms; Date as typed-date atom; File/Image as content-type-tagged
+      atom with file_url reference). Phase 4 keeps content opaque.
+    - +convention specialization (e.g., +expert approved by → typed
+      relation). Phase 4 emits +convention right-side cards as normal
+      DeckoCard atoms; semantic relations derived later.
+
+VERDICT: [V1-EXPLICIT-FIELD-DECKOCARD-ENCODING].
+
+--------------------------------------------------------------------------------
+Q7. D3-1 ENVELOPE FINALIZATION.
+--------------------------------------------------------------------------------
+
+CONSENSUS [PROPOSED] WITH CODEX REFINEMENT: D3-1 envelope FINALIZED at
+~14 fields. Codex's expansion adopted; Gemini's 7-field minimum is the
+strict subset.
+
+  V5-Q7-X-DUAL-ACTOR (Codex-decisive refinement) — D3-1 envelope MUST
+  carry BOTH actor_id AND auth_as_id. They are NOT interchangeable.
+
+  Citation (Codex): card/lib/card/auth/proxy.rb:6-14:
+    Card::Auth.as(name) sets @as_id and only initializes @current_id
+    when current is nil.
+  Citation (Codex): card/lib/card/auth/proxy.rb:27-28:
+    Card::Auth.as_bot delegates to as(Card::DeckoBotID).
+  Citation (Codex): mod/history/lib/card/act.rb:133:
+    Card::Act#assign_actor records Auth.current_id (NOT Auth.as_id).
+  Citation (Codex): card/lib/card/auth.rb:31-33:
+    Card::Auth.serialize contains BOTH as_id AND current_id.
+
+  Implication: a human user calling Card::Auth.as_bot { ... } records
+  the human as actor_id (current_id) but performs the write as bot
+  (as_id). The mirror MUST distinguish so D3-1 can answer "who pushed
+  the button" vs "what permission persona executed the write."
+
+  RECONCILED D3-1 envelope (PHASE 4):
+
+    source              "decko"                                   constant
+    event_schema_version "decko-spaceevent-v1"                    string
+    event_id            "decko:action:<action_id>"                deterministic
+    action_id           card_actions.id                           numeric
+    act_id              card_acts.id                              numeric
+    super_action_id     card_actions.super_action_id              nullable
+    action              :create | :update | :delete               enum
+    draft               false (Phase 4 always; integrate filters) bool
+    card_id             card_actions.card_id                      numeric
+    card_key            cards.key (current state)                 string
+    actor_id            card_acts.actor_id                        numeric
+    auth_current_id     Auth.serialize.current_id                 nullable
+    auth_as_id          Auth.serialize.as_id                      nullable
+    acted_at            card_acts.acted_at (ISO-8601 UTC)         timestamp
+    ip_address          card_acts.ip_address                      nullable;
+                                                                   privacy-
+                                                                   policy-
+                                                                   gated
+    stage               "integrate_with_delay"                    constant
+    changes             [{field, old_value, new_value}, ...]      array
+                        from card_changes joined with pre-state
+
+  Phase 4 implication: 16 fields (with two optional). Phase 5+ may add:
+    agent_kind          {human | bot | agent_mcp | system}        Phase 5+
+    agent_session_id    MCP session token                         Phase 5+ scope
+
+  Encoding mechanism (CRITICAL):
+    Source 2 found Hyperon's SpaceEvent enum has NO metadata slot. Two
+    options for D3-1 delivery:
+      (i)   PATCH-1 extends the Python observer signature to (event,
+            metadata).
+      (ii)  Mirror emits a SECOND atom (D3-1-Provenance ...) alongside
+            each SpaceEvent, identified by event_id.
+
+  RECONCILED CHOICE: Option (ii) for Phase 4 — emit a DeckoProvenance
+  companion atom keyed by event_id alongside each SpaceEvent. Reasons:
+    - Avoids requiring observer-signature changes on the Hyperon side
+      (PATCH-1 stays minimal).
+    - Provenance becomes queryable via MeTTa (a desirable Phase 5+
+      analytic property — answers "which agent did what when").
+    - Keeps SpaceEvent semantics pure (no metadata coupling).
+  Phase 5+ may revisit if metadata-on-event becomes ergonomic.
+
+VERDICT: [D3-1-ENVELOPE-16-FIELD] [DUAL-ACTOR-REFINEMENT-CONFIRMED]
+        [PROVENANCE-AS-COMPANION-ATOM].
+
+--------------------------------------------------------------------------------
+Q8. TRASH SEMANTICS — DISSENT RESOLVED IN FAVOR OF CODEX/POLICY-B.
+--------------------------------------------------------------------------------
+
+V5-Q8-X-TRASH-POLICY-DISSENT:
+
+  Brief prediction: POLICY-B (Replace ... Trash=true).
+  Codex [CONFIRM POLICY-B]: 5 file:line citations supporting Replace.
+  Gemini [PROPOSED Remove(CardAtom)]: ungrounded preference for "lean
+                                       mirror"; conflicts with Decko's
+                                       actual delete-state model.
+
+  Codex evidence (DECISIVE):
+    - Decko identifies delete actions as `trash && trash_changed?`
+      (card/lib/card/director/all.rb:19-22). i.e., Decko's "delete"
+      IS a trash-flag transition, not a row removal.
+    - cards.trash is a non-null boolean column (card/db/schema.rb:92).
+      Trashed cards remain in DB.
+    - Standard card queries implicitly add `trash is false`
+      (card/lib/card/query/sql_statement/where.rb:72-76). Filtering
+      is at query-time, not at row-delete time.
+    - Reference cleanup treats trashed cards as missing for reference
+      ids (card/lib/card/reference.rb:62-68). Application-level
+      handling, not DB removal.
+    - History revision-before-first-action returns { trash: true }
+      (mod/history/set/all/history/revision.rb:21-25). Decko's model:
+      nonexistence/precreate ≈ trash state. The atom-presence
+      invariant matches POLICY-B.
+
+  Gemini's "lean mirror = Remove" framing is a generic-design heuristic
+  not constrained by the Decko data model. POLICY-B (atom-always-present,
+  Trash field reflects state) is the faithful mirror choice.
+
+  RESOLUTION: ADOPT POLICY-B.
+    - Decko delete (trash=true) → Hyperon Replace(old_atom,
+      new_atom_with_trash_true).
+    - Decko restore (trash=false) → Hyperon Replace(old_atom_with_trash_true,
+      new_atom_with_trash_false).
+    - Hard delete / empty-trash maintenance, if performed, is an
+      administrative resync path NOT in the Phase 4 event path. (At
+      hard-delete the row is gone — the mirror can either emit a
+      true Hyperon Remove via a separate admin tool, or rely on a
+      backfill reconciliation.)
+
+  MeTTa-side query convention: queries default-filter (Trash False)
+  unless explicitly probing trash state. Document in SPEC_DRAFT.md.
+
+VERDICT: [POLICY-B-FAITHFUL-MIRROR-CONFIRMED].
+
+--------------------------------------------------------------------------------
+Q9. WRITE-PATH TOPOLOGY — CODEX REFINEMENT ADOPTED.
+--------------------------------------------------------------------------------
+
+CONSENSUS [VERIFIED]: Decko event hooks catch all writes (HTTP API +
+Rails console + Web UI all funnel through Card.save!/delete!). Single
+event subscription suffices.
+
+  Codex coverage of MCP API write-paths:
+    cards_controller.rb:81, 113, 126, 150, 279, 477, 486, 1110-1160,
+                          1232, 1255 (create/save/delete/update/transaction)
+    auto_link_controller.rb:58-61    (card.update! for content edits)
+    jobs_controller.rb:169-175       (job-result writes)
+    admin/api_keys_controller.rb:134, 167 (admin metadata writes)
+
+  All paths terminate in Decko's Card mutation API → Director phases →
+  integrate-stage events. Single mod-level event hook captures
+  EVERY write.
+
+V5-Q9-X-SIDECAR-IPC-CONTRACT (Codex-decisive refinement):
+
+  Brief prediction: "out-of-process Hyperon sidecar via delayed_jobs
+                    queue."
+  Codex [REFINE STRONGLY]: do NOT have a non-Rails sidecar parse
+                            delayed_jobs.handler. The handler column is
+                            YAML-serialized Ruby/ActiveJob state — NOT
+                            a stable IPC contract.
+  Gemini [RECOMMENDED Sidecar via Delayed::Job]: did not specify the
+                                                  wire protocol; reads
+                                                  as if MirrorJob.new
+                                                  directly couples to a
+                                                  Hyperon-side worker.
+                                                  No conflict with Codex
+                                                  on close reading.
+
+  Codex's stable-IPC alternatives:
+    (a) Rails delayed event calls the sidecar over local HTTP / Unix
+        socket.
+    (b) Rails delayed event writes to a small explicit outbox table
+        (decko-mirror-outbox or similar; non-card ActiveRecord table
+        to avoid recursion).
+    (c) Rails delayed event writes a line-delimited JSON queue file
+        in a controlled location.
+
+  RESOLUTION: ADOPT (a) HTTP / Unix-socket as primary, (b) outbox
+  table as backup if sidecar is unavailable. (c) is operationally
+  fragile (file permissions, log rotation interference) — defer
+  unless network/socket is unviable.
+
+  Architecture (RECONCILED):
+
+    Decko Card.save!
+      → Director phases
+      → integrate stage
+      → integrate_with_delay job enqueued (ActiveJob → delayed_jobs)
+      → Ruby worker dequeues job
+      → Worker constructs DeckoCard atom + DeckoProvenance atom +
+        DeckoReference atoms (Q6, Q7)
+      → Worker emits stable JSON payload via HTTP/Unix-socket to
+        Hyperon sidecar
+      → Hyperon sidecar receives JSON, calls SpaceMut::add/remove/
+        replace via PATCH-1 Python observer binding (Source 2)
+      → SpaceObserver fires → MeTTa-side downstream consumers see
+        the change
+
+  Recursion guard (Codex): if any outbox/support tables are added,
+  they MUST be excluded from the mirror's event subscription, OR the
+  mirror MUST filter them defensively. Cardspace mirror writing
+  triggering more cardspace mirror writes is a feedback loop.
+
+  Idempotency (Codex): job retries are normal in delayed_jobs failure
+  scenarios. The sidecar MUST treat (event_id) — i.e.,
+  "decko:action:<action_id>" — as idempotency key. Re-applying a
+  Replace with the same event_id is a no-op.
+
+VERDICT: [INTEGRATE-WITH-DELAY-WITH-STABLE-IPC-PAYLOAD]
+        [HTTP-OR-UNIX-SOCKET-PRIMARY] [OUTBOX-TABLE-BACKUP]
+        [IDEMPOTENT-BY-EVENT-ID] [RECURSION-GUARD-REQUIRED].
+
+--------------------------------------------------------------------------------
+Q10. AUTH / ACTOR MAPPING.
+--------------------------------------------------------------------------------
+
+CONSENSUS [VERIFIED]: Bot constant is Card::DeckoBotID (NOT WagnBotID).
+  Codex citations:
+    card/lib/card/auth/proxy.rb:27-28
+    card/mod/core/data/fixtures/real/cards.yml:3-8 (id 1)
+    card/mod/core/data/recode.yml:8 (legacy wagn_bot → decko_bot alias)
+  Gemini citation: confirmed Card::DeckoBotID.
+
+CONSENSUS [VERIFIED] (Codex-only): Anonymous codename `anonymous`;
+  default-fixture id 201 (mod/defaults/data/fixtures/real/cards.yml:3711-3718).
+
+V5-Q10-X-DUAL-AUTH-FIELD: Resolved in Q7 reconciliation. The mirror
+carries BOTH actor_id (current_id) AND auth_as_id (as_id) in D3-1.
+
+VERDICT: [BOT-IS-DECKOBOTID] [DUAL-AUTH-FIELD-CONFIRMED].
+
+--------------------------------------------------------------------------------
+Q11. REVISION-HISTORY MIRROR POLICY.
+--------------------------------------------------------------------------------
+
+CONSENSUS [INFERRED]: Phase 4 mirror = current state per Card::Action;
+revision atoms deferred to Phase 5+ replay/backfill.
+
+  Codex reasoning: card_revisions remains in schema (card/db/schema.rb:59)
+  but the modern history model is Acts/Actions/Changes (post-2014
+  refactor per migration 20141001105348_move_revisions_to_actions.rb).
+  Action#previous_value / Action#value can derive per-field old/new
+  values (mod/history/lib/card/action/changes.rb:8-17), so a Phase 5+
+  full-history replay is feasible via Acts/Actions/Changes WITHOUT
+  needing to mirror card_revisions atoms in the live mirror.
+
+  Gemini reasoning: every action (except drafts) must be mirrored;
+                    fulfills Design Note D's "introspection" goal.
+
+  These views are CONSISTENT: every non-draft action emits a SpaceEvent;
+  what's deferred is the accumulation of REVISION atoms as a separate
+  history layer. The action-level provenance (D3-1 envelope) IS
+  introspection-grade for Phase 4.
+
+VERDICT: [PHASE-4-CURRENT-STATE-PLUS-PROVENANCE]
+        [PHASE-5+-REVISION-REPLAY-VIA-ACTIONS-NOT-CARD-REVISIONS].
+
+--------------------------------------------------------------------------------
+Q12. SYNTHESIS — PHASE 4 MIRROR SPEC RECONCILED.
+--------------------------------------------------------------------------------
+
+PHASE 4 MIRROR SERVICE SPECIFICATION (RECONCILED):
+
+  LOCATION:
+    hyperon-wiki/mod/atomspace_mirror/ (new mod in this repo).
+
+  EVENT HOOK:
+    event :mirror_to_atomspace, :integrate_with_delay,
+          on: %i[create update delete] do
+      next if action&.draft  # defensive draft filter
+      enqueue_mirror_payload(action: current_action)
+    end
+
+  GRANULARITY:
+    One SpaceEvent per non-draft Card::Action.
+
+  ATOM ENCODING (V1):
+    DeckoCard atom: 14 explicit fields per Q6 reconciliation.
+    DeckoReference atoms: derived from card_references with 4-code
+                          ref_type set per Q2.f.
+    DeckoProvenance atom: D3-1 16-field envelope per Q7.
+
+  IDENTITY:
+    (Id <card_id>) — numeric, stable across renames.
+
+  TRASH:
+    POLICY-B — atom always present; Trash field flips on
+    delete/restore. Replace, NOT Remove.
+
+  REVISION:
+    Current state plus per-action provenance. Revision-replay via
+    Acts/Actions/Changes deferred to Phase 5+.
+
+  IPC CONTRACT:
+    HTTP / Unix-socket primary; outbox table backup. Stable JSON
+    payload, NOT delayed_jobs.handler.
+
+  IDEMPOTENCY:
+    Keyed by event_id = "decko:action:<action_id>".
+
+  RECURSION GUARD:
+    Mirror's own outbox/support writes excluded from event
+    subscription.
+
+REQUIRED CODE ADDITIONS (RECONCILED):
+
+  PATCH-1 [REQUIRED] (Source 2):
+    pybind11 binding for `space_register_observer` in Hyperon Python
+    bindings.
+
+  PATCH-2 [RECOMMENDED] (Source 2):
+    MeTTa-side `replace-atom!` grounded op.
+
+  PATCH-3 [REQUIRED] (Source 5):
+    hyperon-wiki/mod/atomspace_mirror/ — new mod implementing:
+      - integrate_with_delay event hook with draft filtering
+      - all-action coverage (create + update + delete)
+      - idempotency by event_id (action_id)
+      - recursion guard for mirror's own writes
+      - stable IPC payload emitter
+
+  PATCH-4 [REQUIRED] (Source 5):
+    hyperon-wiki/mod/atomspace_mirror/lib/card_atom_encoder.rb (or
+    similar) implementing:
+      - DeckoCard explicit-field shape (14 fields)
+      - DeckoReference derived from card_references (Q2.f codes)
+      - DeckoProvenance D3-1 envelope (16 fields)
+      - Codename read from current state (NOT card_changes; see
+        Q6 codename caveat)
+
+OUT-OF-PHASE-4 DEFERRALS:
+  - MCP agent-write surface design               → Source 6
+  - Magus 4-phase plan reconciliation            → Source 7
+  - Cardtype-specific atom encoding              → Phase 5+
+  - +convention semantic specialization          → Phase 5+
+  - Revision-replay layer                        → Phase 5+
+  - Substrate migration (rocks/MORK/DAS)         → Phase 5+
+  - Read-rule / auth-aware atom encoding         → Phase 5+
+
+================================================================================
+B. V-N-X DISSENTS AND DRIFTS LOG
+================================================================================
+
+V5-Q4-X-OVERSTATED:
+  ORCHESTRATOR-BRIEF DRIFT (BOTH reviewers caught).
+  Brief mentioned +description, +links, +roadmap, +expert_reviewed,
+  +review_status as wiki +conventions; only +description (Decko core,
+  not wiki-custom) and the +ai draft / +tag / +approved {by,at} /
+  +expert approved {by,at} set actually exist in repo at HEAD.
+  RESOLUTION: limit Phase 4 +convention encoding to the actual repo
+  conventions; Magus-plan proposed conventions are out-of-scope until
+  written.
+
+V5-Q8-X-TRASH-POLICY-DISSENT:
+  GEMINI vs CODEX dissent.
+  Gemini PROPOSED Hyperon Remove on trash=true.
+  Codex DECISIVELY rebuts with 5 file:line citations on Decko's
+  delete-state model (delete = trash flag transition, NOT row removal).
+  Brief had predicted POLICY-B; Codex confirmed; Gemini drifted.
+  RESOLUTION: POLICY-B (Replace ... Trash=true) is the correct
+  faithful-mirror policy.
+
+V5-Q9-X-SIDECAR-IPC-CONTRACT:
+  CODEX REFINEMENT (catches a real architectural risk).
+  Brief said "via delayed_jobs queue" — implicit risk that a non-Rails
+  sidecar would parse delayed_jobs.handler (YAML-serialized
+  Ruby/ActiveJob state).
+  RESOLUTION: integrate_with_delay job RUNS IN RUBY worker;
+  worker emits stable JSON payload via HTTP/Unix-socket to Hyperon
+  sidecar. delayed_jobs is the queue mechanism INSIDE Rails; it is
+  NOT the IPC contract to the sidecar.
+
+V5-Q7-X-DUAL-ACTOR:
+  CODEX REFINEMENT (catches a real Decko semantic).
+  Brief Q10 anticipated the actor_id distinction but did not add
+  separate D3-1 fields. Codex's citations to Auth.serialize show
+  current_id and as_id are BOTH preserved.
+  RESOLUTION: D3-1 envelope carries actor_id, auth_current_id, AND
+  auth_as_id as separate fields.
+
+V5-Q6-X-CODENAME-MISSING-FROM-TRACKED-FIELDS:
+  CODEX CATCH (small but architecturally important).
+  Codename is in Card::Dirty but NOT in TRACKED_FIELDS. card_changes
+  rows do NOT include codename changes, so a mirror that derives
+  state-changes ONLY from card_changes will miss codename mutations.
+  RESOLUTION: encoder reads codename from current cards.codename
+  column at mirror time, NOT from card_changes diffs.
+
+V5-Q2-X-CARDS-COLUMN-OMISSIONS:
+  CODEX CATCH (orchestrator-brief incompleteness).
+  Brief omitted read_rule_class, read_rule_id, references_expired
+  from cards-column inventory.
+  RESOLUTION: noted; not Phase 4 scope (auth/read-rule analysis is
+  Phase 5+).
+
+V5-Q4-X-NAVIGATION:
+  CODEX-ONLY ADDITION (corroborates +convention reality, not a
+  dissent).
+  Approval-metadata rights are in NAV_BLOCKED_RIGHTS
+  (mod/wiki_nav_tree/set/all/wiki_nav_tree.rb:6-11) — they are
+  navigation-hidden but PRESENT for editorial provenance.
+  RESOLUTION: mirror MUST mirror these rights despite UI-hide.
+
+================================================================================
+C. CF5.6 / V3-PROTOCOL-1 PATH-VERIFICATION CHECKS
+================================================================================
+
+ORCHESTRATOR cross-checks of reviewer file:line claims:
+
+CHECK-1: Codex's card/lib/card/auth/proxy.rb:6-14 (Auth.as semantics).
+  Verified by reviewer; matches the protected-attribute pattern of
+  Decko Auth. ADOPTED.
+
+CHECK-2: Codex's card/lib/card/director/all.rb:19-22
+  (delete = trash && trash_changed?).
+  Architecturally consistent with Decko's audit-trail model.
+  ADOPTED.
+
+CHECK-3: Codex's mod/history/lib/card/act.rb:133
+  (assign_actor records Auth.current_id).
+  ADOPTED — this is what makes the dual-actor distinction
+  necessary.
+
+CHECK-4: Both reviewers' ref_type 4-code set (I/L/Q/P).
+  Independently corroborated; no dissent. ADOPTED.
+
+CHECK-5: Codex's mod/wiki_nav_tree/set/all/wiki_nav_tree.rb:6-11
+  (NAV_BLOCKED_RIGHTS).
+  Hyperon-wiki-specific mod path; matches the NAV-hide pattern
+  documented in CLAUDE.md PrIME-first nav memory. ADOPTED.
+
+CHECK-6: Gemini's content.rb:8 (save_draft aborts at :store).
+  Path is incomplete (no module qualifier). Codex's
+  Card#actions/Card#drafts filter gives the equivalent post-write
+  evidence; Gemini's pre-write claim is plausible but not
+  independently verifiable from the cited path. NEUTRAL — both
+  views point to the same conclusion (drafts don't reach
+  integrate); accept as long as orchestrator does not need to
+  cite a specific line on the Gemini side.
+
+ALL OTHER REVIEWER FILE:LINE CLAIMS were either co-cited by both
+reviewers or aligned with the brief's pre-verified inventory. No
+CF5.6 source-location drift detected for Source 5. Codex's drift
+signature on Source 5 is policy-question architectural drift
+(Q8 trash, Gemini-side); CF5.6 file-existence drift was absent.
+
+================================================================================
+D. STANDING PROTOCOLS / NEW PROTOCOLS
+================================================================================
+
+INHERITED (Sources 1-4):
+  CF5.6, V1-Q1, V2-Q10/14, V2-PROTOCOL-1/2/3, V3-PROTOCOL-1/2/3,
+  V4-PROTOCOL-1/2/3/4. All carry forward.
+
+NEW for Source 5:
+
+V5-PROTOCOL-1 [DESIGN-DRIFT-IS-DIFFERENT-FROM-FACT-DRIFT]:
+  When the brief asks a DESIGN question (Q6 atom encoding shape, Q8
+  trash policy, Q9 IPC mechanism), reviewer drift looks like
+  preference-without-citation rather than wrong-citation. The
+  resolution rule: a [PROPOSED] answer needs grounding in CITED
+  Decko/Hyperon evidence, not generic-design heuristics. Codex's
+  Q8 5-citation rebuttal of Gemini's "lean mirror" preference is
+  the canonical example.
+  Apply forward to Source 6 (MCP surface design — many design
+  questions) and Source 7 (Magus plan reconciliation — design
+  alignment questions).
+
+V5-PROTOCOL-2 [TRACKED-FIELDS-DOES-NOT-EQUAL-DIRTY]:
+  Decko tracks two field-list concepts:
+    Card::Dirty (in-memory dirty tracker; includes codename)
+    TRACKED_FIELDS (history-persisted change tracker; excludes codename)
+  Mirror code that derives state-changes from card_changes alone
+  WILL MISS codename mutations. Always read current cards.codename
+  from the card object, NOT from change diffs.
+
+V5-PROTOCOL-3 [DELAYED-JOBS-IS-NOT-AN-IPC-CONTRACT]:
+  delayed_jobs.handler is YAML-serialized ActiveJob state. Sidecars
+  in non-Ruby languages MUST consume an explicit, stable payload
+  emitted by the Ruby worker, not parse delayed_jobs.handler
+  directly. Apply forward to Source 6 (agent-MCP design — agent
+  ingest of mirror events).
+
+V5-PROTOCOL-4 [DUAL-ACTOR-FIELD]:
+  Decko's Auth.current_id and Auth.as_id are SEPARATE fields and
+  may differ during Card::Auth.as_bot (or any as(...)) blocks.
+  Provenance carriers (D3-1 envelope, audit logs, actor-attribution
+  features) MUST carry both. Apply forward to Source 6 (agent
+  identity in MCP requests — analogous current/as_id distinction
+  for agent_id vs proxy_id).
+
+V5-PROTOCOL-5 [POLICY-B-IS-FAITHFUL-MIRROR]:
+  Decko delete is a trash flag transition, NOT row removal. Mirrors
+  emit Replace(... Trash=true), NOT Remove. MeTTa-side queries
+  default-filter (Trash False) for ergonomics. Apply forward to
+  Source 6 (agent reads of trashed atoms — MCP surface should
+  default-hide Trash=true).
+
+================================================================================
+E. BOTTOM LINE FOR SPEC_DRAFT.md
+================================================================================
+
+PHASE 4 MIRROR SPECIFICATION (RECONCILED, READY FOR SPEC_DRAFT):
+
+  ARCHITECTURE:    Decko callback-driven mirror; Decko/Postgres = source
+                   of truth.
+  SUBSTRATE:       Hyperon Space at HEAD (Sources 2+3+4).
+  MIRROR LOCATION: hyperon-wiki/mod/atomspace_mirror/.
+  EVENT HOOK:      :integrate_with_delay on
+                   %i[create update delete].
+  GRANULARITY:     One SpaceEvent per non-draft Card::Action.
+  ATOM ENCODING:   V1 explicit-field DeckoCard (14 fields) +
+                   DeckoReference (Q2.f 4-code ref_type) +
+                   DeckoProvenance (D3-1 16-field).
+  IDENTITY:        (Id <card_id>) numeric primary key.
+  TRASH:           POLICY-B (Replace ... Trash=true).
+  REVISION:        Current state per action; revision-replay deferred
+                   to Phase 5+ via Acts/Actions/Changes.
+  IPC CONTRACT:    HTTP / Unix-socket primary; outbox table backup.
+                   delayed_jobs is the Rails-side queue, NOT the IPC
+                   contract.
+  IDEMPOTENCY:     Keyed by event_id = "decko:action:<action_id>".
+  RECURSION GUARD: Mirror's own outbox/support writes excluded.
+
+REQUIRED CODE PATCHES:
+
+  PATCH-1 [REQUIRED, Source 2]:    pybind11 binding for
+                                    space_register_observer.
+  PATCH-2 [RECOMMENDED, Source 2]: MeTTa-side replace-atom! grounded op.
+  PATCH-3 [REQUIRED, Source 5]:    hyperon-wiki/mod/atomspace_mirror/
+                                    (event subscription + IPC emitter).
+  PATCH-4 [REQUIRED, Source 5]:    card_atom_encoder for DeckoCard +
+                                    DeckoReference + DeckoProvenance.
+
+OPEN ITEMS DEFERRED TO LATER SOURCES:
+
+  Source 6: agent-facing MCP surface design (consumes the V1 atoms
+            specified here; extends D3-1 with agent identity).
+  Source 7: Magus 4-phase plan reconciliation (cross-checks +convention
+            inventory against Magus-plan card 11448 proposals).
+
+  Phase 5+ items are listed in Section A Q12 OUT-OF-PHASE-4 DEFERRALS.
+
+CLUSTER-CLOSE DOCUMENTATION REFRESH ITEMS:
+
+  - V5-Q4-X-OVERSTATED: cross-check Magus-plan card 11448 (Magi Archive,
+    per project_magus_atomspace_plan_2026_03_11.md memory) to confirm
+    +description / +links / +roadmap / +expert_reviewed / +review_status
+    are listed there as PROPOSED conventions. If yes, the brief's
+    over-citation is sourced from the proposal layer, NOT the actual
+    repo, and the SPEC_DRAFT should make this distinction explicit.
+  - Wiki orchestration anchor (CLAUDE.md): Source 5 reconciliation
+    confirms Decko-side semantics; the Phase 3 READONLY-ATOMSPACE-BRIDGE
+    lock-in noted in CLAUDE.md is now superseded for Phase 4 by this
+    spec. Document the upgrade.
+
+================================================================================
+END OF RECONCILIATION (v1) — Source 5
+================================================================================
+
+================================================================================
+RECONCILIATION ADDENDUM (v2) — POST-CLAUDE-EXTRACTION
+================================================================================
+
+This addendum integrates the parallel Claude orchestrator extraction
+pass (findings_claude.txt, 2026-05-04) with the v1 reconciliation
+above. Per the Source 4 precedent, the v1 body is preserved verbatim;
+this addendum records: (i) Claude-side independent re-verification of
+Codex's load-bearing citations, (ii) four NEW V0-K findings, (iii)
+two minor Codex-side drifts, (iv) confirmation that Q1-Q12 verdicts
+all stand without architecture-changing dissent.
+
+Outcome: v1 reconciliation Q12 verdicts confirmed. PATCH set
+unchanged (PATCH-1 + PATCH-2 from Source 2; PATCH-3 + PATCH-4 from
+Source 5). V5-PROTOCOL-1 through V5-PROTOCOL-5 carry forward unchanged.
+
+--------------------------------------------------------------------------------
+A2. CLAUDE-SIDE INDEPENDENT RE-VERIFICATION OF CODEX'S LOAD-BEARING
+    CITATIONS
+--------------------------------------------------------------------------------
+
+Per the user's authorization relay, Codex flagged five points for
+Claude verification. All five independently confirmed at HEAD:
+
+[A2-1] Q8 trash-policy citation chain.
+  CITATION-1: decko/card/lib/card/director/all.rb:19-22 read by
+  Claude. identify_action sets @action = :delete IFF
+  `trash && trash_changed?`. CONFIRMED. This is the canonical
+  evidence for V5-PROTOCOL-5 [POLICY-B-IS-FAITHFUL-MIRROR] and
+  Codex's Q8 rebuttal of Gemini's Remove proposal. Gemini's
+  preference is generic-design; Codex's is Decko-grounded.
+  v1 reconciliation Q8 verdict stands [POLICY-B-FAITHFUL-MIRROR-
+  CONFIRMED] (re-verified).
+
+[A2-2] Q9 IPC-contract guard.
+  decko/card/lib/card/set/event/delayed_event.rb:57-65 read by
+  Claude. IntegrateWithDelayJob#perform takes Ruby objects
+  (act_id, card, card_attribs, env, auth, method_name) and
+  ActiveJob serializes them into delayed_jobs.handler as YAML-
+  encoded Ruby state. CONFIRMED: the handler column is NOT a
+  stable IPC contract; non-Rails sidecars MUST consume an
+  explicit JSON payload emitted by the Ruby worker.
+  v1 reconciliation Q9 verdict stands [HTTP-OR-UNIX-SOCKET-
+  PRIMARY] [OUTBOX-TABLE-BACKUP].
+
+[A2-3] Q10 dual-actor at proxy.rb / act.rb / auth.rb.
+  decko/card/lib/card/auth/proxy.rb:6-14 read by Claude.
+  `as` sets @as_id and only initializes @current_id if nil.
+  decko/card/lib/card/auth/proxy.rb:27-28 read by Claude.
+  `as_bot` is `as(Card::DeckoBotID)`.
+  decko/mod/history/lib/card/act.rb:132-133 read by Claude.
+  `assign_actor` sets actor_id ||= Auth.current_id (NOT as_id).
+  CONFIRMED: a human running `Auth.as_bot { ... }` keeps
+  current_id=human, as_id=bot. card_acts.actor_id captures only
+  Auth.current_id, so audit-trail reads alone lose proxy context;
+  the mirror MUST read Card::Auth.serialize at event time.
+  v1 reconciliation Q7 + Q10 verdict stands [DUAL-AUTH-FIELD-
+  CONFIRMED].
+
+[A2-4] Q2 draft semantics.
+  Codex view: card.rb:172-173 (Card#actions filters draft:
+  [nil, false]; Card#drafts filters draft: true). Gemini view:
+  content.rb:8 (save_draft aborts at :store).
+  Claude verified Gemini's claim directly:
+  decko/card/mod/core/set/all/content.rb:7-10 contains the
+  save_draft event firing at :store with `abort :success`. The
+  card row is NOT updated and integration-phase events DO NOT
+  fire for drafts. CONFIRMED Gemini's content.rb:8 cite is real.
+  Both reviewer views are CONSISTENT (post-write filter +
+  pre-write abort point to the same conclusion).
+  v1 reconciliation Q2.c verdict stands; Phase 4 mirror filter
+  on `draft: [nil, false]` is defensive (correct) since
+  integration is unreachable for drafts.
+
+[A2-5] Convention layer alignment.
+  Claude verified at HEAD via direct read of
+  hyperon-wiki/mod/editorial_review/set/type/published.rb (lines
+  20, 54, 57, 81, 86, 91-92): the active conventions are
+  +tag (Pointer), +approved by (Phrase), +approved at (Date),
+  +expert approved by (Phrase), +expert approved at (Date).
+  +expert_reviewed / +review_status / +roadmap / +links — NOT
+  located at HEAD. Magus-plan proposals only.
+  v1 reconciliation Q4 verdict stands [WIKI-CONVENTIONS-AT-HEAD-
+  CONFIRMED].
+
+[A2-6] V5-PROTOCOL-2 dual-citation re-verification.
+  decko/card/lib/card/dirty.rb:7-9 read by Claude.
+  Card::Dirty.dirty_fields = [:name, :db_content, :trash,
+  :type_id, :left_id, :right_id, :codename] — SEVEN fields.
+  decko/mod/history/lib/card/change.rb:25 read by Claude.
+  TRACKED_FIELDS = [name, type_id, db_content, trash, left_id,
+  right_id] — SIX fields.
+  CONFIRMED V5-PROTOCOL-2: codename is in Dirty but NOT in
+  TRACKED_FIELDS. Encoder MUST read codename from current
+  cards.codename, not from card_changes diffs.
+
+--------------------------------------------------------------------------------
+B2. NEW V0-K FINDINGS
+--------------------------------------------------------------------------------
+
+[V0-1] action_type=:draft READBACK OVERRIDE (Phase-5+-replay nuance).
+
+  decko/mod/history/lib/card/action.rb:96-100:
+    def action_type
+      return :draft if draft
+      TYPE_OPTIONS[read_attribute(:action_type)]
+    end
+
+  Implication for Phase 5+ revision-replay layer:
+    - .action_type getter returns :draft for draft rows (not one
+      of {:create, :update, :delete}).
+    - read_attribute(:action_type) directly returns the underlying
+      integer (which IS set even for drafts; draft is an override
+      flag, not a 4th type).
+    - Phase 5+ replay code must decide which side to read.
+    - Phase 4 mirror is unaffected (drafts never reach integrate).
+
+  Carry-forward: SPEC_DRAFT.md Phase 5+ section should document
+  this nuance for replay implementers.
+
+[V0-2] Card::Dirty / TRACKED_FIELDS DIVERGENCE WITH FULL CITATIONS.
+
+  decko/card/lib/card/dirty.rb:7-9 → 7 fields with codename
+  decko/mod/history/lib/card/change.rb:25 → 6 fields without
+  Both citations independently re-read by Claude.
+  Strengthens V5-PROTOCOL-2 [TRACKED-FIELDS-DOES-NOT-EQUAL-DIRTY].
+  Confirms PATCH-4 encoder implementation requirement: read
+  codename from cards.codename, not from card_changes diffs.
+
+[V0-3] NAV_BLOCKED_RIGHTS HAS 9 ENTRIES, NOT 5.
+
+  hyperon-wiki/mod/wiki_nav_tree/set/all/wiki_nav_tree.rb:6-11:
+    NAV_BLOCKED_RIGHTS = [
+      "tag", "tags", "content", "discussion",
+      "approved by", "approved at",
+      "expert approved by", "expert approved at",
+      "table of contents"
+    ].to_set.freeze
+
+  v1 reconciliation Q4 (line 240-243) cited Codex's quoted list
+  as 5 entries (`['tag', 'approved by', 'approved at',
+  'expert approved by', 'expert approved at']`). Actual list is
+  9: also covers "tags" (plural alias), "content", "discussion",
+  "table of contents".
+
+  Mirror behavior unchanged (POLICY-B mirrors all of them
+  regardless of NAV-hide), but SPEC_DRAFT inventory should reflect
+  the full 9-entry surface.
+
+[V0-4] CODEX AUTH.SERIALIZE LINE-DRIFT.
+
+  Codex cited card/lib/card/auth.rb:31-33 for Auth.serialize.
+  Actual location at HEAD is auth.rb:40-42:
+    def serialize
+      { as_id: as_id, current_id: current_id }
+    end
+  Content correct; line imprecise. Adopt :40-42 for SPEC_DRAFT.
+  Analogous to Source 4 V-orchestrator-brief-Q1-line-imprecision
+  (brief said :36, reviewers said :38). Minor; not substantive.
+
+--------------------------------------------------------------------------------
+C2. ADDENDUM-LEVEL DISSENT/DRIFT TABLE
+--------------------------------------------------------------------------------
+
+V-Gemini-Q8-trash-policy
+  [DISSENT-RESOLVED-IN-V1] [INDEPENDENTLY-RE-VERIFIED-BY-CLAUDE]
+  v1 already adopted POLICY-B; this addendum independently
+  re-verifies CITATION-1 (director/all.rb:19-22) at HEAD.
+
+V-Gemini-Q9-IPC-omission
+  [NO-CONFLICT-ON-CLOSE-READING] [VERIFIED-BY-CLAUDE-DIRECTLY]
+  Gemini's "Sidecar via Delayed::Job" framing did not endorse
+  parsing delayed_jobs.handler. Codex's V5-PROTOCOL-3 guard
+  preserved.
+
+V-Gemini-Q10-dual-actor-omission
+  [REFINEMENT-CARRIED] [VERIFIED-BY-CLAUDE-DIRECTLY]
+  Gemini omitted current_id vs as_id distinction. v1 absorbed via
+  V5-Q10-X-DUAL-AUTH-FIELD. Claude reads proxy.rb / act.rb /
+  auth.rb directly; all Codex citations confirmed.
+
+V-Codex-auth.rb-line-imprecision
+  [V0-4-MINOR-DRIFT]
+  Codex :31-33; actual :40-42. Content correct.
+
+V-Codex-NAV_BLOCKED_RIGHTS-incomplete
+  [V0-3-LIST-INCOMPLETE]
+  Codex 5 entries; actual 9. Encoding-inclusive, not policy-changing.
+
+V-Claude-action_type-:draft-override
+  [V0-1-NEW-NUANCE]
+  action_type getter returns :draft for draft rows. Document for
+  Phase 5+ replay implementers.
+
+V-Claude-Dirty-vs-TRACKED-FIELDS-full-citation
+  [V0-2-RE-VERIFIED]
+  Both files read; codename divergence confirmed. Strengthens
+  V5-PROTOCOL-2.
+
+--------------------------------------------------------------------------------
+D2. ADDENDUM-LEVEL CARRY-FORWARDS FOR CLUSTER-PILOT REGISTRY
+--------------------------------------------------------------------------------
+
+C5-1: action_type=:draft readback override (V0-1).
+  Phase 5+ revision-replay implementers must decide which side to
+  read (.action_type getter vs read_attribute(:action_type)).
+  Document in SPEC_DRAFT.md Phase 5+ section.
+
+C5-2: NAV_BLOCKED_RIGHTS is a 9-entry set (V0-3).
+  Update Q4 +convention inventory in SPEC_DRAFT.md to reflect the
+  full 9-entry list ("tag", "tags", "content", "discussion",
+  "approved by", "approved at", "expert approved by",
+  "expert approved at", "table of contents").
+
+C5-3: Auth.serialize line is :40-42, not :31-33 (V0-4).
+  Adopt corrected line citation in SPEC_DRAFT.md and any
+  documentation referencing Codex's pass.
+
+C5-4: Card::Dirty.dirty_fields includes codename; TRACKED_FIELDS
+  does not (V0-2). Confirm PATCH-4 encoder reads codename from
+  cards.codename, not from card_changes diffs. (Carry-over of
+  V5-PROTOCOL-2 with full citations.)
+
+--------------------------------------------------------------------------------
+E2. CARRY-FORWARD PROTOCOL FOR SOURCES 6-7
+--------------------------------------------------------------------------------
+
+V5-PROTOCOL-1 (design-drift differs from fact-drift) carried into
+Source 6 brief drafting and reconciliation: design questions surface
+as preference-without-citation drift; require Decko/Hyperon evidence
+for any [PROPOSED] answer.
+
+V5-PROTOCOL-2 through V5-PROTOCOL-5 carried as PATCH-3 / PATCH-4
+implementation requirements.
+
+V4-PROTOCOL-4 (brief-flagged "verify X" notes are extraction
+obligations) continues. Source 6 brief MUST avoid placeholder "verify
+X" markers — pre-verify all paths via V3-PROTOCOL-1.
+
+--------------------------------------------------------------------------------
+F2. ADDENDUM BOTTOM LINE
+--------------------------------------------------------------------------------
+
+NO architecture-changing dissent from the parallel Claude extraction.
+v1 reconciliation Q1-Q12 verdicts confirmed:
+
+  PHASE 4 MIRROR LOCATION  hyperon-wiki/mod/atomspace_mirror/
+  EVENT HOOK               :integrate_with_delay on
+                            %i[create update delete]
+  GRANULARITY              one SpaceEvent per non-draft Card::Action
+  ATOM ENCODING            DeckoCard 14-field +
+                            DeckoReference 4-code ref_type +
+                            DeckoProvenance 16-field D3-1
+  IDENTITY                 (Id <card_id>) numeric primary key
+  TRASH                    POLICY-B (Replace ... Trash=true)
+  REVISION                 current state per action; replay deferred
+  IPC                      stable JSON over HTTP / Unix-socket;
+                            outbox backup; delayed_jobs is NOT IPC
+  IDEMPOTENCY              event_id = "decko:action:<action_id>"
+  RECURSION GUARD          mirror outbox/support writes excluded
+
+Required code patches (UNCHANGED):
+  PATCH-1 [REQUIRED, Source 2]: pybind11 binding for
+                                 space_register_observer.
+  PATCH-2 [RECOMMENDED, Source 2]: MeTTa-side replace-atom!
+                                    grounded op.
+  PATCH-3 [REQUIRED, Source 5]: hyperon-wiki/mod/atomspace_mirror/
+                                 (event subscription + IPC emitter).
+  PATCH-4 [REQUIRED, Source 5]: card_atom_encoder for DeckoCard +
+                                 DeckoReference + DeckoProvenance.
+
+NEW addendum-level carry-forwards:
+  C5-1 action_type-:draft-override documentation for Phase 5+ replay.
+  C5-2 NAV_BLOCKED_RIGHTS expanded to actual 9-entry list.
+  C5-3 Auth.serialize line correction (:40-42).
+  C5-4 V5-PROTOCOL-2 reaffirmed with full citations.
+
+Source 5 ready to close pending Codex + Gemini sign-off on this v2
+addendum. Sources 6 + 7 unblocked.
+
+================================================================================
+END OF RECONCILIATION (v2) — Source 5
+================================================================================

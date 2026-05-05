@@ -1,0 +1,316 @@
+Codex reviewer pass: Source 4 - MORK + PathMap + mork_ffi + DAS + atomspace-rocks
+Date: 2026-05-04
+
+Bottom line
+-----------
+
+[STAY-HYPERON-SPACE-PHASE-4] confirmed.
+
+Source 4 does not override Source 2. Hyperon Space remains the correct Phase 4
+write surface because it already has add/remove/replace and SpaceObserver
+semantics. The alternate substrates are relevant as Phase 5+ durability and
+Phase 6+ distributed-query options, not as a replacement for Phase 4's local
+write-back baseline.
+
+Phase 4 review discipline from Source 3 still applies: every emitted write event
+should be wrapped in a provenance envelope carrying source, card_id or agent_id,
+action_id, and timestamp. None of the Source 4 candidates natively supplies that
+Decko-specific event envelope.
+
+Repo/head verification
+----------------------
+
+- MORK: 4cef6f77c9712ddeef0d55ae751d249f89385e9c, 2026-04-19,
+  ClarkeRemy, "Merge pull request #49 from trueagi-io/unification_test_laws".
+- PathMap: cd6f3506541e4e39ae0832d3e8dfd41c6c79e3ff, 2025-09-22,
+  Luke Peterson, "More book".
+- mork_ffi: 4bbc33503ad6656848ad5a982f241f05e257cc89, 2025-12-12,
+  Patrick Hammer, "Update: also use library mechanism".
+- DAS: f4da3d78f356c70c0030c1fb9cb90b1c2ebccf77, 2026-04-29,
+  Andre Luiz de Senna, "Merge pull request #1085 from singnet/senna-1009-3".
+- atomspace-rocks: 6577a5bcc961cf24c00a4f7a916cc9cc05beed00,
+  2026-01-21, Linas Vepstas, "Fix incorrect description in previous commit."
+
+Q1. MORK kernel write API
+-------------------------
+
+Finding: MORK has a real in-process write API, but it is not the Hyperon Space
+API.
+
+Evidence:
+- `MORK/Cargo.toml:1-14` declares an 8-crate workspace with default member
+  `kernel/`.
+- `MORK/kernel/src/space.rs:38` defines the canonical `Space`, backed by
+  `PathMap<()>`.
+- `MORK/kernel/src/space.rs:860-862` exposes `add_sexpr`, `remove_sexpr`, and
+  `load_sexpr_impl`.
+- `MORK/kernel/src/space.rs:884-885` mutates through a write zipper with
+  `set_val(())` and `remove_val(true)`.
+- `MORK/kernel/src/space.rs:982-987` exposes backup and restore paths via
+  `ArenaCompactTree`.
+
+Risk notes:
+- MORK has `static mut` counters at `kernel/src/space.rs:31-33`; those are not
+  a Phase 4-friendly concurrency story.
+- MORK has no native observer/event API at HEAD by grep. The only `watch` hit
+  in this audit was `kernel/bench_scripts/watch.sh`.
+
+Q2. MORK vs Hyperon SpaceMut
+----------------------------
+
+Finding: MORK is not a drop-in replacement for `SpaceMut`.
+
+MORK's public mutation surface is S-expression/trie/path oriented. Hyperon
+Space's Phase 4 surface is atom-oriented (`SpaceMut::add/remove/replace`) with a
+SpaceObserver event stream. No `SpaceMut`, `SpaceObserver`, or Hyperon Space
+compatibility layer was found in MORK HEAD.
+
+Consequence: using MORK in Phase 4 would require an adapter that translates
+Hyperon `Atom` events into MORK byte paths, implements replace semantics, and
+recreates the provenance-aware observer envelope. That is extra substrate work,
+not plan-hardening work.
+
+Q3. PathMap maturity and persistence shape
+------------------------------------------
+
+Finding: PathMap is promising but still research-stage for the wiki write-back
+use case.
+
+Evidence:
+- `PathMap/README.md:6` claims efficient multi-threaded use.
+- `PathMap/README.md:18-20` says `nightly` requires the nightly toolchain and
+  `arena_compact` exposes a read-only mmap trie format.
+- `PathMap/Cargo.toml:25-31` marks important features as nightly,
+  arena-compact, and experimental bridge-node support.
+- `PathMap/src/trie_map.rs:39-40` uses unsafe `Send`/`Sync` impls.
+- `PathMap/pathmap-book/src/2.00.01_concurrency.md:1-3` is still a stub for
+  concurrency guidance.
+- `PathMap/src/arena_compact.rs:907` and `:942` expose `open_mmap` and
+  `dump_from_zipper`, but this is not a transactional write-ahead persistence
+  layer.
+
+Two drift cautions:
+- `MORK/Cargo.toml:32` requires `pathmap` version `0.3.0`, while
+  `PathMap/Cargo.toml:2-3` reports package version `0.1.0`. Because this is a
+  path dependency, it may be benign in the developer's native layout, but it is
+  a build-readiness warning for reproducible handoff.
+- `MORK/kernel/src/space.rs:1679-1682` calls `self.btm.merkleize()` behind
+  `periodic_merkleize`, but PathMap HEAD did not expose a `merkleize` symbol by
+  grep. Do not count that feature as verified without a build.
+
+Q4. mork_ffi production readiness
+----------------------------------
+
+Finding: mork_ffi is a useful reference sketch, not a production bridge.
+
+Evidence:
+- `mork_ffi` has only three commits and a one-line README.
+- `mork_ffi/src/lib.rs:10-12` stores all state in a global
+  `OnceLock<Mutex<Space>>`.
+- `mork_ffi/src/lib.rs:42-138` exposes a string-command FFI surface:
+  `add-atoms`, `remove-atoms`, `mm2-exec`, `get-atoms`, and `match`.
+- `mork_ffi/morkspaces.pl:8-32` adapts those commands to Prolog predicates.
+- `mork_ffi/build.sh:1-3` builds a Rust cdylib and a SWI-Prolog C shim.
+
+Additional handoff warning:
+- `mork_ffi/Cargo.toml:7-9` points to `../../MORK/...`, but in this workspace
+  `..\..\MORK\kernel\Cargo.toml` does not exist and `..\MORK\kernel\Cargo.toml`
+  does. The repo is layout-fragile as checked out here.
+
+MorkDB delete limitation:
+- Confirmed in DAS HEAD: `das/src/atomdb/morkdb/MorkDB.cc:268-270` returns
+  false after "MORKDB does not support deleting links."
+- `das/src/atomdb/morkdb/MorkDB.h:55-57` has the matching TODO: implement once
+  MORK supports deleting S-expression links.
+
+Q5. DAS state vs older cluster-pilot framing
+--------------------------------------------
+
+Finding: DAS is active and consolidated, but its current shape is distributed
+query/agent infrastructure, not a Phase 4 local wiki write surface.
+
+Evidence:
+- `das/README.md:8-20` names the current repo set and marks old single-purpose
+  repos frozen and deprecated.
+- `das/README.md:43-44` says the backend can be any DBMS or combination of
+  DBMSs.
+- `das/README.md:114-120` says direct DBMS backends support Postgresql and Mork,
+  but newly created atoms are not sent back to the DBMS yet.
+- `das/src/atomdb/AtomDBSingleton.cc:14-27` supports `morkdb`,
+  `redismongodb`, and `remotedb`.
+- Hyperon Experimental already points at DAS tag `1.0.2` in
+  `hyperon-experimental/lib/Cargo.toml:31-35`.
+- `hyperon-experimental/lib/src/metta/runner/builtin_mods/das.rs:66-70`
+  registers `new-das!`, and `:187-195` wraps `DistributedAtomSpace` in
+  `DynSpace`.
+
+Important nuance:
+- `das/src/atomdb/remotedb/RemoteAtomDBPeer.h:20-24` describes a cached remote
+  AtomDB plus optional local persistence. In `RemoteAtomDBPeer.cc:315-395`,
+  adds are written to the cache and deletes affect cache/local persistence, not
+  necessarily the remote source. That is not the same as Decko write-back.
+
+Q6. atomspace-rocks durability candidate
+----------------------------------------
+
+Finding: atomspace-rocks is the strongest Source 4 durability candidate, but it
+is classical AtomSpace durability, not Hyperon Space persistence.
+
+Evidence:
+- `atomspace-rocks/README.md:7-14` explicitly describes RocksDB as
+  single-user, local-host-only, and limited to one running AtomSpace executable
+  per DB.
+- `atomspace-rocks/README.md:61-88` reports Version 1.6.1, all unit tests
+  passing, large-project use, message-passing StorageNode support, and
+  `*open-ro-*`.
+- `atomspace-rocks/README.md:146-153` describes frame/change-set semantics.
+- `atomspace-rocks/opencog/persist/rocks/RocksStorage.h:143-170` exposes
+  open/read-only, store/remove/load atom, store/load/update value, store/load
+  AtomSpace, and frame DAG operations.
+- `atomspace-rocks/opencog/persist/rocks/RocksIO.cc:260-394` implements
+  writeAtom/storeAtom/storeValue.
+- `atomspace-rocks/opencog/persist/rocks/RocksFrame.cc:45-72` supports frame
+  deletion only for top frames.
+
+Consequence: useful Phase 5+ reference or classical-side durable substrate, but
+adopting it for Phase 4 would reintroduce C++/Scheme/classical-AtomSpace
+translation and identity questions already ruled off the critical path in
+Source 3.
+
+Q7. Persistence comparison
+--------------------------
+
+- Hyperon Space: in-memory Phase 4 write surface; persistence must be added
+  above/beside it.
+- MORK: in-memory PathMap-backed space with backup/restore and read-only mmap
+  support through PathMap arena compact; not transactional durability.
+- PathMap: structural trie library; arena compact gives read-only mapped trees,
+  not a full database protocol.
+- mork_ffi: no persistence surface beyond the global MORK Space process.
+- DAS: multi-backend AtomDB with Redis/Mongo/Mork/remote options; current docs
+  explicitly say direct-backend write-back is planned, not done.
+- atomspace-rocks: mature local RocksDB StorageNode with frame support; strongest
+  classical durability option.
+
+Q8. Identity comparison
+-----------------------
+
+- Phase 4 plan identity should stay Decko-first: `card_id`, `agent_id`,
+  `action_id`, and timestamp in the event envelope.
+- Hyperon Space identity is structural atom identity, not classical persistent
+  UUID.
+- MORK/PathMap identity is encoded byte path/trie content.
+- DAS uses content-derived hashed handles:
+  `das/src/commons/atoms/Node.cc:54` delegates to `Hasher::node_handle`, and
+  `das/src/commons/atoms/Link.cc:68` delegates to `Hasher::link_handle`.
+- atomspace-rocks stores classical AtomSpace atoms using local DB aids and
+  S-expression encodings; this is not a Decko card identity model.
+
+Conclusion: no Source 4 substrate should own Phase 4 identity. Decko card IDs
+should remain authoritative, with substrate-local IDs treated as implementation
+metadata.
+
+Q9. Concurrency comparison
+--------------------------
+
+- Hyperon Space: Source 2 established a deliberately synchronous in-process API.
+- MORK: Rust methods require `&mut self`; global mutable counters exist; no
+  observer concurrency contract.
+- PathMap: claims multi-threaded efficiency and has unsafe Send/Sync impls, but
+  the concurrency book chapter is still a stub.
+- mork_ffi: serializes access through one global `Mutex<Space>`.
+- DAS: built for distributed components, service bus, thread pools, queues, and
+  optional Redis/Mongo clusters.
+- atomspace-rocks: uses mutexes/atomics internally, but RocksDB deployment is
+  explicitly one executable per DB.
+
+Conclusion: Source 4 does not provide a simpler Phase 4 concurrency model than
+Hyperon Space. DAS is more powerful but far heavier.
+
+Q10. Write-back observability
+-----------------------------
+
+Finding: Hyperon Space remains the only reviewed substrate with the needed
+write-event observer shape.
+
+- MORK: no observer/event API at HEAD by grep.
+- PathMap: no domain-level atom mutation event API; it is a data structure.
+- mork_ffi: no observer or event callback surface.
+- DAS: has a Service Bus and command proxies, but the checked AtomDB APIs expose
+  add/delete/query methods rather than a provenance-bearing atom write stream.
+- atomspace-rocks: supports StorageNode message operations and barriers, but no
+  Phase 4 SpaceEvent equivalent was found.
+
+Implication: even if Phase 5+ chooses a durability substrate, Phase 4 should keep
+the event envelope at the Hyperon/Decko integration layer.
+
+Q11. Cross-portfolio direction alignment
+----------------------------------------
+
+The portfolios are complementary, not converged:
+
+- Linas/atomspace-rocks: mature classical local durability, with networked
+  multi-user storage delegated to atomspace-cog.
+- MORK/PathMap: active trie/unification/database research direction, strong
+  candidate for future Hyperon-native substrate work.
+- Patrick Hammer/mork_ffi: thin experimental FFI snapshot, not a maintained
+  integration layer.
+- SingularityNET/DAS: active distributed query, AtomDB, service bus, and agent
+  infrastructure.
+
+No evidence says Phase 4 should switch away from Hyperon Space. The evidence
+says Phase 5+ should preserve an option set until the Phase 4 event log and
+empirical usage show the required durability/access pattern.
+
+Q12. Synthesis recommendation
+-----------------------------
+
+Recommendation:
+
+1. Keep Phase 4 on Hyperon Space.
+2. Do Source 2 PATCH-1 and PATCH-2 as the only required baseline code patches:
+   Python observer binding and MeTTa-side replace op.
+3. Require the D3-1 provenance envelope for all Decko-originated write events.
+4. Defer Phase 5+ durability substrate choice until after Phase 4 write traffic
+   exists and can be measured.
+5. Track three Phase 5+ options:
+   - rocks-path: best if mature local durability and Linas-aligned classical
+     StorageNode semantics matter most.
+   - MORK-path: best if Hyperon-native trie/query evolution overtakes current
+     SpaceMut needs and grows a verified observer/persistence layer.
+   - DAS-path: best for Phase 6+ distributed query/agents, not local wiki
+     write-back.
+6. Do not use mork_ffi as a production bridge. It can inform command vocabulary
+   only.
+
+Codex drift/correction notes for reconciliation
+-----------------------------------------------
+
+- Confirmed brief claim: DAS MorkDB cannot delete links at HEAD.
+- Confirmed brief claim: atomspace-rocks is single-user/local-host and supports
+  read-only mode.
+- Added caveat: mork_ffi path deps are broken for this workspace layout
+  (`../../MORK` vs sibling `../MORK`).
+- Added caveat: MORK's `periodic_merkleize` call is not verified against
+  PathMap HEAD; PathMap did not expose `merkleize` by grep.
+- Added caveat: MORK depends on PathMap as version `0.3.0`, but PathMap HEAD
+  declares package version `0.1.0`.
+
+Suggested Source 4 standing protocols
+-------------------------------------
+
+- V4-PROTOCOL-1: For Rust path dependencies, verify both the dependency path and
+  the package version in the actual workspace layout before treating a bridge as
+  build-ready.
+- V4-PROTOCOL-2: Treat "multi-threaded" substrate claims as unproven until the
+  code, docs, and tests identify the actual synchronization contract.
+- V4-PROTOCOL-3: Do not count a service bus, RPC command, or storage message API
+  as a write-back observer unless it emits atom-level add/remove/replace events
+  with the Phase 4 provenance envelope.
+
+Confidence
+----------
+
+High confidence on the Phase 4 architectural decision. Medium confidence on the
+relative ranking of Phase 5+ durability paths because no benchmark or workload
+trace exists yet.

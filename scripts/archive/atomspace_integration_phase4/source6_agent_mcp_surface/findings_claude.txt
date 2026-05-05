@@ -1,0 +1,715 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 6
+Agent-facing MCP surface — Claude orchestrator extraction
+================================================================================
+
+Reviewer: Claude (orchestrator extraction pass)
+Date:     2026-05-04
+Repos:    hyperon-wiki-mcp     @ d37e518 (2026-04-09, Nemquae)
+          hyperon-wiki         @ a1a9e62 (2026-05-01, Nemquae)
+          decko                @ 93c54de (2025-10-15, Ethan McCutchen)
+          hyperon-experimental @ 3f76dc4 (2026-02-11)
+          mcp gem (Ruby)       @ 0.11.0  (vendored at
+            C:/Users/Lake/.local/share/gem/ruby/3.4.0/gems/mcp-0.11.0/)
+Brief:    scripts/archive/atomspace_integration_phase4/
+          source6_agent_mcp_surface/brief.txt (937 lines)
+Inputs:   findings_codex.txt   (247 lines, 2026-05-04)
+          findings_gemini.txt  (relayed text; ~50-line summary form)
+
+Pass type: ORCHESTRATOR-EXTRACTION-PARALLEL-TO-REVIEWERS.
+
+  This pass independently verifies Codex's load-bearing claims at HEAD
+  and resolves two reviewer dissents (Q1 fork-count + Q6 subscription).
+  Reviewer outputs were both [RUBY-EXTEND] for Q2 but with materially
+  different reasoning quality. The dissent surfaces are exactly the
+  V5-PROTOCOL-1 pattern: design questions where one reviewer cites a
+  single symbol for an implementation-readiness conclusion and another
+  cross-checks the implementation surface. Codex's
+  implementation-level evidence wins both dissents.
+
+Tag legend:
+  [VERIFIED]                independent file:line read confirms the
+                            cited claim at HEAD.
+  [CO-VERIFIED]             cited by Codex AND independently re-read.
+  [DISSENT-RESOLVED]        real reviewer disagreement; resolution
+                            with citation chain.
+  [V0-K]                    NEW finding produced by Claude orchestrator
+                            extraction; not in either reviewer's pass.
+  [DRIFT]                   reviewer claim shown false at HEAD.
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+
+[CONFIRM] Both reviewers converge on [RUBY-EXTEND-PRIMARY-PHASE-4],
+[INHERIT-WIKI-MCP-AUTH], and [HTTP-SSE-PRIMARY]. Codex's polling-first
+refinement, generic-get_atom-rejection, and request-path-propagation
+finding are all correct and load-bearing.
+
+[DISSENT-RESOLVED] Two Gemini drifts surface:
+  - Q1 fork count: Gemini "magi-mcp 108 ahead." Actual at HEAD:
+    197 ahead + 26 behind, NO MERGE-BASE. Codex's bidirectional
+    audit is correct; Gemini's count is wrong AND the no-merge-base
+    architectural fact is missed entirely.
+  - Q6 subscription: Gemini [VERIFIED] from constant existence;
+    Codex [POLLING-FIRST] from implementation no-op. Codex correct.
+    Same drift pattern as Source 4 V-Gemini-Q3-merkleize-claim.
+
+[V0-K] Four orchestrator-only findings:
+  V0-1: 5 launchers in bin/, not 4. The 5th (mcp-server-http-rack) is
+        a 29-line Sinatra-debug stub with 0 tools — Codex correctly
+        excluded it from production-launcher inventory.
+  V0-2: V-Gemini-Q6 drift pattern is structurally identical to Source 4
+        V-Gemini-Q3-merkleize-claim. Worth recording as new CF5.6
+        sub-type CF5.6.E [CONSTANT-CITED-FOR-IMPLEMENTATION-READINESS].
+  V0-3: mcp 0.11.0 server.rb:114 inline comment is decisive: "No op
+        handlers for currently unsupported methods". Reinforces
+        [POLLING-FIRST] beyond the no-op stub evidence.
+  V0-4: Rust-side register_observer IS implemented at hyperon-space/
+        src/lib.rs:106 SpaceCommon impl; the gap is Python-side only,
+        consistent with PATCH-1 spec.
+
+NO architecture-changing dissent from this pass. Codex's
+PATCH-5/PATCH-6 spec stands; v1 reconciliation should adopt Codex's
+verdicts wholesale on the contested points.
+
+================================================================================
+PER-QUESTION CLAUDE-SIDE VERIFICATION
+================================================================================
+
+--------------------------------------------------------------------------------
+Q1. EXISTING MCP SURFACE — LAUNCHER COUNT + FORK DIVERGENCE
+--------------------------------------------------------------------------------
+
+[CO-VERIFIED] Launcher tool-registration counts independently
+re-verified by Claude:
+  bin/mcp-server                : 37 registrations
+  bin/mcp-server-http           : 24 registrations
+  bin/mcp-server-puma-direct    : 24 registrations
+  bin/mcp-server-rack-direct    : 27 registrations
+Codex's exact numbers confirmed by `grep -c "Hyperon::Wiki::Mcp::
+Server::Tools::"` against each launcher.
+
+[V0-1] Fifth launcher exists but is a debug stub:
+  bin/mcp-server-http-rack      : 0 tool registrations (29-line file)
+  File header: "# SIMPLE RACK VERSION - Testing if Sinatra is the
+  problem"
+  File body: a Puma::Server returning 200 health-check JSON; no MCP
+  protocol handling. Production launchers = 4 (Codex correct);
+  debug stub = 1 (excluded from PATCH-5 update list).
+
+[CO-VERIFIED] CreateCard annotation drift:
+  hyperon-wiki-mcp/lib/hyperon/wiki/mcp/server/tools/create_card.rb:
+  17-19:
+    annotations(
+      read_only_hint: true,
+      destructive_hint: true
+    )
+  CONFIRMED by direct read earlier in this session. Tool is
+  read_only_hint: true on a write/destructive tool — semantically
+  contradictory. Codex's note that update_card.rb:17 and
+  rename_card.rb:16 share the pattern is consistent with the
+  template-copy hypothesis. PATCH-5 atom tools must NOT inherit.
+
+[DISSENT-RESOLVED] V-Gemini-Q1-fork-count [DRIFT]:
+
+  Gemini: "magi-mcp is 108 commits ahead of origin/main."
+
+  Codex: "26 commits unique to hyperon-wiki-mcp and 197 unique to
+         magi-mcp; no merge-base."
+
+  Independent verification by Claude:
+    git rev-list --count origin/main..magi-mcp/main  → 197
+    git rev-list --count magi-mcp/main..origin/main  → 26
+    git merge-base origin/main magi-mcp/main         → exit 1, empty
+                                                       (NO common
+                                                       ancestor)
+    git log --oneline origin/main...magi-mcp/main | wc -l → 223
+    (3-dot symmetric difference = 197 + 26)
+
+  Codex CONFIRMED EXACTLY. Gemini DRIFT.
+
+  Architectural implication missed by Gemini: the absence of a
+  merge-base means magi-mcp/main and origin/main are NOT a simple
+  ahead/behind fork — they are independent histories that share a
+  repository name and presumably a code lineage but no recorded
+  git merge-base in the local clones. Cross-importing assumptions
+  from "magi-mcp lead" requires per-feature audit, not aggregate
+  count comparison.
+
+  RESOLUTION:
+    - Adopt Codex's count + no-merge-base finding for SPEC_DRAFT.
+    - Reframe Gemini's "108-commit lead" claim as an unverified
+      ahead-only count (possibly stale fetch, possibly wrong remote
+      reference) producing an architectural under-statement.
+    - PATCH-5 should NOT presume magi-mcp's hybrid-JSON / OIDC /
+      JWT-role-detection features without per-feature audit; some
+      may be in origin/main as well, some may be magi-mcp-only,
+      and absent merge-base means there's no clean way to "rebase"
+      magi-mcp work onto hyperon-wiki-mcp.
+
+--------------------------------------------------------------------------------
+Q2. SERVER-STACK CHOICE — RUBY-EXTEND CONSENSUS
+--------------------------------------------------------------------------------
+
+[CO-VERIFIED] Both reviewers agree on [RUBY-EXTEND-PRIMARY-PHASE-4].
+
+  Codex grounding (correct + complete):
+    - hyperon-wiki-mcp.gemspec:11-14 — RS256 JWT + 3-role model.
+    - MCP-SPEC.md:53-58 — JWT claims documented.
+    - rack_app.rb:895-930 — token issuance with role-to-scope.
+    - PATCH-1 still upstream-blocking for Python path.
+    - python/hyperon/base.py exposes add/remove/replace_atom but
+      register_observer has zero matches under python/.
+
+  Gemini grounding: leans on magi-mcp's "108-commit lead with
+    critical Phase 4 work." Per Q1 dissent resolution, this rationale
+    is undermined by the actual fork count (197+26+no-merge-base).
+    The verdict still stands; the reasoning is weaker than implied.
+
+[V0-4] Codex's "register_observer zero matches under python/" claim
+  is correct: the Rust trait Space at hyperon-space/src/lib.rs has
+  register_observer at :106 in the SpaceCommon impl (NOT the public
+  trait), and Python's base.py has no equivalent. PATCH-1 (pybind11
+  binding for space_register_observer) is the upstream-blocking
+  bridge. Source 2 finding holds.
+
+VERDICT [CONSENSUS]: [RUBY-EXTEND-PRIMARY-PHASE-4]
+  [PYTHON-PARALLEL-PHASE-5+-WRITE-CANDIDATE]
+  [RUST-PARALLEL-DEFERRED] [CPP-MCP-RULED-OUT].
+
+--------------------------------------------------------------------------------
+Q3. AGENT IDENTITY — JTI PROPAGATION GAP
+--------------------------------------------------------------------------------
+
+[CO-VERIFIED] Codex's request-path-propagation gap is real.
+
+  hyperon-wiki-mcp/lib/hyperon/wiki/mcp/client.rb:
+    line 184-188 (first request path):
+      headers = {
+        "Authorization" => "Bearer #{token}"
+      }
+      http_client = HTTP.headers(headers)
+    line 275-283 (second request path):
+      headers = {
+        "Authorization" => "Bearer #{token}",
+        ...
+      }
+      http_client = HTTP.headers(headers).timeout(...)
+
+  Independent grep for "jti\|session_id\|X-MCP" in client.rb:
+    NO matches in the headers-construction sites.
+
+  Confirms: JWT jti exists in token issuance (per Codex's cite of
+  mod/mcp_api/lib/mcp_api/jwt_service.rb:13-24), but the MCP client
+  does NOT surface it as a downstream HTTP header. Decko-side
+  cards_controller therefore CANNOT see the MCP session id even
+  if it wanted to.
+
+  PATCH-5/PATCH-3 must thread agent_session_id explicitly through
+  the request path — schema-only D3-1 envelope extension is
+  insufficient.
+
+VERDICT [CONSENSUS]: Adopt Codex's
+  [D3-1-EXTEND-REQUIRED] [MCP-SESSION-NOT-PROPAGATED-TO-DECKO]
+  [DUAL-ACTOR-MUST-STAY] verdicts.
+  D3-1 envelope additions: agent_session_id, agent_kind ∈
+  {human | bot | external_mcp_agent | scheduled_job}.
+  PATCH-5 client.rb adds X-MCP-Session-ID header (or equivalent);
+  PATCH-3 mirror-mod outbox payload extracts that header into
+  D3-1.agent_session_id.
+
+--------------------------------------------------------------------------------
+Q4. PHASE-4-READ / PHASE-5+-WRITE SPLIT
+--------------------------------------------------------------------------------
+
+[CO-VERIFIED] Both reviewers agree:
+  Phase 4 = MCP read/query only.
+  Phase 5+ = OPTION-C HYBRID; namespace-split writes (DeckoCard via
+    Decko, Agent... direct).
+  POLICY-B trash semantics from Source 5 carry forward unchanged.
+
+No additional Claude-side verification needed.
+
+--------------------------------------------------------------------------------
+Q5. ATOM TOOL SURFACE — GET_ATOM(ID) UNGROUNDEDNESS
+--------------------------------------------------------------------------------
+
+[CO-VERIFIED] Codex's API audit confirmed at HEAD:
+  hyperon-space/src/lib.rs (Space trait, public):
+    line 175: fn query(&self, query: &Atom) -> BindingsSet;
+    line 202: fn atom_count(&self) -> Option<usize>
+    line 212: fn visit(&self, v: &mut dyn SpaceVisitor) -> Result<...>
+  hyperon-space/src/lib.rs:106 (SpaceCommon impl, NOT trait):
+    pub fn register_observer<T: SpaceObserver + 'static>(&self,
+                                                          observer: T)
+  python/hyperon/base.py:
+    line 205: def add_atom(self, atom):
+    line 211: def remove_atom(self, atom):
+    line 217: def replace_atom(self, atom, replacement):
+    line 229: def get_atoms(self):              ← PLURAL, no id
+    line 248: def query(self, pattern):
+    line 255: def subst(self, pattern, templ):
+
+  NO get_atom(id) method exists. NO stable atom-handle registry.
+  Codex's recommendation to OMIT get_atom(id) from Phase 4 tool set
+  is grounded.
+
+VERDICT [CONSENSUS]: Adopt Codex's
+  [READ-TOOL-SET-VALID-WITH-ID-CORRECTION]
+  [GET-ATOM-ID-UNSUPPORTED]
+  [TYPE-INTROSPECTION-VIA-DECKO-AND-MIRROR] verdicts.
+
+  Phase 4 tool set (RECONCILED):
+    query_atoms(pattern, limit, include_trash=false)
+    get_card_atom(card_id, include_trash=false)
+    get_card_provenance(card_id=nil, event_id=nil,
+                        action_id_range=nil)
+    list_references(card_id, ref_type=nil, include_trash=false)
+    list_atoms_by_type(type_name, limit, include_trash=false)
+    atom_types()
+    atom_count_by_type()
+    space_stats()
+
+  Stable identities: card_id (numeric), event_id, action_id,
+  DeckoReference (referer_id, referee_key, referee_id, ref_type).
+  No synthetic atom-handle id surface.
+
+--------------------------------------------------------------------------------
+Q6. SUBSCRIPTIONS — V-GEMINI-Q6 OVERSTATEMENT [DECISIVE]
+--------------------------------------------------------------------------------
+
+[DISSENT-RESOLVED] V-Gemini-Q6-subscription [DRIFT]:
+
+  Gemini: "[VERIFIED]: The mcp gem 0.11.0 (Ruby) supports server-side
+          resource subscription notifications. mcp/methods.rb defines
+          NOTIFICATIONS_RESOURCES_UPDATED =
+          'notifications/resources/updated'."
+
+  Codex: "[POLLING-FIRST]. Ruby MCP 0.11.0 has pieces of resource
+         subscription support, but not a complete application-level
+         resource update mechanism in this server. ... default
+         subscribe handlers are no-op (mcp/server.rb:115-116),
+         default resources capability lacks subscribe
+         (mcp/server.rb:427-433)..."
+
+  Independent verification by Claude (mcp 0.11.0 vendored at
+  C:/Users/Lake/.local/share/gem/ruby/3.4.0/gems/mcp-0.11.0/):
+
+    mcp/methods.rb:13-17, :30-31 — protocol constants exist:
+      RESOURCES_LIST = "resources/list"
+      RESOURCES_READ = "resources/read"
+      RESOURCES_TEMPLATES_LIST = "resources/templates/list"
+      RESOURCES_SUBSCRIBE = "resources/subscribe"
+      RESOURCES_UNSUBSCRIBE = "resources/unsubscribe"
+      NOTIFICATIONS_RESOURCES_LIST_CHANGED = ...
+      NOTIFICATIONS_RESOURCES_UPDATED = "notifications/resources/updated"
+    [VERIFIED — Gemini's citation is correct AT THE CONSTANT LEVEL.]
+
+    mcp/server.rb:113-117 — default handler registry:
+      # No op handlers for currently unsupported methods
+      Methods::RESOURCES_SUBSCRIBE => ->(_) { {} },
+      Methods::RESOURCES_UNSUBSCRIBE => ->(_) { {} },
+      Methods::ELICITATION_CREATE => ->(_) {},
+    [V0-3 DECISIVE — gem author's inline comment explicitly
+    classifies these as "currently unsupported methods" with
+    no-op stubs.]
+
+    mcp/server.rb:427-433 — default capabilities:
+      def default_capabilities
+        {
+          tools: { listChanged: true },
+          prompts: { listChanged: true },
+          resources: { listChanged: true },
+          logging: {},
+        }
+      end
+    [VERIFIED — resources advertises listChanged but NOT
+    subscribe. The capability the gem ships by default does
+    not announce subscription support to clients.]
+
+    grep "notify_resources" in mcp/server.rb → 1 match at :189
+      def notify_resources_list_changed
+    [VERIFIED — only list_changed notifier; no
+    notify_resources_updated helper.]
+
+  RESOLUTION: ADOPT Codex's [POLLING-FIRST] verdict.
+
+  Gemini's [VERIFIED] tag at the constant level is technically
+  accurate (the constant DOES exist) but the conclusion ("supports
+  server-side resource subscription notifications") is overstated
+  because the implementation surface is no-op stubs that the gem
+  author explicitly labels "currently unsupported methods."
+
+  Phase 4 default = polling via explicit read tools. PATCH-5 may
+  add subscription support as a v2 if needed; that work would
+  include implementing the subscription registry, dispatch logic,
+  and overriding the no-op handlers. NOT a Phase 4 requirement.
+
+[V0-2] DRIFT TYPE TAXONOMY — CF5.6 SUB-TYPE CF5.6.E:
+  V-Gemini-Q6 is structurally identical to Source 4
+  V-Gemini-Q3-merkleize-claim:
+    - Source 4: PathMap HEAD has no merkleize symbol, but MORK
+      space.rs:1680 calls self.btm.merkleize() under feature gate.
+      Gemini cited "Periodic Merkleize is supported"; Codex caught
+      the absence by grep.
+    - Source 6: mcp 0.11.0 has subscription protocol constants,
+      but no-op subscribe handlers. Gemini cited
+      NOTIFICATIONS_RESOURCES_UPDATED constant; Codex caught the
+      no-op stubs at server.rb:114-116.
+
+  Both: cite a protocol/symbol/constant that exists; conclude
+  implementation-readiness from existence alone. Codex catches via
+  implementation-level inspection.
+
+  PROPOSED NEW PROTOCOL CF5.6.E
+  [CONSTANT-CITED-FOR-IMPLEMENTATION-READINESS]:
+    Any [VERIFIED] claim citing a single symbol/constant for an
+    implementation-readiness conclusion needs implementation-level
+    cross-check. Constants and protocol-method-name registrations
+    are NECESSARY but not SUFFICIENT for implementation-readiness.
+    Apply forward to Source 7 (Magus-plan reconciliation) and any
+    future "does this library support X" question.
+
+VERDICT [DISSENT-RESOLVED]: [POLLING-FIRST]
+  [RUBY-SUBSCRIPTIONS-NOT-READY-BY-DEFAULT]
+  [SERVER-PUSH-REQUIRES-PATCH-5-WORK].
+
+--------------------------------------------------------------------------------
+Q7. TRANSPORT
+--------------------------------------------------------------------------------
+
+[CO-VERIFIED] Both reviewers agree: HTTP/SSE primary, stdio fallback.
+v1 reconciliation will adopt Codex's framing: agent-facing MCP =
+HTTP/SSE; local debugging = stdio; Decko → mirror = conventional
+outbox/sidecar IPC (NOT delayed_jobs.handler parsing per Source 5).
+
+No additional Claude-side verification needed.
+
+--------------------------------------------------------------------------------
+Q8. RECURSION GUARD / ORIGIN MARKING
+--------------------------------------------------------------------------------
+
+[CO-VERIFIED] Codex's load-bearing finding: recursion guard MUST
+live in the Source 5 mirror mod, NOT in the MCP server. The MCP
+server contributes origin fields to D3-1; the mirror mod uses them
+to suppress re-emission.
+
+Required D3-1 fields per Codex (RECONCILED):
+  origin_system        ∈ {decko | mcp | sidecar | agent}
+  origin_request_id    stable idempotency key
+  agent_session_id     JWT jti or MCP session id
+  agent_kind           ∈ {human | bot | external | scheduled | ...}
+
+These are additive to Source 5's 16-field D3-1 envelope. Phase 4
+extension brings the count to 20 fields (16 + 4).
+
+VERDICT [CONSENSUS]: Adopt Codex's [D3-1-ORIGIN-MARKING-REQUIRED]
+  [RECURSION-GUARD-MUST-BE-IN-MIRROR-MOD] verdicts.
+
+--------------------------------------------------------------------------------
+Q9. AUTH SURFACE
+--------------------------------------------------------------------------------
+
+[CO-VERIFIED] Both reviewers agree: INHERIT-WIKI-MCP-AUTH; do NOT
+fork auth for atom-MCP. RS256 JWT + 3-role + OAuth metadata + Decko
+account binding are all reusable.
+
+No additional Claude-side verification needed.
+
+--------------------------------------------------------------------------------
+Q10. PHASE 5+ WRITE TOOLS
+--------------------------------------------------------------------------------
+
+[CO-VERIFIED] Both reviewers agree:
+  - DEFER-WRITES.
+  - AGENT-NAMESPACE-ONLY-DIRECT-WRITES (when introduced).
+  - PATCH-1 + PATCH-2 still blocking.
+  - Decko-backed atoms (DeckoCard) MUST go through Decko writes,
+    not direct SpaceMut.
+
+No additional Claude-side verification needed.
+
+--------------------------------------------------------------------------------
+Q11. CARDTYPE / SCHEMA INTROSPECTION
+--------------------------------------------------------------------------------
+
+[CO-VERIFIED] Existing get_types tool at
+  hyperon-wiki-mcp/lib/hyperon/wiki/mcp/server/tools/get_types.rb
+  - line 11: class GetTypes < ::MCP::Tool
+  - lines 15-16: read_only_hint annotations (Codex notes; consistent
+    with read-tool template)
+  - lines 32-35: calls tools.list_types
+
+PATCH-5 atom-side type introspection is a parallel new tool, NOT a
+modification of get_types. Phase 4 atom registry is small and
+explicit per Codex: DeckoCard, DeckoReference, DeckoProvenance,
+review/convention child-card encodings, mirror-metadata atoms.
+
+--------------------------------------------------------------------------------
+Q12. SYNTHESIS — PATCH-5 + PATCH-6 FROM CODEX
+--------------------------------------------------------------------------------
+
+[CONFIRM] Codex's PATCH-5 + PATCH-6 spec is correct and complete.
+v1 reconciliation should adopt verbatim with two refinements:
+
+  PATCH-5 refinements:
+    (a) Add: tool registration via SHARED REGISTRY pattern, not per-
+        launcher add. Codex's launcher-divergence finding (37/24/
+        24/27) confirmed at HEAD.
+    (b) Add: explicit annotation hygiene — atom tools set
+        read_only_hint: true, destructive_hint: false.
+        Future write tools must NOT inherit the create_card.rb /
+        update_card.rb / rename_card.rb annotation drift.
+
+  PATCH-6 deferred: as specified. Phase 5+.
+
+PATCH set (CONSOLIDATED across Sources 2 + 5 + 6):
+  PATCH-1 [REQUIRED, Source 2, UPSTREAM]: pybind11 binding for
+                                    space_register_observer.
+  PATCH-2 [RECOMMENDED, Source 2, UPSTREAM]: MeTTa replace-atom!
+                                    grounded op.
+  PATCH-3 [REQUIRED, Source 5]: hyperon-wiki/mod/atomspace_mirror/
+                                    (event subscription + IPC emitter
+                                    + outbox).
+  PATCH-4 [REQUIRED, Source 5]: card_atom_encoder for DeckoCard +
+                                    DeckoReference + DeckoProvenance.
+  PATCH-5 [REQUIRED, Source 6]: hyperon-wiki-mcp atom-MCP read
+                                    surface (8 tools) + D3-1 origin
+                                    fields propagated through client
+                                    headers + shared launcher
+                                    registry + corrected annotations.
+  PATCH-6 [DEFERRED, Phase 5+]: agent-write surface with
+                                    OPTION-C namespace split.
+
+================================================================================
+NEW V0-K FINDINGS
+================================================================================
+
+[V0-1] FIVE LAUNCHERS, NOT FOUR (debug stub excluded by Codex).
+  bin/mcp-server                : 37 tool registrations (production)
+  bin/mcp-server-http           : 24 tool registrations (production)
+  bin/mcp-server-puma-direct    : 24 tool registrations (production)
+  bin/mcp-server-rack-direct    : 27 tool registrations (production)
+  bin/mcp-server-http-rack      : 0 registrations (29-line debug stub)
+
+  The 5th launcher header reads:
+    "# SIMPLE RACK VERSION - Testing if Sinatra is the problem"
+  It's a Puma::Server returning 200 health-check JSON, used to diagnose
+  Sinatra issues. Codex correctly excluded it from the production
+  inventory.
+
+  PATCH-5 implication: shared-registry update touches 4 production
+  launchers. The debug stub remains untouched.
+
+[V0-2] CF5.6.E [CONSTANT-CITED-FOR-IMPLEMENTATION-READINESS] —
+  PROPOSED NEW DRIFT SUB-TYPE.
+  V-Gemini-Q6-subscription is the second instance (Source 4
+  V-Gemini-Q3-merkleize-claim was the first) of citing a protocol
+  constant or symbol existence for an implementation-readiness
+  conclusion. Promotion criterion met (≥2 instances).
+
+  The pattern: reviewer cites symbol/constant existence, concludes
+  feature is supported. Cross-check: implementation surface is
+  no-op or feature-gated or absent.
+
+  Apply forward: Source 7 should pre-flag any [VERIFIED] claim that
+  cites a single symbol/constant for an implementation-readiness
+  conclusion as needing implementation-level cross-check.
+
+[V0-3] DECISIVE INLINE COMMENT IN MCP 0.11.0 SOURCE.
+  mcp/server.rb:114 inline comment: "No op handlers for currently
+  unsupported methods" — gem author's own classification.
+  Strengthens the [POLLING-FIRST] verdict beyond stub-evidence.
+
+[V0-4] RUST-SIDE register_observer EXISTS; PYTHON-SIDE GAP CONFIRMED.
+  hyperon-experimental/hyperon-space/src/lib.rs:106:
+    pub fn register_observer<T: SpaceObserver + 'static>(&self,
+                                                          observer: T)
+        -> SpaceObserverRef<T>
+  Lives in SpaceCommon impl, NOT the public Space trait.
+  Python's base.py has no equivalent.
+  Confirms: PATCH-1 adds Python pybind11 binding for an EXISTING
+  Rust function, NOT new functionality. Source 2's PATCH-1 spec
+  remains correct.
+
+================================================================================
+DISSENT / DRIFT TABLE
+================================================================================
+
+V-Gemini-Q1-fork-count
+  [DRIFT] [DISSENT-RESOLVED]
+  Gemini "108 ahead"; actual 197 ahead + 26 behind + no merge-base.
+  Codex's bidirectional audit + no-merge-base finding correct.
+  Architectural implication missed by Gemini: magi-mcp and origin/main
+  are independent histories, not a simple fork.
+
+V-Gemini-Q6-subscription
+  [DRIFT] [DISSENT-RESOLVED] [CF5.6.E-PROMOTION-CASE]
+  Gemini cited NOTIFICATIONS_RESOURCES_UPDATED constant existence
+  for "supports server-side resource subscription notifications."
+  Codex caught no-op handler stubs (server.rb:114-116) +
+  default-capabilities-lacks-subscribe (server.rb:427-433) +
+  no notify_resources_updated helper.
+  Same drift pattern as Source 4 V-Gemini-Q3-merkleize-claim.
+
+V-Gemini-Q2-RUBY-EXTEND-reasoning
+  [WEAK-RATIONALE-NOT-DRIFT]
+  Verdict matches Codex's [RUBY-EXTEND] but reasoning leans on
+  Gemini's wrong fork-count (Q1 dissent). Verdict stands; rationale
+  to be reframed in v1 reconciliation as auth-inheritance + PATCH-1
+  upstream-blocking + deployment overhead, not magi-mcp lead.
+
+V-Codex-Q1-launcher-count-includes-debug-stub
+  [V0-1-MINOR-CARRY-FORWARD]
+  Codex listed 4 production launchers; HEAD has 5 binaries in bin/.
+  The 5th is a Sinatra-debug stub Codex correctly excluded. v1
+  reconciliation should call out the 4-vs-5 distinction explicitly
+  to prevent a future PATCH-5 implementer from skipping the 5th
+  thinking it's an oversight.
+
+V-Codex-NEW-(5-issues)
+  [ACCEPT]
+  Codex's V6-Candidate-1 through V6-Candidate-5 are accepted in v1
+  reconciliation. All have independent grounding by Claude
+  extraction except V6-Candidate-5 (launcher-aware tool inventory
+  drift), which V0-1 refines further.
+
+V-Claude-V0-1
+  [DEBUG-STUB-DISTINCTION]
+  Five binaries in bin/, four production. Document for PATCH-5.
+
+V-Claude-V0-2
+  [CF5.6.E-PROMOTION]
+  New CF5.6 sub-type proposed; ≥2-instance promotion criterion met.
+
+V-Claude-V0-3
+  [DECISIVE-COMMENT-CITATION]
+  Gem author's own "currently unsupported methods" comment
+  strengthens [POLLING-FIRST] verdict.
+
+V-Claude-V0-4
+  [PATCH-1-SCOPE-CONFIRMATION]
+  PATCH-1 binds existing Rust function; not new feature.
+
+================================================================================
+CF5.6 / V3-PROTOCOL-1 ADJUDICATIONS
+================================================================================
+
+Source 6 reviewer drift summary:
+  Codex:  0 file-identity drifts; 0 line-citation drifts; 1 minor
+          launcher-count omission (debug stub) excluded for valid
+          reason. 5 substantive NEW findings (V6-Candidate-1
+          through V6-Candidate-5), all grounded.
+  Gemini: 1 fork-count [DRIFT] (108 vs actual 197+26+no-merge-base);
+          1 subscription [DRIFT] (constant cited for
+          implementation-readiness). Both [VERIFIED]-tagged in
+          source claims; both refuted by independent verification.
+          Verdicts on Q2/Q3/Q7 match Codex but rationale weaker.
+
+  Claude: 4 V0-K refinements (V0-1 launcher debug-stub distinction;
+          V0-2 CF5.6.E promotion; V0-3 decisive inline comment; V0-4
+          PATCH-1 scope confirmation).
+
+Drift-type evolution across sources:
+  Source 1: 5 Gemini file-identity drifts.
+  Source 2: 5 Gemini line-citation drifts.
+  Source 3: 1 Gemini framing imprecision + 3 ORCHESTRATOR brief drifts.
+  Source 4: 1 Gemini verification-overstated (merkleize) + 2 Codex
+            build-readiness blockers.
+  Source 5: 0 file-identity drifts + 1 architectural Gemini drift
+            (Q8 trash).
+  Source 6: 1 Gemini fork-count drift + 1 Gemini subscription
+            overstatement (CF5.6.E pattern).
+
+Source 6's drift profile matches Source 4's: Gemini cites symbol/
+constant existence for implementation-readiness conclusion. The
+CF5.6.E sub-type promotion is justified.
+
+================================================================================
+PROTOCOL CARRY-FORWARD ASSESSMENT
+================================================================================
+
+INHERITED (Sources 1-5): all carry forward unchanged.
+  CF5.6, V1-Q1, V2-Q10/14, V2-PROTOCOL-1/2/3, V3-PROTOCOL-1/2/3,
+  V4-PROTOCOL-1/2/3/4, V5-PROTOCOL-1/2/3/4/5.
+
+NEW for Source 6 (proposed):
+
+CF5.6.E [CONSTANT-CITED-FOR-IMPLEMENTATION-READINESS]:
+  Any [VERIFIED] claim citing a single symbol/constant for an
+  implementation-readiness conclusion needs implementation-level
+  cross-check. Constants and protocol-method-name registrations
+  are necessary but not sufficient for implementation-readiness.
+  Apply forward to Source 7 and beyond.
+
+V6-PROTOCOL-1 [LAUNCHER-AWARE-TOOL-INVENTORY] (extending Codex's
+  V6-Candidate-5):
+  When a multi-launcher MCP server has a tools/ directory plus per-
+  launcher registration lists, the "tool inventory" is per-launcher,
+  not per-class-file. PATCH-5 / future MCP additions must use shared
+  registry OR update every production launcher. Document the
+  production-vs-debug launcher distinction explicitly.
+
+V6-PROTOCOL-2 [REQUEST-PATH-PROPAGATION-FOR-PROVENANCE] (extending
+  Codex's V6-Candidate-3):
+  Provenance schema fields are insufficient without request-path
+  propagation. JWT jti, MCP session id, and any other origin token
+  must be threaded through:
+    (a) MCP client headers (X-MCP-Session-ID or equivalent).
+    (b) Decko HTTP API base controller (header → Auth.with(...)).
+    (c) Mirror event handler (action → outbox payload).
+  Schema-only D3-1 envelope extensions silently lose information
+  at hop (a).
+
+================================================================================
+DEPENDENCY ASSESSMENT FOR SOURCE 7
+================================================================================
+
+Source 7 (Magus 4-phase plan reconciliation) — UNBLOCKED.
+
+  Source 7 will cross-check the cluster-pilot phase numbering
+  (Phase 3 read-only / Phase 4 write-through / Phase 5+ primary /
+  Phase 6+ distributed) against the older Magus-plan numbering
+  (Phase 2 shadow / Phase 3 primary / Phase 4 distributed) in
+  cards 11446 + 11448. Apply CF5.6.E to any "the Magus plan
+  supports X" claim that cites a single card field/note/tag.
+  Apply V6-PROTOCOL-2 to any "agent identity flows from Magus
+  card Y" claim.
+
+================================================================================
+BOTTOM LINE
+================================================================================
+
+This Claude extraction CONFIRMS Codex's findings in full and
+RESOLVES two Gemini dissents in Codex's favor (V-Gemini-Q1-fork-count
+[DRIFT]; V-Gemini-Q6-subscription [DRIFT]).
+
+Architecture:
+  Phase 4 atom-MCP surface  =  RUBY-EXTEND (hyperon-wiki-mcp)
+  Read tool set             =  8 tools (Codex's list)
+  Subscription support      =  POLLING-FIRST (defer to PATCH-5 v2)
+  Auth surface              =  INHERIT-WIKI-MCP-AUTH (RS256 + 3-role)
+  Transport                 =  HTTP/SSE + stdio (production
+                                  launchers = 4)
+  D3-1 extension            =  +4 fields (agent_session_id,
+                                  agent_kind, origin_system,
+                                  origin_request_id) → 20 total
+  Origin propagation        =  request-path threaded through
+                                  client → controller → mirror
+                                  (NOT schema-only)
+  Recursion guard           =  in Source 5 mirror mod (NOT in MCP)
+  Phase 5+ writes           =  OPTION-C namespace-split (deferred)
+
+PATCH set unchanged from Source 5 + extended for Source 6:
+  PATCH-1, PATCH-2 (Source 2 upstream-blocking).
+  PATCH-3, PATCH-4 (Source 5).
+  PATCH-5 (Source 6, Phase 4 atom-MCP read surface).
+  PATCH-6 (Source 6, Phase 5+ deferred).
+
+Source 6 ready to close pending Codex + Gemini sign-off on the
+v1 reconciliation that this extraction enables.
+
+================================================================================
+END OF FINDINGS — Source 6, Claude orchestrator extraction
+================================================================================

@@ -1,0 +1,152 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 4
+MORK + PathMap + mork_ffi + DAS + atomspace-rocks — Gemini findings
+================================================================================
+
+Reviewer: Gemini
+Date:     2026-05-04
+Repos:    E:\GitHub\hyperon reference\MORK\
+          E:\GitHub\hyperon reference\PathMap\
+          E:\GitHub\hyperon reference\mork_ffi\
+          E:\GitHub\hyperon reference\das\
+          E:\GitHub\hyperon reference\atomspace-rocks\
+HEADs:    MORK (4cef6f7), PathMap (cd6f350), mork_ffi (4bbc335), DAS (f4da3d7), rocks (6577a5b)
+Brief:    scripts/archive/atomspace_integration_phase4/source4_mork_pathmap_das_rocks/brief.txt
+
+Tag legend:
+  [VERIFIED]   = direct citation to file:line at HEAD or commit SHA in history
+  [INFERRED]   = drawn from VERIFIED evidence by direct inference
+  [NOT FOUND]  = exhaustive grep returned no matches (negative-existence claim)
+
+--------------------------------------------------------------------------------
+Q1. MORK KERNEL WRITE-API AUDIT.
+--------------------------------------------------------------------------------
+
+[VERIFIED] Canonical write methods in `MORK/kernel/src/space.rs`:
+  - `add_all_sexpr(&mut self, r: &[u8])` - space.rs:835
+  - `remove_all_sexpr(&mut self, r: &[u8])` - space.rs:836
+  - `add_sexpr(&mut self, r: &[u8], pattern: Expr, template: Expr)` - space.rs:860
+  - `remove_sexpr(&mut self, r: &[u8], pattern: Expr, template: Expr)` - space.rs:861
+  - `load_csv(&mut self, r: &[u8], pattern: Expr, template: Expr, seperator: u8)` - space.rs:509
+
+[VERIFIED] MORK does NOT use a trait abstraction for mutation; it uses concrete `impl Space` blocks.
+
+[VERIFIED] Writes are synchronous to the trie backing: `self.btm.insert(data, ())` (space.rs:848) and `self.btm.remove(data)` (space.rs:849).
+
+[VERIFIED] `pub static mut writes: usize` (space.rs:33) is incremented in `unsafe` blocks during template application (e.g., line 1362).
+
+--------------------------------------------------------------------------------
+Q2. MORK SPACE TYPE vs HYPERON SPACEMUT.
+--------------------------------------------------------------------------------
+
+[INFERRED] A `MorkSpace` could implement `SpaceMut`, but the translation cost is high. MORK's `Expr` is a raw byte-pointer/buffer-based representation (space.rs:450), while Hyperon uses an `Atom` enum. Identity would need to be mapped from structural Hyperon atoms to MORK's path-based trie keys.
+
+[VERIFIED] MORK's `static mut` counters are globally shared and not per-instance. Bridging to Hyperon's `SpaceObserver` would require a custom emit-on-write shim inside a wrapper.
+
+VERDICT: [NOT-A-PHASE4-SUBSTRATE]. MORK is architecturally distinct and lacks the required observer surface.
+
+--------------------------------------------------------------------------------
+Q3. PATHMAP TRIE SUBSTRATE AUDIT.
+--------------------------------------------------------------------------------
+
+[VERIFIED] PathMap/Cargo.toml uses heavy nightly features (`portable_simd`, `allocator_api`, `coroutine_trait`).
+[VERIFIED] `pathmap-book/src/SUMMARY.md` lists "Smart Ptr & Resource Mgmt Improvement" as an unresolved issue (A.0002).
+
+[VERIFIED] Periodic Merkleize is supported: MORK `interpret` calls `self.btm.merkleize()` every 10 seconds if feature-enabled (space.rs:1680).
+
+VERDICT: [RESEARCH-STAGE-SUBSTRATE].
+
+--------------------------------------------------------------------------------
+Q4. MORK_FFI PRODUCTION-READINESS + MORKDB DELETE-BLOCKING.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `mork_ffi` history consists of only 3 commits (Patrick Hammer, 2025-12-12). It exposes S-expression loading and removal via a Prolog FFI (`rust_mork` in `src/lib.rs`).
+
+[CO-VERIFIED] `das/src/atomdb/morkdb/MorkDB.cc:268-270` explicitly blocks link deletion: `Utils::error("MORKDB does not support deleting links.", false); return false;`.
+
+[VERIFIED] MORK kernel *does* support removal from the trie (`btm.remove(data)` in `space.rs:849`), but the DAS adapter blocks it.
+
+--------------------------------------------------------------------------------
+Q5. DAS STATE AT HEAD vs CLUSTER-PILOT.
+--------------------------------------------------------------------------------
+
+[VERIFIED] DAS HEAD is `f4da3d78` (2026-04-29). Development has consolidated into `singnet/das`.
+[VERIFIED] `src/atomdb/` contains adapters for Mongo, Redis, and MorkDB (BUILD:13-17).
+
+VERDICT: [DAS-IS-PHASE-6+-DISTRIBUTED]. It is a mature distributed substrate but exceeds Phase 4/5 local-host requirements.
+
+--------------------------------------------------------------------------------
+Q6. ATOMSPACE-ROCKS AS PHASE 5+ DURABILITY CANDIDATE.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `RocksStorage` inherits from `StorageNode` (RocksStorage.h:42).
+[VERIFIED] `RocksIO.cc:371` implements real `storeAtom`; `RocksIO.cc:800` implements real `removeAtom`. No stubs.
+[VERIFIED] Supports versioned/branched state via `RocksFrame.cc` (line 42).
+[VERIFIED] Read-only mode added in commit `984ef28` (verified in `RocksStorage.h:55`).
+
+VERDICT: [PRIMARY-PHASE-5+-CANDIDATE]. Mature, maintainer-preferred, and supports versioning.
+
+--------------------------------------------------------------------------------
+Q7. PERSISTENCE MODEL COMPARISON TABLE.
+--------------------------------------------------------------------------------
+
+| Substrate       | Location      | Identity   | Transactional | Concurrency     | Observability | Status     | Phase Fit |
+|-----------------|---------------|------------|---------------|-----------------|---------------|------------|-----------|
+| Hyperon Space   | RAM           | Structural | No            | Single-thread   | SpaceObserver | Active     | 4 (STAY)  |
+| MORK            | RAM+Memmap    | Trie-path  | No            | Unsafe-Global   | None          | Active     | 5 (Expl)  |
+| PathMap         | RAM+Memmap    | Trie-path  | No            | Unstable        | None          | Stale      | 5 (Base)  |
+| DAS             | Disk+Network  | MD5 Hash   | Partial       | Distributed     | High-level    | Active     | 6 (Dist)  |
+| atomspace-rocks | Disk          | UUID       | Yes           | Single-process  | None          | Active     | 5 (Dura)  |
+| atomspace-pgres | Disk          | UUID       | Yes           | Multi-process   | None          | Deprecated | N/A       |
+
+--------------------------------------------------------------------------------
+Q8. IDENTITY MODEL CROSS-SUBSTRATE COMPARISON.
+--------------------------------------------------------------------------------
+
+[VERIFIED] MORK: Trie-key based (structural encoding of expression tree).
+[VERIFIED] DAS: MD5 hashing of type + name (expression_hasher.cc:10).
+[VERIFIED] Rocks: Inherits classical Handle/UUID.
+
+[NOT FOUND] No substrate natively supports the D3-1 metadata discipline (provenance fields) at the storage layer. This must remain in the Hyperon Space layer for Phase 4/5.
+
+--------------------------------------------------------------------------------
+Q9. CONCURRENCY MODEL COMPARISON.
+--------------------------------------------------------------------------------
+
+[VERIFIED] MORK: Uses a global `Mutex<Space>` in its FFI wrapper but relies on `unsafe` static muts in the kernel (space.rs:33).
+[VERIFIED] DAS: Supports multi-process and thread-pooled adapters (db_adapter/thread_pool branches).
+[VERIFIED] Rocks: Single-user constraint (README.md:12).
+
+--------------------------------------------------------------------------------
+Q10. WRITE-BACK OBSERVABILITY.
+--------------------------------------------------------------------------------
+
+[NOT FOUND] No observer/event mechanism exists in MORK kernel, PathMap, or atomspace-rocks.
+[VERIFIED] DAS has high-level agent notifications but no core-level DB observer.
+
+VERDICT: Observability must stay at the Hyperon Space layer.
+
+--------------------------------------------------------------------------------
+Q11. CROSS-PORTFOLIO DIRECTION ALIGNMENT.
+--------------------------------------------------------------------------------
+
+- Linas: Classical → RocksDB → Analytics (Design Note D).
+- Vandervorst: MORK/PathMap → AGI Substrate (Trie-based).
+- SingularityNET: DAS → Distributed Production.
+
+[INFERRED] Divergence continues. Rocks is the "local durability" path; DAS is the "distributed scaling" path; MORK is the "native trie" path.
+
+--------------------------------------------------------------------------------
+Q12. ARCHITECTURAL SYNTHESIS.
+--------------------------------------------------------------------------------
+
+[RECOMMENDED PATH] Stay with **Hyperon Space** for Phase 4.
+
+(a) Phase 4 Substrate: Hyperon Space. Alternate substrates lack required observability (SpaceObserver) and add significant adapter overhead.
+(b) Phase 5+ Durability: **ROCKS-PATH** is the primary recommendation due to maturity and maintainer support. **MORK-PATH** is secondary for RAM-bound trie-native research.
+(c) Patterns: No substrate patterns adopted for Phase 4. D3-1 metadata is sufficient.
+(d) mork_ffi: Treat as reference/checkpoint, not production.
+
+================================================================================
+END OF FINDINGS — Source 4, Gemini
+================================================================================

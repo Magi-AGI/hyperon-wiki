@@ -1,0 +1,154 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 2
+hyperon-experimental Hyperon Space write-API audit — Gemini findings
+================================================================================
+
+Reviewer: Gemini
+Date:     2026-05-04
+Repo:     E:\GitHub\hyperon reference\hyperon-experimental\
+HEAD:     3f76dc460da6961f57f69f6c3e550c59c74ada83 (2026-02-11)
+Brief:    scripts/archive/atomspace_integration_phase4/source2_hyperon_space_writeapi/brief.txt
+
+Tag legend:
+  [VERIFIED]   = direct citation to file:line at HEAD or commit SHA in history
+  [INFERRED]   = drawn from VERIFIED evidence by direct inference
+  [NOT FOUND]  = exhaustive grep returned no matches (negative-existence claim)
+
+--------------------------------------------------------------------------------
+Q1. SPACE WRITE API (CORE GATING QUESTION).
+--------------------------------------------------------------------------------
+
+[VERIFIED] The authoritative write API is defined in the `SpaceMut` trait in the new `hyperon-space` crate.
+
+  - `add(&mut self, atom: Atom)`          - hyperon-space/src/lib.rs:223
+  - `remove(&mut self, atom: &Atom) -> bool` - hyperon-space/src/lib.rs:241
+  - `replace(&mut self, from: &Atom, to: Atom) -> bool` - hyperon-space/src/lib.rs:259
+
+[VERIFIED] `GroundingSpace` (in `lib/src/space/grounding/mod.rs`) implements `SpaceMut`.
+
+[VERIFIED] `DynSpace` is a type-erased wrapper around `Rc<RefCell<dyn SpaceMut>>` (hyperon-space/src/lib.rs:276).
+
+VERDICT: [WRITE-API-CONFIRMED]. Condition (i) is met. Option D is the canonical path.
+
+--------------------------------------------------------------------------------
+Q2. SPACEEVENT + SPACEOBSERVER PATTERN.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `SpaceEvent` enum (Add, Remove, Replace) - hyperon-space/src/lib.rs:18
+[VERIFIED] `SpaceObserver` trait with `notify(&mut self, event: &SpaceEvent)` - hyperon-space/src/lib.rs:56
+[VERIFIED] `SpaceCommon` manages a `Vec<Weak<RefCell<dyn SpaceObserver>>>` - hyperon-space/src/lib.rs:94
+
+  - (a) Explicit: `space.common().register_observer(MyObserver{...})` (hyperon-space/src/lib.rs:104).
+  - (b) Per-Space: Observers are held in `SpaceCommon`, which is NOT cloned when the space is cloned (hyperon-space/src/lib.rs:125).
+  - (c) Synchronous: `notify_all_observers` iterates and calls `notify` immediately (hyperon-space/src/lib.rs:111). A panic in an observer will crash the writer.
+  - (d) Synchronous: Runs in the writer's stack frame.
+  - (e) Thread-Safe: NO. Uses `Rc` and `RefCell`. The core space implementation is single-threaded.
+
+VERDICT: [OBSERVER-PATTERN-CONFIRMED] [SINGLE-THREADED-LIMITATION].
+
+--------------------------------------------------------------------------------
+Q3. PERSISTENCE / DURABILITY MODEL.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `space_new` in the C API (c/src/space.rs:69) allows creating a "custom" space by providing a table of function pointers (`space_api_t`). This is the primary hook for external persistence.
+
+[VERIFIED] `PY_SPACE_NO_SUBST_API` (python/hyperonpy.cpp:387) uses this mechanism to wrap Python-defined spaces.
+
+VERDICT: [EXTENSIBLE-VIA-C-API] [NO-NATIVE-RUST-PERSISTENCE-TRAIT].
+
+--------------------------------------------------------------------------------
+Q4. CONCURRENCY MODEL.
+--------------------------------------------------------------------------------
+
+[VERIFIED] Core implementation uses `Rc<RefCell<...>>` (hyperon-space/src/lib.rs:276).
+
+[INFERRED] For Phase 4 Option D, multi-process Decko workers cannot share a `GroundingSpace` in memory. A central "Space Service" (Python/Rust) with an IPC boundary (gRPC/HTTP) is required, OR each worker maintains a local mirror synced via a shared event bus (like Redis/RabbitMQ).
+
+VERDICT: [INTER-PROCESS-SYNC-REQUIRED].
+
+--------------------------------------------------------------------------------
+Q5. DYNSPACE / SPACEMUT / GROUNDINGSPACE TAXONOMY.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `hyperon-space` is the new core crate. `lib/src/space/` contains the MeTTa-specific glue and the legacy `GroundingSpace` implementation.
+
+  - GroundingSpace: Concrete in-memory impl.
+  - SpaceMut: Trait for mutability.
+  - DynSpace: Shared reference wrapper (`Rc<RefCell<dyn SpaceMut>>`).
+
+VERDICT: [REFACTORED-TO-TOP-LEVEL-CRATE].
+
+--------------------------------------------------------------------------------
+Q6. PERFORMANCE / SCALE.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `hyperon-space/benches/atom_index.rs` contains a "fill 100" benchmark using `AtomIndex`.
+
+[INFERRED] The `AtomIndex` uses a `Trie` (hyperon-space/src/index/trie.rs) for pattern-matched indexing. Throughput is likely high for in-memory operations, but not yet quantified for million-atom scales in this snapshot.
+
+VERDICT: [TRIE-INDEXED-IN-MEMORY].
+
+--------------------------------------------------------------------------------
+Q7. ATOM IDENTITY UNDER MUTATION.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `replace(from, to)` (hyperon-space/src/lib.rs:259) is implemented as `remove(from)` then `insert(to)`.
+
+[INFERRED] Atom identity is structural. There is no stable UUID for an atom. `SpaceEvent::Replace` carries both the old and new atoms, allowing observers to track the transition.
+
+VERDICT: [STRUCTURAL-IDENTITY] [REPLACE-IS-REMOVE-THEN-ADD].
+
+--------------------------------------------------------------------------------
+Q8. PYTHON BINDINGS COVERAGE.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `python/hyperon/base.py` exposes `SpaceRef.add_atom`, `remove_atom`, and `replace_atom`.
+
+[NOT FOUND] The `SpaceObserver` registration API is missing from `hyperonpy.cpp` and `base.py`. While the C API supports it, the Python wrapper has not yet exposed it.
+
+VERDICT: [WRITE-API-EXPOSED] [OBSERVER-API-MISSING-IN-PYTHON].
+
+--------------------------------------------------------------------------------
+Q9. DAS MODULE INTEGRATION.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `das.metta` (lib/src/metta/runner/builtin_mods/das.metta) defines the MeTTa-side API.
+[VERIFIED] `new-das!` (das.rs:70) is the canonical entry point.
+[VERIFIED] `das` feature is enabled by default in `lib/Cargo.toml:44`.
+
+VERDICT: [DAS-WIRING-CANONICAL].
+
+--------------------------------------------------------------------------------
+Q10. PR #852 EVENTAGENT (unmerged).
+--------------------------------------------------------------------------------
+
+[VERIFIED] The `pr-852` branch adds `EventAgent` and `BasicEventBus` to `python/hyperon/exts/agents/`.
+[VERIFIED] It provides `direct-subscription` and `queue-subscription` (agent_base.py:270-276) for reacting to external events.
+
+VERDICT: [STALE-BUT-RELEVANT]. Last major activity seems to be late 2025.
+
+--------------------------------------------------------------------------------
+Q11. CLUSTER-PILOT FINDING VERIFICATION.
+--------------------------------------------------------------------------------
+
+[NOT FOUND] `lib_spaces.metta` does not exist in the history of the repo under that name (Pickaxe returned zero).
+
+[VERIFIED] The file mentioned by the cluster pilot as "lib_spaces.metta" is likely `lib/src/metta/runner/builtin_mods/das.metta` or the standard library space ops in `lib/src/metta/runner/stdlib/space.rs`.
+
+VERDICT: [PILOT-CITATION-DRIFT].
+
+--------------------------------------------------------------------------------
+Q12. DECKO-CALLBACK INTEGRATION TARGET.
+--------------------------------------------------------------------------------
+
+[RECOMMENDED WIRING]
+1. Decko (Ruby) `after_save` → Enqueue to Redis/Sidekiq.
+2. Python "Mirror Service" consumes from Redis.
+3. Mirror Service uses `hyperon.base.GroundingSpaceRef` to `add_atom`/`replace_atom`.
+4. (CRITICAL GAP) Since Python lacks `register_observer`, a custom C-extension or a Rust-side "Event Forwarder" is needed to notify L1 agents of changes.
+
+VERDICT: [OPTION-D-VIABLE-WITH-BRIDGE-CODE].
+
+================================================================================
+END OF FINDINGS — Source 2, Gemini
+================================================================================

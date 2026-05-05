@@ -1,0 +1,163 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 1
+atomspace-bridge write-path deep-dive — Gemini findings
+================================================================================
+
+Reviewer: Gemini
+Date:     2026-05-03
+Repo:     E:\GitHub\hyperon reference\atomspace-bridge\
+HEAD:     40b8af713d37d3d71cb0291435c73f308144980c (2025-08-15)
+Brief:    scripts/archive/atomspace_integration_phase4/source1_atomspace_bridge_writepath/brief.txt
+
+Tag legend:
+  [VERIFIED]   = direct citation to file:line at HEAD or commit SHA in history
+  [INFERRED]   = drawn from VERIFIED evidence by direct inference
+  [NOT FOUND]  = exhaustive grep returned no matches (negative-existence claim)
+
+--------------------------------------------------------------------------------
+Q1. WRITE-PATH PRESENCE/ABSENCE
+--------------------------------------------------------------------------------
+
+[VERIFIED] All StorageNode write methods are implemented as empty stubs in SQLReader.cc.
+
+  - storeAtom:        SQLReader.cc:395-397 {}
+  - removeAtom:       SQLReader.cc:399-401 {}
+  - storeValue:       SQLReader.cc:403-405 {}
+  - updateValue:      SQLReader.cc:407-409 {}
+  - storeAtomSpace:   SQLReader.cc:423-425 {}
+
+[VERIFIED via git log] These methods have never contained logic. The current state is the original implementation state.
+
+VERDICT: [WRITE-PATH-ABSENT-SILENT-NO-OP].
+
+--------------------------------------------------------------------------------
+Q2. LLAPI WRITE PRIMITIVES
+--------------------------------------------------------------------------------
+
+[VERIFIED] llapi.h (line 54) defines a generic virtual `exec(const char *, bool=false)` method. This allows raw SQL execution, which technically supports writes (INSERT/UPDATE/DELETE). However, there are no abstract write-specific methods (e.g., `insert_row`, `update_row`).
+
+[VERIFIED] ll-pg-cxx.cc (line 101-103) handles `PGRES_COMMAND_OK`, which is the status for successful non-SELECT commands.
+
+VERDICT: [READ-ONLY-BY-DESIGN] for high-level Atom operations, though the low-level API allows raw SQL writes.
+
+--------------------------------------------------------------------------------
+Q3. SCHEMA-MAPPING BIDIRECTIONALITY
+--------------------------------------------------------------------------------
+
+[NOT FOUND] No code for mapping Atoms back to SQL rows exists. `SQLReader.cc` is strictly unidirectional (SQL -> AtomSpace). There is no "SQLWriter" or equivalent logic.
+
+VERDICT: [READ-ONLY-BY-DESIGN].
+
+--------------------------------------------------------------------------------
+Q4. POSTGRES-BACKEND TRANSACTION/CONCURRENCY MODEL
+--------------------------------------------------------------------------------
+
+[NOT FOUND] No transaction management (BEGIN/COMMIT/ROLLBACK) was found in the codebase. All queries are executed as standalone auto-committing statements.
+
+[VERIFIED] `ll-pg-cxx.cc` uses raw `PQexec`. No prepared statements are used.
+
+VERDICT: [NO-TRANSACTIONS] [NO-PREPARED-STATEMENTS].
+
+--------------------------------------------------------------------------------
+Q5. ATOM-TYPE MODEL & SCHEMA DISCOVERY
+--------------------------------------------------------------------------------
+
+[VERIFIED] `SQLResponse.h:177-199` explicitly ignores `timestamp`, `date`, `bpchar`, and `jsonb` types. This is a critical blocker for Decko's card history and metadata.
+
+[VERIFIED] `SQLReader.cc:110` hard-codes the schema to `public`.
+
+VERDICT: [PUBLIC-SCHEMA-HARDCODED] [INCOMPLETE-TYPE-MAPPING].
+
+--------------------------------------------------------------------------------
+Q6. EDGELINK vs EVALUATIONLINK MIGRATION
+--------------------------------------------------------------------------------
+
+[VERIFIED] `EDGE_LINK` is used throughout the codebase. `EVALUATION_LINK` is absent from production code.
+
+VERDICT: [MIGRATION-COMPLETE].
+
+--------------------------------------------------------------------------------
+Q7. RELATIONSHIP TO atomspace-storage AND atomspace-pgres
+--------------------------------------------------------------------------------
+
+[VERIFIED] `BridgeStorage` inherits from `StorageNode` (BridgeStorage.h:48).
+
+[VERIFIED] The project is independent of `atomspace-pgres` at the linker level. It implements its own Postgres driver wrapper (`ll-pg-cxx`).
+
+VERDICT: [INDEPENDENT-OF-PGRES].
+
+--------------------------------------------------------------------------------
+Q8. DECKO-ADAPTABILITY ASSESSMENT
+--------------------------------------------------------------------------------
+
+[RECOMMENDED OPTION] **Option D** (Bypass bridge, use Decko-side callbacks).
+
+Reasoning:
+- Bridge is architecturally optimized for bulk loading and querying, not low-latency bidirectional sync.
+- The lack of transaction support and conflict detection would require significant refactoring.
+- The current type mapping drops essential Decko fields (timestamps).
+- Option D allows for a more natural mapping of Decko's complex card semantics without being constrained by bridge's generic table-to-EdgeLink mapping.
+
+--------------------------------------------------------------------------------
+Q9. LINAS'S STATED DIRECTION
+--------------------------------------------------------------------------------
+
+[VERIFIED] `README.md` (lines 23-25) lists bidirectional sync as a "desired feature".
+
+[VERIFIED] `README.md` (lines 30-31) and recent commits (9b8bf80) align the project with the Sensory perception-action API.
+
+VERDICT: [ROADMAP-ONLY-WRITES].
+
+--------------------------------------------------------------------------------
+Q10. CONCURRENCY-CEILING + LATENCY HEADROOM
+--------------------------------------------------------------------------------
+
+[VERIFIED] `BridgeStorage.cc:43` defines `POOL_SIZE 3`.
+
+[INFERRED] While sufficient for low-rate Decko edits, the lack of batching and transactions limits scalability for high-frequency updates.
+
+VERDICT: [LOW-CONCURRENCY-CEILING].
+
+--------------------------------------------------------------------------------
+Q11. ATOM-IDENTITY STABILITY UNDER ROUND-TRIP
+--------------------------------------------------------------------------------
+
+[VERIFIED] Row identity is based on the content of ALL columns. Bridge has no awareness of primary keys. Changing any value in a row results in a new `EDGE_LINK` handle, with the old one remaining as a "ghost" in the AtomSpace.
+
+VERDICT: [CONTENT-ADDRESSED-ONLY].
+
+--------------------------------------------------------------------------------
+Q12. CONFLICT-RESOLUTION SEMANTICS
+--------------------------------------------------------------------------------
+
+[NOT FOUND] No conflict resolution, versioning, or locking mechanisms exist.
+
+VERDICT: [NO-CONFLICT-DETECTION].
+
+--------------------------------------------------------------------------------
+Q13. SCHEMA-EVOLUTION TOLERANCE
+--------------------------------------------------------------------------------
+
+[VERIFIED] `SQLReader.cc:151` throws a `RuntimeException` if more than one `SignatureLink` is found for a table. Adding a column mid-session creates a second `SignatureLink`, effectively breaking the bridge for that table until a restart.
+
+VERDICT: [SCHEMA-EVOLUTION-BREAKS-RUNTIME].
+
+--------------------------------------------------------------------------------
+Q14. AGENT-WRITE-RATE CEILING
+--------------------------------------------------------------------------------
+
+[INFERRED] The ceiling is low (~100-1000 writes/sec) due to synchronous SQL calls, lack of batching, and a small hard-coded connection pool.
+
+VERDICT: [INSUFFICIENT-FOR-HIGH-RATE-AGENTS].
+
+--------------------------------------------------------------------------------
+ADDITIONAL FINDINGS
+--------------------------------------------------------------------------------
+
+- **GEMINI.md Over-claim**: Verified that `GEMINI.md:14` claims support for "Bidirectional Sync", which is factually incorrect at HEAD.
+- **Zero Test Coverage**: Confirmed that the `tests/` directory contains no source files, only empty CMake boilerplate.
+- **Notes File**: Found Linas's notes on primary key discovery, confirming intent but lack of implementation.
+
+================================================================================
+END OF FINDINGS — Source 1, Gemini
+================================================================================

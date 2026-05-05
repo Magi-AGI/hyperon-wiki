@@ -1,0 +1,1018 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 1
+atomspace-bridge write-path deep-dive — Claude findings
+================================================================================
+
+Reviewer: Claude (orchestrator)
+Date:     2026-05-03
+Repo:     E:\GitHub\hyperon reference\atomspace-bridge\
+HEAD:     40b8af713d37d3d71cb0291435c73f308144980c (2025-08-15)
+Brief:    scripts/archive/atomspace_integration_phase4/source1_atomspace_bridge_writepath/brief.txt
+
+Tag legend:
+  [VERIFIED]   = direct citation to file:line at HEAD or commit SHA in history
+  [INFERRED]   = drawn from VERIFIED evidence by direct inference
+  [NOT FOUND]  = exhaustive grep returned no matches (negative-existence claim)
+
+Verdict-label palette (cluster-pilot vocabulary):
+  [WRITE-PATH-ABSENT-SILENT-NO-OP]   StorageNode write methods exist but bodies are {}
+  [READ-ONLY-BY-DESIGN]              No write-side API at any layer
+  [BULK-IMPORT-THEN-READ]            Architecture optimized for one-time load + repeated query
+  [PUBLIC-SCHEMA-HARDCODED]          public-only filter at SQLReader.cc:110
+  [CONTENT-ADDRESSED-IDENTITY]       Atom identity = (type, content); no primary-key flagging
+  [SCHEMA-EVOLUTION-BREAKS-RUNTIME]  New column mid-session breaks get_row_desc invariant
+  [POOL-SIZE-3-HARDCODED]            Concurrency ceiling at 3 in-flight ops
+  [ZERO-TEST-COVERAGE]               No test source files; only commented-out CMake reference
+  [NO-TRANSACTIONS]                  Auto-commit only; zero BEGIN/COMMIT/ROLLBACK
+  [NO-PREPARED-STATEMENTS]           Raw string SQL via PQexec; string-concat with quote-escape
+  [NO-CONFLICT-DETECTION]            Zero version-counter / sync-token / MVCC interaction
+
+--------------------------------------------------------------------------------
+0. SETUP VERIFICATION (CF5.6)
+--------------------------------------------------------------------------------
+
+[VERIFIED] HEAD matches brief snapshot.
+  git rev-parse HEAD → 40b8af713d37d3d71cb0291435c73f308144980c
+  git log -1 → "2025-08-15 15:35:31 -0500 Linas Vepštas Migrate the BridgeStorageNode to here"
+
+[VERIFIED] Per-model orientation files read:
+  CLAUDE.md:1-43 — describes bridge as "bidirectional data transfer" but only enumerates
+    read capabilities ("imports", "load", "fetch") — consistent with code at HEAD.
+  AGENTS.md:1-28 — flags CMakeLists.txt packaging section as "explicitly marked stale and
+    broken" (corroborated at CMakeLists.txt:201 "XXX FIXME. Packging below is stale/wrong/
+    broken."). Adds opencog/scm/persist-bridge.scm as Scheme entry point (missing from
+    brief §4 file inventory; minor).
+  GEMINI.md:14 — claims "Bidirectional Sync: Supports both reading from and updating SQL
+    table contents while maintaining referential integrity." Per CF5.6: this claim is
+    EMPIRICALLY FALSE at HEAD. Bridge has NO write code (see Q1+Q2 below). README:23-25
+    states writes as a *desired* feature, not a present one (line 37: "***Version 0.2.1***
+    -- The current implementation can load table descriptions and table contents"). Flag
+    GEMINI.md:14 as a Gemini-side over-claim to be reconciled, not adopted.
+
+[VERIFIED] File inventory (delta vs brief §4):
+  opencog/persist/bridge/
+    BridgeStorage.{cc,h}    184 + 152 lines
+    BridgePersistSCM.{cc,h} 101 + 61 lines
+    SQLReader.cc            427 lines (largest)
+    SQLResponse.h           246 lines
+    llapi.{cc,h}            239 + 138 lines
+    ll-pg-cxx.{cc,h}        234 + 77 lines
+    notes                   single FILE (brief said directory; SQ scratch only, ~93 lines)
+    CMakeLists.txt
+  opencog/persist/bridge-types/
+    atom_types.script       7 lines (only FOREIGN_STORAGE_NODE + BRIDGE_STORAGE_NODE)
+    atom_types_init.cc
+    CMakeLists.txt
+  opencog/scm/
+    persist-bridge.scm      73 lines [BRIEF MISSED — Scheme entry point]
+  examples/                 README.md, basic-demo.scm, table-browser.scm
+  tests/persist/bridge/     CMakeLists.txt only (no test source files)
+  Total source: ~1939 lines C++ + Scheme. Audit-friendly scale.
+
+--------------------------------------------------------------------------------
+Q1. WRITE-PATH PRESENCE/ABSENCE
+--------------------------------------------------------------------------------
+
+[VERIFIED] All StorageNode write methods are declared at BridgeStorage.h:103-110 and
+implemented as empty-body silent no-ops at SQLReader.cc:395-425. NOT throws, NOT
+inherited defaults — explicit empty-body overrides.
+
+  storeAtom         BridgeStorage.h:103       SQLReader.cc:395-397   {} empty body
+  removeAtom        BridgeStorage.h:104       SQLReader.cc:399-401   {} empty body
+  storeValue        BridgeStorage.h:105       SQLReader.cc:403-405   {} empty body
+  updateValue       BridgeStorage.h:106       SQLReader.cc:407-409   {} empty body
+  storeAtomSpace    BridgeStorage.h:110       SQLReader.cc:423-425   {} empty body
+
+Read-side stubs are also empty no-ops (NOT inherited defaults):
+  getAtom           BridgeStorage.h:99        SQLReader.cc:357-359   {} empty body
+  getLink           BridgeStorage.h:100       SQLReader.cc:361-364   returns Handle::UNDEFINED
+  loadValue         BridgeStorage.h:107       SQLReader.cc:411-413   {} empty body
+  loadType          BridgeStorage.h:108       SQLReader.cc:415-417   {} empty body
+  loadAtomSpace     BridgeStorage.h:109       SQLReader.cc:419-421   {} empty body
+
+Only fetchIncomingSet (SQLReader.cc:366-387) and fetchIncomingByType (389-393, delegates
+to fetchIncomingSet) have real bodies. fetchIncomingSet dispatches on atom type to
+load_table_data / load_column / load_joined_rows.
+
+Auxiliary read-path methods (BridgeStorage-specific, not StorageNode-interface):
+  load_one_table       SQLReader.cc:56-95
+  load_tables          SQLReader.cc:97-125
+  get_row_desc         SQLReader.cc:143-157
+  make_select          SQLReader.cc:163-180
+  load_selected_rows   SQLReader.cc:188-202
+  load_table_data      SQLReader.cc:207-210
+  load_column          SQLReader.cc:215-232
+  select_where         SQLReader.cc:244-262
+  load_rows            SQLReader.cc:268-292
+  load_join            SQLReader.cc:303-317
+  load_joined_rows     SQLReader.cc:323-353
+
+Connection / lifecycle / monitoring (BridgeStorage.cc):
+  open                 BridgeStorage.cc:86-107
+  close                BridgeStorage.cc:109-115
+  connected            BridgeStorage.cc:117-129
+  enlarge_conn_pool    BridgeStorage.cc:73-83
+  close_conn_pool      BridgeStorage.cc:131-141
+  barrier              BridgeStorage.cc:149-151   {} empty body
+  clear_stats          BridgeStorage.cc:155-157   {} empty body
+  monitor              BridgeStorage.cc:159-175
+  print_stats          BridgeStorage.cc:177-180
+  create               BridgeStorage.h:92         {} inline empty
+  destroy              BridgeStorage.h:93         calls kill_data() (which is empty);
+                                                  comment "TODO also delete the db"
+  erase                BridgeStorage.h:94         calls kill_data() (which is empty)
+  kill_data            BridgeStorage.h:96         {} inline empty
+  loadFrameDAG         BridgeStorage.h:111        returns empty HandleSeq
+  storeFrameDAG        BridgeStorage.h:112        {} inline empty
+  deleteFrame          BridgeStorage.h:113        {} inline empty
+
+[VERIFIED via pickaxe] Writes were NEVER implemented in repo history.
+  $ git log --all -S 'storeAtom' --oneline -- opencog/persist/bridge/
+  → 8bd776e Rename everything to "Bridge"   (the only match: file rename, no body change)
+
+  Pickaxe interpretation: a pickaxe match on "storeAtom" requires the substring to be
+  added or removed in a commit. The only match is the rename commit. This means the
+  empty stub `void BridgeStorage::storeAtom(const Handle&, bool synchronous) {}` was
+  introduced together with the file (under its original name), and has never been
+  modified to contain a body. The empty stub is original-state, not regressed-state.
+
+  Validates pickaxe-before-dead-code methodology (feedback_pickaxe_for_dead_code.md).
+  Feeds R2.B4 from AtomSpace cluster pilot 2026-04-29 ("write stubs empty"): VERIFIED
+  and HARDENED — stubs are silent-no-op overrides, not throwing-stubs, and not
+  partially-removed historical code.
+
+CRITICAL HARDENING: silent no-ops vs throwing-stubs. A throwing stub raises an exception
+to the caller; a silent no-op returns success. So calling code (e.g., a future agent
+loop) doing `(cog-store-atom atom)` against a BridgeStorage gets:
+  - No exception
+  - No log message
+  - No DB write
+  - Apparent success
+This is more dangerous than throwing-stubs because failure is not observable from the
+caller's frame. Any Phase 4 extension MUST add at least an explicit throw in the
+unimplemented-write paths to surface accidental usage.
+
+Cross-ref MorkDB delete-blocker (per brief Q1 amendment): removeAtom is empty no-op.
+If bridge were extended to delete atoms representing trashed/restored Decko cards,
+the AtomSpace cluster pilot's MorkDB link-delete blocker (Atomese-semantics layer,
+not storage-backend layer) would apply. Currently moot — no delete code exists to
+break.
+
+VERDICT: [WRITE-PATH-ABSENT-SILENT-NO-OP]. R2.B4 fully verified and hardened.
+
+--------------------------------------------------------------------------------
+Q2. LLAPI WRITE PRIMITIVES
+--------------------------------------------------------------------------------
+
+[VERIFIED] llapi.h declares ONE virtual method on LLConnection:
+  llapi.h:54   virtual LLRecordSet *exec(const char *, bool=false) = 0;
+
+LLRecordSet (llapi.h:57-117) has only read-side methods: fetch_row, get_value,
+get_column_count, get_column_value, foreach_row, foreach_column. No abstract
+insert/update/delete/store/remove API at any layer.
+
+[VERIFIED] ll-pg-cxx.cc::LLPGConnection::exec (lines 91-136) accepts three result
+statuses (line 101-103): PGRES_COMMAND_OK, PGRES_EMPTY_QUERY, PGRES_TUPLES_OK.
+PGRES_COMMAND_OK is exactly the status libpq returns for successful INSERT/UPDATE/
+DELETE with no result rows. So the API LAYER admits writes via raw SQL strings;
+just no caller currently constructs write SQL.
+
+[VERIFIED via grep] Zero callers construct write SQL anywhere in the codebase:
+  $ grep -rn 'INSERT|UPDATE\s|DELETE\s|UPSERT|ON CONFLICT' opencog/ tests/ examples/ lib/
+  → opencog/persist/bridge/llapi.cc:204 only
+  → That match is inside `#ifdef UNIT_TEST_EXAMPLE` (line 175) within nested
+    `#ifdef MAKE_SOME_DATA` (line 202), which is explicitly disabled at line 201
+    (`// #define MAKE_SOME_DATA`). Dead example code, not active write logic.
+
+Brief Q2 outcomes:
+  (a) Abstract methods exist + Postgres impl exists → NO (no write-specific abstract
+      methods; only generic exec(SQL_STRING))
+  (b) Abstract methods exist + Postgres impl is stubs → NO
+  (c) Abstract methods absent → reads only by design → CLOSEST MATCH
+
+Refinement: outcome (c) is a slight over-statement. The truth is that the API admits
+writes IN PRINCIPLE via raw SQL strings, but no write SQL is generated by any caller
+and no Atom-write-to-SQL-string mapping logic exists. Functionally, bridge is
+[READ-ONLY-BY-DESIGN] for Atom-level operations.
+
+VERDICT: [READ-ONLY-BY-DESIGN] at the StorageNode interface; raw exec() at the
+llapi level is technically write-capable but unused.
+
+--------------------------------------------------------------------------------
+Q3. SCHEMA-MAPPING BIDIRECTIONALITY
+--------------------------------------------------------------------------------
+
+[NOT FOUND via Glob] No SQLWriter.cc anywhere in the repo:
+  $ Glob '**/*Writer*' → No files found
+
+[VERIFIED] SQLReader.cc contains exclusively read-side mapping logic. The
+SQL-construction primitives (lines 56-353) construct only SELECT statements:
+  - load_one_table:       SELECT column_name, udt_name FROM information_schema.columns
+                          WHERE table_name = '<tablename>'                  (line 62-65)
+  - load_tables:          SELECT tablename FROM pg_tables
+                          WHERE schemaname = 'public'                       (line 110)
+  - make_select:          SELECT col1, col2, ... FROM <tablename>           (line 163-180)
+  - select_where:         SELECT col1, col2, ... FROM <tablename>
+                          WHERE <colname> = '<entry>'                       (line 244-262)
+
+No INSERT/UPDATE/DELETE generators anywhere in SQLReader.cc.
+
+[VERIFIED] SQLResponse.h (the row-by-row callback class) likewise has only
+read-side callbacks: intval_cb, strvec_cb, tabledesc_cb, tabledata_cb, table_row_cb,
+table_column_cb. All emit `add_link` / `add_node` calls (which append to the
+in-memory AtomSpace), never `exec` write-SQL.
+
+VERDICT: [READ-ONLY-BY-DESIGN]. No sibling SQLWriter exists; reader is unidirectional.
+This is itself a "sharp signal" per brief Q3 framing: bridge is not architecturally
+ambivalent about writes — it is structurally read-only.
+
+--------------------------------------------------------------------------------
+Q4. POSTGRES-BACKEND TRANSACTION/CONCURRENCY MODEL
+--------------------------------------------------------------------------------
+
+[NOT FOUND via grep] Zero transaction control in the entire codebase:
+  $ grep -rn 'BEGIN|COMMIT|ROLLBACK|isolation|SERIALIZABLE|REPEATABLE READ|FOR UPDATE|FOR SHARE'
+    opencog/ tests/ examples/ lib/
+  → No matches.
+
+Every PQexec is auto-commit (Postgres default). Each query is implicitly its own
+transaction.
+
+[NOT FOUND via grep] Zero prepared statements:
+  $ grep -rn 'PQexecParams|PQprepare|PQexecPrepared'
+  → No matches.
+
+Bridge uses PQexec (ll-pg-cxx.cc:98) with raw SQL strings constructed by string
+concatenation. The escape_single_quotes utility at llapi.h:124-134 is the only
+defense against SQL injection; sanitization is opt-in per call site.
+
+[VERIFIED] Connection-pool model:
+  llapi.cc:5-10  comment: "This class is thread-enabled but not thread-safe. Two
+                          threads should not try to use one instance of this class
+                          at the same time. Each thread should construct it's own
+                          instance of this class. This class uses no globals."
+  ll-pg-cxx.cc:5-10  same comment, repeated for the Postgres driver.
+
+  BridgeStorage.cc:43           #define POOL_SIZE 3
+  BridgeStorage.cc:91-92        if (0 == _initial_conn_pool_size)
+                                    enlarge_conn_pool(POOL_SIZE, _name.c_str());
+  BridgeStorage.cc:73-83        enlarge_conn_pool: pushes new LLPGConnection
+                                instances onto conn_pool (concurrent_stack).
+  BridgeStorage.h:54            concurrent_stack<LLConnection*> conn_pool;
+
+  SQLResponse.h:82-85  comment: "If the pool is empty, this will block, waiting for
+                                a connection to be returned to the pool. Thus, the
+                                size of the pool regulates how many outstanding
+                                SQL requests can be pending in parallel."
+
+  SQLResponse.h:61-76  Response constructor / destructor: grabs a connection on
+                       first exec(), releases it back to the pool on destruction
+                       (RAII pattern).
+
+[INFERRED] Conflict-detection model: NONE.
+  No version-counter, no MVCC interaction, no row locks, no UPSERT (ON CONFLICT)
+  clauses anywhere. Each query is a standalone auto-commit transaction. Writes (if
+  ever wired) would be subject to standard Postgres MVCC defaults; bridge would not
+  detect concurrent Decko-side writes against the same row.
+
+VERDICT: [NO-TRANSACTIONS] [NO-PREPARED-STATEMENTS] [NO-CONFLICT-DETECTION].
+Bridge assumes single-writer-of-the-moment semantics implicitly; the connection
+pool serializes at the libpq layer per-connection but does not coordinate across
+connections. With Decko's Rails connection pool also writing to the same DB,
+Phase 4 would face race conditions undetectable by either side.
+
+--------------------------------------------------------------------------------
+Q5. ATOM-TYPE MODEL & SCHEMA DISCOVERY
+--------------------------------------------------------------------------------
+
+[VERIFIED] atom_types.script (7 lines total):
+  Line 4   FOREIGN_STORAGE_NODE <- STORAGE_NODE
+  Line 5   BRIDGE_STORAGE_NODE  <- STORAGE_NODE
+  Line 7   "// That's all folks!  Nothing more is needed here!"
+
+Bridge defines ONLY two storage-node atom types and no domain-specific types.
+SQL data is mapped to GENERIC AtomSpace types: ConceptNode, NumberNode,
+PredicateNode, VariableNode, EdgeLink, ListLink, SignatureLink, TypedVariable,
+TypeNode, VariableList. (README:13-22 + the SQL→Atom mapping at SQLResponse.h:153-204
++ the row-emission code at SQLResponse.h:212-241.)
+
+[VERIFIED] SQL→Atom type-mapping table (SQLResponse.h:153-204, table_column_cb):
+  text, varchar         → ConceptNode                  (line 161-165)
+  int4, int2, int8,
+  float4, float8, bool  → NumberNode                   (line 167-175)
+  timestamp, date       → tcol = nullptr (IGNORED)     (line 177-183)
+  bpchar                → tcol = nullptr (IGNORED)     (line 185-192)
+                          comment: "In 'audit_chado' this is used as a binary
+                                    true-false. In 'feature' this is used for
+                                    a hex md5sum. ignore, for now"
+  jsonb                 → tcol = nullptr (IGNORED)     (line 194-199)
+                          comment: "In 'allele_disease_variant'. ignore, for now"
+  unknown               → printf("duuuude unknown coltype >>%s<<", colvalue)
+                          (line 200-201)
+
+[CRITICAL FOR PHASE 4 — Decko schema impact]:
+  Decko core tables (per Magus plan and standard Decko schema):
+    public.cards.id, type_id, etc.    bigint    → NumberNode      ✓
+    public.cards.name, content        text      → ConceptNode     ✓
+    public.cards.created_at,
+    public.cards.updated_at           timestamp → IGNORED          ✗ BLOCKER
+    public.card_actions.id            bigint    → NumberNode      ✓
+    public.card_actions.action_type   varchar   → ConceptNode     ✓
+    public.card_actions.created_at    timestamp → IGNORED          ✗ BLOCKER
+    public.card_changes.value         text      → ConceptNode     ✓ (if text)
+    public.card_changes.diff_obj      jsonb? text? → IGNORED if jsonb ✗ POSSIBLE BLOCKER
+
+  card_actions and card_changes are foundational to Decko's revision-history
+  semantics, which the (L1) loop relies on for "Decko's revision history as the
+  loop's memory" (per memory project_atomspace_phase4_program_2026_05_01.md).
+  Losing timestamps means the loop cannot order revisions chronologically from
+  the AtomSpace mirror. Phase 4 extension MUST add timestamp/date support to
+  table_column_cb before bridge becomes Decko-viable.
+
+  README:160-164 already flags these gaps as future work:
+    * StringNode for SQL TEXT and VARCHAR (instead of ConceptNode)
+    * DateNode for SQL dates and times.
+    * IntegerNode (the existing NumberNode is a vector of floats. ...)
+
+[VERIFIED] Schema discovery mechanism:
+  load_one_table (SQLReader.cc:56-95) executes:
+    SELECT column_name AS c, udt_name AS t
+    FROM information_schema.columns
+    WHERE table_name = '<tablename>';
+  Standard ANSI SQL information_schema — portable across DBs.
+
+  load_tables (SQLReader.cc:97-125) executes:
+    SELECT tablename FROM pg_tables WHERE schemaname = 'public';
+  Postgres-specific catalog. Hard-coded to 'public' schema at line 110.
+  Code comment line 109: "This seems like the correct hack-of-the-moment."
+
+[VERIFIED] Public-schema-only filter:
+  SQLReader.cc:107   commented-out line: rp.exec("SELECT tablename FROM pg_tables
+                     WHERE schemaname != 'pg_catalog';");
+                     // "fetches everything except the postgres tables. Unfortunately,
+                     //  it fetches view and other non-table things."
+  SQLReader.cc:110   active line: rp.exec("SELECT tablename FROM pg_tables
+                     WHERE schemaname = 'public';");
+
+  R2.B4's "public-schema only" claim: VERIFIED at exact line 110.
+
+  Decko impact: standard Decko deployments use `public` schema by default, so this
+  hack happens to align with Decko. But it is brittle — a multi-schema Decko
+  deployment (e.g., `decko_main` + `decko_archive`) would silently exclude
+  non-public schemas. README:293 lists this as an Open Question: "What if the same
+  table appears in multiple schemas?"
+
+VERDICT: [PUBLIC-SCHEMA-HARDCODED]. Type model adequate for FlyBase-style biological
+text+number data; INSUFFICIENT for Decko (timestamps + possibly jsonb dropped).
+
+--------------------------------------------------------------------------------
+Q6. EDGELINK vs EVALUATIONLINK MIGRATION
+--------------------------------------------------------------------------------
+
+[VERIFIED at HEAD] EdgeLink is canonical:
+  SQLReader.cc:287   Handle maybe = _atom_space->get_link(EDGE_LINK, tablename, naked);
+  SQLReader.cc:340   HandleSeq trows(arow->getIncomingSetByType(EDGE_LINK));
+  SQLResponse.h:222  as->add_link(EDGE_LINK, pred, row);
+  README:64-73       "For each row in some table, create a conventional Atomese
+                     EdgeLink." (with example mapping)
+  README:108-109     "See the OpenCog wiki: EdgeLink, PredicateNode"
+
+[NOT FOUND via grep] Zero EVALUATION_LINK references in production code at HEAD:
+  Bridge sources contain only EDGE_LINK references (cf. above).
+
+[VERIFIED via pickaxe] Migration history:
+  $ git log --all -S 'EvaluationLink' --oneline -- opencog/
+  → 2bc00ef Change EvaluationLink to EdgeLink
+  → f0c7276 More work on the basic demo
+  $ git log --all -S 'EdgeLink' --oneline -- opencog/
+  → 2bc00ef Change EvaluationLink to EdgeLink
+
+  Migration completed at 2bc00ef. f0c7276 likely added EvaluationLink in demo files
+  before the rename and dropped it after; net result at HEAD is EdgeLink-only.
+
+[VERIFIED] EdgeLink arity / cardinality at bridge usage:
+  Pattern at README:65-73 + SQLResponse.h:212-241 (tabledata_cb):
+    Edge
+       Predicate "<tablename>"      ; arity-1 outgoing[0]
+       List                         ;          outgoing[1]
+          <ColumnValueAtom1>
+          <ColumnValueAtom2>
+          ...
+          <ColumnValueAtomN>
+  EdgeLink is binary: outgoing[0] = predicate (table name), outgoing[1] = list of
+  column-value atoms. The List is column-position-ordered, not column-name-tagged
+  (column names live in the SignatureLink, not the row Edge).
+
+VERDICT: Migration COMPLETE at HEAD. Phase 4 design must use EdgeLink uniformly.
+Cross-source check pending: atomspace-linas Design Notes A-D references should be
+audited in Source 3 for consistency.
+
+--------------------------------------------------------------------------------
+Q7. RELATIONSHIP TO atomspace-storage AND atomspace-pgres
+--------------------------------------------------------------------------------
+
+[VERIFIED] Parent class:
+  BridgeStorage.h:48   class BridgeStorage : public StorageNode
+  BridgeStorage.h:38   #include <opencog/persist/api/StorageNode.h>
+
+  StorageNode is defined in atomspace-storage (per AGENTS.md:25 + GEMINI.md:30:
+  "atomspace-storage" / "AtomSpaceStorage").
+
+[VERIFIED] CMakeLists.txt dependency declarations:
+  CMakeLists.txt:61    FIND_PACKAGE(CogUtil 2.0.1 CONFIG REQUIRED)
+  CMakeLists.txt:82    FIND_PACKAGE(AtomSpace 5.0.3 CONFIG REQUIRED)
+  CMakeLists.txt:91    FIND_PACKAGE(AtomSpaceStorage CONFIG REQUIRED)
+  CMakeLists.txt:101   FIND_PACKAGE(PGSQL 12) # CONFIG REQUIRED)
+                       (Note: REQUIRED is commented out — sloppy CMake; build will
+                        fail later if PGSQL_FOUND is false because ll-pg-cxx.cc
+                        unconditionally includes <postgresql/libpq-fe.h>.)
+
+[NOT FOUND] Zero dependency on atomspace-pgres anywhere in CMakeLists.txt or
+source includes. Bridge does NOT link against atomspace-pgres; it implements its
+own ll-pg-cxx.{cc,h} from-scratch.
+
+[INFERRED] Write-semantics location:
+  Per brief Q7, the question is whether write semantics are defined at the
+  StorageNode-parent level (so any subclass could implement them) or at the
+  subclass level (atomspace-pgres-only). The presence of `void storeAtom(...)` etc.
+  declarations in BridgeStorage.h:103-110 demonstrates these methods exist as
+  *virtual interface methods* on the parent StorageNode — that's why bridge
+  declares-and-overrides them. So:
+    - StorageNode (parent, in atomspace-storage) defines the write-method INTERFACE
+      contract.
+    - Each subclass (atomspace-bridge, atomspace-pgres, atomspace-rocks, atomspace-
+      cog, etc.) must implement them OR provide empty no-op overrides.
+    - Bridge chose empty no-ops (Q1).
+
+[INFERRED] Reuse opportunity for Phase 4 (B):
+  In principle, a Phase 4 (B) extension could:
+    (a) Add a write-path to bridge that reuses atomspace-pgres's writer — NO,
+        because bridge does not link atomspace-pgres and atomspace-pgres writes
+        to its own rigid Atom/Value tables (per R2.B4: "atomspace-pgres is
+        BACKING-STORE-ONLY and not Decko-compatible"), not arbitrary SQL tables.
+    (b) Build a new write-path inside bridge that constructs INSERT/UPDATE/DELETE
+        SQL from incoming Atom writes, keyed off the SignatureLink schema — YES
+        in principle, but requires significant new code (the schema-to-SQL
+        write-mapping is the missing piece).
+
+VERDICT: Bridge inherits StorageNode interface from atomspace-storage; is INDEPENDENT
+of atomspace-pgres at the linker level. Phase 4 (B) cannot piggyback on atomspace-
+pgres's writer; would need from-scratch write-mapping logic in bridge or in a new
+adapter.
+
+--------------------------------------------------------------------------------
+Q9. LINAS'S STATED DIRECTION
+--------------------------------------------------------------------------------
+
+[VERIFIED] README.md states writes as a desired feature:
+  README:13-15  "The following are desired features:"
+  README:23-25  "* The bridge should allow both the read and the update of the
+                  contents (rows) in the SQL tables (while maintaining all
+                  foreign-key constraints during writing.)"
+
+So writes ARE on Linas's roadmap, declared explicitly. They are simply not
+implemented at HEAD (Q1 confirms no implementation, no history of implementation).
+
+[VERIFIED] README.md states sensory/perception API alignment:
+  README:30-31  "* Adherence to the AtomSpace Sensory perception-action API for
+                  general agents."
+
+  Cross-reference: Perception cluster pilot 2026-05-01 mapped opencog/sensory as
+  the Hyperon-era perception bridge with 7 wired sensory atom types (TEXT_FILE_NODE,
+  FILE_SYS_NODE, UNIX_SOCKET_NODE, TCP_SOCKET_NODE, TERMINAL_NODE, I_R_CHAT_NODE,
+  OLLAMA_NODE — see project_perception_pilot_2026_05_01.md). Linas explicitly
+  positions atomspace-bridge as part of the same I/O fabric.
+
+[VERIFIED] Commit `9b8bf80 Add mention of sensory perception-action` in the
+HEAD~12 region of bridge history (per brief §3 commit listing). Linas added this
+language to README intentionally, after the bridge rename. So the perception/sensory
+positioning is recent and deliberate, not legacy.
+
+[VERIFIED] notes file (opencog/persist/bridge/notes, 93 lines):
+  Pure Postgres schema-introspection scratch (pg_attribute, pg_class, pg_namespace,
+  pg_index queries). Mentions FlyBase-style schema names (gene, gene_group,
+  humanhealth, public). Contains Scheme demo using fetch-incoming-set and
+  cog-incoming-size-by-type ... 'EdgeLink. Zero mention of writes, updates,
+  transactions, or conflict resolution.
+
+[INFERRED] Direction:
+  - Linas sees bridge as a stepping-stone toward bidirectional sync (README:23-25).
+  - Linas sees bridge as part of the larger AtomSpace Sensory perception/action
+    fabric (README:30-31, commit 9b8bf80).
+  - Linas's IMMEDIATE work has been schema-introspection refinement (notes file)
+    and read-path scaling (basic-demo.scm:215-254 — multi-hundred-GB FlyBase load).
+  - Writes, schema-evolution, conflict-detection are roadmap items but have not
+    been worked. The 9-month idle period (2025-08-15 to 2026-05-03) in atomspace-
+    bridge suggests Linas's focus has moved elsewhere (possibly the sensory/agents/
+    motor portfolio per the Perception cluster pilot).
+
+VERDICT: Bridge is a [BULK-IMPORT-THEN-READ] tool that Linas intends to extend with
+writes "someday" per README, but has not prioritized. Phase 4 (B) timeline cannot
+rely on upstream Linas to deliver write-path; either we contribute upstream or we
+build separately.
+
+--------------------------------------------------------------------------------
+Q10. CONCURRENCY-CEILING + LATENCY HEADROOM (Decko-rate)
+--------------------------------------------------------------------------------
+
+[VERIFIED] Pool size: BridgeStorage.cc:43 — `#define POOL_SIZE 3`. Hard-coded;
+not configurable via constructor or runtime API. enlarge_conn_pool (lines 73-83)
+allows growing the pool but no caller invokes it after the initial open() call.
+
+[VERIFIED] Pool is the bottleneck:
+  SQLResponse.h:82-85 comment: "If the pool is empty, this will block, waiting
+  for a connection to be returned to the pool. Thus, the size of the pool
+  regulates how many outstanding SQL requests can be pending in parallel."
+
+[VERIFIED] Performance scale evidence (basic-demo.scm:215-254):
+  - "featureloc -- 97643867 (97 million) rows, 340M Atoms, 250GB RSS"
+  - "Loading the `featureloc` table requires approx 250 GB RAM to load. It will
+     take approx 35 min on a fast machine, so about 46K rows/sec."
+  - Total FlyBase: 458,126,237 rows.
+
+  Sustained read rate of 46K rows/sec on the bulk-import path. This is excellent
+  for one-time imports, but doesn't speak to per-row latency for individual queries
+  (which is what Decko's ~tens-to-hundreds-per-minute card-edit rate would actually
+  exercise).
+
+[INFERRED] Decko write rate vs bridge ceiling:
+  Decko's edit rate (tens-to-hundreds/min, per brief Q10) implies <5 ops/sec at peak.
+  POOL_SIZE=3 with no batching can comfortably handle 5 ops/sec assuming each query
+  completes in <600ms (ceiling = pool_size / op_latency). Per-Atom query latency
+  via libpq + roundtrip is typically 1-5ms for simple INSERTs on a local Postgres,
+  so ~3 connections × 200 ops/sec/connection = 600 ops/sec headroom.
+
+  Decko's write rate is well within bridge's pool capacity for the (B) Decko→AtomSpace
+  direction — IF write SQL existed and IF the writes were single-statement.
+  Multi-statement transactions (BEGIN/INSERT/INSERT/COMMIT) would reduce headroom
+  by the transaction's full cycle.
+
+  The actual ceiling-relevant constraint is the absence of transactions (Q4): if
+  Phase 4 needs to write multiple atoms representing one Decko card edit (card +
+  card_action + card_change), and those must commit atomically, the current bridge
+  has no mechanism to do so.
+
+VERDICT: Bridge architecture is [BULK-IMPORT-THEN-READ] (basic-demo's narrative
+tone confirms this — load-all-then-query). Decko's write rate is within nominal
+ceiling, but transaction-coupling for multi-table writes is unsupported.
+
+--------------------------------------------------------------------------------
+Q11. ATOM-IDENTITY STABILITY UNDER ROUND-TRIP (L1 prerequisite)
+--------------------------------------------------------------------------------
+
+[VERIFIED] AtomSpace identity model (used by bridge):
+  - add_node(TYPE, name)      → returns existing handle if (TYPE, name) already
+                                exists; else creates new. (Standard AtomSpace
+                                content-addressing.)
+  - add_link(TYPE, [outgoing])→ returns existing handle if same outgoing seq
+                                already linked; else creates new.
+
+[VERIFIED] Bridge's atom-naming for Decko-equivalent rows:
+  - Predicate: SQLReader.cc:90  add_node(PREDICATE_NODE, tablename) — STABLE per
+                                table name (deterministic).
+  - Variables (column names): SQLResponse.h:157  add_node(VARIABLE_NODE, colvalue)
+                                — STABLE per column name.
+  - Row data (per row, per column): SQLResponse.h:236
+                                add_node(tnp->get_kind(), colvalue)
+                                — STABLE per (column-type, column-value-string).
+  - Row Edge: SQLResponse.h:221-222
+                                Handle row = as->add_link(LIST_LINK, elts);
+                                as->add_link(EDGE_LINK, pred, row);
+                                — STABLE per (table predicate, row's column-value
+                                atom sequence).
+
+[VERIFIED via re-derivation] Re-open semantics:
+  After cog-bridge-close + cog-bridge-open + re-load, the same row will re-emit
+  the same atoms because:
+    (a) information_schema.columns query is deterministic (same schema → same
+        SignatureLink content);
+    (b) row data on a non-changing row produces same column-value strings → same
+        atoms via add_node;
+    (c) AtomSpace add_link/add_node deduplicates by content, so the EdgeLink for
+        a row hashes/compares equal to the prior session's EdgeLink (assuming
+        prior atoms were retained).
+
+[CRITICAL FOR (L1)] Atom identity is content-addressed by ROW-DATA + PRIMARY-KEY,
+NOT by primary-key alone:
+  - Bridge does NOT distinguish primary-key columns from data columns in the
+    SignatureLink. SQLResponse.h:140-152 (tabledesc_cb) treats every column as a
+    TypedVariable with no primary-key flag.
+  - Result: if a Decko card 1234's content changes from "hello" to "world", bridge
+    would emit a NEW EdgeLink representing the new row state, ALONGSIDE the old
+    EdgeLink (which still represents "hello"). The AtomSpace gets BOTH; bridge has
+    no GC for stale EdgeLinks.
+  - Re-running fetch-incoming-set on the same Predicate (table) does not delete
+    stale EdgeLinks — it just re-emits current rows, with the AtomSpace dedup'ing
+    re-emitted atoms but not detecting absence (deletion).
+
+[CRITICAL FOR (L1)] Agent-write update-vs-insert recognition: NONE.
+  - storeAtom is empty no-op (Q1), so any agent atom-write is silently dropped.
+  - Even if storeAtom were extended, recognizing "this incoming EdgeLink represents
+    an UPDATE to an existing row, not a NEW row" requires:
+       (1) identifying which outgoing atoms in the EdgeLink correspond to primary-
+           key columns (currently not flagged in SignatureLink);
+       (2) querying the AtomSpace for an existing EdgeLink with the same primary-
+           key but possibly different other-column values;
+       (3) issuing UPDATE SQL rather than INSERT SQL based on (2).
+  - None of (1), (2), (3) exist in bridge code.
+
+VERDICT for Phase 4 (L1):
+  - Atom-identity is [CONTENT-ADDRESSED-IDENTITY]: stable across re-reads of the
+    SAME row state, but creates a NEW atom for any changed row state (without
+    GC of old).
+  - L1 round-trip is NOT supported: no primary-key flagging, no update-vs-insert
+    recognition, no GC for stale atoms.
+  - Minimum extension for L1: (a) annotate SignatureLink with primary-key column
+    indices (e.g., a new TypedVariable annotation or sibling tag link); (b) extend
+    storeAtom to look up existing EdgeLink by primary-key, distinguish UPDATE from
+    INSERT, and emit corresponding SQL; (c) extend removeAtom (and trigger from
+    fetchIncomingSet refresh logic) to GC stale EdgeLinks.
+
+  This is multi-week-to-multi-month work, NOT a small extension.
+
+--------------------------------------------------------------------------------
+Q12. CONFLICT-RESOLUTION SEMANTICS UNDER CO-CANONICAL WRITES
+--------------------------------------------------------------------------------
+
+[NOT FOUND via grep] Zero version-counter / sync-token / optimistic-lock /
+sequence-number / MVCC-interaction code. Already documented under Q4.
+
+[INFERRED] Concurrency model assumption (per brief Q12 options):
+  (a) Sole-bridge-process — currently moot because bridge has no write code;
+      future extension would be in this category by default unless explicit sync
+      is added.
+  (b) Sole-Decko-writer — what bridge currently is (reads only, Decko writes
+      Postgres).
+  (c) Single-DB-writer-of-the-moment with caller-coordinated locking — this is
+      what Phase 4 (B) would pragmatically need, but bridge does NOT facilitate
+      this (no advisory-lock primitives, no row-version checks).
+  (d) Last-writer-wins with no detection (silent corruption risk) — what would
+      happen if bridge writes were naïvely added without sync.
+
+  Currently, since bridge does not write, the model is effectively (b) Sole-Decko-
+  writer. A naïve Phase 4 extension would put us in (d) without explicit work.
+
+[VERIFIED via Q4] No transaction control (no BEGIN/COMMIT/ROLLBACK), no isolation-
+level setting, no FOR UPDATE / FOR SHARE row locks, no UPSERT (ON CONFLICT). Bridge
+operates in Postgres default auto-commit + READ COMMITTED isolation, which is the
+weakest of the standard isolation levels.
+
+[INFERRED] (B) co-canonical promise viability:
+  The (B) co-canonical promise — both stores authoritative — is meaningless if
+  bridge silently overwrites Decko-side writes that happened during bridge's
+  read-modify-write window. With no version-counter and no optimistic-lock,
+  bridge cannot detect such races. The Phase 4 (B) architecture MUST add a sync
+  layer above bridge — either:
+    - Postgres advisory locks (pg_advisory_lock) acquired by bridge before
+      writing a row;
+    - A version-counter column on each Decko-mirrored table (Decko's
+      `card_actions.id` could serve this role for cards, but not for ad-hoc
+      atoms);
+    - A change-data-capture mechanism (Postgres LISTEN/NOTIFY, logical replication,
+      or Decko-side callback hooks) that tells bridge to invalidate its mirror
+      view when Decko writes happen.
+
+VERDICT: Bridge is structurally ill-equipped for co-canonical writes. Outcome (d)
+without remediation. Phase 4 (B) requires either a new sync layer above bridge or
+a different write substrate.
+
+--------------------------------------------------------------------------------
+Q13. SCHEMA-EVOLUTION TOLERANCE
+--------------------------------------------------------------------------------
+
+[VERIFIED] Schema is queried per-call:
+  load_one_table (SQLReader.cc:56-95) executes information_schema.columns query
+  on every invocation. Each call FRESHLY reads the current schema.
+
+[VERIFIED] But SignatureLink uniqueness is enforced:
+  get_row_desc (SQLReader.cc:143-157):
+    line 150  HandleSeq sigs = tablename->getIncomingSetByType(SIGNATURE_LINK);
+    line 151  if (1 != sigs.size())
+    line 152-154  throw RuntimeException(TRACE_INFO,
+                  "Cannot find signature for %s\n",
+                  tablename->to_short_string().c_str());
+
+  This throws if the SignatureLink count is anything other than 1.
+
+[INFERRED] Schema-evolution failure mode:
+  Suppose at t=0, table `cards` has columns [id, name, content, type_id].
+    load_one_table emits SignatureLink_A wrapping VariableList_A with 4
+    TypedVariables.
+  At t=1, a Decko module migration adds column `cards.metadata`.
+    load_one_table re-runs, emits NEW VariableList_B with 5 TypedVariables.
+    Since AtomSpace add_link is content-addressed and VariableList_B differs from
+    VariableList_A (different content), a NEW SignatureLink_B is created.
+    AtomSpace now has both SignatureLink_A and SignatureLink_B incoming to the
+    same PredicateNode "cards".
+  At t=2, any subsequent fetch-incoming-set or load_rows invocation calls
+    get_row_desc("cards"), which finds 2 SignatureLinks (sigs.size() == 2) and
+    THROWS "Cannot find signature for cards".
+
+  Workaround: cog-close + cog-open (full reset). New process re-discovers schema
+  from scratch and emits only one (current) SignatureLink, which then satisfies
+  the uniqueness invariant.
+
+  Issue: the workaround DESTROYS in-flight AtomSpace state. Phase 4's L1 loop
+  cannot rely on the AtomSpace mirror surviving a Decko module migration.
+
+VERDICT: [SCHEMA-EVOLUTION-BREAKS-RUNTIME]. Bridge tolerates schema STATIC; bridge
+BREAKS PERMANENTLY on schema evolution mid-session. Phase 4b durability concern
+confirmed: every Decko module update would force a bridge restart.
+
+  Minimum extension: relax get_row_desc to pick the most-recent SignatureLink
+  (by some timestamp metadata) OR delete stale SignatureLinks during schema
+  re-discovery OR enforce a singleton-SignatureLink-per-table invariant via
+  explicit removal before re-add. None of these exist.
+
+--------------------------------------------------------------------------------
+Q14. AGENT-WRITE-RATE CEILING (L1 complement to Q10)
+--------------------------------------------------------------------------------
+
+[VERIFIED] Lock granularity: LLConnection is per-thread, not thread-safe (llapi.cc:
+5-10 + ll-pg-cxx.cc:5-10 comments). The pool (concurrent_stack<LLConnection*>)
+serializes connection-acquisition; once a thread holds a connection, that
+connection is single-threaded for that thread.
+
+[VERIFIED] Transaction overhead: each PQexec is auto-commit. Per-atom-write would
+mean per-atom-PQexec round-trip = network/socket latency + Postgres parse + plan +
+execute + WAL write + commit. On a local DB, ~1-3ms per atom; on a remote DB,
+~5-50ms.
+
+[VERIFIED] Batching: NONE. No prepared statements, no PQexecParams, no copy-mode,
+no multi-row INSERT statement construction. (Q4 grep confirmed.)
+
+[VERIFIED] Connection-pool semantics: 3 connections shared across all threads
+(BridgeStorage.cc:43 + SQLResponse.h:82-85).
+
+[INFERRED] Agent-write-rate ceiling (qualitative):
+  - Best case (local DB, 1ms per write): 3 connections × 1000 writes/sec/connection
+    = 3000 atom-writes/sec.
+  - Realistic case (local DB, 3ms per write, no batching): ~1000 atom-writes/sec.
+  - Remote DB or contention: ~100-500 atom-writes/sec.
+
+  Agent reasoning loops can produce 10²-10⁴ atom-writes/sec (per brief Q14).
+  Bridge as-is is at the LOW END of acceptable for low-end agent loops; at
+  HIGH-END agent loops (10⁴/sec), bridge would saturate the connection pool and
+  serialize the loop.
+
+  For comparison: the brief mentions Source 4 covers MORK + atomspace-rocks
+  alternatives. atomspace-rocks (RocksDB-backed) typically supports 10⁴-10⁵
+  atom-ops/sec because it is in-process and doesn't pay socket/SQL overhead.
+
+[INFERRED] Bottleneck identification:
+  1. Connection-pool size (POOL_SIZE=3 hard-coded) — can be lifted by editing
+     BridgeStorage.cc:43 and recompiling, or by exposing it as a constructor
+     parameter.
+  2. Lack of prepared statements — every PQexec parses + plans the SQL string from
+     scratch, ~30-100% per-query overhead.
+  3. Lack of batching — no multi-row INSERT, no COPY mode.
+  4. Auto-commit — every write fsyncs WAL; group commit (one fsync per batch)
+     would 5-10× improve throughput.
+
+VERDICT: Bridge is below threshold for high-rate L1 agent loops. Phase 4 must
+either:
+  (a) extend bridge with prepared statements + batching + larger pool +
+      transaction control, OR
+  (b) route L1 agent-writes through a different substrate (cf. Source 4 MORK
+      write-path comparison; if MORK supports atom-rate writes natively, that's
+      the better L1 target than extending bridge).
+
+--------------------------------------------------------------------------------
+Q8. DECKO-ADAPTABILITY SYNTHESIS (Options A/B/C/D)
+--------------------------------------------------------------------------------
+
+Option A. Bridge reads Decko's tables directly with a custom mapping file; writes
+flow Decko → Postgres → bridge re-reads (read-only path; this is essentially
+Phase 3).
+
+  Feasibility (Phase 4 (B) target): N/A — Option A is Phase 3.
+  As a Phase 3 fallback: VIABLE. Bridge already does this for FlyBase; Decko's
+  schema fits the public-only filter; type-mapping is mostly OK except for
+  timestamps (timestamps would need a Type extension to be addable to the
+  AtomSpace, but lack of timestamps doesn't break Phase 3 read-only — those
+  fields just don't surface in the mirror).
+
+Option B. Decko-side exporter produces an atomese stream / file; bridge ingests
+via existing read-path. No write coupling.
+
+  Feasibility (Phase 4 (B) target): N/A — Option B is also read-only.
+  Useful if we want to bypass bridge's information_schema.columns introspection
+  (e.g., for schema-evolution control or for Decko-cardtype-aware serialization).
+  Useful as an architectural fallback if Option A's public-schema-only filter
+  becomes problematic.
+
+Option C. Add a write-path to bridge that writes back into Decko's Postgres
+tables, respecting card_actions / card_changes revision semantics. This is the
+Phase 4 (B)+(L1) target.
+
+  Feasibility: HIGH ENGINEERING COST. Specifically requires:
+    - Atom-write→SQL mapping logic (currently zero) — extend SQLReader sibling
+      "SQLWriter" for INSERT/UPDATE/DELETE generation.
+    - Primary-key flagging in SignatureLink (Q11) — bridge's TypedVariable
+      doesn't distinguish PK columns; ALL columns are equal.
+    - Transaction control (Q4) — BEGIN/COMMIT around multi-table writes for
+      Decko card-edit atomicity (card + card_action + card_change must commit
+      together).
+    - Update-vs-insert recognition (Q11) — agent edits to existing rows must
+      become UPDATE, not duplicate INSERT.
+    - Timestamp/jsonb type-mapping (Q5) — Decko's created_at/updated_at currently
+      ignored.
+    - Schema-evolution tolerance (Q13) — current bridge breaks on Decko module
+      migrations; Phase 4 needs a singleton-SignatureLink invariant.
+    - Conflict-detection (Q12) — version-counter or pg_advisory_lock layer.
+    - Connection-pool sizing + prepared statements + batching (Q14) — for L1
+      agent-write rates.
+    - Test suite (Q0 setup; tests/ is empty) — no regression baseline.
+
+  Estimated cost: multi-month full-time dev. Bridge-as-extension is essentially
+  building a new persistence layer on top of bridge's read scaffolding. The read
+  scaffolding's IP is non-trivial (generic schema discovery + EdgeLink mapping +
+  pool management), but the write side is greenfield.
+
+  Source dependencies:
+    - Source 5 (Decko semantics inventory) defines what Decko-side state must
+      reach the mirror — this constrains the Atom-write→SQL mapping above.
+    - Source 7 (Magus plan reconciliation) — March 2026 plan may have committed
+      to a particular mechanism; if so, Option C work plan must align.
+
+Option D. Bypass bridge entirely; Phase 4 is a Decko-side Rails-callback-driven
+AtomSpace mirror that emits atoms directly to a Hyperon Space (Source 2 territory).
+
+  Feasibility: HIGH for (B) Decko→AtomSpace direction. Decko has Rails callbacks
+  on every card edit (`set_callbacks`, `subset_card_actions` events) that can fire
+  a write to an AtomSpace-side queue. The agent then consumes the queue and writes
+  Hyperon Space atoms.
+
+  For (L1) agent→Decko direction: requires a separate mechanism — Hyperon Space
+  write-hooks (Source 2) that fire on agent-driven atom writes, then translate to
+  Decko's Rails REST API or direct SQL. Either way, doesn't depend on bridge.
+
+  Engineering cost: MEDIUM. Decko-side Ruby callbacks are well-documented; Rails
+  REST API for card edits is well-tested; the atom-to-card-edit translation is
+  net-new but bounded. Type model can be designed Decko-natively (timestamps
+  preserved, jsonb preserved) rather than constrained by bridge's existing
+  mapping.
+
+  Source dependencies:
+    - Source 2 (hyperon-experimental Hyperon Space write-API) defines what
+      target abstraction we write to.
+    - Source 5 (Decko semantics) defines what Decko-side hooks we use.
+    - Source 6 (agent-facing MCP surface options) — option D could expose a
+      higher-level MCP interface than bridge does; design TBD.
+
+[RECOMMENDED OPTION] D, with C as fallback if Source 2 (Hyperon Space) findings
+show writable-Hyperon-Space is also unsupported.
+
+Reasoning:
+  1. Architectural mismatch: bridge is bulk-import-then-read (Q9, Q10). Phase 4
+     wants sustained low-latency write-through. Extending bridge means fighting
+     its design grain.
+  2. Type model ceiling: bridge can't represent Decko's full schema (timestamps,
+     jsonb). Option C requires extending the type model anyway; Option D builds
+     the type model fit-to-purpose from the start.
+  3. Test coverage: bridge has zero test coverage (Q0). Option C builds writes on
+     a tested-zero base. Option D can build with a fresh test suite from day 0.
+  4. Identity model: bridge's content-addressed identity (Q11) doesn't model
+     Decko card identity well. Option D can use Decko's card-id as the primary
+     atom-identity scheme directly.
+  5. Conflict-detection: bridge has none (Q12). Option C must add a sync layer
+     ABOVE bridge anyway. Option D can use Decko's existing card_actions revision
+     log as the conflict-detection mechanism natively.
+
+  However, Option D has its own risks:
+    - Depends on Source 2 finding that Hyperon Space supports the needed
+      write-API.
+    - Requires Decko Rails-side work, not just AtomSpace-side work.
+    - Doesn't use bridge's already-existing schema-discovery code.
+
+  Source-dependent re-evaluation: if Source 4 finds MORK is the right L1 substrate
+  AND Source 2 finds Hyperon Space is read-only, Option D might evolve to
+  D' = Decko-callback → MORK write-path → agents read MORK, write back via MORK.
+
+Final recommendation: **Option D**, contingent on Source 2 + Source 4 + Source 5
+findings. Option C is the fallback if those findings show D is infeasible.
+Options A and B are read-only-only and don't satisfy Phase 4 (B)+(L1) by themselves.
+
+--------------------------------------------------------------------------------
+ADDITIONAL FINDINGS NOT IN BRIEF Q-LIST
+--------------------------------------------------------------------------------
+
+F1. [VERIFIED] Public Scheme API mismatch:
+  persist-bridge.scm:21 exports `cog-bridge-load-tables` and `cog-bridge-load-rows`
+  (plural).
+  basic-demo.scm:177 calls `cog-bridge-load-row` (SINGULAR).
+  Either the demo is stale (using old API), the module export is incomplete (missing
+  singular), or there's an alias registered elsewhere. Grep for
+  cog-bridge-load-row at this commit:
+    SQLReader.cc:268 declares HandleSeq load_rows(...) — name doesn't match.
+    BridgeStorage.h:123 declares HandleSeq load_rows(const Handle&, const Handle&,
+    const Handle&) — same.
+    BridgePersistSCM.cc would be the binding site (not yet read in this pass).
+
+  Minor finding, but indicative of the demo-vs-code drift; Source 1's purpose is
+  to anchor write-path assumptions, so this is mainly a flag for the Source 1
+  reconciliation pass to verify against Codex/Gemini findings.
+
+F2. [VERIFIED] Postgres-only by design at HEAD:
+  README:33 "At this time, only Postgres is supported."
+  CMakeLists.txt:101 only finds PGSQL.
+  llapi.h is generic; ll-pg-cxx.{cc,h} is the Postgres impl. No other backend
+  imple-mentations exist (no ll-mysql, ll-sqlite, etc.). Phase 4's Decko deployment
+  uses Postgres; this aligns.
+
+F3. [VERIFIED] Stats-tracking is read-side only:
+  BridgeStorage::_num_queries, _num_tables, _num_rows are incremented only in
+  load_tables (line 103, 116, 117) and load_selected_rows (line 191, 201).
+  monitor() (BridgeStorage.cc:159-175) reports these stats.
+  No write-stats tracking exists; if writes were added, monitor would silently
+  not count them.
+
+F4. [VERIFIED] Sole contributor + extended idle:
+  Per brief §3 (which I confirmed via HEAD commit author): all 116 commits by Linas
+  Vepstas (across both encoding spellings). HEAD date 2025-08-15; 9 months idle as
+  of 2026-05-03. Combined with the perception cluster pilot's mapping of Linas's
+  active portfolio (sensory @ 64849f3 with ~733 commits, agents/motor/evidence/
+  atomese-simd active), Linas's focus has clearly moved away from bridge to the
+  perception/sensory portfolio. Phase 4 cannot rely on upstream Linas-driven
+  progress on bridge during the Phase 4 timeline.
+
+F5. [VERIFIED] CMakeLists.txt:201 self-flagged as broken: "XXX FIXME. Packging
+  below is stale/wrong/broken." Validates AGENTS.md:26 caveat. Phase 4 packaging
+  must not use the existing CMake packaging stanza.
+
+--------------------------------------------------------------------------------
+CROSS-REFERENCE TO INHERITED CONCLUSIONS
+--------------------------------------------------------------------------------
+
+R2.B4 (AtomSpace cluster pilot 2026-04-29):
+  "atomspace-bridge is BridgeStorageNode, public-schema only, write stubs empty"
+  STATUS: VERIFIED + HARDENED.
+  - "BridgeStorageNode": confirmed at BridgeStorage.h:126-144 (factory) +
+    atom_types.script:5.
+  - "public-schema only": confirmed at SQLReader.cc:110, code comment at line 109
+    self-acknowledges "the correct hack-of-the-moment".
+  - "write stubs empty": confirmed at SQLReader.cc:395-425, with HARDENING:
+    stubs are silent-no-op overrides (not throws), and pickaxe shows they have
+    NEVER been implemented in repo history.
+
+R2 four-layer taxonomy: atomspace-bridge sits in Layer 1 (Classical AtomSpace).
+  STATUS: CONSISTENT — bridge inherits from StorageNode (atomspace-storage), uses
+  generic Atom types only, no Hyperon-Space awareness, no DAS attention semantics,
+  no MORK PathMap. Layer 1 placement confirmed.
+
+R2 atomspace-pgres relationship:
+  "atomspace-pgres is BACKING-STORE-ONLY and not Decko-compatible (rigid Atom/Value
+  tables, no card semantics, no permissions, no history)"
+  STATUS: ORTHOGONAL — bridge is independent of atomspace-pgres at the linker level
+  (Q7); they share only the StorageNode interface from atomspace-storage. R2's
+  characterization of pgres is unaffected by Source 1's findings.
+
+--------------------------------------------------------------------------------
+METHODOLOGY NOTES
+--------------------------------------------------------------------------------
+
+- CF5.6 file-existence verification: applied to GEMINI.md:14 over-claim ("Bidirectional
+  Sync: Supports both reading from and updating SQL table contents"). VERIFIED FALSE
+  via direct code inspection at SQLReader.cc:395-425 + persist-bridge.scm exports.
+  Flag for Gemini reviewer reconciliation.
+
+- Pickaxe-before-dead-code: applied to Q1 (storeAtom). VERIFIED that empty stubs are
+  original-state, not regressed-state. No "writes were once wired then removed"
+  hidden history.
+
+- ECAN audit token-list (dual-API): applied via Scheme + C++ grep for write-side
+  exports. persist-bridge.scm exports zero write primitives; BridgePersistSCM.cc
+  not yet read in this pass — recommended for Source 1 reconciliation against
+  Codex/Gemini findings to confirm full Scheme/C++ API symmetry.
+
+- Bidirectional fork-divergence: NOT performed for Source 1 (only one repo audited;
+  no fork comparison). The brief §6 mentions checking atomspace-linas tree for
+  divergent bridge branch; deferred to Source 3 (which audits atomspace-linas
+  Design Notes).
+
+- Time-indexed caller analysis: HEAD as of 2025-08-15 is the relevant snapshot.
+  No caller-existence claims made about pre-HEAD history beyond pickaxe verification.
+
+--------------------------------------------------------------------------------
+SUMMARY (one-paragraph synthesis for SPEC_DRAFT.md)
+--------------------------------------------------------------------------------
+
+atomspace-bridge at HEAD (40b8af7, 2025-08-15) is a [READ-ONLY-BY-DESIGN]
+[BULK-IMPORT-THEN-READ] tool that maps Postgres tables into AtomSpace via
+EdgeLink/SignatureLink representations using generic atom types only. The full
+StorageNode write interface is declared and overridden as silent no-op stubs at
+SQLReader.cc:395-425; pickaxe verifies these stubs are original-state, not
+regressed (writes were never wired). The codebase has no transaction control,
+no prepared statements, no conflict detection, no schema-evolution tolerance,
+no primary-key flagging, no test coverage, and a hard-coded 3-connection pool.
+For Phase 4 (B)+(L1), Option D (Decko-callback-driven AtomSpace mirror, bypassing
+bridge) is recommended over Option C (extending bridge) because bridge's
+architectural grain runs counter to sustained low-latency co-canonical
+write-through and bridge's type model cannot represent Decko's full schema
+(timestamps, jsonb dropped). Final option choice depends on Source 2 (Hyperon
+Space write-API), Source 4 (MORK comparison), and Source 5 (Decko semantics)
+findings.
+
+================================================================================
+END OF FINDINGS — Source 1, Claude
+================================================================================

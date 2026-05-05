@@ -1,0 +1,724 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 3
+atomspace-linas Design Notes A-D + cpp-mcp + atomspace-pgres write-path
+================================================================================
+
+Date opened:    2026-05-04
+Cluster pilot:  atomspace_integration_phase4
+Source #:       3 of 7
+Orchestrator:   Claude (this session)
+Cross-model reviewers: Codex + Gemini (separate sessions)
+Reconciliation deliverable: findings_reconciled_crossmodel.txt
+Spec input:     feeds the eventual SPEC_DRAFT.md at cluster close.
+
+This is a DURABILITY / IDENTITY / WRITE-BACK source. It does NOT reopen the
+Hyperon Space writability question (Source 2 closed: write API is complete
+at the Space/C/Python surface; MeTTa surface incomplete pending PATCH-2).
+
+Per Codex's Source 2 reconciliation guidance:
+  "review with focus on how atomspace-linas/MORK/cpp-mcp affect Option D's
+   durability, identity, and write-back boundaries, rather than reopening
+   the now-settled Hyperon Space writability question."
+
+--------------------------------------------------------------------------------
+1. CONTEXT
+--------------------------------------------------------------------------------
+
+Phase 4 baseline (locked in by Sources 1+2):
+  - Architecture: Option D (Decko-callback-driven AtomSpace mirror).
+  - Substrate:    Hyperon Space at HEAD; in-memory; Postgres = durability.
+  - Write API:    Complete at Space/C/Python surface; MeTTa needs PATCH-2.
+  - Observer:     Complete in Rust/C; Python needs PATCH-1
+                  (space_register_observer pybind11 binding).
+
+Source 3 audits **classical OpenCog AtomSpace + Linas's design notes +
+cpp-mcp** to answer:
+
+  (Q-A) DURABILITY: Does atomspace-pgres provide a write-capable durable
+        backend that Phase 4 should consider in addition to (or instead of)
+        Postgres-via-Decko-callbacks? (Source 1 F4 finding: atomspace-pgres
+        @ 6fe9763 has implemented writer code — verify and assess.)
+
+  (Q-B) IDENTITY: Does classical AtomSpace expose stable atom-handle
+        identity (UUIDs, persistent handles) that Phase 4 lacks in Hyperon
+        Space (Source 2 Q7: "structural identity, no UUID")? If yes, can it
+        be borrowed for Decko round-trip without changing Hyperon Space?
+
+  (Q-C) WRITE-BACK: Linas's Design Notes A (streams/flows/futures), B
+        (Assembly Theory), C (GuardLink/RuleLink unification), D (Analytics/
+        Introspection) — do any provide architectural patterns Phase 4
+        should adopt for the L1 agent-write-back path or the Decko-mediated
+        write-back observer?
+
+  (Q-D) MCP SURFACE: cpp-mcp is a generic C++ MCP framework (third-party,
+        hkr04 author, not Linas-affiliated). Is it the right substrate for
+        Phase 4's agent-facing MCP server? Or should the Phase 4 MCP server
+        be Python (matching the mirror service if Path II is chosen)?
+
+This source feeds Source 4 (MORK + DAS + atomspace-rocks comparison) and
+Source 6 (agent-facing MCP surface design).
+
+--------------------------------------------------------------------------------
+2. INHERITED CONCLUSIONS (do not re-derive)
+--------------------------------------------------------------------------------
+
+From Source 1 (atomspace-bridge, closed 2026-05-03):
+  - atomspace-bridge is [READ-ONLY-BY-DESIGN] [BULK-IMPORT-THEN-READ];
+    not viable for Phase 4 write-through.
+  - F4 finding (Codex): atomspace-pgres @ 6fe9763 has implemented writer
+    code in SQLAtomStore.cc (storeAtom et al.). Verify in Source 3 Q1.
+  - V1-Q1 lesson: pickaxe without path filter for renamed dirs.
+
+From Source 2 (hyperon-space write API, closed 2026-05-04):
+  - SpaceMut::add/remove/replace at hyperon-space/src/lib.rs:237/255/275
+    is the canonical write API.
+  - Observer pattern (SpaceObserver/SpaceEvent/SpaceCommon) is present in
+    Rust/C; Python binding gap is PATCH-1.
+  - Atom identity is structural; no stable UUID/handle in SpaceMut.
+  - Single-threaded by design (Rc/RefCell); maintainer-acknowledged at
+    c/src/space.rs:117-119.
+  - No native Rust PersistentSpace trait.
+  - Phase 4 mirror service runs as single process; Postgres = durability
+    via Decko callbacks.
+  - PATCH-1 (Python observer binding) and PATCH-2 (MeTTa replace-atom!)
+    are the only required hyperon-experimental code additions.
+
+From AtomSpace cluster pilot (closed 2026-04-29, R-series findings):
+  - Four-layer taxonomy: Classical (Layer 1) / Hyperon Space (Layer 2) /
+    DAS (Layer 3) / MORK (Layer 4).
+  - atomspace-linas IS Layer 1 (the classical OpenCog AtomSpace under
+    Linas Vepstas's stewardship at HEAD).
+  - Linas's repos at HEAD active in Jan-Feb 2026 (not stale).
+  - StorageNode is the parent class for all classical persistence backends
+    (atomspace-pgres, atomspace-rocks, atomspace-cog, atomspace-bridge).
+
+Outside Source 3 scope (covered elsewhere):
+  - Source 1: atomspace-bridge write-path. CLOSED.
+  - Source 2: Hyperon Space write API. CLOSED.
+  - Source 4: MORK + PathMap + mork_ffi + DAS + atomspace-rocks. (Source 4
+    will compare durable storage backends; Source 3 establishes the
+    classical-AtomSpace baseline.)
+  - Source 5: Decko semantics inventory.
+  - Source 6: agent-facing MCP surface design. (Source 3 evaluates cpp-mcp
+    as a candidate substrate; Source 6 designs the actual surface.)
+  - Source 7: Magus plan reconciliation.
+
+--------------------------------------------------------------------------------
+3. REPO STATE SNAPSHOT (pre-populated; agents read, don't re-run git)
+--------------------------------------------------------------------------------
+
+Primary repo:
+  Path:        E:\GitHub\hyperon reference\atomspace-linas\
+  Remote:      Linas-stewarded fork of opencog/atomspace
+  HEAD commit: c8d633bf272b838c2132c21b7c8ddf169a18dd22
+  HEAD date:   2026-02-10 22:54:24 +0000
+  HEAD author: Linas Vepstas
+  HEAD msg:    "Unit test for fix for definition expansion."
+  Latest tag:  v5.0.3-stable
+  Status:      ACTIVE — last commit 4 days before reconciliation date.
+
+  Recent activity (HEAD…HEAD~25):
+    c8d633bf Unit test for fix for definition expansion.
+    8e17c5a8 Expand nested DefinedProceedures, too
+    d85d9880 Fix null-pointer deref
+    41c111f6 oops dropped an if statement
+    869a2b58 Implement recursive expansion of DefineLinks.
+    9b48e4c1 Extend unit test for changes in previous commit
+    a8ab07c5 Fix the ValueOf handling
+    a9d164f1 Expand DefineKLinks in Rules
+    fa9c8550 Expand definitions occurring in rules
+    bfe9baf1 Change debug message to be more precise
+    deca4eb0 Localize consistently
+    06652161 Localize IncrementValue, also
+    1fa8dbc5 Bug-fix SetValue; keys were not being localized.
+    7f5fae2f Careful with paren placement when printing bools
+    3b952008 Add bool printer utility
+    47a49101 Use just one Trigger, not four
+    2db91322 Remove more of the deprecated old functions
+    eede12bf More conversion to purer Atomese
+    0cbe1b7b Use "pure Atomese" in the example
+    e96126201 Rename tvp in the demo code
+    aa3e404c Fix another design thinko
+    b60acc10 Revise code design commentary
+    19a37687 Fix incorrect usage of scratch spaces
+    c48cc3ac Introduce LiteralValueOf
+    d7dc956f Patch up for compilation
+
+  Theme: Linas is actively working on Atomese-as-pipeline-language —
+  DefineLink expansion, ValueOf handling, scratch-space fixes, "purer
+  Atomese." This aligns with Design Notes A (streams/flows) and B
+  (assembly/pipelines).
+
+  Branches at origin (relevant):
+    master          HEAD
+    absent-link-rework        AbsentLink semantics work
+    atomic-edge               Edge-link primitives
+    atomspace-config          Configuration / startup
+    boolean-value             Boolean truth-value primitive
+  (~80 active branches; prune the irrelevant ones during audit.)
+
+  Design Notes files (root of repo):
+    Design-Notes-A.md  577 lines  Streams, flows, futures (started Nov 2025)
+                                  GroupStream/GroupValue, ContainerValue
+                                  conversion, DrainValue, Mixins, status
+                                  update.
+    Design-Notes-B.md  729 lines  Assembly Theory (started by Jan 2026)
+                                  Types, Signatures, Output Types, Shape
+                                  rotators, Connectors/ConnectorSeqs, Named
+                                  Outputs, Directionality, Homotopy engines,
+                                  Assembly engines, Duality, Composition,
+                                  Pipeline authoring, VHDL/Verilog analogy.
+    Design-Notes-C.md  743 lines  GuardLink (Jan 2026)
+                                  Base Questions, RuleLink, URE critique,
+                                  Connectors/Sections critique, Pattern
+                                  Analysis, GuardLink, Typing Equivariance,
+                                  Connectivity, Rewriting, Executable
+                                  conclusions, Algebra-as-axiomatic-system,
+                                  GuardLink redux, Guarded connections.
+    Design-Notes-D.md  245 lines  Analytics / Introspection (Jan 2026)
+                                  Analyzing AtomSpace Contents, Persistence,
+                                  Make install, Runtime loading.
+
+  Key directories:
+    atoms/         Atom type definitions; storage abstractions.
+    atomspace/    Core AtomSpace API.
+    persist/      StorageNode parent class + persistence-related code.
+    query/        Pattern matcher / query engine.
+    eval/         Evaluation primitives (Atomese execution).
+    sheaf/        Sheaf-theoretic operations (Linas's category theory work).
+    scm/          Scheme bindings.
+    guile/        Guile-Scheme integration.
+    cython/       Python (legacy Cython) bindings.
+
+Secondary repo (Source 1 F4 follow-up):
+  Path:        E:\GitHub\hyperon reference\atomspace-pgres\
+  HEAD commit: 6fe97630071455c8bd491e7ddc2ec97936a9979a
+  HEAD date:   2025-10-10 02:35:50 -0500
+  HEAD author: Linas Vepštas
+  HEAD msg:    "Stub out failing test."
+  Latest activity: ~7 months before reconciliation date; idle but not
+                   abandoned.
+
+  Recent activity (HEAD…HEAD~5):
+    6fe97630 Stub out failing test.
+    1be943c  Port tests away from TruthValues
+    9ca30fa  Unit test: cast to Handle before store.
+    ee1940f  Really get rid of the DefaultTV
+    931ab42  Remove obsolete API from unit tests
+
+  Key files (pre-discovered, agents verify):
+    opencog/persist/sql/multi-driver/SQLAtomStore.cc
+                    Concrete write-path implementation (storeAtom,
+                    storeValue, etc.). Source 1 F4 finding to verify here.
+    opencog/persist/sql/multi-driver/SQLAtomDelete.cc
+                    Concrete delete-path implementation.
+    opencog/persist/sql/multi-driver/SQLBulk.cc
+                    Bulk-write code.
+    opencog/persist/sql/multi-driver/SQLValues.cc
+                    Value-level (vs Atom-level) persistence.
+    opencog/persist/sql/multi-driver/SQLAtomStorage.h
+                    Interface header — verify the StorageNode API surface.
+    opencog/persist/sql/multi-driver/sniff.cc
+                    Schema sniffer.
+    opencog/persist/sql/README-design.md
+                    Linas's design doc for the multi-driver SQL backend.
+
+Tertiary repo:
+  Path:        E:\GitHub\hyperon reference\cpp-mcp\
+  Remote:      hkr04/cpp-mcp (NOT Linas/OpenCog-affiliated)
+  HEAD commit: 86856a2fcc038e05675f0649e51cd4f9d3692263
+  HEAD date:   2025-05-24 14:53:57 +0800
+  HEAD author: hkr04
+  HEAD msg:    "README: add note for agent example"
+  Status:      ~12 months idle as of reconciliation date.
+
+  Repo description (from README): generic C++ MCP framework implementing
+  MCP spec 2024-11-05. JSON-RPC 2.0, resource abstraction, tool
+  registration, multi-transport (HTTP/SSE + stdio).
+
+  Components (verified):
+    include/mcp_client.h      Client abstract interface
+    include/mcp_server.h      Server abstract interface
+    include/mcp_resource.h    Resource abstraction
+    include/mcp_tool.h        Tool registration
+    include/mcp_message.h     JSON-RPC message types
+    include/mcp_sse_client.h  HTTP/SSE client
+    include/mcp_stdio_client.h Stdio client
+    include/mcp_thread_pool.h Thread pool primitive
+    include/mcp_logger.h      Logging
+    src/                      Concrete implementations.
+
+  Pickaxe verification: zero references between cpp-mcp and atomspace-linas
+  (Grep `cpp-mcp|cpp_mcp|hkr04` in atomspace-linas → no matches). cpp-mcp
+  is NOT integrated with OpenCog AtomSpace at HEAD; treat as a generic
+  candidate library.
+
+--------------------------------------------------------------------------------
+4. KEY FILES INVENTORY
+--------------------------------------------------------------------------------
+
+For Q1 (DURABILITY — atomspace-pgres write-path verification):
+  atomspace-pgres/opencog/persist/sql/multi-driver/SQLAtomStore.cc
+  atomspace-pgres/opencog/persist/sql/multi-driver/SQLAtomDelete.cc
+  atomspace-pgres/opencog/persist/sql/multi-driver/SQLBulk.cc
+  atomspace-pgres/opencog/persist/sql/multi-driver/SQLValues.cc
+  atomspace-pgres/opencog/persist/sql/multi-driver/SQLAtomStorage.h
+  atomspace-pgres/opencog/persist/sql/README-design.md
+
+For Q2 (IDENTITY — classical AtomSpace handle/UUID semantics):
+  atomspace-linas/opencog/atoms/base/Handle.h        Stable handle type
+  atomspace-linas/opencog/atoms/base/Atom.h          Atom identity
+  atomspace-linas/opencog/atomspace/AtomTable.h      Identity registry
+  atomspace-pgres/opencog/persist/sql/multi-driver/SQLUUID.cc
+                                                     UUID-to-handle binding
+
+For Q3 (CHANGE EVENTS — classical AtomSpace observer equivalent):
+  atomspace-linas/opencog/atomspace/AtomTable.h      Change-listener API
+  atomspace-linas/opencog/atomspace/AtomSpace.h      Public AtomSpace API
+  atomspace-linas/opencog/persist/api/StorageNode.h  StorageNode parent
+                                                     class — has hooks?
+  Pickaxe candidates: AtomTableSignal, addAtomSignal, removeAtomSignal,
+                      change_signal — historical OpenCog signal API.
+
+For Q4 (Design Notes A — streams / flows / futures):
+  atomspace-linas/Design-Notes-A.md
+    Sections: GroupStream/GroupValue, Stream-ContainerValue conversion,
+              DrainValue, Mixins, 25 December 2025 Status Update.
+  atomspace-linas/opencog/atoms/value/StreamValue.h (verify presence)
+  atomspace-linas/opencog/atoms/flow/                (verify directory)
+  Recent commits relevant: e96126201 "Rename tvp in demo code",
+    eede12bf "More conversion to purer Atomese", aa3e404c "Fix another
+    design thinko."
+
+For Q5 (Design Notes B — Assembly Theory):
+  atomspace-linas/Design-Notes-B.md
+    Sections (table-of-contents): Here and Now, Types, Signature, Output
+              Types, Shape rotators, Connectors and ConnectorSeqs, Named
+              Outputs, Directionality, Alternative styles, Homotopy engines,
+              Assembly engines, Duality, Composition, Pipeline authoring,
+              VHDL and Verilog analogy.
+  atomspace-linas/opencog/atoms/section/  (Connectors/Sections; verify
+                                          presence)
+  Reference: link-grammar Connector / ConnectorSeq concepts.
+
+For Q6 (Design Notes C — GuardLink / RuleLink unification):
+  atomspace-linas/Design-Notes-C.md
+    Sections: Base Questions, RuleLink, URE critique, Connectors/Sections
+              critique, Pattern Analysis, GuardLink, Typing Equivariance,
+              Connectivity, Rewriting, Executable conclusions, Algebra,
+              GuardLink redux, Guarded connections.
+  atomspace-linas/opencog/atoms/rule/  (RuleLink / URE family; verify)
+  atomspace-linas/opencog/atoms/grounded/  (GroundedSchemaNode etc.)
+
+For Q7 (Design Notes D — Analytics / Introspection):
+  atomspace-linas/Design-Notes-D.md
+    Sections: Analyzing AtomSpace Contents, Persistence, Make install,
+              Runtime loading.
+  atomspace-linas/opencog/atoms/value/  (analytics-relevant value types)
+  atomspace-linas/examples/flow/count-pipeline.scm  (referenced in D)
+  Cross-ref: atomspace-viz / atomspace-explorer for visualization tooling.
+
+For Q8 (cpp-mcp standalone library audit):
+  cpp-mcp/include/mcp_server.h     Server interface
+  cpp-mcp/include/mcp_tool.h       Tool registration
+  cpp-mcp/include/mcp_resource.h   Resource abstraction
+  cpp-mcp/src/mcp_server.cpp       Concrete server implementation
+  cpp-mcp/examples/                Server/client examples
+  cpp-mcp/README.md                Documentation
+  Comparison: hyperon-wiki-mcp/    The Decko-side MCP server we already
+                                   maintain (Python; documented in
+                                   hyperon-wiki-mcp/SERVER-BUGS.md).
+
+For Q9 (StorageNode taxonomy — bridge from classical to Phase 4):
+  atomspace-linas/opencog/persist/api/StorageNode.h    Parent class
+  atomspace-pgres/opencog/persist/sql/                 SQL impl
+  E:\GitHub\hyperon reference\atomspace-rocks\         RocksDB impl
+  E:\GitHub\hyperon reference\atomspace-cog\           Network impl
+  E:\GitHub\hyperon reference\atomspace-bridge\        Read-only SQL view
+                                                       (Source 1).
+
+For Q11 (Linas's stated direction — README, TODO, design docs):
+  atomspace-linas/README.md
+  atomspace-linas/TODO  (research reading-list + writing TODO + coding TODO)
+  atomspace-linas/AUTHORS
+
+--------------------------------------------------------------------------------
+5. RESEARCH QUESTIONS
+--------------------------------------------------------------------------------
+
+Q1. ATOMSPACE-PGRES WRITE-PATH VERIFICATION (Source 1 F4 follow-up).
+    Source 1's findings_codex.txt F4 claimed atomspace-pgres @ 6fe9763 has
+    "implemented writer code." Verify and characterize for Phase 4
+    durability:
+      (a) Audit SQLAtomStore.cc, SQLAtomDelete.cc, SQLBulk.cc, SQLValues.cc.
+          What StorageNode methods are implemented? Cite each method's
+          signature (file:line).
+      (b) Compare to atomspace-bridge (Source 1): bridge had storeAtom/
+          removeAtom/storeValue/updateValue/storeAtomSpace as empty stubs
+          at SQLReader.cc:395-425. atomspace-pgres claim: REAL impls. Verify.
+      (c) Transaction model: BEGIN/COMMIT/ROLLBACK present? Prepared
+          statements? Connection pool size? Concurrency model?
+      (d) Schema-evolution tolerance: how does atomspace-pgres handle
+          Atom-type additions, Value-type additions, schema migrations?
+      (e) Phase 4 implication: could atomspace-pgres serve as the durability
+          layer instead of Decko-callback-driven Postgres? Constraint:
+          atomspace-pgres has NO knowledge of Decko's card_actions /
+          card_changes / card_revisions semantics — those come from the
+          Decko Rails layer. Even if write-capable, atomspace-pgres
+          replaces ONLY the Hyperon-side persistence, NOT Decko durability.
+
+Q2. CLASSICAL ATOMSPACE IDENTITY MODEL.
+    Source 2 Q7 found Hyperon Space has structural-only identity (no UUID,
+    no stable handle). Classical AtomSpace has Handle (a `std::shared_ptr`-
+    like type to Atom) — does this provide stable identity that Phase 4
+    could borrow?
+      (a) Audit opencog/atoms/base/Handle.h. Is Handle a UUID-like stable
+          identifier, or is it a pointer-like dynamic reference?
+      (b) Audit opencog/atomspace/AtomTable.h. Does AtomTable maintain a
+          UUID-to-Atom registry? Is the UUID stable across process restarts
+          (i.e., persistence-aware)?
+      (c) atomspace-pgres SQLUUID.cc — is the UUID-to-Atom binding stored
+          in Postgres? If yes, Phase 4 could optionally borrow this for
+          Decko round-trip stability.
+      (d) Phase 4 implication: if classical AtomSpace's Handle/UUID is
+          stable AND borrowable, it could enable a Phase 4 extension where
+          Decko cards have stable atom IDs across mirror-service restarts.
+          If not, Phase 4 must continue using Decko's card_id as the
+          identity carrier.
+
+Q3. CLASSICAL ATOMSPACE CHANGE-EVENT MECHANISM.
+    Hyperon Space uses SpaceObserver/SpaceEvent (Source 2). Classical
+    AtomSpace has historically used Boost.Signals2 atom-table signals.
+    Audit:
+      (a) Pickaxe (no path filter): `git log --all -S 'addAtomSignal'`,
+          `git log --all -S 'removeAtomSignal'`, `git log --all -S
+          'change_signal'`, `git log --all -S 'AtomSignal'`. Does the
+          atom-table signal API exist at HEAD? When was it added/removed?
+      (b) If present, audit AtomTable.h for the public signal-subscription
+          API. Compare to Hyperon Space's SpaceCommon::register_observer.
+      (c) Is the signal API thread-safe in classical AtomSpace? (Classical
+          AtomSpace is, historically, thread-safe via reader-writer locks
+          per opencog/atomspace/AtomSpace.h's documented API.)
+      (d) Phase 4 implication: classical AtomSpace's signal API + thread-
+          safety is more mature than Hyperon Space's at HEAD. Could
+          Phase 4 use a classical AtomSpace as the mirror INSTEAD of
+          Hyperon Space, gaining thread-safety + signals + atomspace-pgres
+          persistence in one substrate? Constraint: classical AtomSpace
+          and Hyperon are SEPARATE codebases; no MeTTa runtime support;
+          Phase 4 would commit to OpenCog-classical Scheme tooling rather
+          than Hyperon. Trade-off requires explicit characterization.
+
+Q4. DESIGN NOTES A — STREAMS / FLOWS / FUTURES.
+    Audit Design-Notes-A.md and the underlying code. Answer:
+      (a) GroupStream/GroupValue: what's the architecture? Is this a
+          StreamValue with grouping semantics? Is it a finite-buffer or
+          infinite-stream abstraction? Is it implemented at HEAD or still
+          in proposal stage?
+      (b) Stream <--> ContainerValue conversion: this is the "incremental
+          processing" hook. Cite implementation file:line.
+      (c) DrainValue: this is the "consume from a stream" primitive. Cite
+          and characterize.
+      (d) Mixins: Linas's term for cross-cutting concerns. What's the
+          mechanism? Is it relevant to Phase 4's observer-as-mixin pattern?
+      (e) "25 December 2025 Status Update" section: read it. Does Linas
+          declare any of the streams/flows work production-ready vs
+          experimental?
+      (f) Phase 4 relevance: low-latency change propagation from Decko →
+          mirror → observer → agent. Does Streams architecture map to
+          this use case? Or is it primarily for in-AtomSpace pipeline
+          composition (intra-process)?
+
+Q5. DESIGN NOTES B — ASSEMBLY THEORY.
+    Audit Design-Notes-B.md. Answer:
+      (a) Assembly Theory in Linas's framing: jigsaw connectors, type
+          descriptions, pipeline auto-construction. What's the maturity
+          level? (B's intro says "remains far off and unworkable despite
+          repeated attempts.")
+      (b) Connectors and ConnectorSeqs: are they implemented at HEAD
+          (opencog/atoms/section/ or similar)? What's the connector type
+          system?
+      (c) Phase 4 L1 relevance: an L1 self-improvement agent that
+          constructs its own reasoning pipelines is a Phase 5+ goal.
+          Assembly Theory provides a candidate framework. Document the
+          gap: what would an L1 agent need from Assembly Theory to
+          generate Atomese pipelines? What's the gap between B's current
+          state and that need?
+      (d) Phase 4 IMMEDIATE relevance: NONE. Assembly Theory is research-
+          stage; Phase 4 should NOT depend on it. Frame as Phase 5+
+          input.
+
+Q6. DESIGN NOTES C — GUARDLINK / RULELINK / URE CRITIQUE.
+    Audit Design-Notes-C.md. Answer:
+      (a) URE critique: what does Linas identify as URE's design
+          weakness? (URE = Unified Rule Engine, classical OpenCog's
+          forward/backward chainer.) Is it a critique of URE per se or
+          of how URE handles connectors/sections?
+      (b) GuardLink: what does it do? How does it relate to existing
+          ExecutionOutputLink / FilterLink / CollectionOfLink?
+      (c) RuleLink: what's the relationship between RuleLink and the
+          URE rules? Is RuleLink a unification target?
+      (d) Phase 4 relevance: when an L1 agent writes back to the mirror,
+          does it write atoms directly or write Atomese rules that
+          rewrite the mirror? If the latter, RuleLink/GuardLink semantics
+          matter. Source 6 territory; Source 3 just identifies the
+          architectural seam.
+
+Q7. DESIGN NOTES D — ANALYTICS / INTROSPECTION.
+    Audit Design-Notes-D.md. Answer:
+      (a) "Analyzing AtomSpace Contents" — what's the framework? Is it
+          a query-engine extension or a separate primitive?
+      (b) "Persistence" section — what does Linas say about persisting
+          analytics circuits? (Per the file's section headings: Persistence,
+          Make install, Runtime loading.)
+      (c) "Recursive introspection" — Linas's framing for self-analysis.
+          This is directly relevant to Phase 4 L1's north-star: an agent
+          that is "aware of its own architecture" (per user's stated goal).
+          Document what Linas envisions and the gap to current
+          implementation.
+      (d) Phase 4 relevance: Analytics/Introspection is the architectural
+          backbone for L1 agent self-improvement. Even if not implemented
+          at HEAD, Linas's framing should inform Phase 4's L1 design
+          (specifically, what observer-pattern + query primitives an L1
+          agent needs to introspect the mirror).
+
+Q8. CPP-MCP STANDALONE LIBRARY AUDIT.
+    Audit cpp-mcp for Phase 4 agent-facing MCP server suitability. Answer:
+      (a) Does cpp-mcp implement the full MCP 2024-11-05 spec? Resources,
+          tools, prompts, server capabilities, client capabilities?
+      (b) Multi-transport support: HTTP/SSE + stdio. Is one preferred for
+          long-lived connections (agent loops)?
+      (c) Tool-registration model: how are tools defined? JSON schema?
+          C++ functor? Cite file:line.
+      (d) Threading model: thread-per-request vs thread pool vs single-
+          threaded? Cross-reference Hyperon Space's single-threaded
+          constraint.
+      (e) Repository status: 12 months idle. Active maintenance? Forks?
+          Issues/PRs activity?
+      (f) Phase 4 fit assessment:
+            - If Phase 4 mirror service is Rust: cpp-mcp is wrong
+              substrate (C++, not Rust). Use rmcp or similar Rust MCP
+              library instead.
+            - If Phase 4 mirror service is Python: cpp-mcp is wrong
+              substrate. Use mcp Python SDK or fastmcp.
+            - cpp-mcp is appropriate ONLY if Phase 4 commits to an
+              OpenCog-classical-style C++ mirror service.
+
+    Recommendation framing: identify whether cpp-mcp has any unique
+    capability that matters for Phase 4 (e.g., novel transport, novel
+    tool-registration model). If not, mark as "not a fit; use language-
+    matched alternative."
+
+Q9. STORAGENODE TAXONOMY — BRIDGE FROM CLASSICAL TO PHASE 4.
+    The classical AtomSpace ecosystem has a StorageNode parent class with
+    multiple concrete impls (atomspace-pgres SQL, atomspace-rocks RocksDB,
+    atomspace-cog network, atomspace-bridge read-only SQL). Audit:
+      (a) atomspace-linas/opencog/persist/api/StorageNode.h: what's the
+          interface? Cite all virtual methods.
+      (b) Implementations comparison:
+            atomspace-pgres:    SQL writer (this Source's Q1 finding).
+            atomspace-rocks:    RocksDB key-value (Source 4 territory; just
+                                acknowledge its existence here).
+            atomspace-cog:      Network distributed.
+            atomspace-bridge:   Read-only SQL view (Source 1: empty stubs).
+      (c) Hyperon Space relevance: Hyperon Space has NO StorageNode
+          parent class (Source 2 Q3). Hyperon Space's C-API extension
+          mechanism (space_api_t function table) is the rough equivalent
+          but is NOT shared with classical AtomSpace.
+      (d) Phase 4 implication: classical-AtomSpace storage backends are
+          NOT directly usable from Hyperon Space. Phase 5+ "use Linas-
+          backed storage for Hyperon mirror" requires either:
+            (i) Implement a `Hyperon SpaceMut` adapter that wraps a
+                classical-AtomSpace Handle-based StorageNode (significant
+                engineering work; bridges two type systems).
+            (ii) Use atomspace-bridge-style import-then-mirror (Source 1:
+                bulk-import only; not a write-back path).
+            (iii) Write a fresh Hyperon-side persistence trait + impls
+                  (Source 4 territory if MORK or DAS is the durability
+                  substrate).
+
+Q10. RECENT-ACTIVITY THEMATIC AUDIT.
+     The HEAD…HEAD~25 commit list shows Linas working on "purer Atomese,"
+     DefineLink expansion, ValueOf handling, scratch-space localization.
+     Pickaxe to determine:
+      (a) Are these changes ABI-stable or breaking changes to the
+          StorageNode / atom-table / handle API? (If breaking, atomspace-
+          pgres may not compile against atomspace-linas HEAD.)
+      (b) The Q1 commits (TruthValue port, "DefaultTV" removal in
+          atomspace-pgres) suggest atomspace-pgres has moved to a
+          truth-value-free API. Verify against atomspace-linas's atom
+          API: is the TruthValue API still present at HEAD, or is it
+          deprecated?
+      (c) Phase 4 implication: if atomspace-linas HEAD is ABI-incompatible
+          with atomspace-pgres HEAD, "use atomspace-pgres durability"
+          becomes more expensive (must pin compatible versions). Document
+          the version-pinning concern for Phase 4 SPEC_DRAFT.
+
+Q11. LINAS'S STATED DIRECTION (README + TODO + design notes).
+     Answer:
+      (a) README.md: what's atomspace-linas's mission statement at HEAD?
+          Is Hyperon mentioned? Is bidirectional sync mentioned?
+      (b) TODO file: what's on Linas's near-term roadmap? (Research
+          reading-list, writing TODO, coding TODO sections.)
+      (c) Cross-ref to Source 1 Q9 (Linas's stated direction in
+          atomspace-bridge README): bidirectional sync was a "desired
+          feature" with no implementation. Has Linas stated direction
+          changed in atomspace-linas README / TODO / design notes?
+      (d) Phase 4 implication: does Linas's stated direction support or
+          conflict with Phase 4's READONLY-ATOMSPACE-BRIDGE → Option D
+          path? (Source 1 said bridge is "BULK-IMPORT-THEN-READ" by design;
+          Linas's Sensory perception-action API alignment per Source 1 Q9
+          may matter.)
+
+Q12. SOURCE 3 SYNTHESIS — DOES DURABILITY/IDENTITY/WRITE-BACK CHANGE?
+     Per Codex's reconciliation guidance, the gating question for Source
+     3 is:
+       "Does atomspace-linas/cpp-mcp surface anything that should override
+        Source 2's Hyperon-Space-mirror recommendation, or refine it?"
+
+     Specifically:
+      (a) Should Phase 4 use a classical AtomSpace + atomspace-pgres
+          INSTEAD of Hyperon Space? Trade-offs:
+            PRO classical: thread-safe, mature signals, atomspace-pgres
+                durability, stable Handle/UUID.
+            PRO Hyperon: MeTTa-runtime alignment, Decko ecosystem fit,
+                cluster-pilot Phase 4 lock-in already done, simpler at
+                Phase 4 scope.
+          Recommended verdict: STAY-HYPERON unless Source 3 surfaces a
+          showstopper. Document the reason.
+
+      (b) Should Phase 4 borrow Linas's IDENTITY model (Handle/UUID) into
+          Hyperon Space via metadata convention? Trade-offs:
+            PRO borrowing: stable round-trip identity for Decko cards.
+            CON borrowing: every Decko card needs a UUID atom; doubles
+                the per-card atom count; UUID generation/management adds
+                complexity.
+          Recommended framing: defer to Source 5 (Decko semantics
+          inventory), where the card-identity → atom-identity mapping is
+          designed.
+
+      (c) Should Phase 4 borrow Linas's WRITE-BACK SEMANTICS (RuleLink/
+          GuardLink for atom-mutation) into Phase 4's Decko-mediated
+          observer? Trade-offs:
+            PRO borrowing: Atomese-native rule semantics; aligns with
+                long-term AGI architecture.
+            CON borrowing: Linas's RuleLink/GuardLink is research-stage
+                (Design Notes C "remains far off"); not production-
+                ready; classical-AtomSpace-only at HEAD.
+          Recommended verdict: defer to Phase 5+; Phase 4 uses simple
+          imperative add/remove/replace.
+
+      (d) Should Phase 4's agent-facing MCP server use cpp-mcp? Trade-off
+          analysis from Q8 conclusion. Recommended verdict: NO unless
+          cpp-mcp has a unique capability not in Python/Rust MCP SDKs.
+
+      (e) Final synthesis for SPEC_DRAFT.md:
+            - PHASE 4 SUBSTRATE: stay Hyperon Space (Sources 1+2+3
+              consensus).
+            - PHASE 4 DURABILITY: Decko-callback-driven Postgres (no
+              change from Sources 1+2). atomspace-pgres is a Phase 5+
+              option if Hyperon-side durability becomes desirable.
+            - PHASE 4 IDENTITY: Decko card_id → Atom metadata (Source 5
+              design).
+            - PHASE 4 WRITE-BACK: simple imperative (add/remove/replace);
+              RuleLink/GuardLink deferred to Phase 5+.
+            - PHASE 4 MCP: language-matched (Python or Rust); cpp-mcp is
+              not the right fit unless an OpenCog-classical-side mirror
+              becomes the substrate.
+
+--------------------------------------------------------------------------------
+6. STANDING PROTOCOLS REMINDER
+--------------------------------------------------------------------------------
+
+Inherited from Sources 1+2:
+
+- CF5.6 (Gemini source-location/file-identity drift): verify every Gemini
+  file/line claim via direct Read or Glob before adoption. Source 1 had 5
+  CF5.6 incidents; Source 2 had 5 CF5.6 incidents (3 line drifts + 1 fact
+  drift + 1 wording).
+
+- V1-Q1 (pickaxe without path filter): for any "never implemented" or
+  "absent at HEAD" claim, run `git log --all -S '<token>'` without a path
+  filter. Apply to Q3 (atom-table signal API existence/history) and Q1
+  (atomspace-pgres write-method history).
+
+- V2-Q10/14 (benchmark-required for quantitative claims): do NOT extrapolate
+  throughput or capacity numbers without bench evidence. Apply to Q1
+  (atomspace-pgres write rate), Q3 (signal API throughput), Q9 (StorageNode
+  comparison).
+
+- V2-PROTOCOL-1 (pr-NNN merge status): if any branch named pr-NNN is cited,
+  run `git log --all --grep="NNN"` AND `git rev-list --count main..pr-NNN`
+  before claiming "unmerged."
+
+- V2-PROTOCOL-2 (dual-token grep for Rust→Python bindings): not directly
+  applicable to Source 3 (no Rust→Python wrapper layer here); the C++
+  equivalent is "grep both Boost.Signals2 and the public AtomSpace API
+  surface for change-event hooks."
+
+- V2-PROTOCOL-3 (audit Clone semantics): if SpaceCommon-equivalent objects
+  are encountered (AtomTable observers, StorageNode subscribers), grep for
+  `impl Clone` or `Atom*Signal::Clone` and document the cloning behavior.
+
+Standard cluster-pilot rules:
+
+- C++/Scheme dual-API audit (ECAN Source 4 V0-1 lesson): for any "absent
+  in classical AtomSpace" claim, grep BOTH the C++ public API (.h files)
+  AND the Scheme bindings (scm/, guile/). Either alone produces false-
+  negatives.
+
+- Time-indexed caller analysis: HEAD as of 2026-02-10 (atomspace-linas) and
+  2025-10-10 (atomspace-pgres) and 2025-05-24 (cpp-mcp) are the relevant
+  snapshots. Document staleness deltas.
+
+- Bidirectional fork-divergence: atomspace-linas IS Linas's primary fork of
+  opencog/atomspace. Verify divergence from upstream opencog/atomspace HEAD
+  (if a separate clone of opencog/atomspace exists in the reference tree)
+  using `git log A..B` AND `git log B..A` AND grep both directions.
+
+- Orientation-file drift: if any of CLAUDE.md / AGENTS.md / GEMINI.md /
+  README.md exist in atomspace-linas at the top level, treat their claims
+  with skepticism per Source 2 F6 lesson.
+
+--------------------------------------------------------------------------------
+7. DELIVERABLE FORMAT (per agent)
+--------------------------------------------------------------------------------
+
+Each model produces:
+  scripts/archive/atomspace_integration_phase4/source3_atomspace_linas_design/
+    findings_claude.txt
+    findings_codex.txt
+    findings_gemini.txt
+
+Format follows Sources 1+2's findings pattern:
+  - Q1–Q12 in order.
+  - [VERIFIED] / [INFERRED] / [NOT FOUND] / [CO-VERIFIED] / [NEW] tags.
+  - Direct file:line citations for all VERIFIED claims.
+  - Pickaxe (without path filter) for any negative-existence claim.
+  - For Q12, a recommended Phase 4 wiring refinement (or no-change
+    confirmation) with explicit dependencies on other Sources.
+
+After all three findings land, orchestrator (Claude) produces:
+  findings_reconciled_crossmodel.txt
+
+Reconciliation includes:
+  - Per-question consensus
+  - V-N-X dissents (V = Claude/Codex/Gemini, N = question, X = sub-issue)
+  - Source-of-truth checks (CF5.6 verifications)
+  - Bottom Line for SPEC_DRAFT.md, with explicit answers to:
+      Q12.a: Switch to classical AtomSpace, or stay with Hyperon Space?
+      Q12.b: Borrow Linas's identity model, or use Decko card_id?
+      Q12.c: Borrow Linas's write-back semantics, or stay imperative?
+      Q12.d: Use cpp-mcp, or use language-matched MCP SDK?
+  - Dependency conditions for Sources 4/5/6/7.
+
+Prediction (orchestrator, low-confidence): Source 3 will close with
+[STAY-HYPERON-SPACE] [CLASSICAL-INFORMS-PHASE-5+] [CPP-MCP-NOT-A-FIT].
+The Source 1 F4 finding (atomspace-pgres has writer code) will be
+verified as substantively correct, but the durability is OpenCog-classical-
+side, not Hyperon-side; it does not change Phase 4's Decko-as-durability
+recommendation. Linas's Design Notes A (streams/flows) and D (analytics/
+introspection) will be flagged as Phase 5+ inputs for the L1 self-
+improvement architecture; B (Assembly Theory) and C (GuardLink) will be
+flagged as research-stage (not Phase 4 dependencies).
+
+================================================================================

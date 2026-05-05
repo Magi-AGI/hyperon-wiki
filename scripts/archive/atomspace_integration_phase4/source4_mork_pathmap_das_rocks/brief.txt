@@ -1,0 +1,889 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 4
+MORK + PathMap + mork_ffi + DAS + atomspace-rocks substrate comparison
+================================================================================
+
+Date opened:    2026-05-04
+Cluster pilot:  atomspace_integration_phase4
+Source #:       4 of 7
+Orchestrator:   Claude (this session)
+Cross-model reviewers: Codex + Gemini (separate sessions)
+Reconciliation deliverable: findings_reconciled_crossmodel.txt
+Spec input:     feeds the eventual SPEC_DRAFT.md at cluster close.
+
+This is the ALTERNATE-SUBSTRATES + PHASE-5+-DURABILITY source. It does NOT
+reopen the Hyperon Space writability question (Source 2 closed) NOR the
+classical-AtomSpace alternative (Source 3 closed: STAY-HYPERON-SPACE).
+
+Source 4 audits the **distributed/durable substrates** that could either:
+  (a) replace Hyperon Space if Phase 4 hits an unexpected blocker, OR
+  (b) serve as the Phase 5+ durable-store option once Phase 4 ships.
+
+--------------------------------------------------------------------------------
+1. CONTEXT
+--------------------------------------------------------------------------------
+
+Phase 4 baseline (locked in by Sources 1+2+3):
+  - Architecture:  Option D (Decko-callback-driven Hyperon-Space mirror).
+  - Substrate:     Hyperon Space at HEAD; in-memory; STAY confirmed by
+                   Source 3 against classical AtomSpace.
+  - Durability:    Decko/Postgres via after_save callbacks.
+  - Required code: PATCH-1 (Python observer binding) + PATCH-2 (MeTTa
+                   replace-atom!).
+  - Metadata:      D3-1 provenance fields {source, card_id|agent_id,
+                   action_id, timestamp} on every SpaceEvent.
+
+Phase 5+ open question:
+  Should Hyperon-side durability eventually replace Decko-as-source-of-
+  truth, and if so, what's the substrate? Source 3 Q11 surfaced
+  atomspace-rocks as the classical-AtomSpace maintainer-preferred path.
+  Source 4 audits the broader substrate landscape:
+
+  (Q-A) MORK + PathMap: Vandervorst-lineage Rust-side trie substrate.
+        The AtomSpace cluster pilot 2026-04-29 named it Layer 4 of the
+        four-layer taxonomy. What is it shaped like? Is it a candidate
+        Hyperon-side durable substrate?
+  (Q-B) mork_ffi: Patrick Hammer's FFI wrapper for MORK. Production-
+        ready bridge or research demo?
+  (Q-C) DAS: Distributed AtomSpace; SingularityNET. Layer 3 of the
+        cluster-pilot taxonomy. What's its current state at HEAD vs
+        the cluster pilot HEAD? Is it suited for Phase 4 or Phase 5+?
+  (Q-D) atomspace-rocks: Linas-authored RocksDB-backed StorageNode.
+        Classical-side maintainer's preferred direction. Single-user
+        local-host; does it fit Phase 5+ Hyperon-side durability via
+        an adapter?
+
+This source feeds Source 5 (Decko semantics) — which substrates impose
+schema constraints on Decko card encoding? — and Source 7 (Magus plan
+reconciliation) — which substrates align with the existing Magus 4-phase
+plan?
+
+--------------------------------------------------------------------------------
+2. INHERITED CONCLUSIONS (do not re-derive)
+--------------------------------------------------------------------------------
+
+From Source 1 (atomspace-bridge, closed 2026-05-03):
+  - Bridge is [READ-ONLY-BY-DESIGN] [BULK-IMPORT-THEN-READ]. Empty write
+    stubs in atomspace-bridge SQLReader.cc:395-425.
+
+From Source 2 (hyperon-space, closed 2026-05-04):
+  - Hyperon Space is the canonical Phase 4 substrate.
+  - SpaceMut::add/remove/replace at hyperon-space/src/lib.rs:237/255/275.
+  - SpaceObserver/SpaceEvent/SpaceCommon at lib.rs:22-126.
+  - Single-threaded Rc/RefCell.
+  - No native Rust PersistentSpace trait.
+
+From Source 3 (atomspace-linas, closed 2026-05-04):
+  - STAY-HYPERON-SPACE.
+  - atomspace-pgres has real writer (SQLAtomStore.cc:68) but is
+    explicitly deprecated in favor of RocksDB at README-design.md:8-12.
+  - StorageNode lives in **atomspace-storage**, not atomspace-linas.
+    [V3-PROTOCOL-1: brief paths must be verified.]
+  - Classical atom-mutation observer API was actively REMOVED at HEAD
+    (commits a8980a4689, ef95811c27).
+  - Linas's stated direction (Design Notes A-D + README + TODO):
+    classical AtomSpace + Atomese + Values/flows + RocksDB + analytics.
+  - Design Note D = canonical Phase 5+ L1-introspection design anchor.
+
+From AtomSpace cluster pilot (closed 2026-04-29):
+  - Four-layer taxonomy: Classical (1) / Hyperon Space (2) / DAS (3) /
+    MORK (4).
+  - MORK = 8-crate workspace; PathMap as sibling-repo dependency.
+  - "400M atoms not 500M" RAM-scaling correction.
+  - MorkDB delete-blocking finding: MorkDB.cc:268-270 hard-fails on
+    delete-link operations. (To re-verify in Source 4 Q4.)
+
+Outside Source 4 scope (covered elsewhere):
+  - Source 1: atomspace-bridge. CLOSED.
+  - Source 2: Hyperon Space. CLOSED.
+  - Source 3: atomspace-linas + atomspace-pgres + cpp-mcp. CLOSED.
+  - Source 5: Decko semantics inventory (cardtype primitives + +convention
+    layer like +expert_reviewed/+ai_draft).
+  - Source 6: agent-facing MCP surface design.
+  - Source 7: Magus plan reconciliation.
+
+--------------------------------------------------------------------------------
+3. REPO STATE SNAPSHOT (pre-populated; agents read, don't re-run git)
+--------------------------------------------------------------------------------
+
+All paths in this section have been V3-PROTOCOL-1-verified via Glob/ls
+during brief drafting.
+
+Repo 1: MORK (Rust trie-based AtomSpace; Vandervorst-lineage)
+  Path:        E:\GitHub\hyperon reference\MORK\
+  Remote:      https://github.com/trueagi-io/MORK
+  HEAD commit: 4cef6f77c9712ddeef0d55ae751d249f89385e9c
+  HEAD date:   2026-04-19 12:41:44 +0900
+  HEAD author: ClarkeRemy
+  HEAD msg:    "Merge pull request #49 from trueagi-io/unification_test_laws"
+  Status:      ACTIVE — last commit 15 days before reconciliation.
+
+  Cargo.toml workspace members (8 confirmed at HEAD):
+    interning/                Symbol-interning crate.
+    expr/                     Expression representation.
+    frontend/                 Parser + frontend.
+    kernel/                   Core MORK kernel; default workspace member.
+    experiments/eval          Eval crate (experimental).
+    experiments/eval-ffi      Eval FFI bindings (experimental).
+    experiments/eval-examples Eval examples (experimental).
+    experiments/unification_test_laws Unification testing (experimental).
+
+  PathMap is declared as a sibling-repo dependency at
+  Cargo.toml workspace.dependencies:
+    pathmap = { path = "../PathMap/", version = "0.3.0",
+                features = ["jemalloc", "arena_compact", "nightly"] }
+
+  Recent activity (HEAD…HEAD~15):
+    4cef6f77 Merge PR #49 from trueagi-io/unification_test_laws
+    0fd2f1d  changed to use apply_e, the coroutine version
+    ccf72ec  Large unification test putting prolog and mork head-to-head
+    ca3cea9  added the test to the suite
+    1c369be  fixed a bug in modified float reductions, basic test for reductions
+    91810d8  Clean up dtl example
+    829c023  Improve float reduction integration
+    1d42f6c  Merge PR #46 from trueagi-io/min_max_sink
+    28da5f9  Improve unification error reporting; remove z3 as default for testing
+    49887b7  Add Z3 resource get-model-source/sink support
+    cb35bdb  Merge branch 'main' into min_max_sink
+    a68d066  moved reduce code to another branch
+    eaaadb7  added example files for decision tree learning
+    5e0e259  changed cnt to prd, a product
+    f7962cc  changed table to traits
+
+  Key file: kernel/src/space.rs
+    1807 lines. Contains the canonical `Space` struct:
+      pub struct Space {
+          pub btm: PathMap<()>,
+          pub sm: SharedMappingHandle,
+          pub mmaps: HashMap<OwnedSourceItem, ArenaCompactTree<memmap2::Mmap>>,
+          pub z3s: HashMap<OwnedSourceItem, Box<Popen>>,
+          pub last_merkleize: Instant,
+          pub timing: bool
+      }
+    NOTE: this `Space` is MORK-specific; it is NOT a `Space` trait impl
+    in Hyperon's sense. Imports from pathmap::ring::{AlgebraicStatus,
+    Lattice}, pathmap::zipper, pathmap::PathMap, pathmap::arena_compact::
+    ArenaCompactTree. Uses subprocess for Z3 SMT integration. Static
+    counters: transitions, unifications, writes.
+
+  Other kernel files:
+    kernel/src/lib.rs         10 lines — re-exports.
+    kernel/src/main.rs        6008 lines — CLI binary.
+    kernel/src/pure.rs        1216 lines — "pure" semantics layer.
+    kernel/src/sinks.rs       1357 lines — output sinks (incl. Z3 sinks).
+    kernel/src/sources.rs      260 lines — input sources.
+
+  Top-level files:
+    AGENTS.md, CLAUDE.md, GEMINI.md — orientation files (per V3-PROTOCOL-1
+                                       check, treat with skepticism per
+                                       Source 2 F6 lesson).
+    Cargo.toml, README.md.
+
+  Branches (selection):
+    main                              HEAD.
+    trueagi-io/unification_test_laws  recently-merged PR #49.
+    trueagi-io/min_max_sink           recently-merged PR #46.
+
+Repo 2: PathMap (Rust trie substrate; Luke Peterson lineage)
+  Path:        E:\GitHub\hyperon reference\PathMap\
+  Remote:      https://github.com/luketpeterson/PathMap (verify origin URL).
+  HEAD commit: cd6f3506541e4e39ae0832d3e8dfd41c6c79e3ff
+  HEAD date:   2025-09-22 21:08:10 -0600
+  HEAD author: Luke Peterson
+  HEAD msg:    "More book"
+  Status:      ~7.5 months stale on code at HEAD; actively in
+               documentation-writing mode (book authoring).
+
+  Recent activity (HEAD…HEAD~10): all "More book" / "More content" / book
+  reorganization. The pathmap-book/ directory holds a substantial design
+  reference for the trie substrate.
+
+  Top-level files:
+    Cargo.toml, LICENSE, README.md.
+
+  Subdirectories:
+    src/                   Rust crate source.
+    benches/               Benchmark suite.
+    examples/              Usage examples.
+    notes/                 Linas-style design notes (verify content type).
+    pathmap-book/          Luke Peterson's design book (mdBook?).
+    whisper_benches/       "Whisper" benchmarks (audio domain? verify).
+
+  Phase-4 relevance: PathMap underpins MORK. If MORK becomes a Phase 5+
+  substrate option, PathMap design constraints (Q3) propagate.
+
+Repo 3: mork_ffi (FFI wrapper; Patrick Hammer)
+  Path:        E:\GitHub\hyperon reference\mork_ffi\
+  Remote:      verify origin URL.
+  HEAD commit: 4bbc33503ad6656848ad5a982f241f05e257cc89
+  HEAD date:   2025-12-12 00:39:03 +0100
+  HEAD author: Patrick Hammer
+  HEAD msg:    "Update: also use library mechanism"
+  Status:      Only 3 commits in the entire repo's history. Limited
+               provenance.
+
+  Commit history (full):
+    4bbc335 Update: also use library mechanism
+    d7530db Commit with mork_ffi folder of the PeTTa main branch,
+            https://github.com/patham9/PeTTa/tree/main/mork_ffi
+    68be779 Commit with mork_ffi folder of the PeTTa main branch,
+            https://github.com/patham9/PeTTa/tree/main/mork_ffi
+
+  Top-level files (selection):
+    Cargo.toml, README.md, build.sh.
+    mork.c                       C ABI source.
+    morkspaces.pl                Prolog file (verify purpose).
+    example_space.metta          MeTTa demo.
+    example_spaceexec.metta      MeTTa demo with execution.
+    example_spacesimple.metta    MeTTa demo (simple variant).
+    src/                         Rust crate source.
+    AGENTS.md, CLAUDE.md, GEMINI.md  orientation files.
+    tmpclaude-*-cwd              Several temporary directories from prior
+                                 Claude sessions; ignore as ephemera.
+
+  Phase-4 relevance: mork_ffi is the candidate FFI bridge if Phase 5+
+  decides to wire MORK into a Hyperon Space. Audit production-readiness.
+
+Repo 4: DAS (Distributed AtomSpace; SingularityNET)
+  Path:        E:\GitHub\hyperon reference\das\
+  Remote:      https://github.com/singnet/das
+  HEAD commit: f4da3d78f356c70c0030c1fb9cb90b1c2ebccf77
+  HEAD date:   2026-04-29 12:03:06 -0300
+  HEAD author: Andre Luiz de Senna
+  HEAD msg:    "Merge pull request #1085 from singnet/senna-1009-3"
+  Status:      ACTIVE — last commit 5 days before reconciliation; 1085+
+               PRs merged.
+
+  Note on cluster-pilot delta: AtomSpace cluster pilot 2026-04-29 used
+  a HEAD that may differ from this one. Re-verify any cluster-pilot DAS
+  finding against current HEAD before adopting.
+
+  Recent activity (HEAD…HEAD~10):
+    f4da3d78 Merge PR #1085 from singnet/senna-1009-3
+    54e5f938 Merge remote-tracking branch 'origin' into senna-1009-3
+    e3cae145 Format fixes
+    85da0003 Minor fixes
+    6e6612dd Multiple fixes to make it work
+    592d402b Changed log message to DEBUG
+    d124f920 Added a flag to prevent double issuing
+    c10bb3fe Added a flag to prevent double issuing
+    dce28514 Fix merge() and improve to_string() regarding metta expressions
+    52aceee6 Added a flag to prevent double issuing
+
+  Top-level files (selection):
+    BUGFIXES, CHANGELOG.
+    Makefile, mkdocs.yml.
+    AGENTS.md, CLAUDE.md, GEMINI.md, README.md.
+
+  Subdirectories:
+    src/                          Source.
+    docs/                         Documentation.
+    config/                       Configuration.
+    experiments/                  Experimental work.
+    notebooks/                    Jupyter notebooks.
+    scripts/                      Build/deploy scripts.
+    3rd_party_slots/              Third-party integration slots.
+
+  Verified DAS components (from src/):
+    src/atomdb/                   AtomDB layer.
+      atomdb/morkdb/              MorkDB AtomDB adapter.
+        MorkDB.cc, MorkDB.h
+        MorkDBAPITypes.cc, MorkDBAPITypes.h
+        BUILD                     (Bazel build file)
+    src/agents/                   Agent runtime.
+    src/attention_broker/         Attention broker (Layer 3 surrogate per
+                                   ECAN cluster pilot).
+    src/db_adapter/               Database adapter.
+    src/distributed_algorithm_node/ Distributed algorithm node.
+    src/main/                     Main entry points.
+    src/metta/                    MeTTa-side glue.
+    src/hasher/                   Atom hashing.
+    src/commons/                  Common utilities.
+
+  Verified frozen/deprecated DAS repos (per README "These repos are
+  frozen and deprecated"):
+    das-atom-db, das-query-engine, das-serverless-functions,
+    das-attention-broker, das-node, das-postgres-lobe,
+    das-openfaas-templates, das-poc.
+
+  Active sister repos:
+    das-metta-parser, das-database-adapter, das-toolbox, das-proto,
+    das-cicd, das-nunet-rejuve-poc, das-pre-infra-vultr, das-infra-stack-
+    vultr, das-pre-infra-aws, das-infra-stack-aws.
+
+  Branches (selection — many active):
+    master                                         HEAD.
+    atomdb-redis-mongo-impl                        AtomDB Redis/MongoDB.
+    ccg/masc/1013-db-adapter-thread-pool           DB adapter threading.
+    das-250 / das-360 / das-360-benchmark         Numbered work-streams.
+    edgar-* / masc/* / senna-*                     Author branches.
+
+Repo 5: atomspace-rocks (RocksDB-backed StorageNode; Linas)
+  Path:        E:\GitHub\hyperon reference\atomspace-rocks\
+  Remote:      https://github.com/opencog/atomspace-rocks
+  HEAD commit: 6577a5bcc961cf24c00a4f7a916cc9cc05beed00
+  HEAD date:   2026-01-21 02:22:01 -0600
+  HEAD author: Linas Vepštas
+  HEAD msg:    "Fix incorrect description in previous commit."
+  Status:      ~3.5 months stale; modest commit cadence (Linas-typical).
+
+  Recent activity (HEAD…HEAD~10):
+    6577a5b Fix incorrect description in previous commit.
+    7c26bdf Bug fix forced by AtomSpace design change.
+    4363864 Add unit test for the fix in previous commit
+    439bdae Fix bad handling of hashes during bulk restore.
+    b121238 Bump the version number
+    1c9c974 Update unit tests for *-TruthValueKey-* removal
+    28b77d5 Remove special-casing for truth values
+    984ef28 Add support for a read-only open mode.
+    daa62fb Convert unit tests to the new message-passing API
+    86e2287 Convert remaining unit tests
+
+  README excerpt (verified at top of README.md):
+    "Save and restore AtomSpace contents as well as individual Atoms to
+     a RocksDB database. The RocksDB database is a high-performance,
+     zero-configuration, single-user, local-host-only file-backed
+     database... only one running AtomSpace executable can connect to it
+     at any given moment. Multi-user, networked AtomSpaces are provided
+     by the AtomSpace-Cog StorageNode driver."
+
+  Architecture (from README):
+    +---------------------+
+    |      AtomSpace      |
+    +-- StorageNode API --+
+    |  RocksStorageNode   |
+    +---------------------+
+    |       RocksDB       |
+    +---------------------+
+    |     filesystem      |
+    +---------------------+
+
+  Top-level files:
+    AGENTS.md, CLAUDE.md, GEMINI.md, CMakeLists.txt, LICENSE, README.md.
+
+  Subdirectories:
+    cmake/                 CMake config.
+    examples/              Usage examples.
+    opencog/               Source.
+      persist/             Persistence.
+        rocks/             RocksDB-backed implementation.
+          RocksDAG.cc            DAG traversal.
+          RocksFrame.cc          Frame (versioned AtomSpace) support.
+          RocksIO.cc             I/O.
+          RocksPersistSCM.cc     Scheme bindings.
+          RocksPersistSCM.h
+          RocksStorage.cc        Main RocksStorageNode impl.
+          RocksStorage.h
+          RocksUtils.h
+        rocks-types/        Type registration.
+        monospace/          (verify purpose; possibly mono-AtomSpace?)
+    tests/                  Test suite.
+
+--------------------------------------------------------------------------------
+4. KEY FILES INVENTORY (V3-PROTOCOL-1-verified)
+--------------------------------------------------------------------------------
+
+For Q1 (MORK kernel write-API audit):
+  MORK/kernel/src/space.rs                  Canonical `Space` struct.
+  MORK/kernel/src/lib.rs                    Re-exports.
+  MORK/kernel/src/pure.rs                   "Pure" semantics layer.
+  MORK/Cargo.toml                           Workspace manifest (8 members).
+
+For Q2 (MORK kernel API surface vs SpaceMut):
+  MORK/kernel/src/space.rs (write methods grep targets):
+    "fn add", "fn remove", "fn replace", "fn insert", "fn delete",
+    "fn store", "fn put", "fn write", "fn merge", "fn upsert".
+  MORK/kernel/src/sinks.rs                  Sink semantics (output side).
+  MORK/kernel/src/sources.rs                Source semantics (input side).
+
+For Q3 (PathMap trie substrate audit):
+  PathMap/Cargo.toml                        Crate manifest (version 0.3.0
+                                            per MORK Cargo.toml).
+  PathMap/src/                              Crate source.
+  PathMap/pathmap-book/                     Design book (Luke Peterson).
+  PathMap/notes/                            Design notes (verify content).
+  PathMap/benches/                          Benchmarks.
+
+For Q4 (mork_ffi production-readiness audit):
+  mork_ffi/mork.c                           C ABI.
+  mork_ffi/morkspaces.pl                    Prolog file.
+  mork_ffi/example_space.metta              MeTTa demo.
+  mork_ffi/example_spaceexec.metta          MeTTa demo with exec.
+  mork_ffi/example_spacesimple.metta        MeTTa demo (simple).
+  mork_ffi/src/                             Rust source.
+  mork_ffi/build.sh                         Build script.
+  mork_ffi/Cargo.toml                       Manifest.
+
+For Q5 (DAS state and componentization at HEAD):
+  das/src/atomdb/                           AtomDB abstraction.
+  das/src/atomdb/morkdb/MorkDB.cc           MORK adapter — verify cluster-
+                                            pilot delete-blocking finding
+                                            at lines 268-270.
+  das/src/atomdb/morkdb/MorkDB.h            Header.
+  das/src/agents/                           Agent runtime.
+  das/src/attention_broker/                 Attention broker.
+  das/src/db_adapter/                       DB adapter.
+  das/src/metta/                            MeTTa glue.
+  das/docs/conceptual_documentation.md      Cited in README; primary
+                                            architecture reference.
+
+For Q6 (atomspace-rocks StorageNode audit):
+  atomspace-rocks/opencog/persist/rocks/RocksStorage.h
+  atomspace-rocks/opencog/persist/rocks/RocksStorage.cc
+  atomspace-rocks/opencog/persist/rocks/RocksFrame.cc
+  atomspace-rocks/opencog/persist/rocks/RocksDAG.cc
+  atomspace-rocks/opencog/persist/rocks/RocksIO.cc
+  atomspace-rocks/opencog/persist/rocks/RocksPersistSCM.cc
+  atomspace-rocks/opencog/persist/rocks/RocksUtils.h
+  atomspace-rocks/README.md                 Architecture doc.
+
+  StorageNode parent class (per Source 3 V-orchestrator-brief-PATH-
+  DRIFT-1, lives in atomspace-storage NOT atomspace-linas):
+    atomspace-storage/opencog/persist/api/StorageNode.h:42
+
+For Q7 (cross-cutting persistence model comparison):
+  Hyperon Space (Source 2):  in-memory; no native persistence.
+  MORK kernel (this Q1):     trie-based; persistence via PathMap memmap?
+  PathMap (this Q3):         arena-compact + memmap support per Cargo.toml.
+  DAS atomdb (this Q5):      multi-backend (Mongo, Redis, MorkDB) per
+                              src/atomdb/ subdirectory tree.
+  atomspace-rocks (this Q6): RocksDB key-value, single-user local-host.
+  classical AtomSpace + atomspace-pgres (Source 3): SQL, deprecated.
+
+For Q8 (identity model comparison):
+  MORK:               trie-key-based; structural? content-addressed? verify.
+  PathMap:            path-based identity; structural by construction.
+  DAS:                handle-based per atomdb_api_types::* (verify).
+  atomspace-rocks:    Linas Handle + classical UUID/TLB (per Source 3 Q2).
+
+For Q9 (concurrency model comparison):
+  Hyperon Space:      single-threaded (Rc/RefCell).
+  MORK:               atomic counters in space.rs (`pub static mut`); audit.
+  PathMap:            jemalloc + arena_compact; lock model unclear; audit.
+  DAS:                multi-process by design (distributed); thread-pool
+                      branches active (e.g., atomdb-redis-mongo-impl).
+  atomspace-rocks:    single-user only per README; no multi-process sharing.
+
+For Q10 (write-back observability):
+  Hyperon Space:      SpaceObserver/SpaceEvent (Source 2 Q2).
+  MORK:               grep `Observer|Event|notify|subscribe|listen`
+                      in kernel/src/.
+  PathMap:            grep same tokens in PathMap/src/.
+  DAS:                grep same tokens + `Subscription|Notify` in das/src/.
+  atomspace-rocks:    classical signal API REMOVED at HEAD per Source 3
+                      Q3; rocks-side has no observer mechanism.
+
+For Q11 (cross-portfolio direction audit):
+  Linas (atomspace-rocks, atomspace-pgres, atomspace-linas):
+                      classical AtomSpace + Atomese + Values/flows;
+                      Source 3 closed.
+  Adam Vandervorst (MORK; check git log --all --author for contributions):
+                      MORK kernel + frontend lineage.
+  Luke Peterson (PathMap):
+                      trie substrate + book authoring.
+  Patrick Hammer (mork_ffi, PeTTa):
+                      MORK FFI bridge for PeTTa.
+  Andre Luiz de Senna + SingularityNET (DAS):
+                      distributed AtomSpace; multi-backend.
+  Cosmo Harrigan (referenced in ECAN cluster pilot):
+                      ECAN executable realization; not Source 4.
+
+--------------------------------------------------------------------------------
+5. RESEARCH QUESTIONS
+--------------------------------------------------------------------------------
+
+Q1. MORK KERNEL WRITE-API AUDIT.
+    Audit MORK/kernel/src/space.rs (1807 lines) for the canonical write
+    surface. Answer:
+      (a) What public methods does `pub struct Space` expose for
+          atom-mutation? Cite file:line for each (`fn add`, `fn remove`,
+          `fn replace`, `fn insert`, `fn delete`, `fn merge`, etc.).
+      (b) Does MORK use a trait abstraction analogous to SpaceMut, or is
+          the API concrete-only (impl Space {...})?
+      (c) What's the data path: `Space.btm: PathMap<()>` is the trie
+          backing index. Are writes synchronous to the trie, or buffered?
+          Audit the `pub static mut writes: usize` counter — what
+          increments it?
+      (d) Phase 4/5 implication: if MORK becomes a Phase 5+ candidate
+          substrate, its write API must be wrappable as a Hyperon Space.
+          Identify the adaptation cost: trait-object vs concrete-struct
+          dispatch, identity model translation, observer-pattern bridging.
+
+Q2. MORK SPACE TYPE vs HYPERON SPACEMUT (taxonomy refinement).
+    Source 2 Q5 confirmed Hyperon's taxonomy: Space (trait) / SpaceMut
+    (trait) / GroundingSpace (concrete) / DynSpace (wrapper). MORK's
+    `Space` struct (kernel/src/space.rs:36 confirmed in pre-population)
+    is concrete-only.
+      (a) Could a `MorkSpace` impl Hyperon's `SpaceMut` trait? What
+          would the Atom type translation look like? (Hyperon `Atom`
+          enum vs MORK's expression-tree representation.)
+      (b) Does MORK's static-counter machinery (`pub static mut
+          transitions: usize` etc.) work with Hyperon's per-instance
+          observer pattern? Is there an emit-event-on-write shim
+          possible?
+      (c) Phase 4 (immediate) implication: MORK is NOT a Phase 4
+          substrate. Document why.
+      (d) Phase 5+ (future) implication: if Phase 5+ wants MORK-backed
+          durability, what's the minimum-viable adapter? (Best-guess:
+          a Rust crate that imports both `hyperon-space` and `mork`,
+          exposes a `MorkBackedSpace: SpaceMut` impl.)
+
+Q3. PATHMAP TRIE SUBSTRATE AUDIT.
+    Audit PathMap (sibling-repo dependency for MORK). Answer:
+      (a) Is PathMap a stable production substrate, or research-stage?
+          Use Luke Peterson's pathmap-book/ as primary source; cite the
+          chapter on stability/maturity.
+      (b) Does PathMap support MERKLE-IZED trie state (cluster-pilot
+          finding mentioned `last_merkleize: Instant` in MORK Space —
+          verify the underlying PathMap mechanism)?
+      (c) Memmap support: Cargo.toml feature `arena_compact` + MORK's
+          `ArenaCompactTree<memmap2::Mmap>` usage. Is this a production
+          path or experimental?
+      (d) Phase 4/5 implication: PathMap's maturity is a transitive
+          dependency of MORK. If PathMap is research-stage, MORK is
+          research-stage.
+
+Q4. MORK_FFI PRODUCTION-READINESS + MORKDB DELETE-BLOCKING VERIFICATION.
+    mork_ffi has only 3 commits (Patrick Hammer, 2025-12-12). Audit:
+      (a) Is mork_ffi a production-ready bridge or a research
+          checkpoint? The 3-commit history suggests checkpoint.
+      (b) The mork.c, src/, and example_space*.metta files: what's
+          actually exposed across the FFI boundary? Trie-only, or
+          trie+sinks+sources?
+      (c) MorkDB delete-blocking re-verification:
+            das/src/atomdb/morkdb/MorkDB.cc:268-270 — at HEAD, verify
+            that MorkDB::delete_link calls Utils::error("MORKDB does
+            not support deleting links.", false) and returns false.
+            (Pre-population verified at 2026-05-04; reviewers must
+            re-verify against the HEAD they audit.)
+      (d) Phase 4/5 implication: MorkDB cannot delete links. This
+          would block any Phase 4/5 mirror that accepts Decko card
+          deletes. Phase 4 already routes around this by staying with
+          Hyperon Space. Phase 5+ "use MORK durability" runs into the
+          same blocker UNLESS the underlying MORK kernel (separate
+          from MorkDB) supports trie-key removal — verify in Q1.
+
+Q5. DAS STATE AT HEAD vs CLUSTER-PILOT FINDINGS.
+    AtomSpace cluster pilot 2026-04-29 audited DAS at some HEAD; current
+    HEAD is f4da3d78 (2026-04-29). Compare:
+      (a) Did the cluster pilot's HEAD predate or postdate this HEAD?
+          (Both are 2026-04-29 dates — verify cluster pilot's exact
+          SHA from scripts/archive/atomspace_pilot/source*/.)
+      (b) DAS componentization at current HEAD (verified in
+          pre-population): src/{atomdb, agents, attention_broker,
+          db_adapter, distributed_algorithm_node, hasher, main, metta,
+          commons}. Does this match the cluster pilot finding?
+      (c) Frozen/deprecated repos (verified): das-atom-db,
+          das-query-engine, das-attention-broker, das-postgres-lobe,
+          das-poc, etc. The active development has CONSOLIDATED into
+          singnet/das. Does this strengthen or weaken DAS as a
+          Phase 5+ substrate?
+      (d) The das module integration in hyperon-experimental (Source 2
+          Q9): metta-bus-client tag 1.0.2; new-das! at das.rs:66-70.
+          Is there alignment between hyperon-experimental's DAS
+          integration and singnet/das HEAD?
+      (e) Phase 5+ implication: DAS is the natural distributed Phase 6+
+          substrate; not Phase 4 or Phase 5. Document the path from
+          Phase 4 (in-memory mirror) → Phase 5+ (durable single-process)
+          → Phase 6+ (distributed via DAS).
+
+Q6. ATOMSPACE-ROCKS AS PHASE 5+ DURABILITY CANDIDATE.
+    Per Source 3 Q11, atomspace-rocks is the maintainer-preferred
+    classical-side direction. Audit:
+      (a) StorageNode interface implementation: does RocksStorage.h
+          inherit `class RocksStorageNode : public StorageNode`?
+          Cite file:line.
+      (b) Write-path implementations: storeAtom, removeAtom,
+          storeValue, etc. — verify these are real (not stubs like
+          atomspace-bridge). Cite file:line for each.
+      (c) Single-user constraint (per README): "only one running
+          AtomSpace executable can connect to it at any given moment."
+          Phase 5+ implication for multi-Decko-worker deployment:
+          rocks alone is NOT a multi-user substrate. Multi-user
+          requires layering atomspace-cog on top.
+      (d) Frame support (RocksFrame.cc): does atomspace-rocks support
+          versioned/branched AtomSpace state? If yes, cite.
+          Phase 5+ implication: rocks Frame could support Decko
+          card-revision history natively.
+      (e) Read-only mode (commit 984ef28): supports read-only open.
+          Phase 5+ implication: useful for parallel read replicas.
+      (f) Hyperon-side adapter cost: atomspace-rocks is classical-
+          AtomSpace-side. To use as a Hyperon Space backing store,
+          would need an adapter (similar to Q2.d for MORK). Compare
+          adapter-cost: rocks vs MORK.
+
+Q7. CROSS-CUTTING PERSISTENCE MODEL COMPARISON.
+    Synthesize a comparison table across the substrate landscape. For
+    each of {Hyperon Space, MORK, PathMap, DAS, atomspace-rocks,
+    atomspace-pgres, classical AtomSpace}, document:
+      (a) Storage location (RAM-only / RAM+disk / disk+network).
+      (b) Identity model (structural / Handle / UUID / trie-key).
+      (c) Transactionality (none / per-operation / multi-operation
+          BEGIN-COMMIT).
+      (d) Concurrency (single-thread / multi-thread / multi-process /
+          distributed).
+      (e) Write-observability (none / signal / observer-pattern).
+      (f) Maintainer status (active / stale / deprecated).
+      (g) Phase fit (4 / 5 / 6 / not-relevant).
+    Output as a markdown-style table for SPEC_DRAFT.md.
+
+Q8. IDENTITY MODEL CROSS-SUBSTRATE COMPARISON.
+    Source 3 Q2 closed: Hyperon Space has structural-only identity;
+    classical Handle is pointer-like; persistent UUID lives in
+    StorageNode/TLB. Source 4 extends:
+      (a) MORK identity: trie-key based. What's the canonical key
+          encoding?
+      (b) DAS identity: per atomdb_api_types::*, hashes? UUIDs? handles?
+      (c) atomspace-rocks identity: inherits classical Handle/UUID.
+      (d) Phase 5+ implication: if Phase 5+ migrates from in-memory
+          mirror to a durable substrate, identity translation between
+          Hyperon Space (structural) and the substrate must be
+          designed. Cite the translation costs per substrate.
+      (e) D3-1 metadata discipline (provenance fields): does any
+          substrate natively support per-atom provenance metadata?
+          If yes, that substrate gets a Phase 5+ readiness bonus.
+
+Q9. CONCURRENCY MODEL COMPARISON.
+    Source 2 Q4 + Source 3 Q3 established Hyperon Space (single-thread
+    Rc/RefCell, maintainer-acknowledged single-thread design) and
+    classical AtomSpace (thread-conscious via std::shared_mutex pools).
+    Source 4 extends:
+      (a) MORK concurrency model: `pub static mut` counters in space.rs
+          suggest single-thread design with manual unsafe access.
+          Verify and document.
+      (b) PathMap concurrency: jemalloc + nightly features per Cargo.toml
+          suggest unstable surface; check pathmap-book for thread-safety
+          guarantees.
+      (c) DAS concurrency: multi-process by design; thread-pool
+          branches active (atomdb-redis-mongo-impl, ccg/masc/1013-db-
+          adapter-thread-pool). Document the explicit threading
+          guarantees.
+      (d) atomspace-rocks: single-user single-process per README.
+      (e) Phase 4/5+ implication: multi-Decko-worker deployments need
+          a multi-process or multi-thread substrate. Phase 4 stays
+          with single-process Hyperon Space; Phase 5+ multi-process
+          requires either DAS-distributed OR an in-process Rust
+          mirror with cross-process IPC layered on top.
+
+Q10. WRITE-BACK OBSERVABILITY (SUBSTRATE-LEVEL).
+    Source 2 verified Hyperon Space's SpaceObserver. Source 3 verified
+    classical AtomSpace's atom-mutation observer is REMOVED at HEAD.
+    Source 4 audits:
+      (a) MORK kernel: does kernel/src/space.rs have observer/event
+          mechanisms? Pickaxe: `Observer|Event|notify|subscribe|listen|
+          Trigger|Hook|Callback`. If absent, document.
+      (b) PathMap: same pickaxe in PathMap/src/.
+      (c) DAS: same pickaxe + `Subscription|Notify|Publish` in das/src/.
+          DAS likely has cross-process pub/sub primitives; verify.
+      (d) atomspace-rocks: classical observer removed; rocks-side
+          inheritance.
+      (e) Phase 5+ implication: if Phase 5+ migrates to a substrate
+          without observer, D3-1 metadata + Phase 4's existing
+          SpaceObserver wiring must remain at the Hyperon Space layer
+          and NOT be pushed down into the durability layer.
+
+Q11. CROSS-PORTFOLIO DIRECTION ALIGNMENT.
+    Audit each repo's stated direction (README, AGENTS.md/CLAUDE.md/
+    GEMINI.md if present, recent design notes):
+      (a) MORK direction: Vandervorst-lineage; trie-based AtomSpace;
+          Z3 SMT integration; DTL/decision-tree learning examples in
+          recent commits. Is MORK targeting AGI substrate or specific
+          algorithmic domain?
+      (b) PathMap direction: Luke Peterson; book-authoring mode at
+          HEAD; trie-as-foundation. Long-term vs short-term?
+      (c) DAS direction: SingularityNET; production distributed
+          AtomSpace; "fully integrated with MeTTa" per README; multi-
+          backend (AtomDB) supports Mongo, Redis, MorkDB.
+      (d) atomspace-rocks direction: Linas; classical-AtomSpace
+          maintainer's preferred Phase 5+ direction (Source 3 Q11).
+      (e) Phase 4/5+ implication: are these directions converging or
+          diverging? The cluster-pilot's four-layer taxonomy
+          (Classical / Hyperon / DAS / MORK) IS a snapshot of
+          divergence. Document whether 2026-04-19 to 2026-04-29
+          activity (recent in MORK + DAS) shows convergence on a
+          substrate or continued parallelism.
+
+Q12. ARCHITECTURAL SYNTHESIS — DOES SOURCE 4 OVERRIDE PHASE 4 OR
+     RESHAPE PHASE 5+?
+     Per Codex's reconciliation guidance, the gating question for
+     Source 4 is:
+
+       "Does any substrate (MORK, PathMap, DAS, atomspace-rocks)
+        provide a path that should override Source 2's Hyperon-Space-
+        mirror recommendation, or reshape the Phase 5+ migration
+        target?"
+
+     Specifically:
+
+      (a) Should Phase 4 use any of these substrates instead of
+          Hyperon Space? Trade-off analysis per Q1-Q11.
+          Predicted answer: NO. None has a SpaceObserver-equivalent;
+          most are not Hyperon-Space-compatible at the API level;
+          Phase 4 schedule cannot absorb adapter-project work.
+          Document the reasoning.
+
+      (b) Should Phase 5+ Hyperon-side durability use rocks-style
+          single-process file-backed key-value, OR MORK/PathMap
+          trie-based memmap, OR DAS-distributed?
+          Trade-off framing:
+            ROCKS-PATH: rocks adapter + atomspace-cog network layer.
+                        Pros: maintainer-blessed; mature; transactional.
+                        Cons: classical-side; adapter cost; single-user
+                              base layer.
+            MORK-PATH:  MORK kernel + mork_ffi + custom Hyperon adapter.
+                        Pros: Hyperon-aligned; trie-native; memmap.
+                        Cons: research-stage; PathMap dependency;
+                              MorkDB delete blocker; FFI maturity.
+            DAS-PATH:   DAS as distributed substrate.
+                        Pros: production-tested; multi-backend (Mongo,
+                              Redis, MorkDB); fully MeTTa-integrated.
+                        Cons: heavier ops surface; Phase 6+ scale not
+                              Phase 5; not a simple in-process upgrade.
+          Recommended framing: the answer depends on Phase 4's
+          experience. If Phase 4 hits scale ceilings on Hyperon Space
+          alone, MORK-PATH or ROCKS-PATH; if Phase 4 hits multi-Decko-
+          deployment limits, DAS-PATH. SPEC_DRAFT defers decision.
+
+      (c) Is there a write-back-architecture pattern any substrate
+          provides that Phase 4 should adopt now? E.g., DAS's pub/sub
+          primitives, atomspace-rocks's Frame versioning, MORK's
+          trie merkleization?
+          Predicted answer: NO new Phase 4 patterns required. D3-1
+          metadata discipline (Source 3) is sufficient for Phase 4
+          observability; substrate-specific patterns are Phase 5+.
+
+      (d) Is mork_ffi the right Phase 5+ FFI bridge for MORK
+          integration, or should Phase 5+ implement a fresh adapter?
+          Per Q4: mork_ffi has 3 commits and is research-stage. Phase
+          5+ should treat mork_ffi as a reference/checkpoint, not a
+          production bridge. A fresh PyO3-style or pybind11-style
+          adapter is the more likely Phase 5+ path.
+
+      (e) Final synthesis for SPEC_DRAFT.md:
+            - PHASE 4 SUBSTRATE: stay Hyperon Space (Sources 1+2+3+4
+              consensus).
+            - PHASE 4 DURABILITY: Decko/Postgres (no change).
+            - PHASE 4 IDENTITY: Decko card_id encoded in atom (Source
+              5 design).
+            - PHASE 4 WRITE-BACK: imperative add/remove/replace; D3-1
+              metadata.
+            - PHASE 4 MCP: language-matched (Python/Rust); Source 6
+              decides.
+            - PHASE 5+ DURABILITY OPTIONS: rocks-path / MORK-path /
+              DAS-path. Decision deferred to post-Phase-4 empirical
+              evidence (scale ceilings, deployment patterns).
+            - PHASE 6+ DISTRIBUTED: DAS-path (singnet/das HEAD).
+
+--------------------------------------------------------------------------------
+6. STANDING PROTOCOLS REMINDER
+--------------------------------------------------------------------------------
+
+Inherited from Sources 1+2+3:
+
+- CF5.6 (Gemini source-location/file-identity drift): verify every Gemini
+  file/line claim via direct Read or Glob before adoption. Source 1: 5
+  CF5.6 incidents. Source 2: 5 incidents. Source 3: 1 framing-imprecision
+  incident + 3 ORCHESTRATOR-side path drifts (caught by Codex).
+
+- V1-Q1 (pickaxe without path filter): for any "never implemented" or
+  "absent at HEAD" claim, run `git log --all -S '<token>'` without a path
+  filter. Apply to Q4 (mork_ffi production-readiness), Q10 (substrate
+  observability negative claims).
+
+- V2-Q10/14 (benchmark-required for quantitative claims): do NOT
+  extrapolate throughput, capacity, or latency numbers without bench
+  evidence. Apply to Q3 (PathMap maturity), Q6 (rocks throughput), Q9
+  (cross-substrate concurrency).
+
+- V2-PROTOCOL-1 (pr-NNN merge status): N/A for Source 4 (no pr-NNN
+  branch citations in the brief).
+
+- V2-PROTOCOL-2 (dual-token grep for Rust→Python bindings): apply to Q4
+  (mork_ffi exposes both Rust src/ and C ABI mork.c; check both).
+
+- V2-PROTOCOL-3 (audit Clone semantics): apply to Q1-Q2 (does MORK's
+  `Space` struct derive Clone? what gets cloned?).
+
+- V3-PROTOCOL-1 (verify brief paths via Glob/ls before finalizing):
+  ALL paths in this brief have been V3-PROTOCOL-1-verified during
+  drafting. Reviewers should still re-verify any path before citing
+  (Codex caught 3 brief-side drifts in Source 3).
+
+- V3-PROTOCOL-2 (read latest status line in design notes): apply to Q3
+  (PathMap pathmap-book chapters), Q11 (MORK README + recent commits).
+
+- V3-PROTOCOL-3 (signal/observer audits use pickaxe + look for explicit
+  removal commits): apply to Q10 (cross-substrate observability audit).
+
+- D3-1 (Source 3 Phase 4 metadata discipline): every SpaceEvent envelope
+  must carry {source, card_id|agent_id, action_id, timestamp}.
+  Treat as Phase 4 review criterion when auditing Q12 substrate
+  trade-offs.
+
+Standard cluster-pilot rules:
+
+- Time-indexed snapshot deltas: HEAD as of:
+    MORK              2026-04-19  ClarkeRemy
+    DAS               2026-04-29  Andre Luiz de Senna
+    atomspace-rocks   2026-01-21  Linas Vepštas
+    PathMap           2025-09-22  Luke Peterson
+    mork_ffi          2025-12-12  Patrick Hammer
+  Document staleness deltas in findings.
+
+- Bidirectional fork-divergence: MORK has forks (MORK-leungmanhin,
+  MORK-zariuq, MORK-rejuve-bio, MORK2, MOSES-MORK, MORK-atomspace-builder).
+  Reviewers should NOT exhaustively audit all forks but should run
+  `git log A..B AND B..A` against any fork explicitly relevant to the
+  Phase 5+ decision (most likely zariuq fork given user's role).
+
+- Orientation-file drift: AGENTS.md / CLAUDE.md / GEMINI.md exist in
+  MORK/, mork_ffi/, atomspace-rocks/, das/. Treat with skepticism per
+  Source 2 F6 lesson; cite README.md and code only.
+
+--------------------------------------------------------------------------------
+7. DELIVERABLE FORMAT (per agent)
+--------------------------------------------------------------------------------
+
+Each model produces:
+  scripts/archive/atomspace_integration_phase4/source4_mork_pathmap_das_rocks/
+    findings_claude.txt
+    findings_codex.txt
+    findings_gemini.txt
+
+Format follows Sources 1+2+3's findings pattern:
+  - Q1–Q12 in order.
+  - [VERIFIED] / [INFERRED] / [NOT FOUND] / [CO-VERIFIED] / [NEW] tags.
+  - Direct file:line citations for all VERIFIED claims.
+  - Pickaxe (without path filter) for any negative-existence claim.
+  - For Q12, recommended Phase 4/5+ wiring with explicit dependencies on
+    other Sources.
+
+After all three findings land, orchestrator (Claude) produces:
+  findings_reconciled_crossmodel.txt
+
+Reconciliation includes:
+  - Per-question consensus.
+  - V-N-X dissents (V = Claude/Codex/Gemini, N = question, X = sub-issue).
+  - Source-of-truth checks (CF5.6 verifications + V3-PROTOCOL-1 checks).
+  - Bottom Line for SPEC_DRAFT.md, with explicit answers to:
+      Q12.a: Switch to alternate substrate for Phase 4? (Predicted: NO.)
+      Q12.b: Phase 5+ durability: rocks / MORK / DAS? (Predicted: defer
+             pending Phase 4 empirics.)
+      Q12.c: Adopt any substrate-specific pattern in Phase 4 now?
+             (Predicted: NO.)
+      Q12.d: mork_ffi for Phase 5+ MORK bridge? (Predicted: reference
+             only; build fresh adapter.)
+  - Dependency conditions for Sources 5/6/7.
+
+Prediction (orchestrator, low-confidence):
+Source 4 closes with [STAY-HYPERON-SPACE-PHASE-4]
+[PHASE-5+-DURABILITY-DEFERRED] [DAS-IS-PHASE-6+-DISTRIBUTED]
+[CLUSTER-PILOT-FINDINGS-CONFIRMED]. The MORK 8-crate workspace is
+verified; MorkDB delete-blocking at MorkDB.cc:268-270 is verified;
+atomspace-rocks is confirmed as the maintainer-preferred classical-side
+direction; DAS at HEAD has CONSOLIDATED into singnet/das with active
+multi-backend (Mongo/Redis/MorkDB) AtomDB layer. Source 4 produces NO
+new SPEC_DRAFT patches; it produces the Q7 cross-substrate comparison
+table for SPEC_DRAFT.md and 1-2 Phase-5+ design anchors.
+
+================================================================================

@@ -1,0 +1,1246 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 5
+Decko semantics inventory — cardtype primitives, +convention layer,
+event/stage hooks, D3-1 envelope finalization, atom encoding scheme
+================================================================================
+
+Date opened:    2026-05-04
+Cluster pilot:  atomspace_integration_phase4
+Source #:       5 of 7
+Orchestrator:   Claude (this session)
+Cross-model reviewers: Codex + Gemini (separate sessions)
+Reconciliation deliverable: findings_reconciled_crossmodel.txt
+Spec input:     feeds the eventual SPEC_DRAFT.md at cluster close.
+
+This is the DECKO-SIDE source. Sources 1-4 audited the Hyperon /
+classical / MORK / DAS / atomspace-rocks substrate landscape and locked
+in:  PHASE 4 SUBSTRATE = HYPERON SPACE (in-memory mirror), with
+PATCH-1 + PATCH-2 as required code additions, D3-1 metadata as the
+SpaceEvent envelope discipline.
+
+Source 5 closes the OTHER half of the Phase 4 architecture: the Decko
+side. The Phase 4 mirror service must subscribe to Decko's
+write-events, translate Decko card state into Hyperon atoms, and emit
+SpaceEvents tagged with D3-1 metadata. To specify that translation
+precisely, we need:
+
+  (i)   the canonical Decko event/stage hooks (which fire after the
+        DB write commits, and which signal pre-commit);
+  (ii)  the canonical Decko card schema (cards / card_acts /
+        card_actions / card_changes / card_revisions / card_references
+        — what gets persisted, with what granularity);
+  (iii) the cardtype primitive inventory (RichText / Pointer / Phrase /
+        Date / etc. — and which ones the wiki currently uses);
+  (iv)  the +convention layer (compound names like
+        `Parent+ai_draft`, `+tag`, `+description`, `+expert_reviewed`,
+        `+links`, `+roadmap` — how these encode editorial workflow
+        on top of cardtypes);
+  (v)   the atom encoding scheme — given a Decko card, what's the
+        canonical Hyperon expression? what's the identity policy
+        (Decko card_id as primary key vs structural-by-name)?
+  (vi)  the D3-1 envelope finalization — what fields, populated from
+        which Decko tables/columns, with what semantic meaning;
+  (vii) the trash / soft-delete / restore semantics — when does the
+        mirror remove an atom vs keep it with a tombstone?
+  (viii) the auth/actor layer — how does `Card::Auth.as(...)` flow
+        into the D3-1 `agent_id` field?
+
+This source feeds Source 6 (agent-facing MCP surface design) — once
+we know the atom encoding, MCP can specify what agent-writable
+operations look like — and Source 7 (Magus plan reconciliation) —
+which checks D3-1 + atom encoding against the existing Magus 4-phase
+plan and the per-entry +convention card pattern documented in
+`project_magus_atomspace_plan_2026_03_11.md`.
+
+--------------------------------------------------------------------------------
+1. CONTEXT
+--------------------------------------------------------------------------------
+
+Phase 4 baseline (locked in by Sources 1+2+3+4):
+  - Architecture:  Option D (Decko-callback-driven Hyperon-Space mirror).
+  - Substrate:     Hyperon Space at HEAD; in-memory; STAY confirmed by
+                   Sources 3 + 4.
+  - Durability:    Decko/Postgres = SOURCE OF TRUTH (Phase 4 / Phase 5).
+                   Hyperon Space = read-many / write-through-on-Decko-
+                   commit mirror.
+  - Required code: PATCH-1 (pybind11 Python observer binding) +
+                   PATCH-2 (MeTTa-side `replace-atom!` grounded op).
+  - Metadata:      D3-1 provenance fields {source, card_id|agent_id,
+                   action_id, timestamp} on every SpaceEvent.
+                   Source 5 must finalize the field list and population
+                   policy.
+
+Phase 4 OPEN questions inherited (Source 5 owns):
+  (i)  Decko event hook: which stage of the Director phase model
+       (validation / storage / integration) is the right post-commit
+       fire site for the mirror?
+  (ii) Decko-side identity in atoms: is the Hyperon atom keyed by
+       Decko card_id (numeric) or by Decko card name (structural)? Is
+       it a typed link with both? — Codex's V3-PROTOCOL-1 carry-over:
+       brief paths must be verified, but ALSO the brief's identity
+       proposal must be testable against the Decko schema.
+  (iii) D3-1 fields: Source 3 named {source, card_id|agent_id,
+        action_id, timestamp}. Decko's act/action/change schema
+        provides {actor_id, super_action_id, action_type, draft,
+        comment, ip_address, acted_at, field, value}. Source 5 must
+        decide which of these populate D3-1 and which are dropped.
+
+Source 5 does NOT open new substrate questions; Sources 1-4 closed
+those. Source 5 does NOT design the agent-facing MCP surface; that's
+Source 6.
+
+--------------------------------------------------------------------------------
+2. INHERITED CONCLUSIONS (do not re-derive)
+--------------------------------------------------------------------------------
+
+From Source 1 (atomspace-bridge, closed 2026-05-03):
+  - Bridge is [READ-ONLY-BY-DESIGN] [BULK-IMPORT-THEN-READ]. Empty
+    write stubs in atomspace-bridge SQLReader.cc:395-425.
+  - Phase 4 cannot use atomspace-bridge for write-through.
+
+From Source 2 (hyperon-space, closed 2026-05-04):
+  - Hyperon Space is the canonical Phase 4 substrate.
+  - SpaceMut::add/remove/replace at hyperon-space/src/lib.rs:237/255/275.
+  - SpaceObserver/SpaceEvent/SpaceCommon at lib.rs:22-126.
+  - SpaceEvent = enum { Add(Atom), Remove(Atom), Replace(Atom, Atom) }.
+  - Single-threaded Rc/RefCell.
+  - PATCH-1 [REQUIRED]: pybind11 binding for `space_register_observer`.
+  - PATCH-2 [RECOMMENDED]: MeTTa-side `replace-atom!` grounded op.
+  - "Complete at the Space/C/Python surface" — MeTTa surface
+    incomplete pending PATCH-2.
+
+From Source 3 (atomspace-linas, closed 2026-05-04):
+  - STAY-HYPERON-SPACE.
+  - atomspace-pgres has real writer (SQLAtomStore.cc:68) but is
+    explicitly deprecated in favor of RocksDB.
+  - Classical atom-mutation observer API was actively REMOVED at HEAD
+    (commits a8980a4689 "Remove vestiges of signals", ef95811c27
+    "Exterminate boost with prejudice").
+  - D3-1 metadata discipline: every SpaceEvent envelope carries
+    {source, card_id|agent_id, action_id, timestamp}. Source 5
+    finalizes field list.
+  - Linas's Design Note D = canonical Phase 5+ L1-introspection anchor
+    (NOT Phase 4 scope).
+
+From Source 4 (mork_pathmap_das_rocks, closed 2026-05-04):
+  - PHASE 4 substrate confirmed Hyperon Space. PHASE 5+ durability
+    options: ROCKS-PATH (primary) / MORK-PATH (secondary, blocked on
+    PathMap version + observer-shim + MorkDB delete) / DAS-PATH
+    (Phase 6+ distributed only).
+  - V4-PROTOCOL-4: brief-flagged "verify X" notes are NOT background
+    — they are extraction obligations. Source 5 brief must avoid
+    unverified "verify X" placeholders; every claim in this brief
+    has been V3-PROTOCOL-1-verified during drafting.
+
+Outside Source 5 scope (covered elsewhere):
+  - Source 1: atomspace-bridge. CLOSED.
+  - Source 2: Hyperon Space. CLOSED.
+  - Source 3: atomspace-linas + atomspace-pgres + cpp-mcp. CLOSED.
+  - Source 4: MORK + PathMap + DAS + atomspace-rocks. CLOSED.
+  - Source 6: agent-facing MCP surface design (mirror-write semantics
+              for agent-emitted atoms; replace-atom! grounded op
+              user-facing API).
+  - Source 7: Magus plan reconciliation; SPEC_DRAFT.md assembly.
+
+--------------------------------------------------------------------------------
+3. REPO STATE SNAPSHOT (V3-PROTOCOL-1-verified during brief drafting)
+--------------------------------------------------------------------------------
+
+All paths in this section have been verified via Glob/ls/Read during
+drafting. Reviewers should still re-verify any path before citing
+(per V4-PROTOCOL-4).
+
+Repo 1: decko (upstream Decko framework gem)
+  Path:        E:\GitHub\Magi-AGI\decko\
+  Remote:      https://github.com/decko-commons/decko
+  HEAD commit: 93c54deadaf6645e61427940910fe1dc35112f36
+  HEAD date:   2025-10-15 13:12:08 -0400
+  HEAD author: Ethan McCutchen
+  HEAD msg:    "Merge pull request #1242 from decko-commons/dependabot/
+                bundler/docker/template/rack-2.2.20"
+  Status:      ACTIVE upstream framework; commit cadence steady;
+               this is the gem the wiki depends on.
+  Branch:      main.
+  Verified:    `card/lib/card/director/stages.rb` has the canonical
+               9-stage list at lines 5-7.
+               `card/lib/card/set/event.rb` has the Event API at
+               lines 36-74.
+               `card/db/schema.rb` has 8 card_* tables at lines 19-104.
+               `mod/history/lib/card/change.rb` has TRACKED_FIELDS at
+               line 25.
+               `mod/history/lib/card/action.rb` has TYPE_OPTIONS at
+               line 42.
+
+  Cluster-pilot relevance: Decko is the framework. Source 5 reads
+  Decko gem source for the canonical event/stage/action/change/auth
+  semantics. The wiki repo (Repo 2) inherits all of these.
+
+  Recent activity (HEAD…HEAD~10):
+    93c54deada Merge PR #1242 (rack 2.2.20)
+    7274e02446 Merge PR #1240 from decko-commons/ethn-wikirate
+    c78ab3bc0e Bump rack from 2.2.17 to 2.2.20 in /docker/template
+    c6875ae6e5 Merge ethn-wikirate
+    1092b32c53 white space fix
+    2e21104323 qlty fmt
+    f27a8911da new rake task: card:trash:empty
+    29cb1cc528 whitespace in comments
+    73304a08b1 fix signin bug
+    0c26a1e4bd Merge main into ethn-wikirate
+
+  Note: Decko gem HEAD is 2025-10-15 (~6.5 months stale relative to
+  the cluster pilot date). Phase 4 wiring should pin to a known-good
+  Decko version; the wiki Gemfile.lock pins this.
+
+Repo 2: hyperon-wiki (the wiki itself; Decko deck on top of the gem)
+  Path:        E:\GitHub\Magi-AGI\hyperon-wiki\
+  Remote:      (private; deployed to wiki.magi-agi.org)
+  HEAD commit: a1a9e627dc392c0913b0e72ff2fe730348f273c3
+  HEAD date:   2026-05-01 01:29:23 -0700
+  HEAD author: Nemquae (Lake Watkins / project owner)
+  HEAD msg:    "Close Perception cluster pilot wiki-edit pass
+                (2026-05-01)"
+  Status:      ACTIVE primary work-tree.
+  Branch:      main.
+
+  Subdirectories of interest:
+    mod/                          Custom Decko mods (this deck's logic).
+      editorial_review/           Editorial workflow events.
+        set/all/editorial_events.rb
+        set/right/ai_draft.rb
+        set/type/draft.rb
+        set/type/published.rb
+        data/                     (verify content via Glob).
+      mcp_api/                    HTTP API consumed by the wiki MCP
+                                  server (hyperon-wiki-mcp).
+        app/controllers/api/mcp/
+          auth_controller.rb
+          base_controller.rb
+          cards_controller.rb     (1459 lines)
+          cards_controller_history_additions.rb (196 lines)
+          query_controller.rb
+          render_controller.rb
+          trash_controller.rb
+          types_controller.rb
+          validation_controller.rb
+          auto_link_controller.rb
+          health_controller.rb
+          jobs_controller.rb
+          jwks_controller.rb
+          admin/                  (admin endpoints)
+        lib/
+          mcp/                    (api_key_manager, roles,
+                                   user_authenticator)
+          mcp_api/                (engine, jwt_service,
+                                   markdown_converter)
+          card/mod/mcp_api.rb
+        config/, db/
+      hyperon_ui/                 UI customizations.
+      review_queue_ui/            Review-queue UI.
+      math_rendering/             Math rendering helpers.
+      permission_propagation/     Permission inheritance.
+      url_fixes/                  URL-handling fixes.
+      wiki_nav_tree/              Navigation tree.
+      email_fixes/                Email helpers.
+    docs/                         Operational docs (see Section 4).
+    scripts/archive/              This cluster pilot lives here.
+    config/                       Rails app config.
+    Gemfile                       Ruby dependencies.
+
+  Verified mods (read during brief drafting):
+    mod/editorial_review/set/right/ai_draft.rb (60 lines).
+      event :tag_parent_needs_review, :integrate, on: :save
+      event :merge_ai_draft, :finalize, on: :update,
+            when: proc { |_c| Env.params[:merge_draft] == "true" }
+    mod/editorial_review/set/type/draft.rb (~42 lines).
+      event :tag_draft_needs_review, :integrate, on: :create
+    mod/editorial_review/set/all/editorial_events.rb (~32 lines).
+      event :on_publish_card, :integrate, on: :update,
+            changed: :type_id
+
+  Cluster-pilot relevance: this repo IS the Phase 4 deployment target.
+  Phase 4 MUST add a new mod under mod/ (likely `mod/atomspace_mirror/`
+  or similar) that subscribes to integrate-stage events and emits
+  Phase-4-mirror writes.
+
+Repo 3: hyperon-wiki-mcp (HTTP-MCP gateway in front of the wiki API)
+  Path:        E:\GitHub\Magi-AGI\hyperon-wiki-mcp\
+  Remote:      (separate repo)
+  HEAD commit: d37e518615e8851bec1f1f8b644db637e6088755
+  HEAD date:   2026-04-09 13:45:39 -0700
+  HEAD author: Nemquae
+  HEAD msg:    "fix: Correct search_cards search_in default and
+                list_children description"
+  Status:      ACTIVE.
+  Branch:      main.
+
+  Top-level files of interest:
+    SERVER-BUGS.md                Operational quirks reference (cited
+                                   in CLAUDE.md). 5 bugs documented;
+                                   #4 + #5 are open and apply to
+                                   cluster-pilot wiki-edit workflows.
+    MCP-SPEC.md                   MCP protocol contract.
+    MCP_SERVER.md                 Server design doc.
+    PENDING-WORK.md               Open work items.
+
+  Cluster-pilot relevance: hyperon-wiki-mcp is the WRITE-PATH PROXY
+  used by Claude/Codex/Gemini sessions during cluster pilots. It
+  speaks to the Decko HTTP API in mod/mcp_api/ (Repo 2). For Phase 4,
+  the question is: does the agent-mirror flow go via wiki-mcp (HTTP)
+  or directly via Decko events (in-process callback)? Source 5 Q9
+  addresses this.
+
+Repo 4: hyperon-wiki-ui (front-end; not Phase 4 scope)
+  Path:        E:\GitHub\Magi-AGI\hyperon-wiki-ui\
+  Status:      Out of Phase 4 scope. Mentioned for completeness.
+
+--------------------------------------------------------------------------------
+4. KEY FILES INVENTORY (V3-PROTOCOL-1-verified during brief drafting)
+--------------------------------------------------------------------------------
+
+For Q1 (Decko Director phase model + canonical event hooks):
+  decko/card/lib/card/director/stages.rb:5-7      9-stage canonical list
+  decko/card/lib/card/director/phases.rb          (verify content)
+  decko/card/lib/card/director/run.rb             (verify content)
+  decko/card/lib/card/director.rb                 Director top-level.
+  decko/card/lib/card/set/event.rb:36-74          Event API.
+  decko/card/lib/card/set/event/callbacks.rb      Event callback wiring.
+  decko/card/lib/card/set/event/options.rb        Event options.
+  decko/card/lib/card/set/event/skip_and_trigger.rb
+                                                  Skip/trigger semantics.
+  decko/card/lib/card/set/event/delayed_event.rb  Delayed/queued events.
+
+  Stage list (verified at decko/card/lib/card/director/stages.rb:5-7):
+    SYMBOLS = %i[initialize prepare_to_validate validate] +
+              %i[prepare_to_store store finalize] +
+              %i[integrate after_integrate integrate_with_delay]
+              .freeze
+  Phases:
+    Validation phase  = initialize, prepare_to_validate, validate
+    Storage phase     = prepare_to_store, store, finalize
+    Integration phase = integrate, after_integrate, integrate_with_delay
+
+For Q2 (Decko card schema + audit-trail tables):
+  decko/card/db/schema.rb                          Canonical schema
+                                                   (lines 19-104 are
+                                                   the card-related
+                                                   tables).
+  decko/mod/history/lib/card/action.rb:42         TYPE_OPTIONS=
+                                                   %i[create update
+                                                   delete].
+  decko/mod/history/lib/card/change.rb:25         TRACKED_FIELDS=
+                                                   %w[name type_id
+                                                   db_content trash
+                                                   left_id right_id].
+  decko/mod/history/lib/card/action.rb:23-35      Action model
+                                                   associations.
+  decko/mod/history/lib/card/action/changes.rb    Changes mixin.
+  decko/mod/history/lib/card/action/admin.rb      Admin mixin.
+  decko/mod/history/lib/card/action/differ.rb     Diff utilities.
+  decko/mod/history/set/all/history/actions.rb    Set-level action
+                                                   wiring.
+
+  Card-related tables (verified at decko/card/db/schema.rb):
+    cards             id, name, key, codename, left_id, right_id,
+                      current_revision_id, type_id, db_content, trash,
+                      created_at, updated_at, creator_id, updater_id.
+    card_acts         id, card_id, actor_id, acted_at, ip_address.
+                      [Single user submission = single act, may span
+                       multiple cards.]
+    card_actions      id, card_id, card_act_id, super_action_id,
+                      action_type, draft, comment.
+                      [One action per card per act; action_type ∈
+                       {create=1, update=2, delete=3} per
+                       TYPE_OPTIONS index. super_action_id supports
+                       parent/sub action hierarchy.]
+    card_changes      id, card_action_id, field, value.
+                      [field is integer index into TRACKED_FIELDS.]
+    card_revisions    id, card_id, creator_id, content, created_at.
+                      [Revision history; current_revision_id on cards
+                       row points to most recent.]
+    card_references   referer_id, referee_id, referee_key, ref_type,
+                      is_present.
+                      [Link/nest tracking; ref_type is 1-char.]
+    card_virtuals     id, left_id, right_id, left_key, content,
+                      updated_at.
+                      [Computed/cached compound-card content.]
+    delayed_jobs      Standard delayed_job table.
+    sessions          Session storage.
+    users             User accounts; users.card_id links to a user-
+                      profile card.
+
+  IMPORTANT divergence flag — schema declares:
+    create_table "card_acts", id: :integer, charset: "utf8mb3",
+                 force: :cascade
+  utf8mb3 is MySQL-specific syntax. The wiki's CLAUDE.md (docs/) says
+  PostgreSQL is the production target. This is a known schema-rb
+  artifact (auto-generated from a MySQL dev DB at version
+  2022_10_31_182227 per schema.rb:17) and is NOT necessarily what's
+  in production. Source 5 reviewers should NOT use schema.rb to
+  conclude "Decko uses MySQL"; the right question is "what tables
+  exist," and that's clear regardless of charset.
+
+For Q3 (cardtype primitives in this wiki):
+  Decko ships standard cardtypes via codenames. Verified via
+  examples in mod/editorial_review/:
+    Card::PointerID   Pointer cardtype (newline-separated item names).
+                      Example: +tag subcards.
+    Card::PhraseID    Phrase cardtype (single-line plain text).
+                      Example: +approved by.
+    Card::DateID      Date cardtype.
+                      Example: +approved at.
+    Card::PlainTextID Plain Text.
+    Card::SearchTypeID Search.
+    (Plus RichText, Number, Toggle, File, Image, etc. — full list in
+     decko/card/db/seeds.rb and Decko core mods. Verify at
+     extraction time.)
+
+  Wiki-specific cardtypes (custom):
+    Draft (mod/editorial_review/set/type/draft.rb)
+    Published (mod/editorial_review/set/type/published.rb)
+    AI Draft (right-side set in
+              mod/editorial_review/set/right/ai_draft.rb)
+
+  Cluster-pilot wiki cards used in audit tables (CLAUDE.md):
+    Cardtype RichText:    main content cards (e.g., subcards under
+                          a Published parent).
+    Cardtype Pointer:     +tag subcards (newline-separated tag list,
+                          plain text like "ai_generated\nhuman approved").
+    Cardtype Markdown:    older stub cards (e.g., Publications stubs;
+                          Markdown is supported via stub upgrade
+                          process in CLAUDE.md PLN cluster Phase 3).
+    Cardtype Draft:       ai_generated content awaiting review.
+    Cardtype Published:   approved content.
+
+For Q4 (the +convention layer in this wiki):
+  Compound names use Decko's left+right pattern: `LeftCard+RightCard`.
+  The TRAIT pattern (decko/card/lib/card/set/trait.rb) wires set
+  modules to "all cards with name X+Y" — i.e., right-side conventions
+  apply to any LeftCard with RightCard='ai_draft', etc.
+
+  Verified +convention right-side names from CLAUDE.md and mods:
+    +ai_draft         Draft cardtype child holding agent-proposed
+                      changes for a Published parent. Triggers
+                      tag_parent_needs_review event.
+    +tag              Pointer cardtype; newline-separated tag list.
+                      Aliased so +tag and +tags resolve to same card
+                      (per reference_wiki_mcp_quirks.md).
+    +description      (verify cardtype during extraction; likely
+                      RichText or PlainText).
+    +links            (verify cardtype; probably Pointer).
+    +roadmap          (verify cardtype; probably RichText).
+    +expert_reviewed  (verify cardtype; probably Toggle or Phrase).
+    +review_status    (verify cardtype; probably Phrase).
+    +approved by      Phrase cardtype, populated by on_publish_card
+                      event with Auth.current.name.
+    +approved at      Date cardtype, populated by on_publish_card
+                      event with Time.current.to_date.
+
+  Cluster-pilot extension (per project_magus_atomspace_plan_2026_03_11.md
+  memory): the Magus plan introduced per-entry +convention cards
+  +expert_reviewed/+ai_draft/+review_status/+description/+links/+roadmap.
+  Source 5 must inventory which of these the wiki actually uses
+  (vs proposed-only) by querying live data, NOT inferring from
+  CLAUDE.md.
+
+For Q5 (Decko event-emission flow during a write):
+  decko/card/lib/card/set/event.rb:147-159         define_standard_event_method
+                                                    (rescuing_if_integration
+                                                     pattern: integration-
+                                                     stage events get error-
+                                                     rescued so one failure
+                                                     does not poison others).
+  decko/card/lib/card/director/run.rb              Director run loop
+                                                    (verify stage iteration).
+  decko/card/lib/card/director/phases.rb           Phase boundaries.
+
+For Q6 (atom encoding scheme for Decko cards — design question):
+  Reference: hyperon-experimental atom representation
+              (Source 2's Atom enum — Symbol/Variable/Expression/
+               Grounded).
+  Source 5 must propose an encoding. NO file exists in the codebase
+  yet. Predicted encoding (orchestrator low-confidence guess):
+    Card "X+Y" with cardtype T and content C →
+      (DeckoCard <id-N> "X+Y" T (Content "C"))
+    where <id-N> is a Decko card_id ground term.
+
+For Q7 (D3-1 envelope finalization — design question):
+  Reference: Source 3 D3-1 specification: {source, card_id|agent_id,
+              action_id, timestamp}.
+  Decko provides via card_acts + card_actions + card_changes:
+    actor_id          → D3-1 agent_id
+    card_act_id       → D3-1 action_id PARENT key
+    card_action_id    → D3-1 action_id PER-CARD key
+    super_action_id   → D3-1 super-action chain
+    action_type       → D3-1 action_kind (create/update/delete)
+    acted_at          → D3-1 timestamp
+    ip_address        → D3-1 source-IP (optional)
+    field, value      → per-change diff payload (subset for D3-1)
+  Source 5 must propose final mapping.
+
+For Q8 (trash semantics):
+  decko/card/db/schema.rb:92                        cards.trash boolean
+                                                     NOT NULL.
+  Card.trash = true means soft-deleted; card stays in DB but is
+  hidden. Card.delete! sets trash flag. Hard delete removes the row.
+  Cluster-pilot evidence (from SERVER-BUGS.md Bug #5): restore_card
+  exists, so trash → restore is a real wiki workflow.
+
+For Q9 (HTTP-API write-path vs in-process event-callback):
+  hyperon-wiki/mod/mcp_api/app/controllers/api/mcp/cards_controller.rb
+    line 67 (def create), line 95 (def update), line 124 (def destroy),
+    line 136 (def rename).
+  All controller actions wrap mutations in:
+    Card::Auth.as(current_account.name) do
+      Card.create! / @card.save! / @card.delete!
+    end
+  This means HTTP API writes flow through the same Card.save! path
+  that triggers events. So the integrate-stage event hook fires for
+  BOTH HTTP API writes and direct Rails-console writes. Phase 4
+  mirror does NOT need to instrument the HTTP API specifically —
+  one event subscription catches all writes.
+
+For Q10 (auth/actor identity in events):
+  decko/card/lib/card/auth.rb (verify content via Glob).
+  In events, `Auth.current` returns the active Card representing the
+  user. `Auth.current.name` gives the wiki name string.
+  `Card::Auth.as(name) { ... }` runs the block as that user.
+  `Card::Auth.as_bot { ... }` runs as the system bot (used in
+  on_publish_card event for stamping +approved by/+approved at).
+  The Auth integration question: when the mirror emits a SpaceEvent,
+  what's the agent_id? Two policies:
+    (a) Auth.current.name — captures human wiki actor.
+    (b) Auth.current.id (Decko card_id of user) — numeric,
+                                                  cross-rename-stable.
+  Source 5 must propose.
+
+For Q11 (revision history mirror policy):
+  decko/card/db/schema.rb:59-66                    card_revisions table.
+  Each card content edit creates a card_revision row. The mirror
+  could:
+    (a) emit only current-state SpaceEvents (replace-atom for the
+        current content; revision history lives in Decko, not in
+        Hyperon Space).
+    (b) emit SpaceEvents for every revision (Hyperon Space accumulates
+        revision history as separate atoms).
+  Phase 4 default (orchestrator low-confidence): policy (a). Phase 5+
+  could promote to (b) if Hyperon-side analytics need revision-aware
+  queries.
+
+For Q12 (synthesis — mirror service architecture):
+  Combines Q1-Q11 into a Phase 4 mirror service spec:
+    - Subscribe to Decko :integrate stage on :save and :delete.
+    - Read changed fields from the Action object.
+    - Translate card → atom per Q6 encoding.
+    - Emit SpaceEvent (Add / Remove / Replace) per Q5 stage and
+      action_type (create/update/delete).
+    - Tag SpaceEvent with D3-1 envelope per Q7 mapping.
+    - Pin atom identity to card_id (numeric) per Q10 to stabilize
+      across renames.
+
+--------------------------------------------------------------------------------
+5. RESEARCH QUESTIONS
+--------------------------------------------------------------------------------
+
+Q1. DECKO DIRECTOR PHASE MODEL + CANONICAL EVENT HOOK SELECTION.
+    The Phase 4 mirror needs to fire AFTER the Decko/Postgres write
+    commits successfully. Decko's 9-stage Director model
+    (decko/card/lib/card/director/stages.rb:5-7) gives 3 phases:
+    validation, storage, integration.
+      (a) Walk the canonical stage list. For each stage, document
+          (i) when it fires relative to the DB COMMIT, (ii) whether
+          a raised exception aborts the act, (iii) what state the
+          card is in (validated? saved? committed?).
+      (b) Compare candidate hook stages for the mirror:
+            :store         — DB row written, transaction not yet
+                             committed.
+            :finalize      — storage phase end; transaction committed?
+                             verify.
+            :integrate     — post-commit; raises are RESCUED per
+                             event.rb:147-159 (rescuing_if_integration).
+            :after_integrate — post-integrate.
+            :integrate_with_delay — queued via delayed_jobs table.
+          Which is the right hook? Predicted: :integrate is the
+          standard Decko convention (verified usage in
+          mod/editorial_review/*). :integrate_with_delay decouples
+          mirror failures from user-facing requests (preferred IF
+          Phase 4 can tolerate eventually-consistent mirror).
+      (c) Cite the existing wiki mods that already use :integrate
+          (mod/editorial_review/set/right/ai_draft.rb:4,
+           mod/editorial_review/set/type/draft.rb:30,
+           mod/editorial_review/set/all/editorial_events.rb:10).
+          Reuse-of-pattern argument: the mirror should follow the
+          same convention.
+      (d) Phase 4 implication: define the mirror event signature.
+          Predicted (orchestrator low-confidence):
+            event :mirror_to_atomspace, :integrate_with_delay,
+                  on: :save, after: :tag_parent_needs_review do
+              ...
+            end
+            event :mirror_delete_to_atomspace, :integrate_with_delay,
+                  on: :delete do
+              ...
+            end
+          If :integrate_with_delay introduces unacceptable latency,
+          fall back to :integrate. Both versions emit SpaceEvent;
+          only the queueing layer differs.
+
+Q2. DECKO CARD SCHEMA + AUDIT-TRAIL TABLES (D3-1 raw inputs).
+    The Phase 4 mirror reads from the cards table and the act/action/
+    change audit-trail tables. Verify and document each table:
+      (a) cards columns (decko/card/db/schema.rb:78-104):
+          id, name, key, codename, left_id, right_id,
+          current_revision_id, type_id, db_content, trash,
+          created_at, updated_at, creator_id, updater_id.
+          For each column: what does the mirror need? what does it
+          drop?
+            id           → atom identity primary key.
+            name         → atom display key (also encoded in atom
+                            shape).
+            key          → normalized URL slug; secondary identity.
+            codename     → optional Ruby symbol; only some cards
+                            have codenames.
+            left_id      → for compound (X+Y) cards, points to X.
+            right_id     → points to Y.
+            type_id      → cardtype identity; affects atom encoding.
+            db_content   → primary user-visible content.
+            trash        → soft-delete flag; mirror tombstone trigger.
+            current_revision_id → mirror ignores (revisions in Decko).
+      (b) card_acts (schema.rb:30-38):
+          id, card_id, actor_id, acted_at, ip_address.
+          card_id here is the "primary card" of the act (one act may
+          touch multiple cards via subactions; super_action_id wires
+          them).
+          → D3-1 envelope: actor_id → agent_id, acted_at → timestamp.
+      (c) card_actions (schema.rb:19-28):
+          id, card_id, card_act_id, super_action_id, action_type,
+          draft, comment.
+          action_type ∈ {create=0, update=1, delete=2} per
+          decko/mod/history/lib/card/action.rb:42 TYPE_OPTIONS.
+          draft column distinguishes draft-saves from final saves
+          (verify usage).
+          super_action_id supports nested subactions (parent action
+          for compound card create that simultaneously creates the
+          parent + several children).
+          → D3-1 envelope: action_type → action_kind, super_action_id
+            → action chain, comment → optional human-readable
+            description.
+      (d) card_changes (schema.rb:40-45):
+          id, card_action_id, field, value.
+          field is integer index into TRACKED_FIELDS=
+          %w[name type_id db_content trash left_id right_id]
+          (per decko/mod/history/lib/card/change.rb:25).
+          → D3-1 envelope: field-level diffs are RICHER than
+            SpaceEvent's enum {Add, Remove, Replace}. Source 5 must
+            decide: does the mirror summarize all changes for one
+            card_action into ONE SpaceEvent (replace-atom), or emit
+            multiple SpaceEvents (one per field)?
+      (e) card_revisions (schema.rb:59-66): id, card_id, creator_id,
+          content, created_at. Revision history of db_content.
+          → D3-1 envelope: only current revision matters for Phase
+            4. Revisions are Phase 5+ analytic concern.
+      (f) card_references (schema.rb:47-57): referer_id, referee_id,
+          referee_key, ref_type, is_present.
+          ref_type is 1-char (verify allowed values via
+          decko/card/lib/card/reference.rb).
+          → Atom encoding question: do references become explicit
+            link atoms (Reference referer referee), or are they
+            implicit-from-content (re-derived from db_content)?
+            Phase 4 default: references are auto-emitted as derived
+            atoms WHENEVER db_content is processed. Phase 5+ could
+            promote to first-class.
+      (g) card_virtuals (schema.rb:68-76): cached compound-card
+          content. → Mirror IGNORES virtuals (they are derived from
+          base card data; mirror reads canonical, not cache).
+      (h) Note on schema.rb's utf8mb3 charset declaration: this is a
+          schema-dump artifact. Production Postgres has its own
+          schema. Reviewers should NOT cite charset; the table
+          structure is what matters.
+
+Q3. CARDTYPE PRIMITIVE INVENTORY IN THIS WIKI.
+    Determine which Decko cardtypes the wiki actually uses. Methods:
+      (a) Read decko/card/db/seeds.rb to enumerate CORE cardtypes
+          shipped with Decko (RichText, Plain Text, Pointer, Phrase,
+          Date, Number, Toggle, File, Image, Search, Set, Cardtype,
+          User, Account, etc. — verify exhaustively).
+      (b) Read mod/editorial_review/set/type/*.rb to list CUSTOM
+          cardtypes added by this wiki (verified: Draft, Published).
+          Search across `mod/*/set/type/` for any other custom
+          cardtypes.
+      (c) Query the wiki for type-frequency distribution. (Phase 4
+          orchestrator can run this against the live production
+          DB once available; Source 5 reviewers should NOT execute
+          live queries — the inventory below is from CLAUDE.md
+          examples.)
+            Cardtypes observed in cluster-pilot writes: RichText,
+            Markdown, Pointer, Phrase, Date, Plain Text, Draft,
+            Published.
+      (d) Phase 4 atom-encoding question: do all cardtypes encode the
+          same way (DeckoCard wrapper around opaque content), or do
+          some get specialized atoms?
+            Pointer → list-of-strings; encode as (Pointer (Item
+                       "tag1") (Item "tag2") ...).
+            Date    → encode content as a typed date atom.
+            File / Image → encode as a content-type-tagged atom with
+                       file_url reference (NOT inline binary).
+            RichText / Markdown / Plain Text → encode db_content
+                       as a string atom; renderer-side concern.
+          Predicted Phase 4 default: opaque-content encoding for v1;
+          specialization deferred to Phase 5+.
+      (e) Phase 4 implication: spec a `card_to_atom(card)` function.
+          Inputs: card (with id, name, type_id, db_content, left_id,
+          right_id). Output: Atom expression. This function lives in
+          a new mod (mod/atomspace_mirror/lib/card_atom_encoder.rb
+          or similar).
+
+Q4. THE +CONVENTION LAYER (compound-name editorial pattern).
+    The wiki's editorial workflow uses compound card names heavily.
+    Inventory:
+      (a) Read mod/editorial_review/set/right/ai_draft.rb for the
+          canonical example. Document:
+            +ai_draft         Right-side set wired to a Draft cardtype
+                               child of a Published parent.
+                               on :save, integrate stage:
+                                 tag_parent_needs_review fires.
+                               on :update with merge_draft=true,
+                                 finalize stage:
+                                   merge_ai_draft fires.
+      (b) From CLAUDE.md and project memory
+          (project_magus_atomspace_plan_2026_03_11.md), additional
+          right-side conventions:
+            +tag              Pointer; newline-list of tags.
+            +description      Likely RichText; verify by query.
+            +links            Likely Pointer; verify by query.
+            +roadmap          Likely RichText; verify by query.
+            +expert_reviewed  Likely Toggle or Phrase; verify by
+                              query.
+            +review_status    Likely Phrase; verify by query.
+            +approved by      Phrase; populated by on_publish_card.
+            +approved at      Date; populated by on_publish_card.
+      (c) The aliasing rule (per reference_wiki_mcp_quirks.md): wiki
+          normalizes trailing-s plurals. `+tag` and `+tags` resolve
+          to the same card. Phase 4 mirror must handle this when
+          encoding atom names: should the canonical atom name be
+          `+tag` (singular) or whatever the user typed? Predicted:
+          canonical key, not display name.
+      (d) Atom-encoding question for compound names: how does the
+          mirror encode `Parent+Child` cards?
+            Option-A: flat string atom `(DeckoCard <id> "Parent+Child"
+                      T (Content C))` — preserves exact name.
+            Option-B: structural (Compound (Card <parent_id>) (Card
+                      <child_id>)) — reflects left_id/right_id.
+            Option-C: BOTH — atom carries the flat name AND the
+                      structural relation as metadata.
+          Predicted Phase 4 default: Option-C — atom carries flat
+          name in identity, structural relations as derived atoms.
+      (e) Phase 4 implication: the +convention card encoding should
+          NOT silently drop the right-side semantics. If
+          `Parent+expert_reviewed` becomes just an opaque card with
+          content "true", Phase 4 has lost the editorial-workflow
+          signal. Suggest: encode the right-side codename as an
+          atom-level relation (Reviewed Parent <agent_id>
+          <timestamp>) in addition to the raw card atom.
+
+Q5. SPACEEVENT GRANULARITY: PER-CARD vs PER-FIELD-CHANGE.
+    A Decko card_action can have multiple card_changes (e.g., one
+    "rename + retype" act = one action with field=name + field=
+    type_id changes). SpaceEvent (Source 2) is enum {Add, Remove,
+    Replace} per atom.
+      (a) Option-PER-CARD: one card_action → one SpaceEvent.
+            For action_type=create: Add(card_atom).
+            For action_type=update: Replace(old_atom, new_atom).
+            For action_type=delete: Remove(card_atom).
+          The mirror reads the FINAL card state after all changes
+          are applied and emits one SpaceEvent.
+      (b) Option-PER-FIELD: one card_change → one SpaceEvent.
+            Each field change emits a Replace where the old/new
+            atoms differ ONLY in that field.
+          More granular but introduces ordering dependencies and
+          intermediate states that are not actually committed.
+      (c) Phase 4 implication: Option-PER-CARD is correct.
+          Intermediate field states are not real database states.
+          Field-level diffs belong in D3-1 envelope, not in
+          SpaceEvent enum.
+          Predicted answer: SpaceEvent granularity = card_action.
+          D3-1 envelope can carry field-level diff list as metadata.
+
+Q6. ATOM ENCODING SCHEME FOR DECKO CARDS — DESIGN.
+    Source 5 must propose the canonical encoding. Constraints:
+      (i) Identity-stable: card renames must not change the atom
+          identity (because rename is a single TRACKED_FIELDS=name
+          change action, and PostgreSQL rows keep their id).
+      (ii) Structurally-meaningful: cardtype, parent/child via
+           left_id/right_id, references should be queryable by
+           Hyperon-side reasoning.
+      (iii) Round-trippable: reading the atom back can fully
+            reconstruct the card (or at least the audit-trail-
+            relevant subset).
+      (a) Proposed shape (orchestrator low-confidence):
+            (DeckoCard
+              (Id <numeric-id>)
+              (Name "<full+name>")
+              (Type <type-codename-or-id>)
+              (Content "<db_content>")
+              (LeftId <numeric-or-NoLeft>)
+              (RightId <numeric-or-NoRight>)
+              (Trash <bool>))
+          Identity policy: atom-identity is keyed on the (Id N)
+          field. The Name field can change across edits without
+          breaking identity.
+      (b) Alternative (compact): single grounded atom with a struct.
+            (DeckoCard <id> <name> <type> <content> <left> <right>
+                       <trash>)
+          Compact but loses the ability to query by individual
+          field via MeTTa pattern matching.
+      (c) Alternative (typed): nested expression with (Card (Id ...))
+          as the wrapper, carrying typed-leaf atoms.
+            (Card
+              (Id 7445)
+              (Name "About Hyperon+Vision")
+              (Type Draft)
+              (Content (Markdown "...long content..."))
+              (Trash False))
+      (d) Phase 4 implication: pick (a) for v1 — explicit-field
+          shape is debuggable in MeTTa and pattern-matches cleanly.
+          Phase 5+ can revisit.
+      (e) The Replace semantics (from PATCH-2 / Source 2):
+            replace-atom! old-atom new-atom
+          For an update, the mirror calls
+            replace-atom!
+              (DeckoCard (Id 7445) (Name "...") (Content "old") ...)
+              (DeckoCard (Id 7445) (Name "...") (Content "new") ...)
+          The Hyperon Space matches by structural equality. This
+          requires the OLD atom to be available at update time.
+          Mirror service responsibility: cache the previous-state
+          atom keyed on id, OR query the Hyperon Space for it
+          before emitting Replace.
+
+Q7. D3-1 ENVELOPE FINALIZATION.
+    Source 3 named D3-1 = {source, card_id|agent_id, action_id,
+    timestamp}. Source 5 finalizes from Decko schema.
+      (a) Field-by-field proposal:
+            source           = "decko"
+                                (constant string identifying the
+                                 emitter — Phase 5+ may have
+                                 multiple emitters: "decko",
+                                 "agent_mcp", "import_job", etc.)
+            card_id          = card_actions.card_id
+                                (the Decko numeric primary key —
+                                 stable across renames)
+            agent_id         = card_acts.actor_id
+                                (the Decko user-card numeric id;
+                                 Auth.current.id at event time)
+            action_id        = card_actions.id
+                                (per-card action numeric id; the
+                                 act is super_action_id-chained)
+            super_action_id  = card_actions.super_action_id (nullable)
+                                (parent-action key for compound
+                                 act tracking)
+            act_id           = card_acts.id
+                                (the parent act; one act → many
+                                 actions; useful for grouping
+                                 SpaceEvents)
+            action_kind      = card_actions.action_type
+                                (∈ {create, update, delete} per
+                                 TYPE_OPTIONS index)
+            timestamp        = card_acts.acted_at
+                                (per-act time; ISO-8601 UTC)
+            comment          = card_actions.comment (nullable;
+                                 optional human description)
+            ip_address       = card_acts.ip_address (nullable;
+                                 source-IP for audit)
+      (b) Field-level diff payload (optional Phase 4; useful for
+          downstream MeTTa analytics):
+            changes          = [{field, old_value, new_value}, ...]
+                                from card_changes joined with the
+                                pre-action state (requires
+                                ActiveRecord dirty tracking or a
+                                pre-fetch in the event handler).
+      (c) Encoding: D3-1 envelope is metadata ATTACHED to the
+          SpaceEvent, NOT inside the atom shape. SpaceObserver
+          implementations receive (SpaceEvent, D3-1) as a tuple.
+          PATCH-1 (Python observer binding) must thread D3-1
+          through. Source 6 specifies the agent-side ingestion API.
+      (d) Phase 4 implication: the mirror service constructs D3-1
+          from the Action object inside the event handler. The
+          D3-1 envelope is then attached to the SpaceEvent via
+          a wrapper (Hyperon Space's emit signature must support
+          metadata, or the mirror keeps a side-channel envelope
+          dictionary keyed on SpaceEvent identity).
+          Note: Source 2 found Hyperon's SpaceEvent enum has NO
+          metadata slot. So either (i) PATCH-1 extends the
+          observer signature to (event, metadata), or (ii) the
+          mirror service encodes D3-1 as a SECOND atom
+          (D3-1-Provenance ...) emitted alongside each SpaceEvent.
+          Source 5 must propose; Source 6 may revisit.
+
+Q8. TRASH / SOFT-DELETE / RESTORE SEMANTICS.
+    Decko's trash=true is soft delete; cards are hidden but the row
+    persists. card.delete! sets trash; card.restore! clears trash.
+    SERVER-BUGS.md Bug #5 confirms restore is real.
+      (a) Phase 4 mirror policy options:
+            POLICY-A: trash=true → emit Remove(atom). trash=false →
+                      emit Add(atom) on restore.
+                      Hyperon Space matches user-visible state.
+            POLICY-B: keep atom always; emit a Replace where the
+                      Trash field flips.
+                      Hyperon Space contains all cards; trash is a
+                      property.
+      (b) Trade-off: POLICY-A is "Hyperon mirrors what humans see."
+          POLICY-B is "Hyperon mirrors what Postgres has." For Phase
+          4 (semantic-mirror Decko-as-source-of-truth), POLICY-B is
+          more faithful. For agent-facing reasoning (semantic
+          queries should default to non-trashed), POLICY-A is more
+          ergonomic.
+      (c) Hybrid: POLICY-B for atom-presence, MeTTa-side query
+          conventions filter `(Trash False)` by default.
+      (d) Phase 4 implication: pick POLICY-B (faithful mirror).
+          Document the convention that agent queries should filter
+          (Trash False) unless explicitly probing trash state.
+
+Q9. WRITE-PATH TOPOLOGY: HTTP API vs IN-PROCESS EVENT-CALLBACK.
+    All wiki writes go through Card.save! / Card.delete! / etc.
+    Three entry points:
+      (i)   HTTP API via mod/mcp_api/app/controllers/api/mcp/
+            cards_controller.rb (used by hyperon-wiki-mcp).
+      (ii)  Rails console / runner (used for ops + bulk imports).
+      (iii) Web UI (Decko's standard CardController).
+    All three end in Card#save! → Director#run → integrate-stage
+    events fire → mirror event handler runs in-process.
+      (a) Phase 4 implication: the mirror is wired ONCE as a Decko
+          event in a mod, not as multiple per-entry-point hooks.
+          Single subscription point captures all writes.
+      (b) The mirror does NOT need to live in hyperon-wiki-mcp
+          (which is OUT-OF-PROCESS HTTP gateway). It lives in
+          hyperon-wiki itself (same Rails process as Decko).
+          Predicted mod path: hyperon-wiki/mod/atomspace_mirror/.
+      (c) Out-of-process Hyperon question: where does the Hyperon
+          Space live?
+            Option-IN-PROCESS: Hyperon Space embedded as a Ruby
+                               extension (PyCall gem to Python +
+                               hyperon Python module, OR Rust
+                               extension via thermite/magnus).
+            Option-OUT-OF-PROCESS: Hyperon runs as a sidecar
+                                   process; mirror sends SpaceEvents
+                                   via HTTP/UDP/socket.
+          Trade-off: in-process gives sub-millisecond latency but
+          adds GIL/memory complexity. Out-of-process is cleaner but
+          adds IPC + serialization latency.
+          Phase 4 default (orchestrator low-confidence): out-of-
+          process Hyperon sidecar. Mirror enqueues SpaceEvents via
+          Decko's delayed_jobs table (already in schema.rb:106-119).
+          The sidecar polls / subscribes to the queue.
+      (d) Phase 4 implication: the integrate_with_delay stage (per
+          Q1.b) naturally pairs with delayed_jobs-based mirror.
+          The mirror service is decoupled from user-facing latency.
+
+Q10. AUTH/ACTOR LAYER — D3-1 agent_id POPULATION.
+     Decko's auth model:
+       Card::Auth.current → Card representing active user.
+       Card::Auth.as(name) { ... } → block as that user.
+       Card::Auth.as_bot { ... } → block as system user.
+     Bot-actions (e.g., the on_publish_card stamping +approved by)
+     run as as_bot. Should D3-1 distinguish bot from user?
+       (a) Proposal: agent_id = Auth.current.id (numeric Decko
+           card_id of the actor). For bot acts, this is the bot
+           user's card_id (a stable known constant; verify the
+           actual id at extraction).
+       (b) Additional metadata: agent_kind ∈ {human, bot, agent_mcp,
+           system}. Phase 4 has only {human, bot}; Phase 5+ adds
+           {agent_mcp, system}.
+       (c) For Phase 5+ agent-writable atoms (Source 6 scope), the
+           agent_id should be a synthetic atom-side identity that
+           is DISTINCT from the Decko user space — agents are not
+           Decko users in v1.
+           Phase 5+ extension: D3-1 agent_id can be either a Decko
+           user_id OR an agent identifier minted by the MCP layer.
+           Phase 4 mirror only emits human + bot agent_ids (because
+           Phase 4 writes are Decko-driven).
+       (d) Phase 4 implication: agent_id is Decko numeric user_id;
+           agent_kind ∈ {human, bot}. Source 5 specifies; Source 6
+           extends.
+
+Q11. REVISION HISTORY MIRROR POLICY.
+     Decko persists every db_content change as a card_revisions row.
+     The mirror has two policies (per Section 4 / Q11):
+       (a) Phase 4 default — current-state-only:
+             Mirror emits Replace(old_atom, new_atom). Old revisions
+             live in Decko, NOT in Hyperon Space. Hyperon Space is
+             always in sync with current Postgres state.
+       (b) Phase 5+ extension — full revision history:
+             Each card_revision is encoded as a separate atom
+             (CardRevision <card_id> <revision_id> (Content "...")
+             (Created <timestamp>)). Hyperon Space accumulates
+             history. Useful for temporal reasoning.
+       (c) Storage cost: assuming average 5 revisions per card and
+           ~10K cards (per project_magus_atomspace_plan_2026_03_11.md
+           memory's Magi Archive scale), revision-history mirror
+           multiplies atom count ~5×. Phase 4 single-process
+           Hyperon Space can absorb this; Phase 5+ scaling pressure
+           depends on substrate (Source 4's Q7 comparison).
+       (d) Phase 4 implication: pick policy (a) — current state only.
+           Defer (b) to Phase 5+ as an optional analytic mode.
+
+Q12. ARCHITECTURAL SYNTHESIS — PHASE 4 MIRROR SPEC PRELUDE.
+     Per Codex's reconciliation guidance, the gating question is:
+
+       "Given Sources 1-4's substrate decisions (STAY-HYPERON-SPACE
+        for Phase 4, ROCKS/MORK/DAS deferred to Phase 5+) and
+        Source 5's Decko-side semantics, can SPEC_DRAFT.md specify
+        the Phase 4 mirror service WITHOUT further open questions?"
+
+     Specifically, synthesize:
+
+      (a) Mirror service architecture (combining Q1 + Q5 + Q6 + Q7
+          + Q9):
+            - LOCATION: hyperon-wiki/mod/atomspace_mirror/ (a new
+              mod in the hyperon-wiki repo).
+            - HOOK: event :mirror_to_atomspace, :integrate_with_delay,
+              on: :save (and :delete companion).
+            - TRANSLATION: card_to_atom(card) per Q6 encoding.
+            - EMISSION: Hyperon SpaceEvent {Add, Remove, Replace}
+              per Q5 granularity (per-card-action).
+            - ENVELOPE: D3-1 metadata per Q7 mapping.
+            - DELIVERY: out-of-process Hyperon sidecar via
+              delayed_jobs queue per Q9.
+
+      (b) Identity policy (combining Q2 + Q6 + Q10):
+            - Atom identity primary key = Decko card_id (numeric).
+            - Atom display key = Decko card name (in atom shape but
+              not authoritative).
+            - Atom carries left_id / right_id as derived structural
+              relations.
+            - Cardtype carried as type_id codename.
+
+      (c) Trash policy (Q8): POLICY-B — atom always present, Trash
+          field reflects state. MeTTa-side queries default-filter.
+
+      (d) Revision policy (Q11): current-state only. Phase 5+
+          extension noted but not Phase 4 scope.
+
+      (e) Cardtype + +convention encoding (Q3 + Q4):
+            - Phase 4 v1: opaque content for all cardtypes.
+            - Phase 4 v1: +convention encoded by exact name (not
+              specialized).
+            - Phase 5+: typed cardtype encoding + +convention
+              specialization (e.g., +expert_reviewed → atom
+              relation).
+
+      (f) Required code additions (combining Sources 2 + 5):
+            PATCH-1 [REQUIRED]: pybind11 binding for
+                                 space_register_observer.
+            PATCH-2 [RECOMMENDED]: MeTTa-side replace-atom! grounded
+                                    op.
+            PATCH-3 [REQUIRED FOR PHASE 4]: hyperon-wiki/mod/
+                                             atomspace_mirror/ —
+                                             new mod implementing
+                                             Q12.a.
+            PATCH-4 [REQUIRED FOR PHASE 4]: card_atom_encoder per
+                                             Q6.
+
+      (g) Out-of-Phase-4 items (deferred to Source 6 / 7):
+            - MCP agent-write surface design (Source 6).
+            - Magus 4-phase plan reconciliation (Source 7).
+            - +convention specialization (Phase 5+).
+            - Revision-history mirror policy (Phase 5+).
+            - Cardtype-specific atom encoding (Phase 5+).
+            - Substrate migration (Phase 5+ choice between rocks /
+              MORK / DAS per Source 4).
+
+      (h) Final synthesis for SPEC_DRAFT.md:
+            - PHASE 4 SUBSTRATE: Hyperon Space (Sources 2+3+4).
+            - PHASE 4 MIRROR LOCATION: hyperon-wiki/mod/
+              atomspace_mirror/.
+            - PHASE 4 EVENT HOOK: :integrate_with_delay on :save +
+              :delete.
+            - PHASE 4 ATOM ENCODING: explicit-field shape (Q6.a).
+            - PHASE 4 IDENTITY: card_id numeric primary key.
+            - PHASE 4 TRASH: faithful mirror (POLICY-B).
+            - PHASE 4 REVISION: current-state only.
+            - PHASE 4 D3-1: 8-field envelope per Q7.a + optional
+              changes payload per Q7.b.
+            - PHASE 4 DELIVERY: out-of-process via delayed_jobs.
+            - PHASE 4 PATCH SET: PATCH-1, PATCH-2 (recommended),
+              PATCH-3 (mirror mod), PATCH-4 (encoder).
+
+--------------------------------------------------------------------------------
+6. STANDING PROTOCOLS REMINDER
+--------------------------------------------------------------------------------
+
+Inherited from Sources 1+2+3+4:
+
+- CF5.6 (Gemini source-location/file-identity drift): verify every
+  Gemini file/line claim via direct Read or Glob before adoption.
+  Source 1: 5 incidents. Source 2: 5 incidents. Source 3: 1 framing
+  incident + 3 ORCHESTRATOR-side path drifts. Source 4: 1
+  source-location drift (mork_ffi path). For Source 5, watch for
+  Gemini drift on Decko's stage names (it may invent
+  Rails-style :after_save / :before_save which DO NOT EXIST in
+  Decko's Director phases — see Q1.a for the canonical 9-stage list).
+
+- V1-Q1 (pickaxe without path filter): for any "never implemented"
+  or "absent at HEAD" claim, run `git log --all -S '<token>'` without
+  a path filter. Apply to Q1 (any "Decko has no after_save" claim
+  must be pickaxe-checked), Q3 (cardtype primitive enumeration
+  negative claims), Q11 (any "Decko revisions are not tracked at
+  field-level" claim).
+
+- V2-Q10/14 (benchmark-required for quantitative claims): do NOT
+  extrapolate throughput, capacity, or latency numbers without
+  bench evidence. Apply to Q9 (in-process vs out-of-process Hyperon
+  sidecar latency), Q11 (revision-history storage cost
+  multiplication factor).
+
+- V2-PROTOCOL-1 (pr-NNN merge status): N/A for Source 5.
+
+- V2-PROTOCOL-2 (dual-token grep for Rust→Python bindings): N/A
+  for Source 5 (Decko is Ruby; no Rust→Python bridge).
+
+- V2-PROTOCOL-3 (audit Clone semantics): apply to Q6 (atom encoding
+  proposal — does the encoded atom embed mutable references?).
+
+- V3-PROTOCOL-1 (verify brief paths via Glob/ls before finalizing):
+  ALL paths in this brief have been V3-PROTOCOL-1-verified during
+  drafting. Reviewers should still re-verify any path before citing
+  (Codex caught 3 brief-side drifts in Source 3 + 3 in Source 4).
+  Specifically for Source 5: the Decko gem path
+  (E:\GitHub\Magi-AGI\decko\) and all subpaths
+  (card/lib/card/director/stages.rb, card/lib/card/set/event.rb,
+  card/db/schema.rb, mod/history/lib/card/action.rb,
+  mod/history/lib/card/change.rb) were verified at HEAD
+  93c54deada (2025-10-15) during drafting.
+  The hyperon-wiki paths (mod/editorial_review/set/right/
+  ai_draft.rb, mod/editorial_review/set/type/draft.rb,
+  mod/editorial_review/set/all/editorial_events.rb,
+  mod/mcp_api/app/controllers/api/mcp/cards_controller.rb)
+  were verified at HEAD a1a9e62 (2026-05-01) during drafting.
+
+- V3-PROTOCOL-2 (read latest status line in design notes): apply
+  to Q1 (Decko's Director model — any documentation must be cross-
+  checked against the canonical stages.rb at HEAD), Q3 (cardtype
+  inventory should match decko/card/db/seeds.rb at HEAD).
+
+- V3-PROTOCOL-3 (signal/observer audits use pickaxe + look for
+  explicit removal commits): apply to Q1 if any reviewer claims
+  Decko's :integrate stage has been removed/renamed (it has not,
+  per HEAD verification, but a pickaxe pass guards against drift).
+
+- V4-PROTOCOL-1 (Rust path-dep version verification): N/A for
+  Source 5 (no Rust path deps in Decko stack). Cited for protocol
+  carry-forward continuity.
+
+- V4-PROTOCOL-2 (multi-threaded claims unproven until contract):
+  apply to Q9 (any "out-of-process Hyperon sidecar can be
+  multi-threaded" claim requires evidence; Hyperon Space is
+  single-threaded per Source 2).
+
+- V4-PROTOCOL-3 (service bus ≠ observer): apply to Q7 (D3-1
+  delivery via delayed_jobs is a queue, not an observer; the
+  observer pattern is at the Hyperon Space level; the queue is
+  the cross-process transport).
+
+- V4-PROTOCOL-4 (brief-flagged "verify X" notes are extraction
+  obligations): EVERY "verify X" remaining in this brief is an
+  EXTRACTION OBLIGATION for the assigned reviewer. Specifically:
+    - Q3.b: "Search across mod/*/set/type/ for any other custom
+            cardtypes." → Codex, Gemini must enumerate.
+    - Q3.c: "Query the wiki for type-frequency distribution." →
+            DEFERRED TO ORCHESTRATOR (Phase-4-team query against
+            production DB; reviewers DO NOT execute).
+    - Q4.b: "Likely RichText; verify by query" / "Likely Pointer;
+            verify by query" / etc. for +description, +links,
+            +roadmap, +expert_reviewed, +review_status. →
+            Codex, Gemini must identify the actual cardtype by
+            grep against mod/*/set/right/*.rb in the hyperon-wiki
+            repo, or by inference if not yet implemented.
+    - Q2.f: "ref_type is 1-char (verify allowed values via
+            decko/card/lib/card/reference.rb)." → Codex, Gemini
+            must enumerate.
+    - Q2.c: "draft column distinguishes draft-saves from final
+            saves (verify usage)." → Codex, Gemini must verify.
+    - Q10.a: "the bot user's card_id (a stable known constant;
+             verify the actual id at extraction)." → Codex,
+             Gemini must locate the bot card_id constant in
+             Decko core (likely Card::WagnBotID or similar).
+
+  Reviewers must execute these checks BEFORE writing findings,
+  not flag them as open in their reports.
+
+Standard cluster-pilot rules:
+
+- Time-indexed snapshot deltas: HEAD as of:
+    decko (gem)        2025-10-15  Ethan McCutchen
+    hyperon-wiki       2026-05-01  Nemquae
+    hyperon-wiki-mcp   2026-04-09  Nemquae
+  Document staleness deltas in findings if material.
+
+- Bidirectional fork-divergence: decko-commons/decko has many
+  forks (Magi-AGI's deployment is its own deck on top of the gem).
+  No fork audit required for Source 5 (the framework is upstream;
+  the deck is one repo).
+
+- Orientation-file drift: AGENTS.md / CLAUDE.md exist in both
+  hyperon-wiki/ and hyperon-wiki-mcp/. Treat with skepticism per
+  Source 2 F6 lesson; cite README.md and code only. The
+  hyperon-wiki/CLAUDE.md is the orchestration anchor (audit-table
+  source-of-truth) and IS authoritative for THIS repo's
+  cluster-pilot history; treat its CLAUDE.md as primary.
+
+--------------------------------------------------------------------------------
+7. DELIVERABLE FORMAT (per agent)
+--------------------------------------------------------------------------------
+
+Each model produces:
+  scripts/archive/atomspace_integration_phase4/source5_decko_semantics/
+    findings_claude.txt
+    findings_codex.txt
+    findings_gemini.txt
+
+Format follows Sources 1+2+3+4's findings pattern:
+  - Q1–Q12 in order.
+  - [VERIFIED] / [INFERRED] / [NOT FOUND] / [CO-VERIFIED] / [NEW] /
+    [PROPOSED] tags.
+    [PROPOSED] is appropriate for design-question answers (Q6, Q7,
+    Q8, Q9, Q10) where there is no canonical answer to verify
+    against — the brief's predicted answer is one option among
+    several, and reviewers should propose-or-counter, citing the
+    Decko code for any constraints they identify.
+  - Direct file:line citations for all VERIFIED claims.
+  - Pickaxe (without path filter) for any negative-existence claim.
+  - For Q12, recommended Phase 4 mirror service spec, with explicit
+    dependencies on Sources 2+3+4 substrate decisions.
+
+After all three findings land, orchestrator (Claude) produces:
+  findings_reconciled_crossmodel.txt
+
+Reconciliation includes:
+  - Per-question consensus on VERIFIED facts.
+  - Per-question synthesis on PROPOSED design choices.
+  - V-N-X dissents (V = Claude/Codex/Gemini, N = question, X =
+    sub-issue).
+  - Source-of-truth checks (CF5.6 verifications + V3-PROTOCOL-1
+    checks).
+  - Bottom Line for SPEC_DRAFT.md, with explicit answers to:
+      Q12.a: Mirror architecture chosen.
+      Q12.b: Identity policy chosen.
+      Q12.c: Trash policy chosen.
+      Q12.d: Revision policy chosen.
+      Q12.e: Cardtype/+convention v1 vs v2 split.
+      Q12.f: Patch set finalized.
+      Q12.g: Out-of-Phase-4 deferrals listed.
+  - Dependency conditions for Sources 6/7.
+
+Prediction (orchestrator, low-confidence):
+Source 5 closes with [PHASE-4-MIRROR-SPEC-DRAFTED]
+[D3-1-ENVELOPE-FINALIZED] [ATOM-ENCODING-V1-PROPOSED]
+[OUT-OF-PROCESS-SIDECAR-VIA-DELAYED-JOBS]. The integrate /
+integrate_with_delay event-stage convention is verified at HEAD;
+the act/action/change audit-trail provides every D3-1 field; the
+out-of-process Hyperon sidecar via delayed_jobs naturally decouples
+mirror failures from user-facing latency. Source 5 produces the
+mirror-spec patches PATCH-3 + PATCH-4 (in addition to Source 2's
+PATCH-1 + PATCH-2), and the Q12 Phase 4 mirror-service spec is the
+single biggest output for SPEC_DRAFT.md.
+
+================================================================================
+END OF BRIEF — Source 5
+================================================================================

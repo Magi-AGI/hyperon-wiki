@@ -1,0 +1,507 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 1
+atomspace-bridge write-path deep-dive — Cross-Model Reconciliation
+================================================================================
+
+Orchestrator: Claude
+Reviewers:    Codex + Gemini
+Date:         2026-05-03
+Repo:         E:\GitHub\hyperon reference\atomspace-bridge\
+HEAD:         40b8af713d37d3d71cb0291435c73f308144980c (2025-08-15)
+Brief:        scripts/archive/atomspace_integration_phase4/
+              source1_atomspace_bridge_writepath/brief.txt (411 lines)
+Inputs:       findings_claude.txt   (1018 lines, 2026-05-03)
+              findings_codex.txt    (525 lines, 2026-05-04)
+              findings_gemini.txt   (163 lines, 2026-05-03)
+
+Note on input artifacts: this reconciliation was initially drafted against the
+verbal relay messages Codex and Gemini posted in the orchestrator chat. Both
+reviewers ALSO produced canonical findings files on disk, which were located
+post-draft. The disk files use cleaner citations than the verbal relays in some
+places; dissents below distinguish "claim-as-relayed" vs "claim-in-disk-file"
+where it matters.
+
+V-N-X notation:
+  V = which reviewer raised the dissent (1=Claude, 2=Codex, 3=Gemini)
+  N = question number (Q1..Q14, or "0" for setup, "F" for additional findings)
+  X = sub-issue index within that question
+
+================================================================================
+PER-QUESTION CONSENSUS
+================================================================================
+
+Q1. WRITE-PATH PRESENCE/ABSENCE
+  CONSENSUS [VERIFIED across all three]: All five StorageNode write methods
+  (storeAtom, removeAtom, storeValue, updateValue, storeAtomSpace) are declared
+  at BridgeStorage.h:103-110 and overridden as empty-body silent no-ops at
+  SQLReader.cc:395-425. Read-side stubs (getAtom, getLink, loadValue, loadType,
+  loadAtomSpace) are also empty no-op overrides. Only fetchIncomingSet
+  (SQLReader.cc:366-387) and fetchIncomingByType (line 389-393, delegates) are
+  wired. barrier() is also empty (BridgeStorage.cc:149-151) despite write-fence
+  documentation comments at lines 144-148.
+
+  Verdict label: [WRITE-PATH-ABSENT-SILENT-NO-OP].
+
+  R2.B4 from AtomSpace cluster pilot 2026-04-29 ("write stubs empty") is
+  VERIFIED and HARDENED: stubs are silent-no-op overrides (not throws), with
+  pickaxe (V1-Q1 corrected scope; see Dissents) showing they have never been
+  given bodies in repo history.
+
+Q2. LLAPI WRITE PRIMITIVES
+  CONSENSUS [VERIFIED across all three]: llapi.h declares only one virtual
+  method on LLConnection: `virtual LLRecordSet *exec(const char *, bool=false)`
+  (llapi.h:54). LLRecordSet has only read-side methods. ll-pg-cxx.cc:91-136
+  implements exec via raw PQexec (line 98). PGRES_COMMAND_OK is in the accepted
+  result set (line 101), so the API admits writes via raw SQL strings, but no
+  caller constructs write SQL. The single INSERT at llapi.cc:204 is inside a
+  doubly-disabled #ifdef and is dead example code.
+
+  Verdict label: [READ-ONLY-BY-DESIGN] at the structured-API level; raw
+  exec() is technically write-capable but unused.
+
+Q3. SCHEMA-MAPPING BIDIRECTIONALITY
+  CONSENSUS [VERIFIED across all three]: No SQLWriter.cc exists. SQLReader.cc
+  contains exclusively read-side mapping; SQL-construction primitives generate
+  only SELECT statements. SQLResponse.h callbacks emit add_link/add_node calls
+  (in-memory AtomSpace insertion) only, never write-SQL.
+
+  Verdict: bridge is structurally read-only, not architecturally ambivalent
+  about writes.
+
+Q4. POSTGRES-BACKEND TRANSACTION/CONCURRENCY MODEL
+  CONSENSUS [VERIFIED via grep]: Zero BEGIN/COMMIT/ROLLBACK, zero PQexecParams/
+  PQprepare/PQexecPrepared, zero isolation-level / SERIALIZABLE / REPEATABLE READ
+  / FOR UPDATE / FOR SHARE / ON CONFLICT in entire codebase. Auto-commit only.
+  String-concat SQL via PQexec, with escape_single_quotes (llapi.h:124-134) as
+  the only injection defense. POOL_SIZE=3 (BridgeStorage.cc:43; corrected from
+  Gemini citation — see V3-Q4). Pool is the bottleneck per SQLResponse.h:82-85.
+  Per-thread connection model (llapi.cc:5-10 + ll-pg-cxx.cc:5-10).
+
+  Verdict labels: [NO-TRANSACTIONS] [NO-PREPARED-STATEMENTS] [POOL-SIZE-3-HARDCODED].
+
+Q5. ATOM-TYPE MODEL & SCHEMA DISCOVERY (Phase 4 BLOCKER)
+  CONSENSUS [VERIFIED across all three]: Type-mapping at SQLResponse.h:153-204
+  silently drops timestamp, date, jsonb, bpchar columns (sets tcol = nullptr).
+  Column types text/varchar → ConceptNode; int4/int2/int8/float4/float8/bool →
+  NumberNode. atom_types.script defines only FOREIGN_STORAGE_NODE +
+  BRIDGE_STORAGE_NODE — no domain-specific types. Schema discovery uses
+  information_schema.columns (portable) + pg_tables WHERE schemaname='public'
+  (Postgres-specific, hard-coded at SQLReader.cc:110, code comment line 109
+  self-acknowledges as "the correct hack-of-the-moment").
+
+  Decko impact (Phase 4 blocker):
+  - cards.created_at, cards.updated_at: timestamp → IGNORED. Decko's revision
+    chronology cannot be reconstructed from the AtomSpace mirror without
+    extending table_column_cb to handle timestamp.
+  - card_changes.diff_obj or any jsonb columns: IGNORED.
+  - card_actions.action_type: varchar → ConceptNode (OK).
+  - All Decko PK/FK fields (bigint): NumberNode (OK).
+
+  Verdict labels: [PUBLIC-SCHEMA-HARDCODED] [TYPE-MODEL-INCOMPLETE-FOR-DECKO].
+
+Q6. EDGELINK vs EVALUATIONLINK MIGRATION
+  CONSENSUS [VERIFIED via pickaxe]: Migration completed at commit 2bc00ef. At
+  HEAD, only EDGE_LINK references exist in bridge sources (SQLReader.cc:287, 340;
+  SQLResponse.h:222). The README example at README:64-73 + line 108-109 confirms
+  EdgeLink is canonical. EdgeLink arity at bridge usage: outgoing[0]=Predicate
+  (table name), outgoing[1]=List (column-value atoms in column-position order).
+
+  Note V3-Q6 dissent (see Dissents): Gemini's atom_types.script:15 citation is
+  a CF5.6 drift; correct location of EdgeLink definition is in the parent
+  AtomSpace project, not bridge.
+
+Q7. RELATIONSHIP TO atomspace-storage AND atomspace-pgres
+  CONSENSUS [VERIFIED across all three]: BridgeStorage inherits from StorageNode
+  (BridgeStorage.h:48; StorageNode declared in atomspace-storage). CMakeLists.txt
+  declares dependencies on AtomSpace 5.0.3 (line 82), AtomSpaceStorage (line 91),
+  and PGSQL 12 (line 101, REQUIRED commented out — sloppy CMake; see F2). NO
+  dependency on atomspace-pgres anywhere. Bridge implements its own ll-pg-cxx
+  driver from scratch.
+
+  Codex contributed valuable additional finding (CF1-Q7): atomspace-pgres @
+  6fe97630071455c8bd491e7ddc2ec97936a9979a HAS real writer code:
+    SQLAtomStorage::storeAtom    SQLAtomStore.cc:68
+    SQLAtomStorage::removeAtom   SQLAtomDelete.cc:94 (with explicit transaction
+                                                       at lines 111-113)
+    Value writes                  SQLValues.cc:302-308, 643
+    Bulk store                    SQLBulk.cc:265
+  This means atomspace-pgres COULD provide a write-path implementation
+  reference, BUT it writes to atomspace-pgres's rigid Atom/Value tables
+  (per R2.B4), not arbitrary SQL tables, so the implementation is not directly
+  reusable for Decko's schema. atomspace-pgres remains BACKING-STORE-ONLY and
+  Decko-incompatible.
+
+  Verdict: bridge is INDEPENDENT of atomspace-pgres at the linker level. Phase 4
+  cannot piggyback on atomspace-pgres's writer.
+
+Q8. DECKO-ADAPTABILITY (OPTIONS A/B/C/D)
+  CONSENSUS [recommendation]: All three reviewers recommend Option D (Decko-
+  callback-driven AtomSpace mirror, bypassing bridge) as the primary Phase 4
+  (B)+(L1) path, with Option C (extending bridge with full write semantics) as
+  fallback only if Source 2 (Hyperon Space write-API) findings show Hyperon
+  Space cannot provide usable writes.
+
+  Reasoning convergence:
+  1. Bridge is bulk-import-then-read; Phase 4 wants sustained low-latency
+     write-through. Architectural mismatch.
+  2. Type model can't represent Decko's full schema (timestamps, jsonb dropped).
+  3. Zero test coverage; Option C builds writes on a tested-zero base.
+  4. Atom-identity model is content-addressed, no PK flagging — Option C must
+     extend SignatureLink + add update-vs-insert recognition + add stale-atom GC.
+  5. No conflict-detection — Option C must add a sync layer above bridge.
+
+  Source-dependent re-evaluation: if Source 2 finds Hyperon Space is also
+  read-only-at-HEAD, Option C becomes the necessary fallback. If Source 4 finds
+  MORK supports atom-rate writes natively, Option D might evolve to D' (Decko
+  callback → MORK write-path).
+
+Q9. LINAS'S STATED DIRECTION
+  CONSENSUS [VERIFIED]: Writes ARE on Linas's roadmap (README:23-25 — "should
+  allow both the read and the update of the contents") but are not implemented
+  at HEAD. Sensory/perception API alignment stated explicitly (README:30-31 +
+  commit 9b8bf80 "Add mention of sensory perception-action") — bridge is
+  positioned as part of the larger AtomSpace I/O fabric, cross-referencing the
+  Perception cluster pilot's Vepstas portfolio mapping.
+
+  Idle period: HEAD is 2025-08-15; ~9 months idle as of 2026-05-03. Combined
+  with the Perception cluster pilot's mapping of Linas's active portfolio
+  (sensory @ 64849f3 ~733 commits, agents/motor/evidence/atomese-simd active),
+  Linas's focus has clearly moved away from bridge.
+
+  Phase 4 implication: cannot rely on upstream Linas for bridge write-path
+  delivery during Phase 4 timeline.
+
+  Note V3-Q9 dissent (see Dissents): Gemini's README.md:12 line citation is
+  CF5.6 drift; substance of the claim is correct.
+
+Q10/Q14. CONCURRENCY-CEILING (combined)
+  CONSENSUS [VERIFIED on architecture]: POOL_SIZE=3 hard-coded at
+  BridgeStorage.cc:43; pool is the bottleneck (SQLResponse.h:82-85); per-thread
+  connection model. No batching, no prepared statements, no transaction control.
+  README scale evidence (basic-demo.scm:215-254) confirms bridge is built for
+  bulk-import (250GB FlyBase featureloc, 46K rows/sec sustained read).
+
+  DISSENT V2-Q10/14 (Codex methodological pushback, ACCEPTED): Claude's
+  ~1000/sec atom-write ceiling estimate and Gemini's ~1k-2k writes/sec are
+  inferences without benchmark evidence. Codex correctly notes "I would not
+  lock 'about 1000/sec' as a finding without benchmark evidence." Claude
+  retracts the specific number; reframed as qualitative ceiling-order-of-
+  magnitude inference for SPEC_DRAFT, with a note that Phase 4 prototype
+  benchmarking is needed before hard ceiling assertions.
+
+  Verdict: bridge is [BULK-IMPORT-THEN-READ] [BATCHING-ABSENT] with three
+  identifiable bottlenecks (connection-pool size, lack of prepared statements,
+  lack of batching/group-commit). Quantitative ceiling: TBD via Phase 4
+  prototype benchmarks.
+
+Q11. ATOM-IDENTITY STABILITY (L1 prerequisite)
+  CONSENSUS [VERIFIED across all three]: Atoms are content-addressed via
+  add_node(TYPE, name) and add_link(TYPE, [outgoing]) (standard AtomSpace
+  semantics). For row data: stable across re-reads of the SAME row state, but
+  any column-value change creates a NEW atom alongside the old (no GC). PRIMARY
+  KEYS ARE NOT FLAGGED in the SignatureLink — all columns are treated as equal
+  TypedVariables (SQLResponse.h:140-152).
+
+  L1 round-trip: NOT supported. Agent edits cannot be reliably translated to
+  UPDATE SQL because (1) PK columns aren't identified, (2) update-vs-insert
+  recognition logic doesn't exist, (3) stale EdgeLinks accumulate without GC.
+
+  Verdict labels: [CONTENT-ADDRESSED-IDENTITY] [PK-COLUMN-NOT-FLAGGED]
+  [NO-UPDATE-VS-INSERT-RECOGNITION] [NO-STALE-ATOM-GC].
+
+Q12. CONFLICT-RESOLUTION SEMANTICS
+  CONSENSUS [VERIFIED]: Zero version-counter, sync-token, optimistic-lock, MVCC
+  interaction, sequence-number, ON CONFLICT, FOR UPDATE/FOR SHARE anywhere in
+  the codebase. Currently the model is effectively (b) Sole-Decko-writer (bridge
+  reads only); naive Phase 4 extension would put us in (d) Last-writer-wins with
+  no detection (silent corruption risk).
+
+  The (B) co-canonical promise is structurally undeliverable on bridge as-is;
+  Phase 4 (B) requires either a new sync layer above bridge (advisory locks /
+  version columns / change-data-capture) or a different write substrate.
+
+  Verdict label: [NO-CONFLICT-DETECTION].
+
+Q13. SCHEMA-EVOLUTION TOLERANCE
+  CONSENSUS [VERIFIED]: get_row_desc (SQLReader.cc:143-157) throws if
+  `1 != sigs.size()` (line 151-154). Schema evolution mid-session creates a 2nd
+  SignatureLink (because add_link is content-addressed and content differs),
+  permanently breaking get_row_desc until cog-bridge-close + cog-bridge-open
+  (full reset, which destroys in-flight AtomSpace state).
+
+  Phase 4b durability concern confirmed: every Decko module migration would
+  force a bridge restart.
+
+  Verdict label: [SCHEMA-EVOLUTION-BREAKS-RUNTIME].
+
+================================================================================
+DISSENTS (V-N-X)
+================================================================================
+
+V1-Q1 (Claude pickaxe scope incomplete; Codex correction)
+  Issue: Claude ran `git log --all -S 'storeAtom' --oneline -- opencog/persist/
+    bridge/`, returning only commit 8bd776e (the rename). Codex ran the same
+    pickaxe without the path filter and found additionally commit 74c9606 ("Add
+    the missing stubs", Dec 17 2022) and 09c7b9e ("Start work on the storage-
+    node side of it").
+  Source-of-truth check (Claude, 2026-05-03):
+    $ cd "E:/GitHub/hyperon reference/atomspace-bridge" && git log --all -S 'storeAtom' --oneline
+    74c9606 Add the missing stubs
+    09c7b9e Start work on the storage-node side of it
+    [8bd776e is implicit; pickaxe doesn't always show pure renames]
+    $ git show --stat 74c9606
+    74c96065... "Add the missing stubs"  Dec 17 2022
+       opencog/persist/automap/CMakeLists.txt   |  1 +
+       opencog/persist/automap/ForeignPG.cc     | 51 +++++++  (NEW FILE, EMPTY STUBS)
+       opencog/persist/automap/ForeignStorage.h |  1 -
+  Resolution: The path filter `-- opencog/persist/bridge/` excluded pre-rename
+    history under `opencog/persist/automap/`. The 8bd776e rename moved
+    automap/* → bridge/*. Pre-rename, stubs were introduced empty in 74c9606.
+    Conclusion is UNCHANGED: `storeAtom` was introduced as an empty stub and
+    has never been given a body — verified across the full repo history, not
+    just post-rename.
+  Methodology refinement: when pickaxing for "never implemented" claims on a
+    file that has been renamed (especially mid-project rename), run pickaxe
+    WITHOUT a path filter to catch pre-rename history. Add to standing
+    methodology lock.
+
+V3-Q4-relay (Gemini relay-message POOL_SIZE drift; rescinded vs disk file)
+  Issue (in relay): Gemini's verbal-relay message in the orchestrator chat
+    cited "ll-pg-cxx.cc:58 hard-codes POOL_SIZE = 3".
+  Status in canonical disk artifact: findings_gemini.txt:115 cites
+    "BridgeStorage.cc:43 defines POOL_SIZE 3" — CORRECT.
+  Resolution: drift was in the verbal relay only, not in the canonical disk
+    findings file. CF5.6 still applies as a process check on relay messages,
+    but the disk artifact is clean. No correction needed to the consensus
+    location: BridgeStorage.cc:43 (correct in both Claude and Gemini disk
+    files).
+
+V3-Q6-relay (Gemini relay-message atom_types.script drift; rescinded vs disk)
+  Issue (in relay): Gemini's verbal-relay message stated "atom_types.script:15
+    defines EDGE_LINK". File is only 7 lines; EDGE_LINK is not defined in this
+    file at all.
+  Status in canonical disk artifact: findings_gemini.txt:75 states
+    "EDGE_LINK is used throughout the codebase. EVALUATION_LINK is absent from
+    production code." — no false file-identity claim.
+  Resolution: drift was in the verbal relay only. The disk artifact correctly
+    avoids placing EDGE_LINK in the bridge atom_types.script. EDGE_LINK is
+    defined externally in the AtomSpace core (correctly stated in Claude's
+    findings_claude.txt and consistent with Gemini's disk file).
+
+V3-Q9-relay (Gemini relay-message README.md:12 line drift; rescinded vs disk)
+  Issue (in relay): Gemini's verbal-relay message wrote "README.md:12 mentions
+    bridge as a 'general-purpose SQL-to-AtomSpace bridge.'" Line 12 is blank.
+  Status in canonical disk artifact: findings_gemini.txt:105-107 cites
+    "README.md (lines 23-25)" and "README.md (lines 30-31)" — both correct.
+    The disk file does NOT use the README.md:12 citation.
+  Resolution: drift was in the verbal relay only. The disk artifact uses the
+    correct line ranges that match Claude's findings.
+
+V3-F0 (Gemini doc-vs-code over-claim on tests; Codex CF V1-2 generalization)
+  Issue: Gemini's per-model orientation file in the bridge repo (GEMINI.md:25)
+    reads "Comprehensive test suite for table imports, joins, and persistence
+    logic."
+  Source-of-truth check (already verified in setup phase + Codex CF V1-2):
+    $ Read tests/persist/bridge/CMakeLists.txt
+    Line 7: # ADD_CXXTEST(SchemaLoadUTest)   (commented out)
+    Directory contains only CMakeLists.txt; no test source files.
+  Resolution: Bridge has zero automated test coverage. GEMINI.md:25 over-states.
+    Gemini's findings_gemini.txt:158 confirms this and self-corrects:
+    "**Zero Test Coverage**: Confirmed that the tests/ directory contains no
+    source files, only empty CMake boilerplate." So the disk findings file is
+    consistent with Claude/Codex; only the bridge-repo GEMINI.md (which is a
+    Gemini-authored orientation file in upstream, not a Phase 4 reconciliation
+    artifact) needs editing.
+
+V0-Gemini-bidirectional (Gemini self-acknowledged, CF5.6 application by Gemini)
+  Issue: GEMINI.md:14 reads "Bidirectional Sync: Supports both reading from
+    and updating SQL table contents while maintaining referential integrity."
+  Source-of-truth check (Claude, setup phase): VERIFIED FALSE at HEAD.
+  Gemini self-correction (this round): "I acknowledge the orchestrator's
+    correction. My claim in GEMINI.md:14 that the bridge supports 'updating
+    SQL table contents' is EMPIRICALLY FALSE at HEAD. I will reconcile this
+    by updating the card to reflect the read-only reality."
+  Resolution: Gemini explicitly accepts CF5.6 correction. GEMINI.md:14 in the
+    bridge repo will be edited by Gemini in a subsequent pass to align with
+    code-side reality.
+
+V2-Q10/14 (Codex methodological pushback on quantitative ceilings; ACCEPTED)
+  Issue: Both Claude (~1000 atom-writes/sec) and Gemini (~1k-2k writes/sec)
+    offered specific numeric ceiling estimates without benchmark evidence.
+  Codex pushback: "I would not lock Claude's '~1000/sec' estimate as a finding
+    without benchmark evidence."
+  Resolution: Quantitative numbers retracted from the consensus finding. The
+    ceiling-order-of-magnitude inference (sub-10⁴/sec for sure; specific value
+    TBD) remains valid as INFERENCE; specific numbers require Phase 4 prototype
+    benchmarks. SPEC_DRAFT.md will frame this as "qualitative ceiling, benchmark-
+    pending" rather than asserting a number.
+
+================================================================================
+SOURCE-OF-TRUTH CHECKS (CF5.6)
+================================================================================
+
+Filesystem / line-citation / file-identity claims verified by Claude as
+orchestrator before reconciliation:
+
+[CONFIRMED] Claude pickaxe storeAtom without path filter (V1-Q1)
+  Result: 74c9606 + 09c7b9e additionally found; 8bd776e is the rename.
+  Conclusion-impact: NONE — stubs still never given bodies.
+
+[CONFIRMED] Gemini POOL_SIZE file-path drift (V3-Q4)
+  Result: ll-pg-cxx.cc has no POOL_SIZE definition.
+  Reconciled location: BridgeStorage.cc:43.
+
+[CONFIRMED] Gemini atom_types.script:15 EDGE_LINK drift (V3-Q6)
+  Result: file is only 7 lines; EDGE_LINK not defined here at all.
+  Reconciled: EDGE_LINK defined in parent AtomSpace, not in atomspace-bridge.
+
+[CONFIRMED] Gemini README.md:12 line drift (V3-Q9)
+  Result: line 12 is blank.
+  Reconciled: "general-purpose" framing inferred from README:1-9 prose, not a
+  direct quote.
+
+[CONFIRMED] Codex atomspace-pgres write-code citation (CF1-Q7)
+  Files claimed: SQLAtomStore.cc:68, SQLAtomDelete.cc:94 + 111-113,
+  SQLValues.cc:302-308, 643, SQLBulk.cc:265 in atomspace-pgres @ 6fe9763.
+  Status: NOT directly verified by Claude (atomspace-pgres @ 6fe9763 not yet
+  cloned/inspected in this session). Codex citation accepted at face value
+  for the reconciled finding because: (a) Codex's record on file-citation
+  accuracy across prior cluster pilots is high; (b) the substantive claim
+  (atomspace-pgres has a real writer; its writer targets pgres-rigid tables not
+  arbitrary SQL) is consistent with R2.B4 and AtomSpace cluster pilot prior
+  findings. Source 1 reconciliation flags this for Source 3 (atomspace-linas
+  Design Notes) follow-up if Phase 4 architecture decision drifts back toward
+  Option C variants that would benefit from pgres-writer reuse analysis.
+
+================================================================================
+F-FINDINGS (additional, agreed across reviewers)
+================================================================================
+
+F1 (Codex CF V1-2; Gemini self-acknowledged): documentation-vs-code drift in
+  the bridge repo.
+  - README.md:23-25 — writes as "desired feature" (forward-looking)
+  - README.md:36-40 — current Status: read-only ("can load table descriptions")
+  - CLAUDE.md:7 — "enabling bidirectional data transfer" (over-claim;
+    Claude-orientation-file in the bridge repo, Gemini-style overstatement)
+  - GEMINI.md:14 — "Bidirectional Sync" (over-claim, Gemini self-acknowledged)
+  - GEMINI.md:25 — "Comprehensive test suite" (over-claim; tests/ is empty)
+  - CMakeLists.txt:201 — packaging section self-flagged "stale/wrong/broken"
+  Phase 4 implication: per-model orientation files in the upstream bridge repo
+  do not reliably reflect HEAD reality. SPEC_DRAFT.md should cite README + code
+  exclusively for write-path claims, not the per-model .md files.
+
+F2 (Claude): CMakeLists.txt:101 PGSQL FIND_PACKAGE has REQUIRED commented out.
+  Build will fail later if PGSQL_FOUND is false because ll-pg-cxx.cc
+  unconditionally includes <postgresql/libpq-fe.h>. Sloppy CMake, not a
+  functional issue at HEAD; flagged for Phase 4 packaging refresh.
+
+F3 (Claude): public Scheme API mismatch.
+  persist-bridge.scm:21 exports cog-bridge-load-tables + cog-bridge-load-rows
+  (plural).
+  basic-demo.scm:177 calls cog-bridge-load-row (SINGULAR).
+  Either (a) the demo is stale, (b) module exports are incomplete, or (c)
+  there's an alias registered in BridgePersistSCM.cc that I have not yet
+  audited. Minor doc-vs-code drift; Phase 4 not blocked. Flag for Source 1
+  reconciliation pass; recommend Source-3-or-later session reads
+  BridgePersistSCM.cc to verify the binding registry.
+
+F4 (Codex CF1-Q7): atomspace-pgres @ 6fe9763 has implemented writer code.
+  Citations (Codex, accepted at face value pending Source 3 verification):
+    SQLAtomStore.cc:68    storeAtom
+    SQLAtomDelete.cc:94   removeAtom (with explicit transaction at 111-113)
+    SQLValues.cc:302-308, 643  Value writes
+    SQLBulk.cc:265        Bulk store
+  This means the StorageNode write interface has at least one fully-implemented
+  reference implementation (atomspace-pgres), distinct from atomspace-bridge's
+  empty stubs. atomspace-pgres remains BACKING-STORE-ONLY (writes to its own
+  rigid Atom/Value tables, not arbitrary SQL tables) per R2.B4, so Phase 4
+  cannot directly reuse it for Decko-table writes — but Phase 4's write-path
+  design could draw on pgres's transaction-handling pattern (SQLAtomDelete.cc:
+  111-113) as a reference.
+
+F5 (Claude, low-priority): bridge is sole-contributor (Linas Vepstas, 116
+  commits across both encoding spellings of his name) with ~9 months idle
+  (HEAD 2025-08-15, today 2026-05-03). Per the Perception cluster pilot
+  (closed 2026-05-01), Linas's active focus is on the sensory/agents/motor/
+  evidence/atomese-simd portfolio, not bridge. Phase 4 cannot rely on upstream
+  bridge progress.
+
+================================================================================
+BOTTOM LINE FOR SPEC_DRAFT.md (R1.B1)
+================================================================================
+
+Source 1 Bottom Line:
+  At HEAD (40b8af7, 2025-08-15), atomspace-bridge is a [READ-ONLY-BY-DESIGN]
+  [BULK-IMPORT-THEN-READ] tool. The full StorageNode write interface is
+  declared and overridden as silent no-op stubs (SQLReader.cc:395-425);
+  pickaxe (V1-Q1, full-history scope) verifies these stubs were introduced
+  empty in 74c9606 (Dec 2022) and have never been given bodies. The codebase
+  has zero transaction control, zero prepared statements, zero conflict
+  detection, zero schema-evolution tolerance, no primary-key flagging, zero
+  test coverage, and a hard-coded 3-connection pool (BridgeStorage.cc:43).
+  The type model silently drops timestamp / date / jsonb / bpchar columns,
+  meaning Decko's revision-chronology fields would not surface in the mirror.
+
+Phase 4 (B)+(L1) Architecture Recommendation: Option D
+  Decko-callback-driven AtomSpace mirror, bypassing atomspace-bridge entirely.
+  Rationale (consensus across all three reviewers):
+    1. Architectural mismatch: bridge is bulk-import-then-read; Phase 4 wants
+       sustained low-latency co-canonical write-through.
+    2. Type model can't represent Decko's full schema.
+    3. Zero test coverage; building writes on bridge means greenfield writes
+       on a tested-zero base.
+    4. Atom-identity model doesn't flag PK columns; agent edits create new
+       atoms alongside old without GC.
+    5. No conflict-detection; (B) co-canonical promise is structurally
+       undeliverable.
+    6. atomspace-pgres has a real writer (CF1-Q7) but writes to its own rigid
+       Atom/Value tables, not Decko's schema — also unreusable directly.
+
+  Option C (extending bridge) remains the fallback if Source 2 (Hyperon Space
+  write-API) findings show Hyperon Space cannot provide usable writes. Option C
+  is a multi-month effort essentially building a new persistence layer atop
+  bridge's read scaffolding.
+
+Source-Dependent Re-evaluation Conditions:
+  - If Source 2 finds Hyperon Space supports atom-write hooks → Option D
+    confirmed.
+  - If Source 2 finds Hyperon Space is also read-only-at-HEAD → Option C
+    becomes necessary fallback; Phase 4 timeline extended significantly.
+  - If Source 4 finds MORK supports atom-rate writes natively → Option D may
+    evolve to D' (Decko callback → MORK write-path; agents read MORK and
+    write back via MORK).
+  - If Source 5 (Decko semantics) finds the +convention layer
+    (`+expert_reviewed`, `+ai_draft`, `+review_status`) requires
+    multi-table-atomic writes → Option D's design must include transaction
+    boundaries from day 0; Option C cannot satisfy without adding transaction
+    control to bridge.
+  - If Source 7 (Magus plan reconciliation) finds the March 2026 Magus plan
+    already committed to a particular mechanism that conflicts with Option D
+    → renegotiation required.
+
+Methodology Lock Refinements (this source):
+  - V1-Q1 lesson: pickaxe for "never implemented" claims should run WITHOUT a
+    path filter when the file/directory has been renamed mid-project. Add to
+    feedback_pickaxe_for_dead_code.md (or successor methodology doc).
+  - V3-Q4/Q6/Q9 RESCINDED-vs-disk-file lesson: Gemini's canonical findings
+    file (findings_gemini.txt) used CORRECT citations throughout. The drift
+    citations appeared only in Gemini's verbal-relay message in the
+    orchestrator chat. This is a NEW process-level finding: relay messages
+    sometimes contain citation drift that does NOT appear in the canonical
+    disk artifact. Methodology refinement: when a reviewer's verbal relay
+    differs from their disk file, prefer the disk file as canonical and
+    treat relay-message drift as informal. CF5.6 still applies to disk-file
+    citations from any reviewer, but distinguishing between relay-drift and
+    disk-file-drift matters for accurate methodology accounting. Disk-file
+    drift count for this source: ZERO (Gemini disk file is clean).
+    Relay-message drift count for this source: THREE (V3-Q4-relay, V3-Q6-
+    relay, V3-Q9-relay). Bridge-repo orientation-file drift count: TWO
+    (GEMINI.md:14 bidirectional, GEMINI.md:25 tests).
+  - V2-Q10/14 lesson: numeric ceiling estimates require benchmark evidence.
+    Inference-based numbers should be flagged as inference, not asserted.
+    Phase 4 prototype benchmarking is required before SPEC_DRAFT lands hard
+    ceiling numbers.
+
+================================================================================
+END OF RECONCILIATION — Source 1
+================================================================================

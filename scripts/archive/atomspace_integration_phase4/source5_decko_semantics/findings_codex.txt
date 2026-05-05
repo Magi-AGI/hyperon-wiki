@@ -1,0 +1,297 @@
+Codex findings - Source 5 Decko semantics
+Date: 2026-05-04
+Scope: Review-only pass over Claude's Source 5 brief, Decko HEAD 93c54deadaf6645e61427940910fe1dc35112f36, and hyperon-wiki HEAD a1a9e627dc392c0913b0e72ff2fe730348f273c3.
+
+Bottom line
+===========
+
+[CONFIRM] Phase 4 should stay on the Source 2 Option D architecture and add a Decko-side mirror/encoder layer. Decko has the right semantic hooks: a canonical Director stage model, after-commit integration stages, per-card history actions, and soft-delete/trash semantics that can be mapped cleanly to Hyperon Space Add/Replace events.
+
+[REFINE] The Source 5 predicted design needs four amendments:
+
+1. Draft/autosave actions must be filtered out of the Phase 4 mirror by default. `card_actions.draft` is a real autosave/draft path, excluded from normal history queries.
+2. The actual hyperon-wiki convention layer does not contain `+expert_reviewed`, `+review_status`, `+roadmap`, or a hyperon-specific `+links` field at HEAD. It currently contains `+ai draft`, `+tag`, `+approved by`, `+approved at`, `+expert approved by`, and `+expert approved at`.
+3. The D3-1 envelope should include both Decko actor provenance (`card_acts.actor_id`) and permission/proxy provenance (`Card::Auth.as_id`) where available. `Card::Auth.as_bot` changes the proxy user, but does not necessarily change `Auth.current_id`.
+4. "Sidecar via delayed_jobs" should be phrased as "Decko delayed event enqueues/sends an explicit mirror payload to a sidecar/outbox." A non-Rails sidecar should not parse Decko's `delayed_jobs.handler` as the IPC contract.
+
+Q1 - Director phases and event hooks
+====================================
+
+[VERIFIED] Decko's canonical stage list is exactly the nine-stage model cited in the brief:
+
+- Validation phase: `initialize`, `prepare_to_validate`, `validate` (`card/lib/card/director/stages.rb:5`).
+- Storage phase: `prepare_to_store`, `store`, `finalize` (`card/lib/card/director/stages.rb:6`).
+- Integration phase: `integrate`, `after_integrate`, `integrate_with_delay` (`card/lib/card/director/stages.rb:7`).
+
+[VERIFIED] These stages are wired through Rails callbacks:
+
+- `before_validation :validation_phase`
+- `around_save :storage_phase`
+- `after_commit :integration_phase`
+
+Evidence: `card/lib/card/director/phases.rb:2-4`. Storage runs `prepare_to_store`, `store`, and `finalize` around the ActiveRecord save, then raises on validation errors (`card/lib/card/director/phases.rb:34-39`). Integration restores dirty state after commit and then runs `integrate`, `after_integrate`, and `integrate_with_delay` (`card/lib/card/director/phases.rb:44-51`).
+
+[VERIFIED] Event `on: :save` is shorthand for create+update, not delete. `process_action_opts` rewrites `:save` to `%i[create update]` (`card/lib/card/set/event/options.rb:69-70`). A Phase 4 mirror must either use `on: %i[create update delete]` or define a delete companion event if it uses `on: :save`.
+
+[VERIFIED] Integration events are deliberately non-blocking for the saved card: `define_standard_event_method` wraps integration-stage event execution in `rescuing_if_integration`, which calls `Error.rescue_card` (`card/lib/card/set/event.rb:147-169`). This reports exceptions rather than aborting the already-committed card change.
+
+[VERIFIED] `integrate_with_delay` is an ActiveJob-backed Decko event path. Delayed events enqueue `IntegrateWithDelayJob.set(queue: event.name, priority: event.priority).perform_later(...)`, pass `Card::Env.serialize` and `Card::Auth.serialize`, and re-raise job exceptions after reporting them (`card/lib/card/set/event/delayed_event.rb:47-67`, `:95-104`).
+
+[REFINE] A delayed mirror is the right user-latency posture, but its failure mode is important:
+
+- Failure to schedule from the integration phase is reported through integration rescue and should not roll back the card save.
+- Failure inside the delayed job is reported and re-raised, so idempotency must be keyed by `action_id` and/or `act_id`.
+
+Q2 - Decko schema and audit/history tables
+==========================================
+
+[VERIFIED] The schema tables relevant to Phase 4 are:
+
+- `card_actions`: `card_id`, `card_act_id`, `super_action_id`, `action_type`, `draft`, `comment` (`card/db/schema.rb:19-24`).
+- `card_acts`: `card_id`, `actor_id`, `acted_at`, `ip_address` (`card/db/schema.rb:30-35`).
+- `card_changes`: `card_action_id`, `field`, `value` (`card/db/schema.rb:40-43`).
+- `card_references`: `referer_id`, `referee_key`, `referee_id`, `ref_type`, `is_present` (`card/db/schema.rb:47-52`).
+- `cards`: `name`, `key`, `codename`, `left_id`, `right_id`, `current_revision_id`, timestamps, creator/updater, read-rule fields, `references_expired`, `trash`, `type_id`, `db_content` (`card/db/schema.rb:78-94`).
+- `delayed_jobs` exists as the ActiveJob backend table (`card/db/schema.rb:106`).
+
+[MINOR BRIEF DRIFT] The brief's cards-column summary omitted `read_rule_class`, `read_rule_id`, and `references_expired` (`card/db/schema.rb:89-91`). I do not recommend mirroring these into Phase 4 atoms unless auth/read-rule analysis becomes part of the atomspace use case, but the omission should be noted.
+
+[VERIFIED] `card_actions.action_type` is zero-based:
+
+- `0 => :create`
+- `1 => :update`
+- `2 => :delete`
+
+Evidence: `TYPE_OPTIONS = %i[create update delete]` and `TYPE_OPTIONS.index(value)` in `mod/history/lib/card/action.rb:42` and `:90-99`.
+
+[VERIFIED] `card_actions.draft` is not decorative. Draft actions are explicitly separated from normal history:
+
+- `Card#actions` filters `draft: [nil, false]`; `Card#drafts` filters `draft: true` (`card/lib/card.rb:172-173`).
+- Act listings exclude `draft is not true` unless including current-user drafts (`mod/history/lib/card/act.rb:46-49`).
+- Autosave/draft content creates a draft action with a `db_content` change (`mod/history/set/all/history.rb:88-92`).
+- `draft_action?` is driven by `Env.params["draft"] == "true"` (`mod/history/set/all/history/events.rb:84-85`).
+
+[RECOMMEND] Phase 4 should ignore `draft=true` actions unless the product explicitly wants autosave state mirrored. Otherwise, the mirror will leak transient editor state into Hyperon.
+
+[VERIFIED] `card_changes.field` uses `TRACKED_FIELDS = %w[name type_id db_content trash left_id right_id]` (`mod/history/lib/card/change.rb:25`). `changed_fields` stores only changed tracked fields (`mod/history/set/all/history.rb:51-52`). `Card::Dirty` also tracks `codename`, but history changes do not include codename in `TRACKED_FIELDS` (`card/lib/card/dirty.rb:7-16`).
+
+[REFINE] If the atom encoding needs codename-change events, it cannot rely only on `card_changes`. It must read the current `cards.codename` value or extend the mirror to include codename in its current-state payload.
+
+Q2.f - card_references.ref_type values
+======================================
+
+[VERIFIED] There is no single enum in `card/lib/card/reference.rb`; the observed supported codes are distributed:
+
+- `I`: default include/nest reference from `Card::Content::Chunk::Abstract#reference_code` (`card/lib/card/content/chunk/abstract.rb:30`), and used by `nester`/`nestee` filters (`card/lib/card/reference/all.rb:19`, `:33`).
+- `L`: wiki link/list reference. Link chunks define `CODE = "L"` and return it (`mod/content/lib/card/content/chunk/link.rb:10`, `:17`); id-list references also write `ref_type: "L"` (`mod/list/set/abstract/id_list.rb:42`).
+- `Q`: query reference from CQL/search content (`mod/content/lib/card/content/chunk/query_reference.rb:91-92`).
+- `P`: partial reference for virtual/compound names (`card/lib/card/reference/all.rb:10`, `:137`).
+- `""`: database default only (`card/db/schema.rb:51`); I found no current app-generated semantic meaning beyond the default.
+
+Q3 - Cardtype primitives
+========================
+
+[VERIFIED] Decko standard cardtypes relevant to encoding include:
+
+- Core/account/rules: Cardtype, Mod, Setting, User, Set, Role, Sign up.
+- Format/content primitives: RichText/Basic, PlainText, Phrase, Number, Toggle, URI, HTML, JSON, Markdown.
+- Collection/linking: List, Pointer, Nest list, Link list.
+- Operational/media: Date, Search, File, Image, Session, Email template.
+
+Evidence is in data seed files such as `card/mod/core/data/real.yml`, `mod/format/data/real.yml`, `mod/list/data/real.yml`, `mod/date/data/real.yml`, `mod/search/data/real.yml`, `mod/carrierwave/data/real.yml`, `mod/markdown/data/real.yml`, `mod/rules/data/real.yml`, `mod/account/data/real.yml`, `mod/session/data/real.yml`, and `mod/email/data/real.yml`.
+
+[VERIFIED] hyperon-wiki code-backed custom type sets under `mod/*/set/type/` are exactly:
+
+- `mod/editorial_review/set/type/draft.rb`
+- `mod/editorial_review/set/type/published.rb`
+
+[VERIFIED] hyperon-wiki data also declares a third custom cardtype, `RawData`, in `mod/editorial_review/data/real.yml:53`. It has no corresponding `set/type/raw_data.rb` behavior at HEAD.
+
+Q4 - +convention layer
+======================
+
+[VERIFIED] Actual hyperon-wiki editorial conventions at HEAD are:
+
+- `+ai draft`: right-set behavior in `mod/editorial_review/set/right/ai_draft.rb`; data codename `ai_draft` at `mod/editorial_review/data/real.yml:75-76`.
+- `+tag`: created/updated as Pointer by Draft/Published/AI-draft events (`mod/editorial_review/set/type/draft.rb:28-34`, `mod/editorial_review/set/type/published.rb:90-93`, `mod/editorial_review/set/right/ai_draft.rb:8-14`).
+- `+approved by`: Phrase in approval events (`mod/editorial_review/set/all/editorial_events.rb:16-19`; `mod/editorial_review/set/right/ai_draft.rb:27`).
+- `+approved at`: Date in approval events (`mod/editorial_review/set/all/editorial_events.rb:21-24`; `mod/editorial_review/set/right/ai_draft.rb:28`).
+- `+expert approved by`: Phrase in expert event (`mod/editorial_review/set/type/published.rb:81-84`).
+- `+expert approved at`: Date in expert event (`mod/editorial_review/set/type/published.rb:86-89`).
+
+[VERIFIED] Navigation deliberately hides these approval metadata rights: `tag`, `approved by`, `approved at`, `expert approved by`, and `expert approved at` are in `NAV_BLOCKED_RIGHTS` (`mod/wiki_nav_tree/set/all/wiki_nav_tree.rb:6-11`).
+
+[DRIFT] The brief's requested convention cards are not all implemented:
+
+- `+description`: Decko core has a `description` codename, and default fixtures show it as card id 12 with `type_id: 2` (RichText/Basic) (`mod/defaults/data/fixtures/real/cards.yml:206-218`). This is a Decko core convention, not a hyperon-wiki-specific Magus right-set implementation.
+- `+links`: no hyperon-wiki convention found. Decko has built-in `*links to`/reference-query machinery, but that is not a `+links` child field.
+- `+roadmap`: no implementation found in hyperon-wiki code/data at HEAD.
+- `+expert_reviewed`: no implementation found. The actual convention is `+expert approved by` / `+expert approved at` plus tag item `expert approved`.
+- `+review_status`: no implementation found.
+
+[RECOMMEND] Source 5 reconciliation should avoid assigning cardtypes to `+roadmap`, `+expert_reviewed`, and `+review_status` from assumption. If production Decko data contains them, they need a live Decko query; they are not in the repo.
+
+Q5 - SpaceEvent granularity
+===========================
+
+[CONFIRM] The correct unit for Phase 4 mirror events is `Card::Action`, not only `Card::Act`.
+
+Reasoning:
+
+- A single act can contain multiple card actions; Decko documents that one web submission changing several cards records several `Card::Action` rows tied to one `Card::Act` (`mod/history/lib/card/act.rb:3-15`).
+- `Card::Action` has `super_action_id` / `sub_actions` for subcard relationships (`mod/history/lib/card/action.rb:29-33`).
+- `Card::Act` contributes actor, acted_at, ip_address, and grouping (`mod/history/lib/card/act.rb:3-15`, `:133`).
+
+[RECOMMEND] Emit one mirror envelope per non-draft `Card::Action`, with a shared `act_id` for grouping. That preserves Decko's actual mutation granularity and keeps subcard writes visible without collapsing them into one coarse act-level event.
+
+[CONFIRM] Event mapping:
+
+- Create: Hyperon `Add(new_atom)`.
+- Update: Hyperon `Replace(old_atom, new_atom)` if the old atom can be reconstructed or cached; otherwise an upsert-style `Add`/replace at the mirror layer must be made idempotent.
+- Delete/trash: Hyperon `Replace(old_atom, new_atom_with_trash_true)`, not `Remove`, under the recommended trash policy.
+
+Q6 - Atom encoding v1
+=====================
+
+[CONFIRM] The brief's explicit-field atom encoding is the right direction. It should avoid hiding Decko semantics inside a single opaque content blob.
+
+[RECOMMEND] Minimum `DeckoCard` atom fields for Phase 4:
+
+- `CardId` from `cards.id` as durable identity.
+- `Name` and `Key`.
+- `Codename` as current-state metadata, because `card_changes` does not track codename.
+- `TypeId` and preferably `TypeName` for readability.
+- `LeftId` and `RightId` for compound cards.
+- `Content` from `db_content`.
+- `Trash`.
+- `CreatedAt`, `UpdatedAt`, `CreatorId`, `UpdaterId`.
+
+[RECOMMEND] References should be separate derived atoms, not embedded only in card content:
+
+- `DeckoReference(referer_id, referee_key, referee_id, ref_type, is_present)`.
+- Use the observed ref_type code set from Q2.f.
+- Treat reference atoms as derived/current-state; rebuild them from Decko's reference table during backfill or after card saves.
+
+[RECOMMEND] Convention tags/approval metadata can be represented either as normal child-card atoms plus optional higher-level derived predicates. The source of truth should remain the child cards; derived predicates can be added later for L1 convenience.
+
+Q7 - D3-1 envelope finalization
+===============================
+
+[CONFIRM] D3-1 provenance discipline is appropriate. For Decko, I recommend this concrete envelope:
+
+- `source`: `"decko"`
+- `event_schema_version`: e.g. `"decko-spaceevent-v1"`
+- `event_id`: deterministic string such as `"decko:action:<action_id>"`
+- `action_id`: `card_actions.id`
+- `act_id`: `card_acts.id`
+- `super_action_id`: `card_actions.super_action_id`, nullable
+- `action`: `create`, `update`, or `delete`
+- `draft`: false for Phase 4 mirror output
+- `card_id`: `card_actions.card_id`
+- `card_key`: current `cards.key`
+- `actor_id`: `card_acts.actor_id`
+- `auth_current_id`: from serialized auth when available
+- `auth_as_id`: from serialized auth when available
+- `acted_at`: `card_acts.acted_at`
+- `ip_address`: `card_acts.ip_address`, optional and subject to privacy policy
+- `stage`: `integrate_with_delay`
+- `changes`: list of tracked field changes
+
+[REFINE] `actor_id` and `auth_as_id` are not the same thing. `Card::Auth.as` sets `@as_id` and only sets `@current_id` when current is nil (`card/lib/card/auth/proxy.rb:6-14`). `Card::Auth.as_bot` delegates to `as(Card::DeckoBotID)` (`card/lib/card/auth/proxy.rb:27-28`). `Card::Act#assign_actor` records `Auth.current_id` (`mod/history/lib/card/act.rb:133`). `Card::Auth.serialize` contains both `as_id` and `current_id` (`card/lib/card/auth.rb:31-33`).
+
+[RECOMMEND] If Phase 4 wants to distinguish "human actor" from "permission persona used to perform the write," it must carry both actor/current and proxy/as ids. Do not infer bot action solely from `actor_id == Card::DeckoBotID`.
+
+[VERIFIED] Decko Bot is `Card::DeckoBotID`, not `Card::WagnBotID` at HEAD. Local fixtures show Decko Bot as id 1 (`card/mod/core/data/fixtures/real/cards.yml:3-8`). `card/mod/core/data/recode.yml:8` maps legacy `wagn_bot` to `decko_bot`.
+
+Q8 - Trash semantics
+====================
+
+[CONFIRM] Policy B is correct: keep the atom and set `Trash=true`.
+
+Evidence:
+
+- Decko identifies delete actions as `trash && trash_changed?` (`card/lib/card/director/all.rb:19-22`).
+- `cards.trash` is a real non-null boolean column (`card/db/schema.rb:92`).
+- Standard card queries implicitly add `trash is false` (`card/lib/card/query/sql_statement/where.rb:72-76`).
+- Reference cleanup treats trashed cards as missing for reference ids (`card/lib/card/reference.rb:62-68`).
+- History revision-before-first-action returns `{ trash: true }`, reflecting Decko's model that nonexistence/precreate resembles trash state (`mod/history/set/all/history/revision.rb:21-25`).
+
+[RECOMMEND] Do not emit Hyperon `Remove` for normal Decko deletes. Emit a `Replace` where the new atom has `Trash=true`. Hard-delete / empty-trash maintenance, if any, should be handled as an administrative resync/reconciliation path, not the ordinary Phase 4 event path.
+
+Q9 - Write-path topology
+========================
+
+[CONFIRM] Hooking inside Decko's event system is better than wrapping only the MCP API controller. The MCP API does write through Decko card APIs, but writes occur in more than one controller:
+
+- Cards controller: create, update, delete, rename, upload, batch, restore all call `Card.create!`, `save!`, `delete!`, `update!`, or `Card.transaction` (`mod/mcp_api/app/controllers/api/mcp/cards_controller.rb:81`, `:113`, `:126`, `:150`, `:279`, `:477`, `:486`, `:1110-1160`, `:1232`, `:1255`).
+- Auto-link controller applies edits with `card.update!(content: new_content)` (`mod/mcp_api/app/controllers/api/mcp/auto_link_controller.rb:58-61`).
+- Jobs controller can write scan results to a card (`mod/mcp_api/app/controllers/api/mcp/jobs_controller.rb:169-175`).
+- Admin API key controller writes/deletes Decko cards for metadata/API keys (`mod/mcp_api/app/controllers/api/mcp/admin/api_keys_controller.rb:134`, `:167`).
+
+[CONFIRM] A Decko event on all cards catches these Decko-mediated paths more cleanly than a controller-specific integration.
+
+[REFINE] The mirror should not use `delayed_jobs` as the sidecar protocol. Decko's delayed event payload is a Rails/ActiveJob serialized job containing Ruby object state (`card/lib/card/set/event/delayed_event.rb:47-67`, `:99-104`). A non-Rails sidecar should consume an explicit, stable payload produced by the Rails job, for example:
+
+- Rails delayed event calls the sidecar over local HTTP/Unix socket.
+- Rails delayed event writes to a small explicit outbox table.
+- Rails delayed event writes a line-delimited JSON queue file in a controlled location.
+
+[RECOMMEND] If an outbox is implemented using Decko cards, guard against recursive mirror events. Prefer a non-card outbox table or a strict skip/filter so mirror support records do not mirror themselves.
+
+Q10 - Auth and actor mapping
+============================
+
+[VERIFIED] Bot constant:
+
+- `Card::DeckoBotID` is the current constant (`card/lib/card/auth/proxy.rb:27-28`).
+- Decko Bot fixture id is 1 (`card/mod/core/data/fixtures/real/cards.yml:3-8`).
+- Legacy `wagn_bot` is a recode alias to `decko_bot` (`card/mod/core/data/recode.yml:8`).
+
+[VERIFIED] Anonymous exists as codename `anonymous`; in local default fixtures it is id 201 (`mod/defaults/data/fixtures/real/cards.yml:3711-3718`).
+
+[REFINE] `Card::Auth.as_bot` is a permission proxy, not necessarily an actor overwrite. `Auth.as` changes `as_id` and only initializes `current_id` if current is nil (`card/lib/card/auth/proxy.rb:6-14`). Acts record `Auth.current_id` as actor (`mod/history/lib/card/act.rb:133`). Therefore:
+
+- Human-triggered events that use `as_bot` may still have the human as `actor_id`.
+- Fully automated jobs with no current user may have Decko Bot as both `current_id` and `as_id`.
+- The mirror should carry both fields when available.
+
+Q11 - Revision-history mirror policy
+====================================
+
+[CONFIRM] Current-state-only is the right Phase 4 baseline.
+
+Reasoning:
+
+- The modern history model is Acts/Actions/Changes. `card_revisions` remains in schema (`card/db/schema.rb:59`), but post-2014 history code reconstructs revisions from actions and changes (`mod/history/set/all/history/revision.rb:1-25`).
+- `Action#previous_value` and `Action#value` can derive per-field previous/current values if needed (`mod/history/lib/card/action/changes.rb:8-17`), but full historical mirror would multiply scope and is not needed for the Phase 4 current-state mirror.
+
+[RECOMMEND] Phase 4 should mirror current state plus provenance (`act_id`, `action_id`, timestamp, changes). If historical reasoning becomes necessary later, add a separate replay/backfill pipeline from `Card::Act`/`Card::Action`, not live revision atoms in the first patch.
+
+Q12 - Synthesis and patch guidance
+==================================
+
+[CONFIRM WITH AMENDMENTS]
+
+- [PHASE-4-MIRROR-SPEC-DRAFTED]: yes.
+- [D3-1-ENVELOPE-FINALIZED]: yes, but include `act_id`, `super_action_id`, `draft`, `auth_current_id`, and `auth_as_id`.
+- [ATOM-ENCODING-V1-PROPOSED]: yes, with separate `DeckoReference` atoms and explicit trash/codename handling.
+- [OUT-OF-PROCESS-SIDECAR]: yes.
+- [VIA-DELAYED-JOBS]: revise to "via Decko `integrate_with_delay` job that emits a stable sidecar/outbox payload." Do not make non-Rails code parse `delayed_jobs.handler`.
+
+Patch implications:
+
+- Source 2 PATCH-1 remains required: Python binding for `space_register_observer`.
+- Source 2 PATCH-2 remains recommended: MeTTa `replace-atom!`.
+- PATCH-3 mirror mod should include draft filtering, all-action coverage including delete, idempotency by `action_id`, and recursion guard for any outbox/support writes.
+- PATCH-4 encoder should include current-state card atoms, reference atoms, convention child cards as normal cards, and D3-1 envelope serialization.
+
+Open verification for reconciliation
+====================================
+
+1. If Claude/Gemini claim repo-level implementations for `+roadmap`, `+expert_reviewed`, or `+review_status`, require exact paths or live Decko card query output. They are not in hyperon-wiki code/data at HEAD.
+2. If the plan says "sidecar reads delayed_jobs," push back. The stable contract should be an explicit mirror payload emitted by Rails.
+3. If the plan maps delete to Hyperon `Remove`, push back. Decko delete is trash-state replacement for the normal path.
+4. If the plan maps agent identity only to `actor_id`, push back. Include both Decko current actor and proxy/as identity when available.
+5. If the plan mirrors drafts by default, push back. Drafts are autosave/editor state and are excluded from normal history.
+
+No code or wiki-card changes were made in this pass; this file is additive review output only.

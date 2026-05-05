@@ -1,0 +1,143 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 5
+Decko semantics inventory — Gemini findings
+================================================================================
+
+Reviewer: Gemini
+Date:     2026-05-04
+Repos:    E:\GitHub\Magi-AGI\decko\ (HEAD 93c54deada)
+          E:\GitHub\Magi-AGI\hyperon-wiki\ (HEAD a1a9e62)
+Brief:    scripts/archive/atomspace_integration_phase4/source5_decko_semantics/brief.txt
+
+Tag legend:
+  [VERIFIED]   = direct citation to file:line at HEAD or commit SHA in history
+  [INFERRED]   = drawn from VERIFIED evidence by direct inference
+  [NOT FOUND]  = exhaustive grep returned no matches (negative-existence claim)
+
+--------------------------------------------------------------------------------
+Q1. DIRECTOR PHASE MODEL + EVENT HOOKS.
+--------------------------------------------------------------------------------
+
+[VERIFIED] Decko Director defines 9 canonical stages across 3 phases (stages.rb:5-7, phases.rb:1-3):
+  - **Validation Phase**: :initialize, :prepare_to_validate, :validate. (before_validation hook)
+  - **Storage Phase**: :prepare_to_store, :store, :finalize. (around_save hook)
+  - **Integration Phase**: :integrate, :after_integrate, :integrate_with_delay. (after_commit hook)
+
+[VERIFIED] Integration events use `rescuing_if_integration` (event.rb:147), ensuring that a failure in one event (e.g., mirror sync) does not roll back the DB transaction or break other events.
+
+VERDICT: [INTEGRATE-STAGE-IS-CANONICAL-HOOK].
+
+--------------------------------------------------------------------------------
+Q2. CARD SCHEMA + AUDIT-TRAIL.
+--------------------------------------------------------------------------------
+
+[VERIFIED] Card record (schema.rb:71): {id, name, type_id, current_revision_id, trash}.
+[VERIFIED] Audit tables:
+  - `card_acts` (schema.rb:28): {id, card_id, actor_id, acted_at}.
+  - `card_actions` (schema.rb:19): {id, card_id, card_act_id, action_type, draft}.
+  - `card_changes` (schema.rb:36): {id, card_action_id, field, value}.
+
+[VERIFIED] `card_actions.draft` usage: Used for `save_draft` which aborts at the `:store` stage (content.rb:8). This means drafts are recorded in actions/changes but the card itself is NOT updated, and Integration phase events (the mirror) DO NOT fire.
+
+[VERIFIED] `ref_type` allowed values (reference/all.rb, chunks):
+  - `I`: Inclusion (Nest/Inclusion chunk).
+  - `L`: Link (Link chunk [[...]]).
+  - `Q`: Query (QueryReference chunk).
+  - `P`: Partial (Automatic for virtual card parts).
+  - [VERIFIED] URI links are NOT tracked in `card_references` (uri.rb does not inherit from Reference).
+
+--------------------------------------------------------------------------------
+Q3. CARDTYPE PRIMITIVES.
+--------------------------------------------------------------------------------
+
+[VERIFIED] Core Decko types (real.yml): `RichText`, `PlainText`, `Pointer`, `Phrase`, `Date`, `Number`, `Toggle`, `File`, `Image`, `User`, `Set`, `Cardtype`.
+[VERIFIED] Custom Wiki types (editorial_review/data/real.yml):
+  - `Draft`: Unpublished content.
+  - `Published`: Human-approved content.
+  - `RawData`: Source material.
+
+--------------------------------------------------------------------------------
+Q4. +CONVENTION LAYER.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `+approved by` (Phrase), `+approved at` (Date), `+tag` (Pointer) are used in `editorial_events.rb`.
+[NOT FOUND] `+roadmap`, `+review_status`, `+expert_reviewed` are NOT custom-implemented in `hyperon-wiki` mods (likely proposed but not active).
+[INFERRED] `+description` defaults to `RichText`.
+
+--------------------------------------------------------------------------------
+Q5. SPACEEVENT GRANULARITY.
+--------------------------------------------------------------------------------
+
+[INFERRED] Mirroring at the Card level is required. A Decko `rename` is an update to the `name` attribute. The mirror should emit a `Replace(OldCardAtom, NewCardAtom)` to maintain continuity, keyed by the stable `card_id`.
+
+--------------------------------------------------------------------------------
+Q6. ATOM ENCODING SCHEME (V1).
+--------------------------------------------------------------------------------
+
+[PROPOSED]
+(Card
+  (Id <card_id>)
+  (Name "<name>")
+  (Type "<type_name>")
+  (Content "<db_content>")
+  (Action <action_id>)
+)
+(Link (From <card_id>) (To <target_id>) (Type <ref_type>))
+
+--------------------------------------------------------------------------------
+Q7. D3-1 ENVELOPE FINALIZATION.
+--------------------------------------------------------------------------------
+
+[PROPOSED]
+SpaceEvent envelope for Phase 4:
+{
+  source: "decko",
+  card_id: <id>,
+  action_id: <card_actions.id>,
+  act_id: <card_acts.id>,
+  actor_id: <card_acts.actor_id>,
+  action_type: <create|update|delete>,
+  timestamp: <card_acts.acted_at>
+}
+
+--------------------------------------------------------------------------------
+Q8. TRASH SEMANTICS.
+--------------------------------------------------------------------------------
+
+[VERIFIED] Decko uses a `trash` boolean. Trashed cards are filtered out by default.
+[PROPOSED] Phase 4 Mirror should emit `Remove(CardAtom)` when `trash: true` to keep the mirror lean. Phase 5+ can use Frames for history.
+
+--------------------------------------------------------------------------------
+Q9. WRITE-PATH TOPOLOGY.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `card-mod-delayed_job` is in `Gemfile.lock`.
+[RECOMMENDED] **Sidecar via Delayed::Job**.
+1. Decko `integrate` event → `Delayed::Job.enqueue(MirrorJob.new(card_id, action_id))`.
+2. Mirror worker → Fetch card+action → Encode to Atomese → Push to Hyperon Space.
+
+--------------------------------------------------------------------------------
+Q10. AUTH / ACTOR MAPPING.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `Card::DeckoBotID` is the authoritative bot ID.
+[INFERRED] Decko User IDs map 1:1 to Hyperon `User` atoms.
+
+--------------------------------------------------------------------------------
+Q11. REVISION-HISTORY MIRROR POLICY.
+--------------------------------------------------------------------------------
+
+[INFERRED] Every action (except drafts) must be mirrored. This fulfills Design Note D's "introspection" goal.
+
+--------------------------------------------------------------------------------
+Q12. ARCHITECTURAL SYNTHESIS.
+--------------------------------------------------------------------------------
+
+[RECOMMENDED] **Sidecar Mirroring**.
+- **Phase 4:** Asynchronous mirror via `Delayed::Job`. Ensures Decko performance is unaffected by mirror latency.
+- **Encoding:** V1 encoding with D3-1 envelope.
+- **Consistency:** Eventually consistent.
+
+================================================================================
+END OF FINDINGS — Source 5, Gemini
+================================================================================

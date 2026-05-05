@@ -1,0 +1,1217 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 3
+Cross-model reconciliation (Claude + Codex + Gemini)
+================================================================================
+
+Reconciler: Claude (orchestrator)
+Date:       2026-05-04
+Repos:      atomspace-linas    @ c8d633bf (2026-02-10, Linas Vepstas)
+            atomspace-pgres    @ 6fe97630 (2025-10-10, Linas Vepstas)
+            atomspace-storage  @ ecd88d67 (2026-01-31)
+            cpp-mcp            @ 86856a2f (2025-05-24, hkr04)
+Brief:      scripts/archive/atomspace_integration_phase4/
+            source3_atomspace_linas_design/brief.txt
+
+Reviewer findings reconciled:
+  findings_codex.txt   (514 lines, dated 2026-05-04, Codex review pass)
+  findings_gemini.txt  (137 lines, dated 2026-05-04, Gemini review pass)
+  findings_claude.txt  (725 lines, dated 2026-05-04 01:49, orchestrator pass
+                        produced post-reconciliation v1 in response to
+                        Codex+Gemini relay authorization for Option 1
+                        "Claude extraction now, then reconciliation").
+
+NOTE — RECONCILIATION CHRONOLOGY:
+  v1 (01:32) — Initial reconciliation written before findings_claude.txt;
+              note at top declared "findings_claude.txt not produced." That
+              statement was true at the time of v1 but superseded by the
+              01:49 Claude extraction.
+  v2 (this file, post-2026-05-04 01:49) — Same v1 body preserved verbatim
+              below, plus an APPENDED ADDENDUM at end-of-file integrating
+              findings_claude.txt's V0-1 through V0-4 NEW findings and
+              strengthening V-Gemini-Q3 / V-Gemini-Q8 dispositions.
+  See "RECONCILIATION ADDENDUM" at end of file for the post-extraction
+  material.
+
+Tag legend:
+  [CONSENSUS]      both reviewers agree on substance.
+  [V-N-X]          dissent: V is the reviewer, N is the question, X is the
+                   sub-issue.
+  [BRIEF-DRIFT]    error in the orchestrator's own brief.txt; corrected
+                   in this reconciliation.
+  [CF5.6]          Gemini source-location/file-identity drift (cluster-
+                   pilot default, verified vs disk).
+  [NEW-CODEX]      finding contributed only by Codex.
+  [NEW-GEMINI]     finding contributed only by Gemini.
+  [VERIFIED-CLAUDE] independently re-read by Claude orchestrator during
+                    reconciliation.
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+
+Source 3 closes with [CONSENSUS] [STAY-HYPERON-SPACE]. Phase 4 stays on
+Hyperon Space / SpaceMut / SpaceObserver as the mirror substrate. atomspace-
+linas Design Notes A–D and atomspace-pgres are useful design constraints
+for Phase 5+ L1 introspection (Design Note D's "analytics crisis" maps
+directly to the Phase 4 mirror as the substrate for recursive introspection)
+but do NOT change Phase 4's architecture. cpp-mcp is not a Phase 4 fit.
+
+Three brief-side path drifts caught by Codex (StorageNode.h, AtomTable.h,
+StreamValue.h) — corrected here for SPEC_DRAFT alignment. One Gemini
+framing imprecision on Q3 (signal API "heavily signal-driven" elides the
+HEAD removal) — corrected. atomspace-pgres write-path verified (Source 1
+F4 confirmed); atomspace-pgres explicitly deprecated by maintainer in
+favor of RocksDB at README-design.md:8-12.
+
+Source 3 produces NO new SPEC_DRAFT patches beyond Source 2's PATCH-1 +
+PATCH-2. It produces three new advisory items for the cluster-pilot
+registry (V3-PROTOCOL-1/2/3) and elevates Design Note D as the canonical
+Phase 5+ L1-introspection design reference.
+
+================================================================================
+PER-QUESTION CONSENSUS
+================================================================================
+
+--------------------------------------------------------------------------------
+Q1. ATOMSPACE-PGRES WRITE-PATH VERIFICATION (Source 1 F4 follow-up)
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [VERIFIED-WRITER] [DURABILITY-ENGINE-VERIFIED]
+[CAVEAT-DEPRECATED]. Source 1 F4 is confirmed: atomspace-pgres has real
+write-path implementations, NOT empty stubs.
+
+Verified citations (Codex precise file:line; Gemini function-block range
+both correct; Claude re-verified):
+
+  - `SQLAtomStorage.h:57` declares `class SQLAtomStorage : public
+    StorageNode`.
+  - `SQLAtomStorage.h:264-276` exposes the StorageNode override surface:
+    fetchIncomingSet, fetchIncomingByType, storeAtom, removeAtom,
+    storeValue, loadValue, barrier, loadAtomSpace, storeAtomSpace.
+  - `SQLAtomStore.cc:68` implements `SQLAtomStorage::storeAtom(const
+    Handle&, bool synchronous)` — sync path calls `do_store_atom(h)` +
+    `store_atom_values(h)`; async path calls `_write_queue.insert(h)`.
+    [VERIFIED-CLAUDE: re-read at SQLAtomStore.cc:68-81]
+  - `SQLAtomStore.cc:90` implements `do_store_atom` (recursive store with
+    height calculation).
+  - `SQLAtomStore.cc:155` implements `do_store_single_atom` (writes Atoms
+    table rows).
+  - `SQLAtomStore.cc:135-147` locks `_store_mutex` to avoid valuation/atom
+    foreign-key inversion races.
+  - `SQLAtomStore.cc:188-199` stores AtomSpace UUID + atom UUID into the
+    DB row.
+  - `SQLAtomDelete.cc:94` implements `removeAtom(...)`.
+  - `SQLAtomDelete.cc:109-113` wraps the delete in `BEGIN;` / `COMMIT;`.
+  - `SQLValues.cc:184/314/583/643` cover value/valuation storage.
+  - `SQLBulk.cc:265` implements bulk `storeAtomSpace`.
+
+[CONSENSUS-DEPRECATION] atomspace-pgres is explicitly deprecated by the
+maintainer:
+  - `opencog/persist/sql/README-design.md:8-12` (Gemini cited :10):
+    "As of 2022, the Postgres backend is deprecated. This is because a
+     better design has been discovered: the RocksDB AtomSpace backend.
+     One could obtain a superior SQL backend by porting the RocksDB
+     driver..."
+    [VERIFIED-CLAUDE: re-read at README-design.md:1-12]
+  - Codex additionally cites `README.md:15-23` and
+    `opencog/persist/sql/README.md:9-30` for deprecation messaging.
+
+Phase 4 implication (consensus):
+  - atomspace-pgres can persist classical AtomSpace atoms/values.
+  - atomspace-pgres has no Decko card/action semantics.
+  - atomspace-pgres does NOT persist Hyperon Space atoms directly.
+  - "Use atomspace-pgres for Phase 4 durability" requires building a
+    classical-AtomSpace adapter project; this is a major engineering
+    investment, not a small durability patch.
+  - Combined with the deprecation status, atomspace-pgres is not a
+    viable Phase 4 durability substrate. Decko remains the source of
+    truth.
+
+--------------------------------------------------------------------------------
+Q2. CLASSICAL HANDLE/UUID IDENTITY MODEL
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [HANDLE-IS-NOT-DURABLE-UUID] [UUID-LIVES-IN-STORAGE-LAYER]
+[IDENTITY-MISMATCH]. Classical `Handle` is a pointer-like shared reference,
+NOT a durable UUID. Persistent UUID binding is a StorageNode/TLB concern,
+not a core Handle property.
+
+Verified citations:
+  - `Handle.h:51`: `ContentHash` typedef.
+  - `Handle.h:54`: `AtomPtr = std::shared_ptr<Atom>`.
+  - `Handle.h:57`: `class Handle : public AtomPtr`.
+  - `Handle.h:125`: pointer-identity comparison (`get() == h.get()`).
+  - `Handle.h:133`: ordering defers to content-based `Atom::operator<`.
+  - `Handle.cc:45-51`: `content_eq` checks hash + Atom content.
+  - `Atom.h:340/443/510-514`: stored content_hash, compute_hash,
+    cached get_hash.
+
+Persistent UUID (separate concern):
+  - `SQLUUID.cc:37-51`: registers AtomSpace resolver with `_tlbuf`.
+  - `SQLUUID.cc:77-117`: maps Handle <-> database UUID via `check_uuid`/
+    `get_uuid`.
+  - `SQLUUID.cc:122-126`: reads max UUID from Atoms table.
+  - `SQLUUID.cc:211-231`: allocates UUIDs from SQL sequences.
+  - `SQLAtomStore.cc:188-199`: stores AtomSpace UUID + atom UUID into
+    DB row during atom insert.
+
+Hyperon Space comparison (per Source 2 Q7):
+  - Hyperon Space has structural-only identity (atoms equality-by-tree-
+    content). No UUID/stable handle in `SpaceMut`.
+
+Phase 4 implication (consensus):
+  - Q12.b answer: do NOT borrow classical UUIDs into Phase 4. Encode
+    Decko `card_id` / action identity directly in the atom model or as
+    side metadata.
+  - Phase 5+ L1 self-improvement may require porting a UUID-like stable
+    identity model to Hyperon (if round-trip durability through a
+    process restart is needed for agent state). Defer.
+
+--------------------------------------------------------------------------------
+Q3. CLASSICAL ATOMSPACE SIGNAL API (HEAD vs HISTORICAL)
+--------------------------------------------------------------------------------
+
+[CONSENSUS-WITH-NUANCE] [HEAD-NOT-FOUND] [HISTORICAL]
+[NAMESERVER-TYPE-SIGNALING-ONLY]. The atom-table add/remove signal API
+existed historically but is REMOVED at HEAD. Only NameServer type-added
+signaling remains.
+
+[V-Gemini-Q3-framing] Gemini's verdict [SIGNALS-MATURE-BUT-COMPLEX] and
+the prose "The classical system is heavily signal-driven for schema
+discovery (typeAddedSignal)" elides the distinction between historical
+add/remove atom-table signals (REMOVED) and surviving NameServer type-
+added signals (PRESENT, narrow scope). Codex caught the precision gap.
+
+[VERIFIED-CLAUDE] Pickaxe-without-path-filter (V1-Q1 protocol):
+  - `git log --all -S 'addAtomSignal' --oneline` returns:
+      a8980a4689 Remove vestiges of signals.
+      2bdf529ae6 Merge AtomTable into AtomSpace
+      ebe6a3fd02 Ongoing AtomTable hackery
+      0f739bea8b Merge AtomTable into AtomSpace
+      ef95811c27 Exterminate boost with prejudice
+      ... and 5 earlier commits.
+  - `git log --all -S 'removeAtomSignal'` returns the same removal-era
+    commits plus `3232a81404 First stab at removing Postgres`.
+  - The smoking gun: `a8980a4689 Remove vestiges of signals` and
+    `ef95811c27 Exterminate boost with prejudice` confirm Boost.Signals2
+    atom-table listener API was actively REMOVED, not just allowed to
+    drift.
+
+[VERIFIED-CLAUDE] HEAD surface that survives:
+  - `NameServer.h:45`: `typedef SigSlot<Type> TypeSignal;`
+    [VERIFIED-CLAUDE re-read]
+  - `NameServer.h:87`: `_addTypeSignal` member.
+  - `NameServer.cc:197/225`: emits/connects type-added signal.
+  - `AtomSpace.cc:61`: connects to `_nameserver.typeAddedSignal()`.
+  - `AtomSpace.cc:118`: disconnects.
+  - No HEAD matches for `addAtomSignal`, `removeAtomSignal`, `atomAdded`,
+    `atomRemoved`, or `boost::signals2` listener API.
+
+[CONSENSUS-THREAD-SAFETY] Classical AtomSpace IS more thread-conscious
+than Hyperon Space at HEAD (separate from observer availability):
+  - `TypeIndex.h:83-98`: per-type atom sets wrapped in `std::shared_mutex`.
+  - `TypeIndex.h:110`: warns iterators are not thread-safe against
+    insertion/removal.
+  - `Atom.h:300-324`: shared mutex pools for incoming-set / KVP locking.
+  - `AtomTable.cc:256-267 / 291-304 / 458-476`: explicit add/delete race
+    handling.
+
+Phase 4 implication (consensus):
+  - Do NOT claim classical HEAD has a SpaceObserver equivalent. The
+    atom-mutation observer-pattern surface is GONE at classical HEAD.
+  - Hyperon Space's SpaceObserver is the surviving observer-pattern
+    surface in the OpenCog/Hyperon ecosystem.
+  - Classical thread-safety is a Phase 5+ argument for backend maturity,
+    not a Phase 4 reason to abandon Hyperon Space.
+  - Reframe Gemini's [SIGNALS-MATURE-BUT-COMPLEX] verdict as
+    [TYPE-SIGNALING-PRESENT] [ATOM-MUTATION-SIGNALING-REMOVED-AT-HEAD]
+    for SPEC_DRAFT.
+
+--------------------------------------------------------------------------------
+Q4. DESIGN NOTES A — STREAMS / FLOWS / FUTURES
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [PARTLY-IMPLEMENTED-PHASE-5] [STREAMS-CORE-TO-L1].
+The stream/flow/future direction is real and partially implemented; not
+the Phase 4 write-back mechanism.
+
+Verified citations:
+  - `Design-Notes-A.md:25` identifies streams/flows/futures as the primary
+    issue.
+  - `Design-Notes-A.md:66-183` discusses FutureStream, FormulaStream,
+    FlatStream, ContainerValue, QueueValue, UnisetValue, GroupValue,
+    DrainLink.
+  - `Design-Notes-A.md:296-314` proposes GroupValue.
+  - `GroupValue.h:35-53` + `GroupValue.cc:28/39/48/85/96` — GroupValue
+    is implemented at HEAD.
+  - `FlatStream.h:39-42` + `FlatStream.cc:34/43/90/124/134` — FlatStream
+    is the concrete stream conversion workhorse.
+  - `DrainLink.h:34-44` + `DrainLink.cc:55/74` — DrainLink exists.
+  - `Design-Notes-A.md:400` + `Design-Notes-A.md:454` — DrainValue is
+    still TODO.
+  - `Design-Notes-A.md:542` — Linas himself notes pipeline authoring is
+    hard.
+
+Phase 4 implication (consensus):
+  - Keep Phase 4 write path imperative and explicit:
+      Decko event → SpaceMut::add/remove/replace → SpaceObserver event.
+  - Revisit streams/flows for Phase 5+ L1 processing pipelines + analytics.
+  - Streams architecture is INTRA-process (in-AtomSpace pipeline
+    composition); not the natural fit for INTER-process Decko-to-mirror
+    propagation.
+
+[BRIEF-DRIFT] brief.txt §4 cited
+`atomspace-linas/opencog/atoms/value/StreamValue.h` as a key file.
+Codex caught: StreamValue.h does NOT exist at HEAD. The actual stream-
+like values are FlatStream, FutureStream, FormulaStream (above), plus
+StreamValueOfLink. [VERIFIED-CLAUDE: ls of opencog/atoms/value/ returned
+no StreamValue.h; FlatStream.h/FutureStream.h/FormulaStream.h/
+GroupValue.h/QueueValue.h all present.] Correction propagates to
+SPEC_DRAFT.
+
+--------------------------------------------------------------------------------
+Q5. DESIGN NOTES B — ASSEMBLY THEORY
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [RESEARCH-STAGE] [ASSEMBLY-ROADMAP-ONLY].
+Assembly Theory is research-stage; not implemented enough to depend on
+for Phase 4. Possible Phase 5+ input for L1 pipeline-authoring ergonomics.
+
+Verified citations:
+  - `Design-Notes-B.md:12`: general assembly mechanism remains "far off
+    and unworkable."
+  - `Design-Notes-B.md:47-49`: Connector / ConnectorSeq / Section framed
+    as unimplemented description-to-execution problem.
+  - `Design-Notes-B.md:499-502`: no homotopy engine exists.
+  - `Design-Notes-B.md:521`: rule engine remains out of reach.
+  - `Design-Notes-B.md:525-528`: assembly engine needed; author still
+    floundering.
+
+[NEW-CODEX] HEAD code state: PipeLink + NameNode support exist; no
+mainline ConnectorLink/ConnectorSeq/JigsawOfLink implementation under
+opencog/atoms; connector/section Scheme files live in
+`opencog/sheaf/attic` (i.e., archived). Gemini's verbal claim that B
+"proposes a PipeLink and ConsumerNode/ProducerNode syntax" is consistent
+with PipeLink existing but elides the attic status of connectors/sections.
+
+Phase 4 implication (consensus):
+  - No Phase 4 dependency.
+  - Possible Phase 5+ input for L1 pipeline-authoring ergonomics.
+
+--------------------------------------------------------------------------------
+Q6. DESIGN NOTES C — GUARDLINK / RULELINK / URE
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [GUARDLINK-IMPLEMENTED] [URE-DEPRECATED]
+[URE-CRITIQUE-INFORMS-LATER-WORK].
+
+[NEW-CODEX-INTERNAL-DRIFT] Inside Design Notes C: an earlier section says
+GuardLink does not exist yet (`Design-Notes-C.md:561`); the later status
+line says it is done (`Design-Notes-C.md:724`). HEAD code confirms
+implementation (Codex; not surfaced by Gemini):
+
+Verified citations:
+  - `opencog/atoms/scope/GuardLink.h:31-36`: GuardLink documented as
+    compatibility checking + pattern-grounding extraction.
+  - `GuardLink.h:74-80`: exposes `guard(...)`.
+  - `GuardLink.cc:105/118/159/359`: implements eval_guard / guard /
+    recursive extract / link factory registration.
+  - `RuleLink.h:32`: `class RuleLink : public PrenexLink`.
+  - `RuleLink.cc:134`: implements `RuleLink::execute`.
+  - `FilterLink.cc:68-86`: adapts FilterLink to GuardLink + RuleLink
+    rewrite handling.
+
+URE critique citations (Codex):
+  - `Design-Notes-C.md:94-105 / 456-460 / 666-669`: criticizes URE
+    direction and separates guards from rewrites.
+
+Phase 4 implication (consensus):
+  - Do NOT put RuleLink/GuardLink/URE on the Decko mirror critical path.
+  - Keep updates as explicit atom replacements (add/remove/replace);
+    let Phase 5+ L1 reasoning consume the mirrored atom stream.
+
+[V3-PROTOCOL-2 candidate] Design notes can contradict themselves
+internally — early-section "doesn't exist" can become later-section
+"done" within a single design-note file. Reviewers must check HEAD code
+against the LATEST status line in design notes, not the first mention.
+Add to standing protocols.
+
+--------------------------------------------------------------------------------
+Q7. DESIGN NOTES D — ANALYTICS / INTROSPECTION
+--------------------------------------------------------------------------------
+
+[CONSENSUS-WITH-EMPHASIS] [RELEVANT-TO-L1-NORTH-STAR]
+[L1-MIRROR-CRITICAL] [PHASE-5+-DESIGN-TARGET].
+Design Notes D is the most L1-relevant Source 3 material. Both reviewers
+elevate it; Gemini frames it as the strongest argument that Phase 4's
+mirror IS the substrate Linas's analytics work needs.
+
+Verified citations:
+  - `Design-Notes-D.md:7-10`: analytics on Atomese data + recursive
+    introspection ("introspection is when that pile of data is
+    yourself").
+  - `Design-Notes-D.md:14-17`: anchors crisis in `examples/flow/
+    count-pipeline.scm`.
+  - `Design-Notes-D.md:45-65`: how to observe Atomese.
+  - `Design-Notes-D.md:68-89 / 122-123`: short-term persistence is
+    `make install` flat .scm files.
+  - `Design-Notes-D.md:90-96 / 116-117`: long-term analytics storage
+    proposed in RocksStorageNode.
+  - `Design-Notes-D.md:150-153 / 196-242`: runtime loading wants child
+    AtomSpaces with minimal parent-space pollution.
+  - `examples/flow/count-pipeline.scm:22/42`: uses PipeLink.
+
+[CONVERGENCE-WITH-PHASE-4-NORTH-STAR] User's Phase 4 north star (per
+project memory `project_atomspace_phase4_program_2026_05_01.md`):
+  "an agent that continuously improves, as it is aware of its own
+   architecture and can make changes in successive loops to better
+   satisfy goals."
+Linas's Design Note D framing:
+  "Introspection is when that pile of data is yourself."
+These framings converge. Design Note D is the canonical Phase 5+ L1
+introspection design reference; SPEC_DRAFT should cite it.
+
+Phase 4 implication (consensus):
+  - This is a Phase 5+ design target.
+  - Phase 4 should make the mirror event stream clean and well-identified
+    so later analytics can observe it. Specifically: every SpaceEvent
+    should carry enough metadata (source = Decko vs Agent, originating
+    card_id, action_id, timestamp) for downstream analytics circuits to
+    introspect.
+  - Phase 4 should NOT try to implement the introspection storage/runtime
+    model now.
+
+--------------------------------------------------------------------------------
+Q8. CPP-MCP STANDALONE LIBRARY AUDIT
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [GENERIC-CXX-MCP-NOT-A-FIT-FOR-PHASE-4]
+[NOT-A-PHASE4-DEPENDENCY].
+cpp-mcp is a generic C++ MCP framework. Not integrated with OpenCog,
+AtomSpace, Hyperon, Decko, or MeTTa.
+
+[CONSENSUS-VERIFICATIONS]:
+  - `cpp-mcp/include/mcp_message.h:28`: hardcodes `MCP_VERSION =
+    "2024-11-05"` (Codex).
+  - `cpp-mcp/.git/config:9`: cloned from
+    `https://github.com/linas/cpp-mcp.git` (Gemini); upstream
+    `https://github.com/hkr04/cpp-mcp.git` (Codex). Linas has a fork;
+    HEAD commit author is hkr04.
+  - cpp-mcp implements MCP server/client with HTTP/SSE + stdio
+    transports, JSON-RPC 2.0, tool registration.
+  - No OpenCog/Hyperon integration in atomspace-linas (zero references
+    via grep for `cpp-mcp|cpp_mcp|hkr04`).
+
+[NEW-CODEX] cpp-mcp gaps relative to full MCP spec:
+  - No `prompts/*`, `sampling/*`, `completion/*`, `roots/list`, or
+    resource/tool change-notification methods (grep negative).
+  - `mcp_server.h:272`: auth not implemented.
+  - `mcp_server.cpp:308-309`: `resources/templates/list` returns empty
+    array.
+This means cpp-mcp is BELOW MCP spec coverage, not just C++.
+
+Phase 4 implication (consensus):
+  - Q12.d answer: NO. cpp-mcp is NOT the right Phase 4 MCP substrate
+    unless Phase 4 commits to a C++ mirror service (currently not the
+    plan).
+  - For Python mirror service: use the official `mcp` Python SDK or
+    `fastmcp`.
+  - For Rust mirror service: use `rmcp` or equivalent.
+  - cpp-mcp could be reconsidered in a future phase ONLY if a classical-
+    AtomSpace C++ service needs an embedded MCP endpoint AND no
+    upstream Rust/Python alternative is suitable.
+
+--------------------------------------------------------------------------------
+Q9. STORAGENODE TAXONOMY
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [VERIFIED-IN-ATOMSPACE-STORAGE] [TAXONOMY-STABLE]
+[NOT-A-PHASE-4-PLUGIN-FOR-HYPERON-SPACE].
+StorageNode is mature, but it lives in **atomspace-storage**, not
+atomspace-linas, and it is NOT a plug-in for Hyperon Space.
+
+[BRIEF-DRIFT] brief.txt §3+§4 referenced
+`atomspace-linas/opencog/persist/api/StorageNode.h`. Actual location at
+HEAD: `atomspace-storage/opencog/persist/api/StorageNode.h`.
+[VERIFIED-CLAUDE: ls of atomspace-linas/opencog/persist/ shows only
+CMakeLists.txt; ls of atomspace-storage/ confirms StorageNode lives
+there.] Correction propagates to SPEC_DRAFT and Source 4 brief.
+
+Verified citations (Codex):
+  - `atomspace-storage/opencog/persist/api/StorageNode.h:42` declares
+    `class StorageNode : public ObjectCRTP<StorageNode>, protected
+    BackingStore`.
+  - Lifecycle methods: open :81, open_read_only :86, close :91,
+    connected :97, create :106, destroy :114, erase :120.
+  - Proxy/monitor: proxy_open :125, proxy_close :130, set_proxy :136,
+    monitor :141.
+  - Read/write wrappers: fetch_atom :169, fetch_value :184,
+    load_atomspace :195, store_atomspace :200, fetch_incoming_set :243,
+    fetch_query :286, store_atom :298, store_value :310, update_value
+    :326, remove_atom :341.
+  - Message dispatch: StorageNode.cc:109-145, :170-353.
+  - Wrapper implementations: StorageNode.cc:387-533.
+  - Default proxy methods throw unsupported errors at :540-561.
+
+Concrete-impl ecosystem (consensus):
+  - atomspace-pgres (Q1): SQL writer, deprecated.
+  - atomspace-rocks (Source 4 territory): preferred future direction
+    per pgres README.
+  - atomspace-cog (Source 4 territory): network distributed.
+  - atomspace-bridge (Source 1): read-only SQL view, write stubs empty.
+
+Phase 4 implication (consensus):
+  - StorageNode is design precedent, not a plug-in for Hyperon Space.
+  - A Hyperon-side StorageNode equivalent would be a NEW adapter
+    project — not Phase 4 scope.
+  - Do NOT route Phase 4 through classical StorageNode unless the
+    architecture explicitly switches to classical AtomSpace.
+
+--------------------------------------------------------------------------------
+Q10. ABI-COMPATIBILITY ATOMSPACE-LINAS / ATOMSPACE-PGRES / ATOMSPACE-STORAGE
+--------------------------------------------------------------------------------
+
+[CONSENSUS-WITH-CAVEAT] [LIKELY-COMPATIBLE-BUT-VERSION-PINNED]
+[BUILD-NOT-RUN].
+
+Gemini's [COMPATIBLE-ECOSYSTEM] verdict is correct in spirit but elides
+the version-pinning concern that Codex flagged.
+
+Evidence (Codex; Claude did not re-run build):
+  - atomspace-pgres requires `FIND_PACKAGE(AtomSpace 5.0.3 CONFIG
+    REQUIRED)` at `CMakeLists.txt:79` and
+    `FIND_PACKAGE(AtomSpaceStorage CONFIG REQUIRED)` at :88.
+  - atomspace-pgres recently modernized: commit `00a71c0 Avoid using
+    obsolete API`, `931ab42 Remove obsolete API from unit tests`,
+    `ee1940f Really get rid of the DefaultTV`, `1be943c Port tests away
+    from TruthValues`.
+  - atomspace-linas: "TruthValues are now gone" at
+    `opencog/atoms/README.md:103`; truth_key compatibility retained at
+    `Atom.cc:75-100`.
+  - atomspace-pgres test/source still references SimpleTruthValue +
+    truth_key compatibility in `SQLValues.cc:592-595`.
+
+Risk (Codex):
+  - pgres is deprecated AND old-design; even if it compiles, its own
+    docs discourage new projects.
+  - Correct operational claim: "pgres has a real writer," NOT "pgres is
+    a ready Phase 4 durability layer."
+
+Phase 4 implication (consensus):
+  - No Phase 4 dependency on atomspace-pgres compilability.
+  - If a future phase contemplates pgres, version-pin to a known-
+    compatible {linas, pgres, storage} commit triple.
+
+--------------------------------------------------------------------------------
+Q11. LINAS'S STATED DIRECTION
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [CLASSICAL-ATOMSPACE-DIRECTION]
+[PGRES-DEPRECATED-IN-FAVOR-OF-ROCKS]
+[NOT-STEERED-TOWARD-HYPERON-OR-DECKO].
+
+Verified citations (Codex):
+  - README.md:6-15: AtomSpace as in-RAM KR database with query + graph
+    rewriting.
+  - README.md:98-112 / :424-440: Values/flows are central.
+  - README.md:548-552: distributed processing uses StorageNode +
+    read/write-through proxies.
+  - README.md:563-572: cross-system bridges are a goal; nobody has done
+    the live SQL bridge yet.
+  - README.md:572-574: unclear whether live bridges should use
+    StorageNode or another API.
+  - TODO:47-54: research/writing/coding orientation; remove GroupLink/
+    AlwaysLink from pattern matcher via Values; consider global thread
+    manager.
+
+Verified citation (Gemini; re-verified by Claude):
+  - `atomspace-pgres/opencog/persist/sql/README-design.md:8-12`: "As
+    of 2022, the Postgres backend is deprecated... the RocksDB AtomSpace
+    backend is superior."
+
+[NOT-FOUND] (Codex; consistent with Gemini): No README/TODO/design-note
+evidence that Linas is steering classical AtomSpace toward Hyperon
+Space, Decko sync, or a Phase 4-style bidirectional wiki mirror.
+
+Phase 4 implication (consensus):
+  - Linas's direction is OpenCog-classical-side: in-RAM metagraph KR,
+    graph rewriting, Values/flows, RocksDB durability, distributed
+    StorageNodes, analytics/introspection.
+  - Phase 4's Decko-Hyperon bridge is OUTSIDE Linas's stated direction;
+    Phase 4 should not expect upstream-linas help on the bridge work.
+  - Phase 4 PATCH-1 (Python observer binding) targets hyperon-experimental
+    upstream (Vitaly Bogdanov's stewardship), not atomspace-linas.
+
+--------------------------------------------------------------------------------
+Q12. ARCHITECTURAL SYNTHESIS
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [STAY-HYPERON-SPACE]. Source 3 refines but does NOT override
+Source 2. Phase 4 stays on Hyperon Space / SpaceMut / SpaceObserver as
+the write-side mirror substrate.
+
+Per-question synthesis answers:
+
+  Q12.a Switch to classical AtomSpace + atomspace-pgres?  NO.
+        - atomspace-pgres has a real writer (Q1), but is explicitly
+          deprecated by maintainer (Q11).
+        - StorageNode is in atomspace-storage, not directly usable from
+          Hyperon Space (Q9).
+        - Classical atom-mutation observer API removed at HEAD (Q3).
+        - Phase 4 schedule cannot absorb a classical-AtomSpace adapter
+          project.
+
+  Q12.b Borrow Linas's identity model (Handle/UUID)?  NO for Phase 4.
+        - Classical Handle is pointer-like, not a durable UUID (Q2).
+        - Persistent UUID lives in StorageNode/TLB layer; not a free
+          gift.
+        - Phase 4: encode Decko card_id / action identity directly in
+          atom model or as side metadata (Source 5 territory).
+        - Phase 5+: revisit if L1 self-improvement requires a process-
+          restart-stable identity.
+
+  Q12.c Borrow Linas's write-back semantics (RuleLink/GuardLink)?
+        NO for Phase 4. Design precedent only.
+        - GuardLink is implemented at HEAD (Q6); RuleLink is
+          implemented; URE is critiqued/deprecated.
+        - Phase 4 keeps imperative add/remove/replace; let Phase 5+ L1
+          reasoning consume the mirrored atom stream.
+
+  Q12.d Use cpp-mcp as Phase 4 MCP server substrate?  NO.
+        - Generic C++ library (Q8); not OpenCog/Hyperon integrated.
+        - Below MCP spec coverage (no prompts, sampling, completion,
+          notifications; auth missing).
+        - Use language-matched alternative: `mcp` Python SDK or `rmcp`
+          Rust crate, depending on mirror-service language.
+
+Phase 4 wiring (refined from Source 2; Source 3 adds metadata
+discipline):
+
+  1. Decko remains the durable source of truth and emits card/action
+     events (Source 5 schema).
+  2. Mirror worker resolves each event into:
+       {action_type, card_id, before_atom, after_atom, action_id,
+        timestamp, source = "decko"}
+     The `source` field is added by Source 3 reconciliation: future
+     L1 introspection per Design Note D will need to distinguish Decko-
+     originated atoms from agent-originated atoms in the SpaceEvent
+     stream.
+  3. Hyperon Space update (per Source 2):
+       create -> `space.add(after_atom)`
+       update -> `space.replace(before_atom, after_atom)`
+       delete -> `space.remove(before_atom)`
+  4. SpaceObserver fires synchronously after PATCH-1 (Python binding)
+     or via Rust/C event-forwarder.
+  5. Agent-facing MCP publishes resources/tools over the mirror state
+     in the implementation language of the service (Python or Rust;
+     not C++).
+  6. Each agent-originated write is tagged similarly with
+     `source = "agent:<agent_id>"` so that Phase 5+ analytics circuits
+     (per Design Note D) can introspect provenance.
+
+================================================================================
+DISSENT FLAGS (V-N-X)
+================================================================================
+
+V-Gemini-Q1-precision  [LINE-RANGE-VS-FUNCTION-LINE]
+  Gemini cited SQLAtomStore.cc:53-73 for storeAtom. Codex cited :68
+  (function start). Both are correct; Codex's :68 is the function
+  declaration line, Gemini's :53-73 is the surrounding helper-macro +
+  comment + function block.
+  RESOLUTION: adopt Codex's function-precise lines (:68, :90, :155,
+  :135-147, :188-199) for SPEC_DRAFT. Gemini's range is acceptable for
+  human reading.
+
+V-Gemini-Q3-framing  [CF5.6-ADJACENT, FRAMING-IMPRECISION]
+  Gemini's verdict [SIGNALS-MATURE-BUT-COMPLEX] and prose "classical
+  system is heavily signal-driven for schema discovery" implies the
+  full atom-mutation observer surface is present. Codex+Claude verified
+  via pickaxe: atom-table add/remove signals are REMOVED at HEAD; only
+  NameServer type-added signaling survives. The "schema discovery"
+  qualifier saves Gemini's claim narrowly correct, but the verdict
+  framing misleads.
+  RESOLUTION: adopt
+  [TYPE-SIGNALING-PRESENT] [ATOM-MUTATION-SIGNALING-REMOVED-AT-HEAD]
+  for SPEC_DRAFT. The CF5.6 protocol caught it.
+
+V-Gemini-Q10-version-pin-omission  [MINOR-OMISSION]
+  Gemini's [COMPATIBLE-ECOSYSTEM] verdict elides the version-pinning
+  concern Codex flagged.
+  RESOLUTION: adopt Codex's [LIKELY-COMPATIBLE-BUT-VERSION-PINNED]
+  qualifier.
+
+V-orchestrator-brief-PATH-DRIFT-1  [BRIEF-DRIFT]
+  brief.txt §3+§4 referenced
+  `atomspace-linas/opencog/persist/api/StorageNode.h`.
+  Actual location: `atomspace-storage/opencog/persist/api/StorageNode.h`.
+  [VERIFIED-CLAUDE: ls of atomspace-linas/opencog/persist/ shows only
+  CMakeLists.txt.]
+  RESOLUTION: correct in SPEC_DRAFT, Source 4 brief, and any orientation
+  doc that cites this path.
+
+V-orchestrator-brief-PATH-DRIFT-2  [BRIEF-DRIFT]
+  brief.txt §3+§4 referenced
+  `atomspace-linas/opencog/atomspace/AtomTable.h`.
+  Actual at HEAD: only `AtomTable.cc` exists; AtomTable header was
+  merged into AtomSpace.h via the historical "Merge AtomTable into
+  AtomSpace" commits (`2bdf529ae6`, `0f739bea8b`).
+  RESOLUTION: correct in SPEC_DRAFT to `AtomSpace.h` for AtomSpace
+  public API and `AtomTable.cc` for implementation.
+
+V-orchestrator-brief-PATH-DRIFT-3  [BRIEF-DRIFT]
+  brief.txt §4 referenced
+  `atomspace-linas/opencog/atoms/value/StreamValue.h`.
+  Actual at HEAD: NO StreamValue.h. The stream-like values are
+  `FlatStream.h`, `FutureStream.h`, `FormulaStream.h`, plus
+  `StreamValueOfLink`. [VERIFIED-CLAUDE: ls of opencog/atoms/value/.]
+  RESOLUTION: correct in SPEC_DRAFT to enumerate concrete stream
+  classes.
+
+V-Codex-Q6-design-note-internal-drift  [NEW-CODEX-PROTOCOL-CONTRIBUTION]
+  Design Notes C contradicts itself internally: Section :561 says
+  GuardLink "does not exist yet"; status line :724 says it "is done."
+  HEAD code confirms :724 is correct.
+  RESOLUTION: add V3-PROTOCOL-2 (below) — when reading design notes,
+  check the LATEST status line, not the first mention.
+
+V-Codex-NEW-Q3-removal-history  [NEW-CODEX]
+  Pickaxe surfaced `a8980a4689 Remove vestiges of signals` and
+  `ef95811c27 Exterminate boost with prejudice`. The atom-table signal
+  API was actively REMOVED, not just allowed to drift. Strengthens
+  "atom-mutation observer API absent at HEAD" claim from "negative
+  finding" to "actively removed by maintainer."
+  RESOLUTION: cite in SPEC_DRAFT Q3 framing.
+
+V-Gemini-Q4-CollectionOfLink-claim  [MINOR]
+  Gemini's Q4 says "CollectionOfLink is identified as the general
+  replacement for PromiseLink." Codex did not surface this; Claude did
+  not verify. Likely correct (Design Notes A discusses these), but
+  unverified — flag as Gemini-only-low-priority.
+  RESOLUTION: not load-bearing for Phase 4. Defer verification to
+  Phase 5+ L1 work.
+
+V-Codex-NEW-Q8-cpp-mcp-spec-coverage  [NEW-CODEX]
+  cpp-mcp is BELOW MCP 2024-11-05 spec coverage: missing prompts,
+  sampling, completion, notifications; auth not implemented;
+  resources/templates/list returns empty. Gemini noted cpp-mcp is "not
+  a Phase 4 dependency" but didn't enumerate the spec gaps.
+  RESOLUTION: include in SPEC_DRAFT Q8 rationale.
+
+================================================================================
+NEW PROTOCOLS / LESSONS FOR CLUSTER-PILOT REGISTRY
+================================================================================
+
+V3-PROTOCOL-1: When the brief cites a header by path under a specific
+repo, verify the file exists at HEAD via Glob/ls BEFORE finalizing
+the brief. Three brief-side path drifts in Source 3 (StorageNode.h,
+AtomTable.h, StreamValue.h) all stem from the orchestrator citing
+historical paths without re-verification. Apply at brief-drafting time,
+not just at reviewer-pass time.
+
+V3-PROTOCOL-2: When reading design notes (or any longitudinal author
+document), check the LATEST status line / status-update section before
+treating an early-section claim as current. Design Notes C contradicted
+itself: section :561 said GuardLink doesn't exist; status line :724
+said it's done. HEAD code confirmed :724. Apply: grep for "Status",
+"Update", date headings in design notes; read those before mid-document
+claims.
+
+V3-PROTOCOL-3: When auditing a "signal/observer/listener" API for
+presence/absence, use V1-Q1 pickaxe AND check for explicit removal
+commits. "Not at HEAD" is weaker than "actively removed by maintainer."
+Codex's `a8980a4689 Remove vestiges of signals` and `ef95811c27
+Exterminate boost with prejudice` are the smoking guns. The historical
+removal narrative often MATTERS for design decisions (e.g., the
+maintainer chose to remove it; this is informative about future
+direction).
+
+================================================================================
+CF5.6 ADJUDICATIONS (CUMULATIVE)
+================================================================================
+
+Source 3 logged ONE Gemini framing imprecision (Q3 signal API "heavily
+signal-driven") and ZERO Gemini line-citation drifts (Gemini's line
+ranges in Q1, Q2, Q4-Q11 were consistent with HEAD).
+
+Source 3 logged THREE brief-side PATH-DRIFTs caught by Codex:
+  - StorageNode.h (atomspace-linas → atomspace-storage)
+  - AtomTable.h (does not exist at HEAD; merged into AtomSpace.h)
+  - StreamValue.h (does not exist at HEAD; replaced by
+    FlatStream/FutureStream/FormulaStream + StreamValueOfLink)
+
+This is a different drift signature than Sources 1+2:
+  - Source 1: Gemini drift on file-identity (5 incidents).
+  - Source 2: Gemini drift on file:line (5 incidents).
+  - Source 3: Orchestrator drift on file-existence in own brief (3
+              incidents); Gemini line citations were good.
+
+Lesson: orchestrator-side drift is itself a CF5.6-class failure mode.
+V3-PROTOCOL-1 institutionalizes the verify-paths-at-brief-drafting-
+time discipline.
+
+================================================================================
+BOTTOM LINE FOR SPEC_DRAFT.md
+================================================================================
+
+PHASE 4 ARCHITECTURE: unchanged from Sources 1+2.
+  - Substrate:    Hyperon Space at HEAD.
+  - Durability:   Decko/Postgres via after_save callbacks.
+  - Write API:    SpaceMut::add/remove/replace.
+  - Observer:     SpaceObserver (with Source 2 PATCH-1 binding).
+  - MeTTa:        add-atom, remove-atom (with Source 2 PATCH-2 for
+                  replace-atom!).
+
+NEW Phase 4 design discipline from Source 3:
+  D3-1. Each Decko-originated SpaceEvent must carry source-discriminating
+        metadata: `source = "decko"`, plus `card_id`, `action_id`,
+        `timestamp`. Each agent-originated SpaceEvent must carry
+        `source = "agent:<agent_id>"`. Phase 5+ L1 introspection (per
+        Design Note D) requires this provenance distinction in the
+        event stream.
+  D3-2. The mirror service should be implemented in Python (preferred
+        for SDK richness + sandbox/sql_space.py precedent) OR Rust
+        (preferred for direct hyperon-space crate access without
+        binding gap). The decision blocks on Source 6 (agent MCP
+        surface) language preferences.
+
+Required code additions (UNCHANGED from Source 2):
+  PATCH-1 [REQUIRED]: pybind11 binding for `space_register_observer`
+    in python/hyperonpy.cpp.
+  PATCH-2 [RECOMMENDED]: MeTTa-side `replace-atom!` grounded op.
+
+NO new patches required by Source 3. Source 3 adds metadata-schema
+discipline (D3-1) and Phase 5+ design-reference anchoring (Design Note
+D as canonical L1-introspection target).
+
+================================================================================
+SOURCE-DEPENDENT RE-EVALUATION CONDITIONS FOR SOURCES 4-7
+================================================================================
+
+Source 4 (MORK + PathMap + mork_ffi + DAS + atomspace-rocks):
+  Condition: Per Source 3 Q11, RocksDB AtomSpace backend (atomspace-
+    rocks) is the maintainer-preferred future direction. Source 4 should
+    audit atomspace-rocks specifically as the Phase 5+ durable
+    substrate option that COULD replace Decko-as-durability if Phase 5
+    chooses Hyperon-side durability.
+  Condition: Source 4 brief MUST use the corrected paths:
+    `atomspace-storage/opencog/persist/api/StorageNode.h` (not
+    atomspace-linas).
+  Condition: MORK's persistence semantics (cluster-pilot 2026-04-29
+    finding: MorkDB delete blocking) interact with this — if Source 4
+    finds a workable MORK delete path, MORK + atomspace-rocks become
+    competing Phase 5+ durable substrates.
+
+Source 5 (Decko semantics inventory):
+  REQUIRED for the canonical atom encoding of Decko card_id +
+    action_id + revision identity. Source 3 D3-1 metadata discipline
+    presumes Source 5 defines the encoding.
+  Condition: Decko's card_actions / card_changes / card_revisions
+    schema must map cleanly to a SpaceEvent provenance metadata
+    convention.
+
+Source 6 (agent-facing MCP surface):
+  REQUIRED. Source 3 Q8 closes cpp-mcp; Source 6 must select between
+    Python `mcp` SDK / `fastmcp` (if mirror service is Python) and
+    `rmcp` (if mirror service is Rust). Decision blocks on:
+    - PATCH-1 implementation language (Path II Rust-only or Path IV
+      upstream-Python).
+    - Whether the L1 agent loop runs in-process with the mirror
+      service (single language) or out-of-process (any combination).
+  Condition: Source 6 should reference Design Note D (Source 3 Q7)
+    as the L1 introspection design anchor.
+
+Source 7 (Magus plan reconciliation):
+  Condition: align cluster-pilot phase numbering (Phase 3 = read-only
+    mirror; Phase 4 = co-canonical write-through; Phase 5+ = primary
+    store / distributed) with Magus plan in cards 11446 + 11448.
+  Condition: identify zariuq-fork or other forks that may have
+    write-API contributions to Hyperon Space ahead of upstream.
+
+================================================================================
+CARRY-FORWARD ITEMS FOR PHASE-4 CLUSTER-PILOT REGISTRY
+================================================================================
+
+C3-1: atomspace-pgres has a real writer (Source 1 F4 confirmed) but is
+  explicitly deprecated by maintainer in favor of RocksDB. Do not use
+  for Phase 4 durability; not relevant unless Phase 5+ revisits classical
+  durability.
+
+C3-2: StorageNode lives in atomspace-storage (HEAD ecd88d67), not
+  atomspace-linas. Brief authors must verify path before citation.
+
+C3-3: Atom-mutation observer API was actively REMOVED from classical
+  AtomSpace (commits a8980a4689, ef95811c27). Hyperon Space's
+  SpaceObserver is the surviving observer-pattern surface in the
+  OpenCog/Hyperon ecosystem.
+
+C3-4: NameServer type-added signaling (`SigSlot<Type> TypeSignal` at
+  NameServer.h:45) is the only surviving classical signal API at HEAD.
+  Narrow scope: schema discovery only; not atom-mutation events.
+
+C3-5: Design Note D (atomspace-linas/Design-Notes-D.md) is the
+  canonical Phase 5+ L1-introspection design reference. Cite in
+  SPEC_DRAFT under "Phase 5+ design anchors."
+
+C3-6: Phase 4 SpaceEvent metadata discipline (D3-1): every event must
+  carry `source` + `card_id`/`agent_id` + `action_id` + `timestamp`
+  for Phase 5+ analytics circuits to introspect provenance.
+
+C3-7: cpp-mcp is below MCP 2024-11-05 spec coverage (missing prompts,
+  sampling, completion, notifications, auth). Not a fit unless Phase 4
+  commits to a C++ mirror service.
+
+C3-8: GuardLink + RuleLink are implemented at HEAD (atomspace-linas);
+  not on Phase 4 critical path. Phase 5+ L1 reasoning may use them.
+
+C3-9: Streams/flows/futures (Design Note A) are partially implemented
+  (FlatStream, FutureStream, FormulaStream, GroupValue, DrainLink at
+  HEAD); DrainValue still TODO. Not Phase 4 dependency; possible
+  Phase 5+ L1 pipeline substrate.
+
+C3-10: Assembly Theory (Design Note B) is research-stage and explicitly
+  framed as "far off and unworkable" by the author. Connector/Section
+  Scheme files live in opencog/sheaf/attic. Not Phase 4 dependency;
+  possible Phase 5+ pipeline-authoring ergonomics input.
+
+================================================================================
+END OF RECONCILIATION v1 — Source 3
+================================================================================
+
+
+================================================================================
+RECONCILIATION ADDENDUM — Post findings_claude.txt (v2)
+================================================================================
+
+Date:     2026-05-04 (post 01:49)
+Trigger:  findings_claude.txt produced by orchestrator pass per Codex+Gemini
+          relay authorization for Option 1 ("Claude extraction now, then
+          reconciliation"). v1 reconciliation was written before this
+          extraction and self-described as "findings_claude.txt not produced
+          for Source 3." That statement is now superseded.
+
+Sign-offs preserved:
+  Codex (post-extraction relay): "Proceed directly to Source 3 reconciliation.
+    Claude's extraction adds material source-of-truth checks, but none appear
+    to change the shared Q12 architecture verdict."
+  Gemini (post-extraction relay): "I sign off on the Source 3 extraction. I
+    am ready for the Source 3 Reconciliation (findings_reconciled_crossmodel.
+    txt) to proceed."
+
+This addendum:
+  (a) Strengthens two V-Gemini dissents from "framing imprecision" to
+      "factually-falsified-at-HEAD" in light of Gemini's explicit acceptance
+      of CF5.6 corrections.
+  (b) Adds four V0 (orchestrator-only) NEW findings from findings_claude.txt
+      that were not surfaced in v1 reconciliation.
+  (c) Adds D3-3 transport-layer-discipline to the Phase 4 design discipline.
+  (d) Adds Q12.e transport-layer scoping to the Q12 decision matrix.
+  (e) Adds C3-11 / C3-12 / C3-13 carry-forward items.
+  (f) Adds V3-PROTOCOL-4 (fork-vs-upstream auditing for Linas-namespaced
+      candidate libraries).
+
+The v1 body above remains the canonical Source 3 reconciliation. This
+addendum amends it; consumers (SPEC_DRAFT, Sources 4-7 briefs) should read
+both.
+
+--------------------------------------------------------------------------------
+A1. STRENGTHENED V-GEMINI DISSENTS
+--------------------------------------------------------------------------------
+
+V-Gemini-Q3-framing  →  V-Gemini-Q3-FALSIFIED-AT-HEAD  [CF5.6 RESCINDED]
+
+  v1 disposition (line ~615): "framing imprecision" — Gemini's
+  [SIGNALS-MATURE-BUT-COMPLEX] verdict was treated as "narrowly correct"
+  with respect to NameServer typeAddedSignal.
+
+  v2 disposition: Gemini's stronger claim, in findings_gemini.txt:48, was:
+     "[VERIFIED] atomspace-linas/opencog/atoms/atom_types/NameServer.h:45
+      defines SigSlot<Type> TypeSignal, which is a thin wrapper around
+      boost::signals2::signal."
+
+  This stronger claim is FACTUALLY FALSE at HEAD, not merely imprecise:
+    - `git grep 'boost::signals2' HEAD` → 0 matches at atomspace-linas HEAD.
+    - `git grep 'signals2' HEAD` → 0 matches.
+    - `find atomspace-linas -name "SigSlot*"` → 0 matches; SigSlot is
+      defined externally in cogutil (not in atomspace-linas at all).
+    - Pickaxe: ef95811c27 "Exterminate boost with prejudice" actively
+      removed Boost.Signals2 from the codebase.
+
+  Gemini explicitly accepted the correction in the post-extraction relay:
+     "I accept the CF5.6 correction. My claim that SigSlot is a Boost.
+      Signals2 wrapper is VERIFIED FALSE at HEAD; I acknowledge the
+      successful 'Exterminate boost' effort (commit ef95811c27) and the
+      transition to a homegrown cogutil implementation."
+
+  Final disposition: V-Gemini-Q3 RESCINDED. SigSlot is the homegrown
+  post-Boost replacement defined in cogutil (external dependency).
+  NameServer.h:45 typedef references it; the Boost-wrapper framing was a
+  pre-removal-snapshot factual error (probable training-data drift).
+
+  Drift-type classification: factual file-state error at HEAD (not just
+  framing). This is closer to a CF5.6 file-existence drift than a Q3-style
+  signaling-narrative drift. Document the type for cluster-pilot pattern
+  cataloging.
+
+
+V-Gemini-Q8-framing  →  V-Gemini-Q8-FALSIFIED-THREE-COUNT  [CF5.6 RESCINDED]
+
+  v1 disposition (Q8 PER-QUESTION CONSENSUS): Gemini's findings_gemini.txt:94
+  "It appears to be a standalone prototype for exposing AtomSpace tools via
+  the MCP protocol" was paired with the Codex correction (HEAD author hkr04,
+  upstream is hkr04/cpp-mcp.git). v1 framed this as joint Codex/Gemini
+  observation but did NOT enumerate the three-count drift.
+
+  v2 disposition: Gemini's framing is FALSE on three independent counts:
+    (a) NOT a standalone prototype — generic MCP framework.
+    (b) NOT Linas-authored — hkr04-authored (HEAD commit @ 86856a2 author
+        hkr04 <hyde_2002@foxmail.com>, date 2025-05-24).
+    (c) NOT for "exposing AtomSpace tools" — zero AtomSpace integration
+        anywhere in cpp-mcp source tree at HEAD.
+
+  Gemini explicitly accepted the correction in the post-extraction relay:
+     "I accept the comprehensive correction of my cpp-mcp framing. I
+      acknowledge it is an external, third-party framework by hkr04, not
+      integrated with AtomSpace, and that the Linas fork is stale (19
+      commits behind). This confirms it is not a fit for Phase 4."
+
+  Final disposition: V-Gemini-Q8 RESCINDED on three counts. Adopt Codex's
+  [GENERIC-CXX-MCP-NOT-FIT-PHASE-4] verdict and Claude's V0-1 stale-fork-
+  caveat below.
+
+--------------------------------------------------------------------------------
+A2. ORCHESTRATOR-NEW FINDINGS (V0-1 through V0-4)
+--------------------------------------------------------------------------------
+
+V0-1  STALE-FORK-CAVEAT — quantified cpp-mcp fork status.
+
+  v1 said (Q8): "Linas has a fork; HEAD commit author is hkr04." Correct as
+  far as it goes. v2 quantifies and enriches:
+
+  Direct git verification at 2026-05-04:
+    `git rev-list --count main..upstream/main` → 19 (linas main is BEHIND
+       upstream/main by 19 commits)
+    `git rev-list --count upstream/main..main` →  0 (linas main has NO
+       fork-side commits relative to upstream/main)
+
+  Total Linas-authored commits across the entire fork (all branches):
+    Branch make-install (2 commits ahead of main, none merged to main):
+      9a1fa0e Linas Vepštas: "Create an install target"
+      bece59a Linas Vepštas: "Install two more missing files"
+    Branch split-client-server-demo (1 commit ahead of main, not merged):
+      7ae2cc3 Linas Vepštas: "Revise mcp_stdio_client to contact existing
+                                server"
+    All branches: 3 commits, all build/demo plumbing, NONE merged to
+    linas/main, NONE pushed to upstream/main.
+
+  Recent upstream activity Linas's fork is missing (sample of 19 missing):
+    - MCP 2025-03-26 spec compliance (b1a4467)
+    - Streamable HTTP transport (728e8ab, 745164d)
+    - TLS support (1e35115)
+    - Threadpool fixes (31db41d, 0770da4, f7eb138)
+    - sse_client deadlock fix (922ac82)
+
+  Phase 4 implication (incremental, three-way consensus):
+    Any future cpp-mcp dependency would need to upgrade to upstream/main
+    (NOT Linas's fork) for current MCP spec compliance, threading fixes,
+    and TLS support. Linas is NOT actively maintaining cpp-mcp.
+
+  Standing-protocol contribution: V3-PROTOCOL-4 (below).
+
+
+V0-2  PHASE-4-TRANSPORT-LAYER-DISTINCTION (Q12.e).
+
+  v1 reconciliation Q4 said (line ~250): "Streams architecture is INTRA-
+  process (in-AtomSpace pipeline composition); not the natural fit for
+  INTER-process Decko-to-mirror propagation." This was correct but did
+  NOT pull the implication up to Q12 as a top-level decision.
+
+  v2 elevates: Decko↔mirror inter-process transport is conventional
+  event-bus territory (Redis/RabbitMQ/NATS/gRPC), NOT Atomese-native
+  pipelines. Linas's Stream/FlatStream/PipeLink is INTRA-AtomSpace pipeline
+  language; it does not solve inter-process communication.
+
+  The bridge-from-conventional-bus-to-Atomese-native-streaming is a
+  Phase 5+ refactor; Phase 4 should NOT design the Decko↔mirror channel
+  as Atomese streams.
+
+  Q12.e decision (added to the matrix; three-way consensus via Codex
+  ACCEPTED implicit, Gemini ACCEPTED explicit in post-extraction relay):
+                                              [CONVENTIONAL-EVENT-BUS]
+
+  Phase 4 wiring step 6 (added):
+    Conventional event bus (Redis/RabbitMQ/NATS/gRPC) for Decko↔mirror
+    transport. Atomese-native streams (Linas Notes A) are out of Phase 4
+    scope.
+
+
+V0-3  GRANT-SUBDIRECTORY informational note (Q5).
+
+  v1 reconciliation Q5 cited "PipeLink and NameNode support" but did NOT
+  note the location: opencog/atoms/grant/{PipeLink,NameNode}.{h,cc}.
+
+  v2 records: PipeLink and NameNode live at opencog/atoms/grant/. The
+  unusual "grant" subdirectory naming is likely Linas's category-theoretic
+  "grant cell" or link-grammar terminology. Non-blocking for Phase 4.
+
+  Cluster-pilot record entry: future audits searching for PipeLink or
+  NameNode should look in opencog/atoms/grant/, not opencog/atoms/value/
+  or opencog/atoms/flow/.
+
+
+V0-4  BOOTSTRAP-IS-PROPOSAL flag (Q7).
+
+  v1 reconciliation Q7 cited Design-Notes-D.md:196-242 as the runtime-
+  loading bootstrap pattern. v1 did NOT flag that this is a PROPOSAL
+  ("Lets try it." at :206), not implemented at HEAD.
+
+  v2 records: PureExecLink + RocksStorageNode + child-AtomSpace bootstrap
+  is aspirational. PureExecLink existence/semantics need separate
+  verification; deferred (Source 4 may verify if MORK-side execution-
+  isolation is the analog).
+
+--------------------------------------------------------------------------------
+A3. ADDED PHASE 4 DESIGN DISCIPLINE
+--------------------------------------------------------------------------------
+
+D3-3  TRANSPORT-LAYER-DISCIPLINE.
+
+  v1 listed D3-1 (SpaceEvent metadata) and D3-2 (mirror service language).
+  v2 adds:
+
+  D3-3  Phase 4 mirror service uses a CONVENTIONAL event bus (Redis,
+        RabbitMQ, NATS, gRPC stream) for Decko↔mirror channel. Linas's
+        Stream/FlatStream/PipeLink machinery (Design Note A) is intra-
+        AtomSpace pipeline language; it is NOT used for inter-process
+        transport in Phase 4. The Atomese-native-streaming-over-event-bus
+        bridge is a Phase 5+ refactor; Phase 4 design choices must not
+        foreclose it.
+
+--------------------------------------------------------------------------------
+A4. ADDED Q12.e TO DECISION MATRIX
+--------------------------------------------------------------------------------
+
+v1 Q12 had a/b/c/d. v2 adds:
+
+  Q12.e Phase 4 transport layer:
+                                    →  [CONVENTIONAL-EVENT-BUS]
+        Three-way consensus (Codex implicit, Gemini explicit in post-
+        extraction relay, Claude originated).
+        Reasoning:
+          - Linas's streams are INTRA-AtomSpace; not designed for
+            inter-process transport.
+          - Decko↔mirror channel = Redis/RabbitMQ/NATS/gRPC.
+          - Atomese-native streaming bridge = Phase 5+ refactor.
+
+--------------------------------------------------------------------------------
+A5. ADDED PROTOCOL CONTRIBUTIONS
+--------------------------------------------------------------------------------
+
+V3-PROTOCOL-4: Fork-vs-upstream auditing for namespaced candidate libraries.
+
+  When a third-party library is cloned from someone's namespace (e.g.,
+  linas/<repo>, vsbogd/<repo>, trueagi-io/<repo>), do NOT default to
+  assuming it is that person's authored work. Run:
+     git remote -v
+     git log -1 --format='%an %ae'              # HEAD author/email
+     git rev-list --count main..upstream/main   # behind count
+     git rev-list --count upstream/main..main   # ahead count
+     git log --format='%an' main..origin/<feature-branches> | sort -u
+  to determine actual authorship and divergence.
+
+  This caught V3-Q8 (cpp-mcp authorship) + V0-1 (cpp-mcp staleness).
+  Codify for Sources 4-7 brief drafting:
+    - Source 4 audits MORK + PathMap + mork_ffi + DAS + atomspace-rocks.
+      Multiple of these are in Linas-or-OpenCog namespace; verify
+      authorship + divergence at brief-drafting time, NOT at extraction
+      time.
+    - Source 6 will audit MCP libraries; apply V3-PROTOCOL-4 to whichever
+      libraries become candidates.
+
+V3-PROTOCOL-5: Live-design-document drift discipline.
+
+  Linas's design notes are LIVE documents updated in place. Earlier-
+  written paragraphs may not reflect later status (Design-Notes-C.md
+  internal :561-vs-:724 drift on GuardLink existence). When quoting
+  design-doc claims of code state, cross-verify against actual HEAD
+  code, not just the most-recent paragraph of the design doc.
+
+  This complements V3-PROTOCOL-2 (check LATEST status line, not first
+  mention) — PROTOCOL-5 says: even the latest status line should be
+  cross-verified against HEAD code.
+
+--------------------------------------------------------------------------------
+A6. ADDED CARRY-FORWARD ITEMS
+--------------------------------------------------------------------------------
+
+C3-11: cpp-mcp fork status quantified. linas/cpp-mcp main is 0 commits
+  ahead and 19 commits BEHIND upstream hkr04/cpp-mcp main as of
+  2026-05-04. Linas's fork-side contributions are limited to 3 commits
+  on side branches (install targets + stdio client demo); no merged
+  AtomSpace integration. If Phase 4 ever reverses to C++ MCP, target
+  upstream NOT linas's fork.
+
+C3-12: Phase 4 transport-layer discipline. Use a conventional event bus
+  (Redis/RabbitMQ/NATS/gRPC) for Decko↔mirror channel. Atomese-native
+  streaming is a Phase 5+ refactor and must not be foreclosed by
+  Phase 4 design choices.
+
+C3-13: PipeLink and NameNode live at opencog/atoms/grant/, not the
+  expected opencog/atoms/value/ or opencog/atoms/flow/. Cluster-pilot
+  record so future audits know.
+
+--------------------------------------------------------------------------------
+A7. UPDATED DRIFT-TYPE TAXONOMY (CF5.6 cumulative)
+--------------------------------------------------------------------------------
+
+v1 noted three drift signatures across Sources 1-3:
+  Source 1: Gemini drift on file-identity (5 incidents).
+  Source 2: Gemini drift on file:line (5 incidents).
+  Source 3: Orchestrator drift on file-existence in own brief (3
+            incidents); Gemini line citations were good.
+
+v2 refines Source 3 by clarifying the Gemini drifts that v1 had described
+as "framing imprecision":
+  Source 3 (revised total): Orchestrator drift on file-existence in own
+            brief (3 incidents); Gemini drift on factual-state-at-HEAD
+            (2 incidents — Q3 SigSlot/Boost claim, Q8 cpp-mcp authorship/
+            framing); Gemini line citations were good (zero drift).
+
+The 2 Gemini factual-state drifts in Source 3 share a common pattern:
+training-data-snapshot mismatch with current HEAD. In both cases
+(Q3 Boost.Signals2 era / Q8 generic-Linas-prototype framing), Gemini's
+claim was likely accurate at some PRE-current moment but is FALSE at
+HEAD as of 2026-05-04. This is a NEW drift signature distinct from
+file-identity drift (Source 1) and file:line drift (Source 2).
+
+Recommended cluster-pilot-side drift-type label:
+  CF5.6-A: file-identity-drift   (e.g., "thinks file X is at path P
+                                  when it's at P'")
+  CF5.6-B: file-line-drift        (e.g., "cites line N when symbol is at N')
+  CF5.6-C: file-existence-drift   (e.g., "thinks file X exists when it
+                                          doesn't")
+  CF5.6-D: factual-state-drift    (e.g., "thinks API X is at HEAD when it
+                                          was removed")
+
+Source 3 logged: 3× CF5.6-C (orchestrator brief drift), 2× CF5.6-D
+(Gemini factual-state drift), 0× CF5.6-A and CF5.6-B.
+
+--------------------------------------------------------------------------------
+A8. SOURCE 3 FINAL VERDICT (v2)
+--------------------------------------------------------------------------------
+
+v1 verdict preserved unchanged:
+  [STAY-HYPERON-SPACE] [SOURCE-3-DOES-NOT-OVERRIDE-SOURCE-2]
+  [CLASSICAL-INFORMS-PHASE-5+]
+
+v2 additions:
+  [CONVENTIONAL-EVENT-BUS-FOR-PHASE-4-TRANSPORT]
+  [CPP-MCP-LINAS-FORK-19-BEHIND-UPSTREAM]
+  [GEMINI-V3-Q3-BOOST-CLAIM-FALSIFIED-AT-HEAD]
+  [GEMINI-V3-Q8-LINAS-PROTOTYPE-CLAIM-FALSIFIED]
+
+Source 3 closes 2026-05-04. v1 + v2 reconciliation together represent
+the canonical Source 3 record. Source 4 brief drafting unblocked.
+
+================================================================================
+END OF RECONCILIATION ADDENDUM (v2) — Source 3
+================================================================================

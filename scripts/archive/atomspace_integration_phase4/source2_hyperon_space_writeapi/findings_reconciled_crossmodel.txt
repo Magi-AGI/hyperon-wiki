@@ -1,0 +1,713 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 2
+Cross-model reconciliation (Claude + Codex + Gemini)
+================================================================================
+
+Reconciler: Claude (orchestrator)
+Date:       2026-05-04
+Repo:       E:\GitHub\hyperon reference\hyperon-experimental\
+HEAD:       3f76dc460da6961f57f69f6c3e550c59c74ada83 (2026-02-11, v0.2.10)
+Brief:      scripts/archive/atomspace_integration_phase4/
+            source2_hyperon_space_writeapi/brief.txt
+
+Reviewer findings reconciled:
+  findings_claude.txt    (989 lines, dated 2026-05-04, Claude orchestrator pass)
+  findings_codex.txt     (303 lines, dated 2026-05-04, Codex review pass)
+  findings_gemini.txt    (154 lines, dated 2026-05-04, Gemini review pass)
+
+This reconciliation produces:
+  (a) Per-question consensus.
+  (b) V-N-X dissents (V = Claude/Codex/Gemini, N = Q-number, X = sub-issue).
+  (c) CF5.6 verifications and adjudications.
+  (d) Bottom-Line answer to Source 1's two re-evaluation conditions.
+  (e) Source-dependent re-evaluation conditions for Sources 3-7.
+  (f) The set of new code-additions Phase 4 must include.
+
+Tag legend:
+  [CONSENSUS]   all three reviewers agree on substance (line drifts noted
+                separately under V-N-X).
+  [V-N-X]       dissent: V is the dissenting reviewer, N is the question
+                number, X is the sub-issue tag.
+  [CF5.6]       Gemini source-location/file-identity drift; verified against
+                disk per cluster-pilot default.
+  [NEW-CLAUDE]  finding contributed only by Claude's pass; not in Codex or
+                Gemini.
+  [NEW-CODEX]   contributed only by Codex.
+  [NEW-GEMINI]  contributed only by Gemini.
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+
+Source 2 closes with [CONSENSUS] on the gating question. Hyperon Space at HEAD
+has a write API that is complete at the Space/C/Python surface
+(SpaceMut::add/remove/replace at the Rust-trait, C-FFI, and Python-binding
+layers), a built-in observer pattern (SpaceObserver/SpaceEvent/SpaceCommon),
+and C-level observer registration. The MeTTa surface is incomplete:
+`replace-atom!` is missing until PATCH-2 lands (see Q1-NEW-CLAUDE asymmetry).
+Two material gaps for Phase 4 Option D:
+  - Python binding for `space_register_observer` (PATCH-1 in
+    python/hyperonpy.cpp) — REQUIRED.
+  - MeTTa-side `replace-atom!` grounded op (PATCH-2 in stdlib/space.rs) —
+    RECOMMENDED, may defer if MeTTa-writing agents are not L1-deployed.
+Source 1 re-evaluation condition (i) is MET; condition (ii) is NOT triggered.
+Phase 4 proceeds with Option D. Option C fallback is not required from
+Source 2's findings.
+
+Five Gemini line-drift CF5.6 verifications were caught and adjudicated; one
+Gemini fact-drift (PR #852 merge status) was caught and corrected; one
+Claude-NEW finding (MeTTa-stdlib `replace-atom!` asymmetry) is added to the
+spec-required patch list.
+
+================================================================================
+PER-QUESTION CONSENSUS
+================================================================================
+
+--------------------------------------------------------------------------------
+Q1. SPACE WRITE API
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [WRITE-API-CONFIRMED]. The authoritative mutable trait is
+`SpaceMut: Space` in `hyperon-space/src/lib.rs`; HEAD method line numbers are
+:237 (`add`), :255 (`remove`), :275 (`replace`). `GroundingSpace` is the
+canonical concrete impl at `lib/src/space/grounding/mod.rs:14-21`, with
+inherent `add` (:70), `remove` (:92), `replace` (:119) methods that mutate
+the internal `AtomIndex` and synchronously notify observers via
+`SpaceCommon::notify_all_observers`. `DynSpace = Rc<RefCell<dyn SpaceMut>>`
+at lib.rs:282 is the type-erased shared wrapper.
+
+Three distinct write-surface entry points:
+  1. Rust direct: `dyn_space.borrow_mut().add(atom)`.
+  2. C/Python:    `space_add` at `c/src/space.rs:140-143`; Python's
+                  `SpaceRef.add_atom/remove_atom/replace_atom` at
+                  `python/hyperon/base.py:205-221`.
+  3. MeTTa stdlib: `add-atom`, `remove-atom`, `new-space` at
+                  `lib/src/metta/runner/stdlib/space.rs:151-204`.
+
+[CF5.6 V-Gemini-Q1] Gemini cited SpaceMut methods at lib.rs:223/241/259.
+  Adjudication: drift of -14 to -16 lines. CORRECT lines per Codex and Claude
+  re-read are :237/:255/:275. Gemini's substance (write API exists) is
+  correct; line citations are stale. Adopt Codex/Claude lines for
+  SPEC_DRAFT.
+
+[NEW-CLAUDE Q1] MeTTa-stdlib write-surface ASYMMETRY: `add-atom` and
+`remove-atom` are registered as MeTTa grounded ops at
+`lib/src/metta/runner/stdlib/space.rs:206-220`, but there is NO
+`replace-atom!` MeTTa op. Verified by Grep: `replace-atom` returns zero
+matches anywhere in `lib/`. Phase 4 implication: an L1 agent that writes
+MeTTa to mutate the mirror is forced to use `(remove-atom &mirror old)
+(add-atom &mirror new)`, which fires `SpaceEvent::Remove` + `SpaceEvent::Add`
+instead of a single `SpaceEvent::Replace(old, new)`. Codex and Gemini did
+not surface this. Recommended SPEC_DRAFT addition: a small grounded-op
+patch mirroring `AddAtomOp`/`RemoveAtomOp` to add `replace-atom!`.
+
+--------------------------------------------------------------------------------
+Q2. SPACEEVENT + SPACEOBSERVER PATTERN
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [OBSERVER-PATTERN-FIRST-CLASS] [SYNCHRONOUS-IN-PROCESS]
+[SINGLE-THREADED-LIMITATION]. `SpaceEvent` enum {Add, Remove, Replace} at
+hyperon-space/src/lib.rs:22-29; `SpaceObserver::notify(&mut self, event)` at
+:63-66; `SpaceCommon` at :97-100 with `observers: RefCell<Vec<Weak<RefCell<
+dyn SpaceObserver>>>>`; `register_observer<T>` at :106-109 returning a
+`SpaceObserverRef<T>`; `notify_all_observers` iterates and calls
+`observer.borrow_mut().notify(event)` synchronously at :113-125.
+
+Properties (consensus across reviewers):
+  (a) Explicit registration via `space.common().register_observer(...)`.
+      Auto-deregistration when SpaceObserverRef + clones drop (Weak refs).
+  (b) Per-Space scope. SpaceCommon is owned per-Space; observers are NOT
+      global.
+  (c) Synchronous, no error path. Trait method returns `()`. A panicking
+      observer panics the writer.
+  (d) Synchronous, in writer's stack frame. The original add/remove/replace
+      call returns only after all observers have processed.
+  (e) NOT thread-safe. Rc/RefCell only.
+  (f) Decko-side observer FEASIBLE in Rust/C, BLOCKED in Python until a
+      `space_register_observer` binding is added (Q8).
+
+[CF5.6 V-Gemini-Q2] Gemini cited:
+  - SpaceEvent at lib.rs:18 — actual is :22-29.
+  - SpaceObserver at :56  — actual is :63-66.
+  - SpaceCommon  at :94   — actual is :97-100.
+  Adjudication: -4 to -6 line drift. Substance correct. Adopt Claude/Codex
+  lines for SPEC_DRAFT.
+
+[NEW-CLAUDE Q2] `SpaceCommon::clone` at lib.rs:128-135 deliberately drops
+observers (the cloned SpaceCommon has `observers: RefCell::new(vec![])`).
+The in-source comment explicitly states the design rationale ("an observer
+can't know which space an event pertains to"). Combined with
+`GroundingSpace`'s `#[derive(Clone)]` at mod.rs:16, every clone of a space
+has zero observers. Phase 4 implication: mirror-fanout cannot rely on
+observer-cloning; each replica must register observers explicitly. Codex
+mentioned the Clone behavior in passing at :128-135 but didn't tease out
+the fanout consequence.
+
+[NEW-CLAUDE Q4-Q2-bridge] C API doc-comment at c/src/space.rs:117-119
+states explicitly:
+  "This API is likely to change in the future to implement multi-threading
+   as the space's payload object must not be modified while other operations
+   can access the space"
+Maintainer-acknowledged: the API is single-threaded BY DESIGN at HEAD; a
+multi-threaded variant is planned but not yet present. Phase 4 should not
+assume thread-safety lands within Phase 4's timeline.
+
+--------------------------------------------------------------------------------
+Q3. PERSISTENCE / DURABILITY MODEL
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [NO-NATIVE-RUST-PERSISTENCE-TRAIT] [EXTENSIBLE-VIA-C-API].
+No `PersistentSpace` trait exists. `SpaceMut` does not include persistence
+hooks. Custom backends use the C-extension pattern: `space_new(api, payload)`
+at `c/src/space.rs:69-72` accepts a function-pointer table (`space_api_t`) and
+a payload pointer. The Python wrapper `PY_SPACE_NO_SUBST_API` at
+`python/hyperonpy.cpp:387-397` uses this to wrap Python `AbstractSpace`
+subclasses.
+
+[CONSENSUS-PHASE-4-IMPLICATION] Phase 4 (B) keeps Postgres as durability via
+Decko; Hyperon Space is an in-memory mirror. No new persistence trait is
+required.
+
+[NEW-CLAUDE-CONFIRMED-CODEX Q3] `python/sandbox/sql_space/sql_space.py` is a
+working precedent for a Postgres-backed Python custom Space (Codex called
+this out as evidence that the C-extension pattern works; Claude elevates
+to "starter template for Phase 4 mirror service if Python is the chosen
+language"). It is NOT production-ready (no observer wiring, naïve SQL
+string concat, no transactions, no Decko-specific schema) but is a useful
+reference for the integration pattern.
+
+--------------------------------------------------------------------------------
+Q4. CONCURRENCY MODEL
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [SINGLE-PROCESS-IN-MEMORY] [INTER-PROCESS-SYNC-REQUIRED].
+The core uses `Rc<RefCell<...>>` throughout. `Send`/`Sync` are not
+implemented. Multi-Decko-worker deployments cannot share a `GroundingSpace`
+in memory; deployment topology must use either:
+  α. Central Space service with IPC boundary.
+  β. Per-worker Space synchronized via shared event bus.
+  γ. Out-of-process authoritative Space + per-worker read-only cache.
+
+[CONSENSUS-RECOMMENDATION] Option α (central service) for Phase 4 baseline,
+for simplicity and observer-locality. β/γ are scaling alternatives if
+α becomes a bottleneck.
+
+[CONSENSUS-CODEX] DAS uses `Arc<Mutex<Properties>>` at
+`lib/src/metta/runner/builtin_mods/das.rs:64`, but only for DAS-specific
+parameter passing — does NOT make `GroundingSpace`/`DynSpace` thread-safe.
+
+[NEW-CLAUDE Q4] (Reproduced from Q2 adjudication): the maintainer's own
+forward-statement at c/src/space.rs:117-119 confirms the single-threaded
+design is intentional and that thread-safety is a future change, not present
+at HEAD.
+
+--------------------------------------------------------------------------------
+Q5. DYNSPACE / SPACEMUT / GROUNDINGSPACE TAXONOMY
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [LAYER-2-WRITE-CAPABLE] [TAXONOMY-CONFIRMED]
+[REFACTORED-TO-TOP-LEVEL-CRATE].
+  - Space (read-only trait): hyperon-space/src/lib.rs:152-216.
+  - SpaceMut (mutable trait, extends Space): :219-279.
+  - DynSpace (type-erased shared wrapper): :281-298.
+  - GroundingSpace<D> (canonical concrete impl): lib/src/space/grounding/
+    mod.rs:14-21. Implements Space (:181-197) and SpaceMut (:199-212).
+  - ModuleSpace (delegating space for MeTTa modules): lib/src/space/module.rs.
+  - CSpace (C-API adapter): c/src/space.rs:688-808.
+  - PySpace (Python custom Space wrapper): python/hyperonpy.cpp:399-405.
+
+[CONSENSUS] hyperon-space is a NEW top-level crate (refactoring split from
+the previous lib/src/space/ location). hyperon-space owns the abstract
+traits + DynSpace + SpaceCommon + observer + index implementation; lib/src/
+space/grounding/ owns the concrete GroundingSpace; lib/src/space/module.rs
+owns MeTTa-runtime integration. The cluster-pilot R2.B4 conceptual taxonomy
+(GroundingSpace / SpaceMut / DynSpace) survives the refactor intact.
+
+(e) Phase 4 entry point: a Decko-callback consumer should construct
+`DynSpace::new(GroundingSpace::new())` for the in-memory mirror; the L1
+agent side should accept `DynSpace` so the same code can target either a
+local GroundingSpace or (in Phase 5+) a DAS-backed DistributedAtomSpace.
+
+--------------------------------------------------------------------------------
+Q6. PERFORMANCE / SCALE
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [TRIE-INDEXED-IN-MEMORY] [BENCHMARK-REQUIRED-FOR-CEILINGS].
+GroundingSpace.index is `AtomIndex<D>` (mod.rs:18); AtomIndex wraps an
+AtomTrie at `hyperon-space/src/index/mod.rs:157-211`. Existing benchmarks:
+  - `hyperon-space/benches/atom_index.rs:49-69` — fills 100 atoms.
+  - `lib/benches/grounding_space.rs:22-38` — query at x10/x100 sizes.
+
+[CONSENSUS] No quantitative ceiling is locked. Existing bench corpus is
+small and does not exercise Phase-4-relevant scenarios (Decko card-edit
+rates, observer-notification overhead with multiple subscribers, multi-
+process event-bus fanout, AtomIndex memory footprint at million-atom
+scale). Source 1 V2-Q10/14 lesson applies: Phase 4 must include an
+empirical bench harness.
+
+--------------------------------------------------------------------------------
+Q7. ATOM IDENTITY UNDER MUTATION
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [STRUCTURAL-IDENTITY] [REPLACE-IS-REMOVE-THEN-ADD-AT-INDEX-LEVEL]
+[REPLACE-EVENT-CARRIES-OLD-AND-NEW]. `GroundingSpace::replace` at
+mod.rs:119-126 is implemented as `index.remove(from)` + `index.insert(to)`,
+but the observer signal is a single `SpaceEvent::Replace(from, to)` — so
+observers CAN distinguish a Rust/Python `.replace()` call from a separate
+remove-then-add pair, IF the call comes from the Rust/Python `replace`
+surface.
+
+[CONSENSUS] Atom identity is structural (atoms are equality-by-tree-content).
+No primary-key / stable-handle mechanism in `SpaceMut`. For Phase 4 (L1)
+round-trip, agents writing through Rust/Python should standardize on
+`replace(old, new)` for updates — Decko-side after_update events fire
+mirror.replace_atom; agent-side reasoning chooses replace for in-place
+updates.
+
+[NEW-CLAUDE Q7] (Cross-references Q1-NEW-CLAUDE asymmetry.) At the MeTTa
+surface, no `replace-atom!` op exists; MeTTa-writing L1 agents are forced
+to remove-then-add and the Replace observer signal is lost. SPEC_DRAFT
+should include the small grounded-op patch to add `replace-atom!`.
+
+--------------------------------------------------------------------------------
+Q8. PYTHON BINDINGS COVERAGE
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [WRITE-API-EXPOSED] [OBSERVER-API-MISSING-IN-PYTHON]
+[C-OBSERVER-API-EXISTS-AND-IS-BINDABLE].
+
+Write surface in Python:
+  - `SpaceRef.add_atom` (base.py:205-209), `remove_atom` (:211-215),
+    `replace_atom` (:217-221) call hyperonpy's `space_add/space_remove/
+    space_replace`.
+  - `AbstractSpace` Python base class with virtual `add`/`remove`/`replace`
+    (base.py:26-42) for custom-space subclasses.
+  - `SpaceRef(space_obj)` constructor (base.py:174-183) wraps a non-CSpace
+    Python object via `hp.space_new_custom`.
+  - `PY_SPACE_NO_SUBST_API` at `python/hyperonpy.cpp:387-397` is the C
+    function table for Python custom spaces. `py_space_add/remove/replace`
+    at :422-435 / :437-454 / :456-476 auto-emit `space_event_t` to the
+    C observer machinery via `space_params_notify_all_observers` after
+    the Python callback returns. So a Python custom space's mutations DO
+    fire SpaceEvents that a C-side observer can receive — but only into
+    observers registered through the C API.
+
+Observer surface in Python:
+  - Verified-negatively (pickaxe in `python/`): `register_observer` and
+    `space_register_observer` return ZERO matches.
+  - `python/hyperon/base.py` does not expose any observer-registration
+    method on SpaceRef or GroundingSpaceRef.
+  - `python/hyperonpy.cpp` does not bind `space_register_observer`.
+  - `PY_SPACE_NO_SUBST_API` has 9 function-pointer slots
+    (query/[subst-NULL]/add/remove/replace/atom_count/iter/free) and NO
+    observer slot. Even Python custom Spaces cannot register their own
+    observers via this API at HEAD.
+  - Cross-branch verification (Codex): `origin/add_python_oper_ext`,
+    `origin/pyrust`, `origin/artur-das-v102` — none add the binding.
+
+[CONSENSUS] The C API at `c/src/space.rs:464` already exposes
+`space_register_observer(space, observer_api, observer_payload) ->
+space_observer_t` with full `space_observer_api_t` plumbing (declared at
+:328-342). The C side handles the heavy lifting; the gap is purely the
+pybind11 layer in hyperonpy.cpp.
+
+[CONSENSUS-FOUR-UNBLOCK-PATHS] (Claude original; Codex agrees with
+implication; Gemini implies via "bridge code required"):
+  Path I:  Extend space_api_t with observer slot; update Rust + Python
+           wrappers. Touches upstream; ~1-2 weeks.
+  Path II: Rust-side bridge service holding the central GroundingSpace,
+           exposing gRPC/HTTP for write+observer; Decko Rails workers and
+           agents talk to it. Doesn't touch upstream; ~2-3 weeks.
+  Path III:PyO3-driven extension crate that imports hyperon-space directly
+           and exposes observer registration to Python. Doesn't touch
+           upstream; ~2-3 weeks.
+  Path IV: PR upstream to add `space_register_observer` binding to
+           `python/hyperonpy.cpp`. Variable timeline (review-cycle-bound);
+           if accepted, becomes baseline.
+
+[CONSENSUS-RECOMMENDATION] Path II for Phase 4 schedule (Rust-only,
+fastest). Path IV in parallel for upstream alignment. Phase 4 SPEC_DRAFT
+should commit to Path II as the implementation strategy and Path IV as
+the upstream-contribution strategy.
+
+--------------------------------------------------------------------------------
+Q9. DAS MODULE INTEGRATION
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [DAS-WIRING-CANONICAL] [DEFAULT-ENABLED-FEATURE]
+[SEPARATE-FROM-LOCAL-MIRROR].
+  - `metta-bus-client` at `lib/Cargo.toml:30-35`:
+    git = "https://github.com/singnet/das", tag = "1.0.2",
+    package = "metta-bus-client", optional = true.
+  - Default features at lib/Cargo.toml:46: `default = ["pkg_mgmt", "das"]`.
+  - DAS module file: `lib/src/metta/runner/builtin_mods/das.rs`.
+  - `new-das!` token registration: das.rs:66-70.
+  - `DistributedAtomSpace::new` invocation: das.rs:187-195.
+  - DAS MeTTa-side definitions: `lib/src/metta/runner/builtin_mods/das.metta`
+    (referenced via `include_str!("das.metta")` at das.rs:44).
+  - Additional ops: das-join-network!, das-services!, das-service-status!,
+    das-set-param!, das-get-params!, das-create-context!, das-evolution!,
+    das-link-creation!, das-helpers!.
+
+[CF5.6 V-Gemini-Q9] Gemini cited default `das` feature at lib/Cargo.toml:44.
+  Adjudication: -2 line drift. Correct line is :46. Substance correct.
+
+[CONSENSUS-PHASE-4-IMPLICATION] DAS is out of Phase 4 scope. Phase 4
+focuses on local in-memory mirror with Decko durability. DAS is the
+Phase 5+ path for distributed mirror; the SpaceMut surface is identical
+(DistributedAtomSpace also implements SpaceMut), so Phase 4 mirror code
+can in principle be Space-agnostic and migrate cleanly.
+
+--------------------------------------------------------------------------------
+Q10. PR #852 / EVENTAGENT
+--------------------------------------------------------------------------------
+
+[CONSENSUS-CODEX-CLAUDE; V-Gemini-Q10 corrected] [MERGED-NOT-STALE]
+[DISJOINT-FROM-SPACEEVENT].
+
+Verified:
+  - `git log --all --grep="852"` returns commit `2fd826d4 Merge pull
+    request #852 from trueagi-io/event_agent`, date 2025-03-14, author
+    Alexey Potapov.
+  - `git rev-list --count main..pr-852` = 0 (pr-852 is NOT ahead of main).
+  - `git rev-list --count pr-852..main` = 644 (pr-852 is BEHIND by 644
+    commits — it's a stale local pointer to the pre-merge branch state).
+  - `git branch -a --contains pr-852` lists main + remotes/origin/main.
+  - EventAgent class at `python/hyperon/exts/agents/agent_base.py:202-293`,
+    with `queue_subscription` at :250-258 and `event_processor` at :260-274.
+  - `direct-subscription` and `publish-event` registered as MeTTa atoms
+    at agent_base.py:323-326.
+
+[CF5.6 V-Gemini-Q10] Gemini's verdict was [STALE-BUT-RELEVANT], framing
+PR #852 as unmerged and "Last major activity seems to be late 2025."
+  Adjudication: FACT-DRIFT. PR #852 was merged 2025-03-14, ~14 months ago
+  by reconciliation date. EventAgent ships at HEAD. Brief.txt §3 line
+  130-131 also said "pr-852 is unmerged"; this is an orchestrator-side
+  error inherited from outdated repo metadata. Annotated for future
+  brief authors: when a branch label is named `pr-NNN`, check both
+  `git log --all --grep="NNN"` AND `git rev-list --count main..pr-NNN`
+  before claiming "unmerged."
+
+[CONSENSUS] EventAgent uses a generic `event_bus` Python object (with
+`create_subscription`/`publish` API) — NOT bound to SpaceEvent/SpaceObserver.
+EventAgent is the agent-runtime layer; SpaceObserver is the Space-mutation
+event layer. They are disjoint event paths in the same repo.
+
+[CONSENSUS-PHASE-4-WIRING] Phase 4 connects them:
+  Decko after_save → Mirror Service → space.replace(old, new)
+                                       → SpaceObserver (Q8 Python binding
+                                          required) catches Replace
+                                       → publishes to BasicEventBus / Redis
+                                       → EventAgent.queue_subscription
+                                          receives → agent reasons / writes
+This two-stage pattern (SpaceObserver → event_bus → EventAgent) gives a
+clean separation between low-latency direct-coupling (SpaceObserver) and
+agent-runtime reactions (EventAgent).
+
+--------------------------------------------------------------------------------
+Q11. CLUSTER-PILOT FINDING VERIFICATION (R2.B4 lib_spaces.metta)
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [PILOT-CITATION-DRIFT-CONFIRMED] [CF5.6-INHERITANCE]
+[LIB-SPACES-PHANTOM].
+
+Verified:
+  - `git log --all -S "lib_spaces"` returns ZERO commits.
+  - `git log --all --diff-filter=D --name-only -- '*lib_spaces*'` returns
+    ZERO deletion entries.
+  - Glob `**/lib_spaces*` against HEAD returns ZERO matches.
+
+The file `lib_spaces.metta` was never present in the repository. The
+AtomSpace cluster pilot R2.B4 citation is a CF5.6 drift inheritance.
+
+[CONSENSUS-SUCCESSORS] The actual files that play the cited role are:
+  - `lib/src/metta/runner/builtin_mods/das.metta` — DAS module MeTTa
+    documentation file.
+  - `lib/src/metta/runner/stdlib/space.rs` — Rust file with the MeTTa
+    `add-atom`/`remove-atom`/`new-space` ops.
+  - `lib/src/metta/runner/stdlib/stdlib.metta` — MeTTa documentation file
+    holding stdlib doc-string atoms.
+
+This Source 2 reconciliation directs SPEC_DRAFT and
+HYPERON_CLUSTER_FINDINGS.md to remove the `lib_spaces.metta` reference
+and replace with the three above.
+
+--------------------------------------------------------------------------------
+Q12. DECKO-CALLBACK INTEGRATION TARGET (PHASE 4 WIRING)
+--------------------------------------------------------------------------------
+
+[CONSENSUS-OPTION-D-CONFIRMED-AT-HEAD] [SMALL-PYTHON-BINDING-PATCH-REQUIRED]
+[NO-OPTION-C-FALLBACK-NEEDED].
+
+Source 1 re-evaluation conditions:
+  (i)  Hyperon Space supports atom-write hooks  →  Option D confirmed.
+  (ii) Hyperon Space is read-only-at-HEAD       →  Option C fallback.
+
+(i) is MET. Hyperon Space at HEAD has:
+  - SpaceMut::add/remove/replace at hyperon-space/src/lib.rs:237/255/275.
+  - SpaceObserver/SpaceEvent/SpaceCommon at lib.rs:22-126.
+  - GroundingSpace concrete impl with synchronous notify_all_observers.
+  - C-API write surface at c/src/space.rs:140/152/170.
+  - C-API observer registration at c/src/space.rs:464.
+  - Python write surface at python/hyperon/base.py:205-221.
+
+(ii) is NOT triggered. No Option C fallback needed from Source 2.
+
+Recommended Phase 4 wiring (consensus refinement):
+
+  S1. Decko after_save / after_update / after_destroy callback fires
+      (Source 5 territory — defines the callback schema).
+      → Build change-event {action_type, card_id, before, after}.
+      → Enqueue to Redis/Sidekiq.
+
+  S2. Mirror Service (single process; Rust preferred for direct observer
+      access, Python possible if the Q8 Path I/IV upstream-binding work
+      is done first).
+      → Consumes change-event from queue.
+      → Translates to atom representation.
+      → Calls space.add / space.replace / space.remove via SpaceMut.
+      → SpaceEvent fires synchronously through SpaceCommon.
+
+  S3. Observer chain (registered against the mirror Space).
+      → L1 agent observer: forwards to BasicEventBus → EventAgent.
+      → Decko-mediated write-back observer: handles agent-driven atom
+        edits, translates to Decko Rails REST API calls (Source 6
+        territory) creating proper card_actions / card_changes records.
+
+  S4. L1 Agent loop (Python or Rust).
+      → Subscribes to BasicEventBus for change notifications.
+      → Performs reasoning over current Space state via space.query.
+      → Writes updated atoms via space.add / space.replace / space.remove.
+      → Triggers observer chain again (Decko-mediated write-back).
+
+================================================================================
+DISSENT FLAGS (V-N-X)
+================================================================================
+
+V-Gemini-Q1-line-drift  [CF5.6]
+  Gemini cited SpaceMut::add/remove/replace at hyperon-space/src/lib.rs:
+  223/241/259. Correct lines are :237/:255/:275.
+  Adjudication: drift of -14 to -16 lines. Substance correct (write API
+  exists). Adopt Codex/Claude lines for SPEC_DRAFT.
+
+V-Gemini-Q2-line-drift  [CF5.6]
+  Gemini cited SpaceEvent at :18 (correct :22-29), SpaceObserver at :56
+  (correct :63-66), SpaceCommon at :94 (correct :97-100).
+  Adjudication: -4 to -6 line drift. Substance correct.
+
+V-Gemini-Q9-line-drift  [CF5.6]
+  Gemini cited default `das` feature at lib/Cargo.toml:44. Correct line :46.
+  Adjudication: -2 line drift. Substance correct.
+
+V-Gemini-Q10-fact-drift  [NOT-CF5.6, FACT-DRIFT]
+  Gemini said PR #852 is "stale-but-relevant" with "last major activity
+  late 2025." Codex+Claude verified: PR #852 was merged 2025-03-14 at
+  commit `2fd826d4`; pr-852 branch tip is an ancestor of main; EventAgent
+  ships at HEAD.
+  Adjudication: FACT-DRIFT. EventAgent is mainline at HEAD. Brief §3 also
+  inherited this error; correct in reconciliation.
+
+V-Gemini-Q12-wording  [WORDING]
+  Gemini's verdict "[OPTION-D-VIABLE-WITH-BRIDGE-CODE]" is ambiguous.
+  "Bridge code" could be misread as the atomspace-bridge of Source 1.
+  Adjudication: state explicitly as "Option D viable with a small
+  pybind11 patch in python/hyperonpy.cpp exposing space_register_observer;
+  atomspace-bridge is NOT involved."
+
+V-orchestrator-brief-§3  [BRIEF-INHERITED-ERROR]
+  brief.txt §3 lines 130-131 said "pr-852 (EventAgent) is unmerged."
+  Codex+Claude verified: PR #852 is merged. Brief annotation: pr-852 is
+  a stale tracking pointer; EventAgent is in mainline.
+  Adjudication: brief authors should run `git rev-list --count
+  main..pr-NNN` for any branch named pr-NNN before claiming "unmerged."
+  Add to standing protocols.
+
+V-Gemini-Q4-Arc-Mutex-omission  [MINOR-OMISSION]
+  Gemini mentioned Arc<Mutex<Properties>> in DAS only generically. Codex
+  added the precise file:line at lib/src/metta/runner/builtin_mods/das.rs:
+  64. Substance consistent; Codex's citation is more precise.
+
+V-Claude-Q1-asymmetry-NEW  [NEW-CLAUDE]
+  Claude found that MeTTa-stdlib registers `add-atom` and `remove-atom`
+  but not `replace-atom!`. Verified by Grep `replace-atom` in lib/ →
+  zero matches. Codex and Gemini did not surface this. Added to spec-
+  required patch list as small bounded grounded-op patch.
+
+V-Claude-Q2-clone-drops-observers-NEW  [NEW-CLAUDE]
+  Claude elevated SpaceCommon::clone (lib.rs:128-135) explicitly clearing
+  observers as a Phase-4 fanout implication. Codex mentioned the Clone
+  behavior in passing; Gemini noted "Per-Space" but didn't address clone
+  semantics. Added to SPEC_DRAFT under "mirror replication semantics."
+
+V-Claude-Q4-maintainer-statement-NEW  [NEW-CLAUDE]
+  Claude surfaced the c/src/space.rs:117-119 doc-comment where the
+  maintainers explicitly state the API is single-threaded and that
+  multi-threading is a future change. Codex and Gemini did not cite this
+  forward-statement. Added to SPEC_DRAFT under "thread-safety constraint."
+
+V-Codex-Q3-sandbox-elevation  [CONSISTENT-WITH-CLAUDE]
+  Codex flagged python/sandbox/sql_space/sql_space.py as evidence the
+  C-extension pattern works. Claude elevated to "starter template for
+  Phase 4 mirror service if Python is the chosen language." Both
+  consistent; Claude framing is more action-oriented for SPEC_DRAFT.
+
+================================================================================
+CF5.6 ADJUDICATIONS (CUMULATIVE)
+================================================================================
+
+This Source 2 reconciliation logs FIVE Gemini line-drift CF5.6 verifications:
+  1. Q1 SpaceMut methods: -14 to -16 lines.
+  2. Q2 SpaceEvent / SpaceObserver / SpaceCommon: -4 to -6 lines.
+  3. Q9 das feature: -2 lines.
+  4. Q10 PR #852 fact-drift (NOT line drift; merge-status drift).
+  5. Q12 wording ambiguity ("bridge code" reading).
+
+This is a similar count to Source 1 (5 CF5.6 in Source 1, mostly file-
+identity and content-claim drifts). The CF5.6 cluster-pilot default
+(verify Gemini file/line claims via direct Read or Glob) is reconfirmed
+as load-bearing for Phase 4 sources.
+
+Pattern: Gemini's line citations appear systematically lower than actual
+HEAD (negative offsets). Possible cause: Gemini's reference snapshot may
+have been an earlier version of the file. Phase 4 sources should require
+Gemini to verify-then-cite, not cite-from-snapshot.
+
+================================================================================
+NEW PROTOCOLS / LESSONS FOR CLUSTER-PILOT REGISTRY
+================================================================================
+
+V2-PROTOCOL-1: pr-NNN branch labels can be stale. When a brief or finding
+references a branch named `pr-NNN`, the orchestrator must:
+  - `git log --all --grep="NNN"` → did the PR get merged?
+  - `git rev-list --count main..pr-NNN` → is pr-NNN actually ahead of main?
+  - `git rev-list --count pr-NNN..main` → how far behind is pr-NNN?
+Failure mode: brief.txt §3 inherited "pr-852 is unmerged" which was wrong
+by ~14 months.
+
+V2-PROTOCOL-2: When grepping the Python wrapper for a Rust API, grep BOTH
+the function name AND the snake_case binding name. For `register_observer`
+(Rust) the Python binding name would be `space_register_observer` (C/Python
+convention). Either grep alone is insufficient; the dual-token grep was
+what definitively confirmed the gap.
+
+V2-PROTOCOL-3: SpaceCommon::clone behavior is non-obvious; document
+explicitly in SPEC_DRAFT under "Mirror replication semantics." Future
+clusters touching observer-pattern code should grep for `impl Clone for
+SpaceCommon` and read the in-source comment as part of standard audit.
+
+================================================================================
+BOTTOM LINE FOR SPEC_DRAFT.md
+================================================================================
+
+PHASE 4 ARCHITECTURE: Option D (Decko-callback-driven AtomSpace mirror).
+PHASE 4 SUBSTRATE:    Hyperon Space at HEAD (3f76dc4, v0.2.10).
+PHASE 4 GAP:          Python observer registration; minimum-viable patch in
+                      python/hyperonpy.cpp (Path I or Path IV).
+
+Required code additions in hyperon-experimental for Phase 4 baseline:
+  PATCH-1 [REQUIRED]: pybind11 binding for `space_register_observer` in
+    python/hyperonpy.cpp, mirroring the C API at c/src/space.rs:464.
+    Marshals space_observer_api_t calls to a Python callable; returns a
+    space_observer_t handle whose Drop calls space_observer_free.
+    Effort: ~1 week. Bounded patch.
+  PATCH-2 [RECOMMENDED, may defer]: MeTTa-side `replace-atom!` grounded op
+    in lib/src/metta/runner/stdlib/space.rs, mirroring AddAtomOp /
+    RemoveAtomOp at :151-204. Effort: ~1 day. Optional if MeTTa-writing
+    L1 agents are not deployed in Phase 4.
+
+NO changes required to SpaceMut, GroundingSpace impl, Cargo workspace
+structure, observer pattern, or any existing public API.
+
+DEPLOYMENT TOPOLOGY: Option α (Central Space service with IPC boundary)
+for Phase 4 baseline; Option β (per-worker Space + event bus) and Option
+γ (out-of-process authoritative Space + worker cache) reserved as Phase
+4 scaling alternatives.
+
+DURABILITY: Postgres remains source of truth. Hyperon Space is in-memory
+mirror, hydrated from Postgres on restart via the same callback path.
+No native PersistentSpace trait required.
+
+CONCURRENCY: Single-process mirror at Phase 4 (consistent with Hyperon
+Space's Rc/RefCell design). Multi-process scaling deferred to Phase 5+
+or to upstream's planned thread-safety work (per c/src/space.rs:117-119).
+
+================================================================================
+SOURCE-DEPENDENT RE-EVALUATION CONDITIONS FOR SOURCES 3-7
+================================================================================
+
+Source 3 (atomspace-linas Design Notes A–D + cpp-mcp):
+  Condition: If atomspace-linas surfaces a more performant or more durable
+    write-API substrate than Hyperon Space at the read-mirror level (e.g.,
+    a StorageNode-like primitive with built-in transaction support),
+    re-evaluate whether Phase 4 mirror should use Hyperon Space OR a
+    Linas-side primitive. Default: stay with Hyperon Space.
+  Condition: cpp-mcp may provide an MCP-server pattern Phase 4 should
+    align with at the agent-facing layer (Source 6 territory).
+
+Source 4 (MORK + PathMap + mork_ffi + DAS + atomspace-rocks):
+  Condition: If MORK / mork_ffi can be wired as a `SpaceMut` impl, MORK
+    becomes a candidate Phase 4 substrate (with MORK's persistence
+    primitives bypassing the "no native durability" finding from Q3).
+    The MorkDB delete blocker (cluster pilot 2026-04-29 finding) likely
+    rules MORK out for Phase 4 unless atomspace-pgres or DAS-side
+    persistence is available.
+  Condition: atomspace-rocks (RocksDB-backed) was historically a
+    StorageNode for classical AtomSpace; not a Hyperon Space. If a
+    RocksDB-backed Hyperon Space exists or can be implemented, Phase 4
+    durability story might change.
+
+Source 5 (Decko semantics inventory):
+  REQUIRED for the Decko-side callback schema, the after_save event
+  payload format, the atom representation of cards (cardtype primitives
+  + +convention layer like +expert_reviewed/+ai_draft), and the
+  Decko-side write-back API. Phase 4 cannot proceed without Source 5.
+
+Source 6 (agent-facing MCP surface):
+  REQUIRED for the L1 agent loop. Defines what agents are permitted to
+  do against the mirror, how MCP tool calls map to space.add /
+  replace_atom / remove_atom / observer-subscriptions, and how
+  permission/sandbox boundaries are enforced.
+
+Source 7 (Magus plan reconciliation):
+  REQUIRED to align cluster-pilot phase numbering (Phase 3 = read-only
+  mirror; Phase 4 = co-canonical write-through; Phase 5+ = primary store
+  / distributed) with the existing 4-phase Magus plan in Magi Archive
+  cards 11446 + 11448. Source 7 will also identify any zariuq-fork
+  contributions to Hyperon Space that are not in upstream.
+
+================================================================================
+CARRY-FORWARD ITEMS FOR PHASE-4 CLUSTER-PILOT REGISTRY
+================================================================================
+
+C2-1: PR #852 / EventAgent IS mainline at HEAD (commit 2fd826d4,
+  2025-03-14, ~14 months merged). Brief §3 should be corrected; future
+  briefs must verify pr-NNN branch status before claiming "unmerged."
+
+C2-2: lib_spaces.metta is a phantom citation. Successor files are:
+  lib/src/metta/runner/builtin_mods/das.metta (DAS docs);
+  lib/src/metta/runner/stdlib/space.rs (Rust ops);
+  lib/src/metta/runner/stdlib/stdlib.metta (stdlib docs).
+
+C2-3: Python observer gap is the gating Phase 4 task. Path II (Rust-only
+  bridge service) is the recommended implementation path; Path IV (PR
+  upstream) is the upstream-contribution path. Both proceed in parallel.
+
+C2-4: MeTTa-stdlib `replace-atom!` op is a small bounded patch
+  (mirror of AddAtomOp/RemoveAtomOp). Strictly required only if
+  MeTTa-writing L1 agents must preserve identity-replace semantics.
+
+C2-5: SpaceCommon::clone clears observers; mirror replication must
+  register observers per-clone. Document in SPEC_DRAFT under "mirror
+  replication semantics."
+
+C2-6: Single-process design is intentional and maintainer-acknowledged
+  (c/src/space.rs:117-119). Phase 4 design must not assume thread-
+  safety; defer multi-process to Phase 5+.
+
+C2-7: python/sandbox/sql_space/sql_space.py is a Phase 4 starter
+  template if Python is the chosen mirror language. Source 5 + Source 6
+  should reference it as a baseline.
+
+================================================================================
+END OF RECONCILIATION — Source 2
+================================================================================

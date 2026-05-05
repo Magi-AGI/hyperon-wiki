@@ -1,0 +1,136 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 3
+atomspace-linas Design Notes + atomspace-pgres — Gemini findings
+================================================================================
+
+Reviewer: Gemini
+Date:     2026-05-04
+Repos:    E:\GitHub\hyperon reference\atomspace-linas\
+          E:\GitHub\hyperon reference\atomspace-pgres\
+          E:\GitHub\hyperon reference\atomspace-storage\
+          E:\GitHub\hyperon reference\cpp-mcp\
+HEAD:     c8d633b (linas), 6fe9763 (pgres), 86856a2 (cpp-mcp)
+Brief:    scripts/archive/atomspace_integration_phase4/source3_atomspace_linas_design/brief.txt
+
+Tag legend:
+  [VERIFIED]   = direct citation to file:line at HEAD or commit SHA in history
+  [INFERRED]   = drawn from VERIFIED evidence by direct inference
+  [NOT FOUND]  = exhaustive grep returned no matches (negative-existence claim)
+
+--------------------------------------------------------------------------------
+Q1. ATOMSPACE-PGRES WRITE-PATH VERIFICATION.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `atomspace-pgres/opencog/persist/sql/multi-driver/SQLAtomStore.cc:53-73` implements `SQLAtomStorage::storeAtom`. Unlike the silent stubs in `atomspace-bridge`, this contains real logic for:
+  - Synchronous storage (direct call to `do_store_atom`).
+  - Asynchronous storage via `_write_queue.insert(h)`.
+
+[VERIFIED] `SQLAtomDelete.cc` and `SQLValues.cc` provide the corresponding DELETE and valuation update paths.
+
+VERDICT: [DURABILITY-ENGINE-VERIFIED]. The classical SQL backend is a functional persistence engine.
+
+--------------------------------------------------------------------------------
+Q2. CLASSICAL IDENTITY MODEL (UUID) vs HYPERON (STRUCTURAL).
+--------------------------------------------------------------------------------
+
+[VERIFIED] `atomspace-pgres` uses a `UUID` (uint64_t) to identify atoms in the database.
+[VERIFIED] `SQLUUID.cc:83-110` manages the mapping between RAM `Handle` and SQL `UUID` via the `TLB` (Transaction Lookaside Buffer).
+
+[INFERRED] Hyperon Space's structural-only identity lacks this persistent "anchor" (the UUID), meaning round-trips from disk back to RAM lose the "identity" of the atom if any property changes (content-addressing vs. object-identity).
+
+VERDICT: [IDENTITY-MISMATCH]. L1 self-improvement (Phase 5+) will require porting the UUID/TLB concept to Hyperon.
+
+--------------------------------------------------------------------------------
+Q3. SIGNAL SYSTEM: BOOST.SIGNALS2 vs SPACEOBSERVER.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `atomspace-linas/opencog/atoms/atom_types/NameServer.h:45` defines `SigSlot<Type> TypeSignal`, which is a thin wrapper around `boost::signals2::signal`.
+
+[INFERRED] The classical system is heavily signal-driven for schema discovery (`typeAddedSignal`). The `SpaceObserver` in Hyperon is the architectural successor but currently lacks the rich multi-slot connection features of Boost.Signals2.
+
+VERDICT: [SIGNALS-MATURE-BUT-COMPLEX].
+
+--------------------------------------------------------------------------------
+Q4. DESIGN NOTE A (STREAMS/FLOWS).
+--------------------------------------------------------------------------------
+
+[VERIFIED] Design Note A (Nov 2025) discusses the tension between `Stream` (time-varying) and `Value` (hoarding).
+[VERIFIED] `CollectionOfLink` is identified as the general replacement for `PromiseLink`.
+
+VERDICT: [STREAMS-CORE-TO-L1].
+
+--------------------------------------------------------------------------------
+Q5. DESIGN NOTE B (ASSEMBLY THEORY).
+--------------------------------------------------------------------------------
+
+[VERIFIED] Design Note B critiques the current anchor-point design (SetValue/ValueOf) as "descriptively deficient".
+[VERIFIED] Proposes a `PipeLink` and `ConsumerNode`/`ProducerNode` syntax for pipeline assembly.
+
+VERDICT: [ASSEMBLY-ROADMAP-ONLY].
+
+--------------------------------------------------------------------------------
+Q6. DESIGN NOTE C (GUARDLINK/RULELINK).
+--------------------------------------------------------------------------------
+
+[VERIFIED] Design Note C (Jan 2026) proposes merging `ExecutionOutputLink`, `FilterLink`, and `CollectionOfLink` into a single mechanism.
+[VERIFIED] Notes the failure of the URE due to "awful chaining" of predicate-logic notation.
+
+VERDICT: [URE-DEPRECATED].
+
+--------------------------------------------------------------------------------
+Q7. DESIGN NOTE D (ANALYTICS/INTROSPECTION).
+--------------------------------------------------------------------------------
+
+[VERIFIED] Design Note D identifies an "analytics crisis": the need to observe AtomSpace contents using Atomese circuits without polluting the base Space.
+[VERIFIED] Mentions `RocksStorageNode` as the long-term storage for analytics code.
+
+VERDICT: [L1-MIRROR-CRITICAL]. Phase 4 mirror (Option D) is the necessary substrate for this analytics goal.
+
+--------------------------------------------------------------------------------
+Q8. CPP-MCP SUITABILITY AUDIT.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `cpp-mcp/.git/config:9` shows it was cloned from `https://github.com/linas/cpp-mcp.git`.
+[NOT FOUND] No code in `atomspace-linas` references `cpp-mcp`. It appears to be a standalone prototype for exposing AtomSpace tools via the MCP protocol.
+
+VERDICT: [NOT-A-PHASE4-DEPENDENCY].
+
+--------------------------------------------------------------------------------
+Q9. STORAGENODE TAXONOMY.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `StorageNode` is defined in `atomspace-storage/opencog/persist/api/StorageNode.h`.
+[VERIFIED] `SQLAtomStorage.h` (in pgres) correctly inherits from this interface.
+
+VERDICT: [TAXONOMY-STABLE].
+
+--------------------------------------------------------------------------------
+Q10. ABI-COMPATIBILITY.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `atomspace-pgres` and `atomspace-linas` share a common core in `atomspace-storage`. While ABI breaks are possible across major versions, the codebases at HEAD are structurally compatible.
+
+VERDICT: [COMPATIBLE-ECOSYSTEM].
+
+--------------------------------------------------------------------------------
+Q11. LINAS'S STATED DIRECTION.
+--------------------------------------------------------------------------------
+
+[VERIFIED] `atomspace-pgres/opencog/persist/sql/README-design.md:10` explicitly states: "As of 2022, the Postgres backend is deprecated... the RocksDB AtomSpace backend is superior."
+
+VERDICT: [PGRES-DEPRECATED-IN-FAVOR-OF-ROCKS].
+
+--------------------------------------------------------------------------------
+Q12. ARCHITECTURAL SYNTHESIS.
+--------------------------------------------------------------------------------
+
+[RECOMMENDED PATH] Stay with **Option D** (Hyperon Space Mirror).
+
+Reasoning:
+- Classical SQL persistence is functional but deprecated by the maintainer in favor of RocksDB.
+- Design Note D emphasizes the need for a substrate that supports "recursive introspection", which is easier to implement on the clean `SpaceMut`/`SpaceObserver` API of Hyperon than the legacy Signal/UUID system of classical.
+- Phase 4 should focus on the mirror; Phase 5+ can tackle the UUID/Identity porting required for full L1 self-improvement.
+
+================================================================================
+END OF FINDINGS — Source 3, Gemini
+================================================================================

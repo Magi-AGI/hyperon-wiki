@@ -1,0 +1,513 @@
+Codex Source 3 reviewer findings
+================================
+
+Scope
+-----
+
+Reviewed:
+
+- atomspace-linas @ c8d633bf272b838c2132c21b7c8ddf169a18dd22
+  (2026-02-10, Linas Vepstas, "Unit test for fix for definition expansion.")
+- atomspace-pgres @ 6fe97630071455c8bd491e7ddc2ec97936a9979a
+  (2025-10-10, Linas Vepstas, diacritic spelling variant in local metadata,
+  "Stub out failing test.")
+- cpp-mcp @ 86856a2fcc038e05675f0649e51cd4f9d3692263
+  (2025-05-24, hkr04, "README: add note for agent example.")
+- atomspace-storage @ ecd88d673258e51f65cc0605400003affdf4d694
+  only because StorageNode/TLB have been split out there, not because it is
+  a new Source 3 dependency.
+
+Bottom line
+-----------
+
+[STAY-HYPERON-SPACE]
+
+Source 3 refines, but does not override, Source 2. Phase 4 should stay on
+Hyperon Space / SpaceMut / SpaceObserver as the write-side mirror substrate.
+Classical AtomSpace and atomspace-pgres contribute useful design constraints
+for durability, identity, and future L1 introspection, but they are not a
+better immediate substrate for Decko-to-Hyperon write-back.
+
+Recommended Phase 4 stance:
+
+- Durability authority: Decko card/action tables, not atomspace-pgres.
+- Mirror write API: Hyperon SpaceMut add/remove/replace.
+- Mirror identity: Decko card_id / action metadata encoded in atoms or side
+  metadata, not classical Handle/UUID grafted into Phase 4.
+- Agent eventing: SpaceObserver -> event bus / MCP surface after the Source 2
+  Python observer binding gap is closed.
+- MCP implementation: language-matched Python/Rust service. cpp-mcp is only
+  relevant if a future service is explicitly C++.
+
+High-signal corrections to the brief
+------------------------------------
+
+1. [PATH-DRIFT] `atomspace-linas/opencog/persist/api/StorageNode.h` is not in
+   atomspace-linas at HEAD. StorageNode is in atomspace-storage:
+   `opencog/persist/api/StorageNode.h`.
+
+2. [PATH-DRIFT] `atomspace-linas/opencog/atomspace/AtomTable.h` is not present
+   at HEAD. AtomTable behavior is implemented in `opencog/atomspace/AtomTable.cc`
+   with public methods declared on `AtomSpace.h`.
+
+3. [PATH-DRIFT] `opencog/atoms/value/StreamValue.h` is not present at HEAD.
+   Concrete stream-like values exist (`FlatStream`, `FutureStream`,
+   `FormulaStream`), plus `StreamValueOfLink`.
+
+4. [SIGNALS-HISTORICAL-NOT-HEAD] Historical atom add/remove signal support is
+   real: pickaxe found old commits including `37296a54f1 Add support to
+   signals/slots...`, `f37ecc5c3f Install the add/remove atom signal`, and
+   `a8980a4689 Remove vestiges of signals.` But current HEAD grep finds no
+   `addAtomSignal`, `removeAtomSignal`, `atomAdded`, `atomRemoved`, or
+   `boost::signals2` atom-table listener API. Current signal-like code found
+   only NameServer type-added notifications (`AtomSpace.cc:61/118`,
+   `NameServer.h:45/87/109`, `NameServer.cc:197/225`).
+
+Q1. atomspace-pgres write-path verification
+-------------------------------------------
+
+[VERIFIED-WRITER]
+
+Source 1 F4 is confirmed. atomspace-pgres has real write-path implementations,
+not the empty stubs found in atomspace-bridge.
+
+Evidence:
+
+- `SQLAtomStorage.h:57` declares `class SQLAtomStorage : public StorageNode`.
+- `SQLAtomStorage.h:264-276` exposes `fetchIncomingSet`,
+  `fetchIncomingByType`, `storeAtom`, `removeAtom`, `storeValue`, `loadValue`,
+  `barrier`, `loadAtomSpace`, and `storeAtomSpace`.
+- `SQLAtomStore.cc:68` implements `storeAtom(const Handle&, bool synchronous)`.
+- `SQLAtomStore.cc:90` implements `do_store_atom`.
+- `SQLAtomStore.cc:155` implements `do_store_single_atom` and writes rows to
+  the `Atoms` table.
+- `SQLAtomStore.cc:135-147` locks `_store_mutex` to avoid valuation/atom
+  foreign-key inversion races.
+- `SQLAtomDelete.cc:94` implements `removeAtom(...)`, flushes the store queue,
+  checks UUID presence, and wraps the delete in `BEGIN;` / `COMMIT;`
+  (`SQLAtomDelete.cc:109-113`).
+- `SQLValues.cc:184`, `SQLValues.cc:314`, `SQLValues.cc:583`, and
+  `SQLValues.cc:643` cover value/valuation storage.
+- `SQLBulk.cc:265` implements bulk `storeAtomSpace`.
+
+[CAVEAT-DEPRECATED]
+
+This does not make atomspace-pgres a Phase 4 durability substrate. Its own
+README calls it deprecated and points to a RocksStorageNode-derived redesign:
+`README.md:15-23`; `opencog/persist/sql/README.md:9-30`.
+
+Phase 4 implication:
+
+- atomspace-pgres can persist classical AtomSpace atoms/values.
+- It has no Decko card/action semantics.
+- It does not persist Hyperon Space atoms directly.
+- Using it for Phase 4 would introduce a classical-AtomSpace adapter project,
+  not a small durability patch.
+
+Q2. classical Handle/UUID identity vs Hyperon structural identity
+-----------------------------------------------------------------
+
+[VERIFIED-CORE-HANDLE-IS-NOT-DURABLE-UUID]
+
+Classical `Handle` is a pointer-like shared reference plus content-hash helpers,
+not a durable UUID.
+
+Evidence:
+
+- `Handle.h:51` defines `ContentHash`.
+- `Handle.h:54` defines `AtomPtr` as `std::shared_ptr<Atom>`.
+- `Handle.h:57` declares `class Handle : public AtomPtr`.
+- `Handle.h:125` compares Handles by pointer identity (`get() == h.get()`).
+- `Handle.h:133` notes ordering defers to content-based `Atom::operator<`.
+- `Handle.cc:45-51` implements `content_eq` by checking hash and Atom content.
+- `Atom.h:340` stores `_content_hash`.
+- `Atom.h:443` declares `compute_hash`.
+- `Atom.h:510-514` computes/caches `get_hash`.
+
+[VERIFIED-PERSISTENT-UUID-LIVES-IN-STORAGE-LAYER]
+
+Persistent UUID binding is a StorageNode/pgres/TLB concern, not a core Handle
+property.
+
+Evidence:
+
+- `SQLUUID.cc:37-51` registers/unregisters an AtomSpace resolver with `_tlbuf`.
+- `SQLUUID.cc:77-117` maps Handle <-> database UUID via `check_uuid`/`get_uuid`.
+- `SQLUUID.cc:122-126` reads max UUID from the `Atoms` table.
+- `SQLUUID.cc:211-231` allocates UUIDs from SQL sequences.
+- `SQLAtomStore.cc:188-199` stores AtomSpace UUID and atom UUID into the DB
+  row during atom insert.
+
+Phase 4 implication:
+
+- Do not borrow classical UUIDs into the Phase 4 mirror unless the plan also
+  commits to a durable Hyperon identity adapter.
+- Decko already has stable `card_id` / action identity. Use that as the
+  Phase 4 stable identity and encode it explicitly in the atom model or side
+  metadata.
+
+Q3. classical atom-table signals vs SpaceObserver
+-------------------------------------------------
+
+[HEAD-NOT-FOUND]
+
+No current add/remove atom-table signal API was found at atomspace-linas HEAD.
+The current grep surface only shows NameServer type-added signaling.
+
+Evidence at HEAD:
+
+- `AtomSpace.cc:61` connects to `_nameserver.typeAddedSignal()`.
+- `AtomSpace.cc:118` disconnects that type-added connection.
+- `NameServer.h:45` defines `TypeSignal`.
+- `NameServer.cc:197` emits `_addTypeSignal`.
+- No HEAD matches for `addAtomSignal`, `removeAtomSignal`, `atomAdded`,
+  `atomRemoved`, or `boost::signals2` in `opencog/atomspace`,
+  `opencog/atoms`, tests, or examples.
+
+[HISTORICAL]
+
+Pickaxe without path filters found historical support and removal:
+
+- `37296a54f1 Add support to signals/slots... to the AtomTable`
+- `22549ba0ac Added support for the atom add signal`
+- `3a6eaa855d Added support for atom remove signal`
+- `f37ecc5c3f Install the add/remove atom signal`
+- `a8980a4689 Remove vestiges of signals`
+
+[THREAD-SAFETY-MATURE-BUT-NOT-A-SUBSTRATE-SWITCH]
+
+Classical AtomSpace is much more thread-conscious than Hyperon Space at HEAD,
+but that is separate from observer availability:
+
+- `TypeIndex.h:83-98` wraps per-type atom sets with `std::shared_mutex`.
+- `TypeIndex.h:110` warns iterators are not thread-safe against insertion or
+  removal.
+- `Atom.h:300-324` has shared mutex pools for incoming-set/KVP locking.
+- `AtomTable.cc:256-267`, `AtomTable.cc:291-304`, and
+  `AtomTable.cc:458-476` explicitly handle add/delete races.
+
+Phase 4 implication:
+
+- Do not claim classical HEAD has a SpaceObserver equivalent.
+- Thread safety is a Phase 5+ argument for backend maturity, not a Phase 4
+  reason to abandon Hyperon Space write APIs.
+
+Q4. Design Notes A: streams, flows, futures
+-------------------------------------------
+
+[PARTLY-IMPLEMENTED-PHASE-5]
+
+The stream/flow/future direction is real and partially implemented, but it is
+not the Phase 4 write-back mechanism.
+
+Evidence:
+
+- Design Notes A identifies streams/flows/futures as the primary issue at
+  `Design-Notes-A.md:25`.
+- The file discusses `FutureStream`, `FormulaStream`, `FlatStream`,
+  `ContainerValue`, `QueueValue`, `UnisetValue`, `GroupValue`, and
+  `DrainLink` (`Design-Notes-A.md:66-183`).
+- `GroupValue` is proposed at `Design-Notes-A.md:296-314` and exists in code:
+  `opencog/atoms/value/GroupValue.h:35-53`, `GroupValue.cc:28/39/48/85/96`.
+- `FlatStream` is the concrete stream conversion workhorse:
+  `FlatStream.h:39-42`, `FlatStream.cc:34/43/90/124/134`.
+- `DrainLink` exists (`DrainLink.h:34-44`, `DrainLink.cc:55/74`), but
+  `DrainValue` remains a TODO: `Design-Notes-A.md:400` and status line
+  `Design-Notes-A.md:454`.
+- Design A explicitly says authoring pipelines is hard:
+  `Design-Notes-A.md:542`.
+
+Phase 4 implication:
+
+- Keep the Phase 4 write path imperative and explicit:
+  Decko event -> SpaceMut add/remove/replace -> SpaceObserver event.
+- Revisit streams/flows for Phase 5+ L1 processing pipelines and analytics.
+
+Q5. Design Notes B: Assembly Theory
+-----------------------------------
+
+[RESEARCH-STAGE]
+
+Design Notes B is useful orientation for future pipeline authoring, but the
+assembly engine is not implemented enough to depend on for Phase 4.
+
+Evidence:
+
+- The note says the general assembly mechanism remains "far off and
+  unworkable" at `Design-Notes-B.md:12`.
+- It frames `Connector`, `ConnectorSeq`, and `Section` as an unimplemented
+  description-to-execution problem at `Design-Notes-B.md:47-49`.
+- It says no homotopy engine exists at `Design-Notes-B.md:499-502`.
+- It says the rule engine remains out of reach at `Design-Notes-B.md:521`.
+- It says an assembly engine is needed and that the author is still
+  floundering at `Design-Notes-B.md:525-528`.
+- Current code has `PipeLink` and `NameNode` support, but no mainline
+  `ConnectorLink`/`ConnectorSeq`/`JigsawOfLink` implementation under
+  `opencog/atoms`; connector/section Scheme files are in `opencog/sheaf/attic`.
+
+Phase 4 implication:
+
+- No Phase 4 dependency.
+- Possible Phase 5+ input for making L1 pipeline definitions easier to author.
+
+Q6. Design Notes C: GuardLink, RuleLink, URE
+--------------------------------------------
+
+[GUARDLINK-IMPLEMENTED]
+
+One internal drift inside Design Notes C matters: an earlier section says
+GuardLink does not exist yet (`Design-Notes-C.md:561`), but the later status
+line says it is done (`Design-Notes-C.md:724`). HEAD confirms implementation.
+
+Evidence:
+
+- `opencog/atoms/scope/GuardLink.h:31-36` documents GuardLink as compatibility
+  checking plus pattern-grounding extraction.
+- `GuardLink.h:74-80` exposes `guard(...)`.
+- `GuardLink.cc:105` implements `eval_guard`.
+- `GuardLink.cc:118` implements `guard`.
+- `GuardLink.cc:159` implements recursive `extract`.
+- `GuardLink.cc:359` registers the link factory.
+- `RuleLink.h:32` declares `class RuleLink : public PrenexLink`.
+- `RuleLink.cc:134` implements `RuleLink::execute`.
+- `FilterLink.cc:68-86` adapts FilterLink to GuardLink and RuleLink rewrite
+  handling.
+
+[URE-CRITIQUE-INFORMS-LATER-WORK]
+
+Design Notes C criticizes the now-failed URE direction and separates guards
+from rewrites (`Design-Notes-C.md:94-105`, `Design-Notes-C.md:456-460`,
+`Design-Notes-C.md:666-669`). This informs future agent-side rule/rewrite
+semantics, but should not complicate Phase 4.
+
+Phase 4 implication:
+
+- Do not put RuleLink/GuardLink/URE on the Decko mirror critical path.
+- Keep updates as explicit atom replacements; let future L1 reasoning consume
+  the mirrored atom stream.
+
+Q7. Design Notes D: analytics and introspection
+-----------------------------------------------
+
+[RELEVANT-TO-L1-NORTH-STAR]
+
+Design Notes D is the most L1-relevant Source 3 material. It frames analytics
+as Atomese-over-Atomese introspection.
+
+Evidence:
+
+- It names analytics on Atomese data and recursive introspection at
+  `Design-Notes-D.md:7-10`.
+- It anchors the current crisis in `examples/flow/count-pipeline.scm` at
+  `Design-Notes-D.md:14-17`.
+- It asks how to observe Atomese at `Design-Notes-D.md:45-65`.
+- Short-term persistence is `make install` flat `.scm` files:
+  `Design-Notes-D.md:68-89` and `Design-Notes-D.md:122-123`.
+- Long-term analytics storage is proposed in RocksStorageNode:
+  `Design-Notes-D.md:90-96`, `Design-Notes-D.md:116-117`.
+- Runtime loading wants child AtomSpaces and minimal parent-space pollution:
+  `Design-Notes-D.md:150-153`, `Design-Notes-D.md:196-242`.
+- `examples/flow/count-pipeline.scm:22/42` uses `PipeLink`; bootstrap examples
+  also wire analytics storage through Rocks/PipeLink.
+
+Phase 4 implication:
+
+- This is a Phase 5+ design target for L1 introspection.
+- Phase 4 should make the mirror event stream clean and well-identified so
+  later analytics can observe it. It should not try to implement the whole
+  introspection storage/runtime model now.
+
+Q8. cpp-mcp suitability
+-----------------------
+
+[GENERIC-CXX-MCP-NOT-A-FIT-FOR-PHASE-4]
+
+cpp-mcp is a generic C++ MCP framework. It is not integrated with OpenCog,
+AtomSpace, Hyperon, Decko, or MeTTa.
+
+Evidence:
+
+- README says it implements MCP 2024-11-05 basic protocol:
+  `README.md:3`.
+- `include/mcp_message.h:28` hardcodes `MCP_VERSION = "2024-11-05"`.
+- Server supports custom method/notification/resource/tool registration:
+  `mcp_server.h:230-260`.
+- Resource methods exist in `mcp_server.cpp:251-309`.
+- Tool methods exist in `mcp_server.cpp:320-331`.
+- Initialize/session handling exists in `mcp_server.cpp:620-760`.
+- SSE/HTTP endpoint handling exists in `mcp_server.cpp:37-46`.
+- Stdio/SSE clients call `tools/list`, `tools/call`, `resources/list`,
+  `resources/read`, `resources/subscribe`, and
+  `resources/templates/list` (`mcp_stdio_client.cpp:126-185`,
+  `mcp_sse_client.cpp:186-245`).
+
+[GAPS-OR-NON-UNIQUE]
+
+- No `prompts/*`, `sampling/*`, `completion/*`, `roots/list`, or resource/tool
+  change notification methods were found by grep.
+- `mcp_server.h:272` notes auth is not used in the current implementation.
+- `resources/templates/list` returns an empty array at `mcp_server.cpp:308-309`.
+- atomspace-linas has no real `cpp-mcp`/`hkr04`/MCP integration references
+  outside false-positive `numcp` strings in diagram files.
+- cpp-mcp local `origin` is `https://github.com/linas/cpp-mcp.git`, but
+  `upstream` is `https://github.com/hkr04/cpp-mcp.git`; the HEAD commit author
+  is hkr04. Treat it as a generic fork/candidate library, not as an OpenCog
+  project.
+
+Phase 4 implication:
+
+- If the mirror/event service is Python or Rust, cpp-mcp is the wrong language
+  choice.
+- If a future classical AtomSpace C++ service needs an embedded MCP endpoint,
+  cpp-mcp could be reconsidered.
+- It has no unique capability that justifies steering Phase 4 toward C++.
+
+Q9. StorageNode taxonomy
+------------------------
+
+[VERIFIED-IN-ATOMSPACE-STORAGE]
+
+StorageNode is a mature classical persistence abstraction, but it lives in
+atomspace-storage at HEAD, not atomspace-linas.
+
+Evidence:
+
+- `atomspace-storage/opencog/persist/api/StorageNode.h:42` declares
+  `class StorageNode : public ObjectCRTP<StorageNode>, protected BackingStore`.
+- Lifecycle methods: `open` at :81, `open_read_only` at :86, `close` at :91,
+  `connected` at :97, `create` at :106, `destroy` at :114, `erase` at :120.
+- Proxy/monitor methods: `proxy_open` :125, `proxy_close` :130, `set_proxy`
+  :136, `monitor` :141.
+- Read/write wrappers: `fetch_atom` :169, `fetch_value` :184,
+  `load_atomspace` :195, `store_atomspace` :200, `fetch_incoming_set` :243,
+  `fetch_query` :286, `store_atom` :298, `store_value` :310,
+  `update_value` :326, `remove_atom` :341.
+- Message dispatch routes include load/store/fetch/barrier/proxy/frame
+  operations in `StorageNode.cc:109-145`, `StorageNode.cc:170-353`.
+- Wrapper implementations run from `StorageNode.cc:387-533`.
+- Default proxy methods throw unsupported errors at `StorageNode.cc:540-561`.
+
+Concrete ecosystem examples:
+
+- atomspace-pgres: SQL writer (`SQLAtomStorage : StorageNode`).
+- atomspace-rocks: preferred future persistence direction per pgres README.
+- atomspace-cog: fast distributed AtomSpace route per pgres README.
+- atomspace-bridge: read-path BridgeStorageNode with empty write stubs from
+  Source 1.
+
+Phase 4 implication:
+
+- StorageNode is design precedent, not a plug-in for Hyperon Space.
+- A Hyperon StorageNode equivalent would be a new adapter project.
+- Do not route Phase 4 through classical StorageNode unless the architecture
+  explicitly switches to classical AtomSpace.
+
+Q10. recent activity / ABI compatibility
+----------------------------------------
+
+[BUILD-NOT-RUN]
+
+I did not run a CMake/build/test matrix for atomspace-pgres against
+atomspace-linas/atomspace-storage HEADs, so this is an API/metadata audit,
+not a compile certification.
+
+[LIKELY-COMPATIBLE-BUT-VERSION-PINNED]
+
+Evidence supporting compatibility:
+
+- atomspace-pgres CMake requires `FIND_PACKAGE(AtomSpace 5.0.3 CONFIG REQUIRED)`
+  at `CMakeLists.txt:79` and `FIND_PACKAGE(AtomSpaceStorage CONFIG REQUIRED)`
+  at `CMakeLists.txt:88`.
+- atomspace-pgres recent commits explicitly modernized around obsolete APIs:
+  `00a71c0 Avoid using obsolete API`, `931ab42 Remove obsolete API from unit
+  tests`, `ee1940f Really get rid of the DefaultTV`, and `1be943c Port tests
+  away from TruthValues`.
+- atomspace-linas says "TruthValues are now gone" at
+  `opencog/atoms/README.md:103`, while retaining `truth_key` compatibility in
+  `Atom.cc:75-100`.
+- atomspace-pgres still has test/source references to SimpleTruthValue and
+  truth_key compatibility, especially in tests and `SQLValues.cc:592-595`.
+
+Risk:
+
+- pgres is deprecated and old-design; even if it compiles, its own docs
+  discourage new projects.
+- The correct operational claim is "pgres has a real writer", not "pgres is a
+  ready Phase 4 durability layer."
+
+Q11. Linas's stated direction
+-----------------------------
+
+[CLASSICAL-ATOMSPACE-DIRECTION]
+
+The README/TODO/design notes point toward classical AtomSpace/Atomese as an
+in-RAM metagraph KR database, graph rewriting, Values/flows, distributed
+StorageNodes, cross-system bridges, and analytics/introspection.
+
+Evidence:
+
+- README mission: AtomSpace is an in-RAM KR database with query and graph
+  rewriting (`README.md:6-15`).
+- Values/flows are central (`README.md:98-112`, `README.md:424-440`).
+- Distributed processing uses StorageNode and read/write-through proxies
+  (`README.md:548-552`).
+- Cross-system bridges are a goal, but the README says nobody has done the
+  live SQL bridge yet (`README.md:563-572`).
+- It is unclear whether live bridges should use StorageNode or another API
+  (`README.md:572-574`).
+- TODO is research/writing/coding oriented: remove GroupLink/AlwaysLink from
+  pattern matcher via Values, and consider a global thread manager
+  (`TODO:47-54`).
+
+[NOT-FOUND]
+
+No README/TODO/design-note evidence was found that Linas is steering classical
+AtomSpace toward Hyperon Space, Decko sync, or a Phase 4-style bidirectional
+wiki mirror.
+
+Q12. synthesis / recommendation
+-------------------------------
+
+Answers to the Source 3 decision questions:
+
+- Q12.a Switch to classical AtomSpace + pgres? No. Stay Hyperon Space.
+  Classical pgres is a real writer, but deprecated, classical-only, and not
+  Decko-aware.
+
+- Q12.b Borrow Linas's identity model? No for Phase 4. Use Decko card_id/action
+  identity. Classical UUIDs are StorageNode/TLB persistence details; core
+  Handle is not a durable UUID.
+
+- Q12.c Borrow Linas's write-back semantics? Only as design precedent.
+  StorageNode store/remove/fetch shows the shape of durable APIs, but Phase 4
+  should stay with SpaceMut add/remove/replace plus a clean event envelope.
+
+- Q12.d Use cpp-mcp? No unless the service is C++. Use a Python or Rust MCP
+  stack aligned with the mirror/event service language.
+
+Proposed Phase 4 refinement:
+
+1. Decko remains the durable source of truth and emits card/action events.
+2. Mirror worker resolves each event into `{action_type, card_id, before_atom,
+   after_atom, action_id, timestamp}`.
+3. Hyperon Space update:
+   - create -> `space.add(after_atom)`
+   - update -> `space.replace(before_atom, after_atom)`
+   - delete -> `space.remove(before_atom)`
+4. SpaceObserver receives the event synchronously after Source 2 PATCH-1
+   exposes observer registration to Python or an equivalent Rust/C bridge.
+5. Agent-facing MCP publishes resources/tools over the mirror/event state in
+   the implementation language of the service.
+
+Residual risks / next-source handoff
+------------------------------------
+
+- Phase 4 still needs an explicit canonical atom encoding for Decko `card_id`
+  and action identity.
+- Phase 4 still needs the Source 2 Python observer binding (`space_register_observer`)
+  or a Rust/C event-forwarder.
+- No throughput ceilings should be claimed from Source 3. pgres docs provide
+  historical performance numbers, but they are deprecated-backend numbers, not
+  benchmarks for the Phase 4 mirror.
+- Source 5 should decide whether identity metadata lives inside atoms, in a
+  side table, or both.

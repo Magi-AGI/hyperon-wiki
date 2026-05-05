@@ -21,8 +21,9 @@ The role of this file is the **wiki-edit audit trail and engineering-roadmap anc
 | OpenPsi / Motivation | 2026-04-28 | 8 (5 ECAN-cluster carrying V4-1 addendum + 3 new/annotated) | `scripts/archive/openpsi_pilot/source1` … `source4` |
 | AtomSpace Backend Integration | 2026-04-29 | 9 (5 existing + 4 new) | `scripts/archive/atomspace_pilot/source1` … `source4` |
 | Perception / Neural-Symbolic | 2026-05-01 | 6 (3 existing annotated + 3 new); wiki-edit pass closed 2026-05-01 | `scripts/archive/perception_pilot/source1` … `source5` |
+| AtomSpace Integration Phase 4 | 2026-05-05 | 2 (1 new rollup card under `Neoterics+Magus+...` parent + 1 tag subcard) — research-track cluster pilot, not a content pilot | `scripts/archive/atomspace_integration_phase4/source1` … `source7` |
 
-All five are closed for this iteration. Substantive findings live in `HYPERON_CLUSTER_FINDINGS.md` (see header). The wiki-edit audit tables below record which cards in *this* wiki were modified.
+All six are closed for this iteration. Substantive findings live in `HYPERON_CLUSTER_FINDINGS.md` (see header). The AtomSpace Integration Phase 4 pilot is a *research-track* cluster pilot: its primary deliverables are the on-disk Source-1-through-7 reconciliations (locked PATCH set, V7-X carry-forwards, phase-numbering crosswalk) plus a single human-facing rollup card in the Magi Archive `Neoterics+Magus` subtree. It did NOT touch the Hyperon-content cards. The wiki-edit audit tables below record which cards in *this* wiki were modified by the content-track cluster pilots; the Phase 4 pilot has its own short audit row added below.
 
 ---
 
@@ -127,6 +128,63 @@ Total: 6 substantive cards + 3 tag subcards + 1 TOC = 10 wiki writes. All verifi
 - `E:\GitHub\hyperon reference\HYPERON_CLUSTER_FINDINGS.md` — new "Perception / Neural-Symbolic cluster (closed 2026-05-01)" section with 8 cluster-narrative findings (trilateral framing, AtomSpace-Scheme vs MeTTa-runtime stack distinction, Vepstas portfolio mapping, OllamaNode dual characterization, [PARTIAL-FRAGMENTED-REVIVAL] verdict, sandbox-tier nuance, Surface D vocabulary, methodology lock); pointers to extraction archives updated; "Source-text gaps still open" 2013 FISHGRAM entry removed (paper retrieved); "What's next" updated.
 - `CLAUDE.md` (this file) — cluster-pilot status table extended with Perception row (6 cards touched); wiki-edit-audit table populated with 9 actual writes (6 substantive + 3 tag subcards); "Source-text gaps remaining" 2013 FISHGRAM entry removed (paper retrieved at `publication_texts/2013_Goertzel_Sanders_ONeill_Yu_DeSTIN_PLN.pdf`); "What's next" Perception entry removed; Claude-specific references extended.
 
+### AtomSpace Integration Phase 4 cluster pilot (2026-05-05)
+
+This is a **research-track** cluster pilot — a 7-source triangulated extraction that produces the design spec for the Phase 4 implementation track (which runs as a separate parallel workstream consuming this pilot's reconciliations). Unlike PLN/ECAN/OpenPsi/AtomSpace/Perception, this pilot's deliverable is the on-disk reconciliation set, not wiki content updates. The single wiki write below is a human-facing rollup card placed in the Magi Archive `Neoterics+Magus` subtree (where the contractually-rooted 4-phase plan lives).
+
+| Card | ID | Action |
+|---|---|---|
+| Neoterics+Magus+Atomspace Layer - Wiki Integration Plan+Cluster Pilot Findings Summary | 17124 | New RichText card — 7-source rollup, V7-1..V7-5 carry-forwards, locked PATCH set, phase-numbering crosswalk, on-disk archive map |
+| Neoterics+Magus+Atomspace Layer - Wiki Integration Plan+Cluster Pilot Findings Summary+tag | 17125 | Pointer (`ai_generated`) — wiki normalized to `+tags` trailing-s alias on read |
+
+Total: 1 substantive card + 1 tag subcard. Both verified post-write via `get_card`.
+
+**Why a single rollup card and no content-card edits**: this pilot's findings are implementation-facing (mod skeletons, encoders, MCP tools, upstream patches), not wiki-content updates. Per `feedback_research_vs_implementation_workstreams.md`, the cluster-pilot research workstream and the Phase 4 implementation workstream run in parallel. The +AI Draft proposals on Magus cards 11446 + 11448 (V7-3 cognitive-stack reframing + Phase numbering crosswalk) and the direct edits on Workstream-B-authored sibling spec cards 17117 + 17120 (V7-1 auth-on-read promotion, V7-2 subscribe-wording fix, V7-4 stale-pointer fix, R7.Q14 operational gaps) are relayed to the implementation-track session for authoring under user editorial direction; they are NOT in the research-track cluster pilot's edit batch.
+
+**Sources covered**:
+- Source 1 (atomspace-bridge): READ-ONLY-BY-DESIGN, ruled out as Phase 4 substrate.
+- Source 2 (hyperon-space): Phase 4 substrate locked in. PATCH-1 (pybind11 binding for `space_register_observer` at `c/src/space.rs:464-468`) + PATCH-2 (MeTTa replace-atom!) specified.
+- Source 3 (atomspace-linas / cpp-mcp): atomspace-rocks = Phase 5+ primary durability candidate; cpp-mcp ruled out (19 commits behind upstream hkr04/cpp-mcp; transport-layer drift).
+- Source 4 (mork/pathmap/das/rocks): STAY-HYPERON-SPACE-PHASE-4 confirmed; ROCKS-PATH primary / MORK-PATH secondary (delete blocker) / DAS-PATH Phase 6+ for Phase 5+ durability.
+- Source 5 (decko-semantics): PATCH-3 (mirror mod) + PATCH-4 (encoder) specified; D3-1 16-field envelope finalized; integrate_with_delay event hook + Ruby outbox + Python sidecar architecture chosen. V5-PROTOCOL-1..5 promoted (TRACKED_FIELDS ≠ Card::Dirty; codename omission; delayed_jobs not IPC; dual-actor; POLICY-B trash).
+- Source 6 (agent-facing MCP surface): [RUBY-EXTEND-PRIMARY-PHASE-4] + [POLLING-FIRST] + 8-tool PATCH-5 read surface (`query_atoms`, `get_card_atom`, `get_card_provenance`, `list_references`, `list_atoms_by_type`, `atom_types`, `atom_count_by_type`, `space_stats`); 20-field D3-1 (Source 5 16 + agent_session_id, agent_kind, origin_system, origin_request_id); PATCH-6 deferred Phase 5+. V6-PROTOCOL-1 (launcher-aware tool inventory) + V6-PROTOCOL-2 (request-path propagation) promoted; CF5.6.E [CONSTANT-CITED-FOR-IMPLEMENTATION-READINESS] promoted from ≥2-instance criterion.
+- Source 7 (Magus 4-phase plan reconciliation): phase-numbering crosswalk locked (Magus Phase 2 splits into cluster Phase 3 + Phase 4); five V7-X carry-forwards (V7-1 [AUTH-ON-READ-MIRROR] load-bearing pre-implementation gate; V7-2 [CARD-C-PATCH5-SUBSCRIBE-WORDING]; V7-3 [MAGUS-PHASE4-FULL-COGNITIVE-STACK-ASPIRATIONAL]; V7-4 [CARD-D-STALE-MEMORY-POINTER]; V7-5 [D3-1-COUNT-CONVENTION]). [EXTRACTION-COMPLETE].
+
+### Documentation-file edits (this repo, AtomSpace Integration Phase 4 cluster pilot)
+
+- `CLAUDE.md` (this file) — status table extended with AtomSpace Integration Phase 4 row; new audit subsection above; new "Phase 4 architecture lock-in" engineering-roadmap section below; Claude-specific references extended; "What's next" updated.
+- `scripts/archive/atomspace_integration_phase4/source1..7/` — 7 source directories with brief.txt + findings_codex.txt + findings_gemini.txt + findings_reconciled_crossmodel.txt each. The Source 5 reconciliation has v1 + v2 addendum structure. All committed as part of cluster close.
+
+---
+
+## Phase 4 architecture lock-in (this repo's engineering roadmap)
+
+The AtomSpace Integration Phase 4 cluster pilot's primary deliverable is the **co-canonical AtomSpace+Postgres write-through** architecture for `mod/atomspace_mirror/` in this repo. Decko/PostgreSQL stays the source of truth; every non-draft Card mutation is mirrored to a Hyperon Space instance via a Decko-callback-driven event hook. This SUPERSEDES the Phase 3 read-only architecture for the write-through track; Phase 3 (read-only mirror via atomspace-bridge style import) is now itself superseded for the write-through track per Card 17117 §1.
+
+**Locked architecture (Phase 4)**:
+- **Substrate**: Hyperon Space at HEAD (single-process, in-memory) via existing Hyperon Rust/Python bindings. Persistence + distribution = Phase 5+/6+.
+- **Mirror mod**: `mod/atomspace_mirror/` (PATCH-3) — `integrate_with_delay` event subscription on `%i[create update delete]` with `next if action&.draft` filter; outbox ActiveRecord-table backup; recursion guard excludes mirror's own outbox writes.
+- **Encoder**: `card_atom_encoder.rb` (PATCH-4) — DeckoCard (14 fields, codename read from `cards.codename` column at mirror time per V5-PROTOCOL-2), DeckoReference (4-code I/L/Q/P), DeckoProvenance (20-field D3-1 envelope incl. dual-actor `auth_current_id` + `auth_as_id` + 4 Source-6 agent-identity fields).
+- **IPC contract**: stable JSON over HTTP/Unix-socket (primary) between Ruby outbox-drain worker and Python sidecar; outbox table backup. `delayed_jobs.handler` is NOT the IPC contract (V5-PROTOCOL-3).
+- **Idempotency**: keyed by `event_id = "decko:action:<action_id>"`.
+- **Trash**: V5-PROTOCOL-5 [POLICY-B-IS-FAITHFUL-MIRROR] — `Replace(old, new_with_Trash_true)`, NOT `Remove`. MeTTa queries default-filter `(Trash False)`.
+- **Agent MCP surface (PATCH-5)**: 8 read tools on extended Ruby `hyperon-wiki-mcp`; POLLING-FIRST resource subscriptions (subscribe/server-push deferred to PATCH-5 v2 contingent on upstream Ruby `mcp` gem implementing the no-op stubs at `server.rb:113-117`); shared tool registry across the 4 production launchers per V6-PROTOCOL-1.
+- **Agent identity**: D3-1 origin fields threaded end-to-end (JWT `jti` + `session_id`) per V6-PROTOCOL-2.
+
+**Upstream-blocking patches**:
+- **PATCH-1** [REQUIRED, UPSTREAM]: pybind11 binding for `space_register_observer` (the C ABI `extern "C"` exists at `hyperon-experimental/c/src/space.rs:464-468`; the Python binding is the gap). Blocks the Python sidecar's observer subscription model.
+- **PATCH-2** [RECOMMENDED, UPSTREAM]: MeTTa-side `replace-atom!` grounded operator.
+
+**Pre-implementation gate (V7-1)**: `[AUTH-ON-READ-MIRROR]` — PATCH-5 read tools MUST NOT bypass Decko read-rule enforcement. The AtomSpace mirror contains atoms for every card the integrate hook fired on, including private/restricted cards. Phase 4 default options: (c) public-only mirror by filtering restricted cards out of the integrate hook, OR (d) admin-only mirror with no agent reads in Phase 4. (a) full auth-aware encoding is the long-run answer but blocked on Phase 5+ encoder lift. The PATCH-5 implementation must choose between (c) and (d) before exposing reads to non-admin agents.
+
+**Phase 5+/6+ deferrals**:
+- PATCH-6 (agent atom-write surface): Phase 5+; OPTION-C HYBRID (wiki-content writes via Decko; agent-ephemeral atoms direct).
+- Substrate migration: ROCKS-PATH primary / MORK-PATH secondary (delete blocker) for Phase 5+ durability; DAS-PATH for Phase 6+ distribution.
+- Encoder semantic lift: typed editorial-relation atoms for `+expert_reviewed` / `+ai_draft` / `+review_status` (Phase 4 ships nesting via LeftId/RightId).
+- HERMES + AIRIS + MAGUS L2/L3 cognitive-stack architecture: Phase 5+/6+; HERMES proposal text in card 741 (`Neoterics+Metta+drive-docs+Hypergraph-RFP-Lakes`).
+
+The PLN cluster No-Go theorem applies regardless of storage choice — Phase 5+ PLN-over-AtomSpace must be characterized as "semantic queries that PostgreSQL cannot trivially answer," NOT as global PLN inference.
+
 ---
 
 ## Phase 3 architecture lock-in (this repo's engineering roadmap)
@@ -153,6 +211,7 @@ Each cluster pilot's per-source brief + per-model findings + cross-model reconci
 - **ECAN**: Source 4 V0-1 reconciliation (broader-OpenCog ECAN consumer disambiguator) + Source 3 V0-1 reconciliation (URE STI source-selection lifecycle).
 - **OpenPsi**: Source 4 V4-1 reconciliation (caller-analysis time-indexing — OpenPsi default-selector STI 2016-05/2016-11 lifecycle) + Source 3 reconciliation (HYBRID/PAPER-LEANING equation tally).
 - **AtomSpace**: Source 4 reconciliation Sections A–M plus Bottom Line (canonical integration design memo, R4.B4).
+- **AtomSpace Integration Phase 4**: Source 5 v1+v2 reconciliation (Decko-side mirror spec; PATCH-3 + PATCH-4 + V5-PROTOCOL-1..5) + Source 6 reconciliation (agent-MCP surface; PATCH-5 + V6-PROTOCOL-1/2 + CF5.6.E) + Source 7 reconciliation (phase numbering crosswalk, V7-1 [AUTH-ON-READ-MIRROR] + V7-2..V7-5; cluster-pilot closure record).
 
 The full source-by-source breakdown (which clones, which commit SHAs) is documented in `HYPERON_CLUSTER_FINDINGS.md` "Pointers to extraction archives" section.
 
@@ -224,14 +283,17 @@ Claude memory at `C:\Users\Lake\.claude\projects\E--GitHub-Magi-AGI-hyperon-wiki
 - `project_openpsi_cluster_pilot_2026_04_28.md` — OpenPsi cluster pilot summary + key SHAs + archive paths
 - `project_atomspace_cluster_pilot_2026_04_29.md` — AtomSpace Backend Integration cluster pilot summary; four-layer taxonomy; Phase 3 READONLY-ATOMSPACE-BRIDGE lock-in; key SHAs; archive paths
 - `project_perception_pilot_2026_05_01.md` — Perception/Neural-Symbolic cluster pilot summary; trilateral framing; AtomSpace-Scheme vs MeTTa-runtime stack distinction; Linas Vepstas Hyperon-era portfolio mapping; key SHAs; archive paths
+- `project_atomspace_phase4_pilot_2026_05_05.md` — AtomSpace Integration Phase 4 cluster pilot summary (research-track 7-source pilot closed); locked PATCH set (PATCH-1..PATCH-6); V7-1..V7-5 carry-forwards (auth-on-read pre-implementation gate; subscribe-wording fix; cognitive-stack reframing; stale-pointer; D3-1 count-convention); phase-numbering crosswalk; rollup card 17124
 - `feedback_gemini_file_identity_verification.md` — CF5.6 cluster-pilot default: verify Gemini file-existence claims via ls/Glob before adoption (8/25 dissents = 32% Gemini source-location/file-identity drift across 5 pilots)
+- `feedback_research_vs_implementation_workstreams.md` — research and implementation are separate parallel workstreams; do not collapse one into the other without owner authorization (Phase 4 program 2026-05-04 incident)
+- `feedback_parallel_claude_handoff.md` — two Claude sessions in same project share memory + compaction framing → identical drift; ask before tool calls
 - `project_user_loving_ai_ghost_history.md` — user has 18 commits in `leungmanhin/loving-ai-ghost`; defer to user recollection on Ghost/OpenPsi/STI design intent
 - `reference_wiki_mcp_quirks.md` — wiki MCP operational quirks
 - `project_repo_orientation_docs.md` — orientation-doc workflow
 - `project_wiki_quality_bar.md` — Ben Goertzel approval bar
 
 For multi-model continuity, the canonical record lives:
-- in this repo at `scripts/archive/{pln,ecan,openpsi,atomspace,perception}_pilot/` (extraction archives) and the wiki itself (cards listed in the audit tables above);
+- in this repo at `scripts/archive/{pln,ecan,openpsi,atomspace,perception}_pilot/` and `scripts/archive/atomspace_integration_phase4/` (extraction archives) and the wiki itself (cards listed in the audit tables above);
 - in `E:\GitHub\hyperon reference\HYPERON_CLUSTER_FINDINGS.md` (substantive source-code findings, cross-model-readable);
 - in `E:\GitHub\Magi-AGI\hyperon-wiki-mcp\SERVER-BUGS.md` (MCP bugs and operational conventions).
 
@@ -239,8 +301,10 @@ For multi-model continuity, the canonical record lives:
 
 ## What's next (post-pilot work)
 
-The PLN, ECAN/Attention, OpenPsi/Motivation, AtomSpace Backend Integration, and Perception/Neural-Symbolic cluster pilots are closed (2026-04-25, 2026-04-26, 2026-04-28, 2026-04-29, 2026-05-01 respectively). Other clusters remain (each its own multi-source pilot):
+The PLN, ECAN/Attention, OpenPsi/Motivation, AtomSpace Backend Integration, Perception/Neural-Symbolic, and AtomSpace Integration Phase 4 cluster pilots are closed (2026-04-25, 2026-04-26, 2026-04-28, 2026-04-29, 2026-05-01, 2026-05-05 respectively). Other clusters remain (each its own multi-source pilot):
 
-- **MeTTa runtime** (`hyperon-experimental`, `MeTTa-IL`, `PeTTa`, MORK production angle — note: substantial MORK + AtomSpace + DAS coverage now lives in the AtomSpace Backend Integration cluster pilot 2026-04-29; residual MeTTa-runtime-specific topics include MeTTa-IL semantics, PeTTa runtime closure, and MORK-server deployment topology beyond what the AtomSpace pilot covered).
+- **MeTTa runtime** (`hyperon-experimental`, `MeTTa-IL`, `PeTTa`, MORK production angle — note: substantial MORK + AtomSpace + DAS coverage now lives in the AtomSpace Backend Integration cluster pilot 2026-04-29 + AtomSpace Integration Phase 4 cluster pilot 2026-05-05; residual MeTTa-runtime-specific topics include MeTTa-IL semantics, PeTTa runtime closure, and MORK-server deployment topology beyond what the AtomSpace pilots covered).
 - **Cross-org sweeps** (asi-alliance, fetchai, F1R3FLY-io, Rejuve, Xcceleran-do, gitlab.com/nunet) — note: `hansonrobotics/*` was substantively covered by the OpenPsi cluster pilot Source 4 (2026-04-28) and residual Hanson-era post-2019 perception utilities by the Perception cluster pilot Source 5 (2026-05-01); residual non-OpenPsi-non-perception Hanson repos may still need a separate sweep.
-- **Phase 3 READONLY-ATOMSPACE-BRIDGE prototype build** — engineering work, not an extraction pilot; benchmarks decide between `atomspace-bridge` import and `mork_ffi` + `mork_loader.py` mechanism under the read-only umbrella.
+- **Phase 4 implementation track** — engineering work consuming the AtomSpace Integration Phase 4 cluster pilot's reconciliations as the locked spec. Runs as a SEPARATE parallel workstream per `feedback_research_vs_implementation_workstreams.md`. Deliverables: `mod/atomspace_mirror/` (PATCH-3 + PATCH-4), Ruby outbox-drain worker, Python sidecar, agent-MCP atom surface (PATCH-5), upstream PATCH-1 + PATCH-2. PATCH-1 is upstream-blocking. V7-1 [AUTH-ON-READ-MIRROR] is the load-bearing pre-implementation gate before exposing PATCH-5 reads to non-admin agents.
+- **Phase 3 READONLY-ATOMSPACE-BRIDGE prototype build** — engineering work, not an extraction pilot; benchmarks decide between `atomspace-bridge` import and `mork_ffi` + `mork_loader.py` mechanism under the read-only umbrella. Note: superseded for the write-through track by the Phase 4 architecture above; Phase 3 may still be relevant as an interim read-only delivery if the Phase 4 implementation track is delayed.
+- **Phase 5+/6+ design pass** — substrate migration to atomspace-rocks (primary) / MORK (secondary, delete blocker) / DAS (Phase 6+); HERMES + AIRIS + MAGUS L2/L3 cognitive-stack architecture. Future cluster pilot or design pass; out of scope for the current iteration.

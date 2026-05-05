@@ -1,0 +1,937 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 6
+Agent-facing MCP surface — server-stack choice, atom-CRUD tools/resources,
+agent identity in D3-1, Phase-4-read / Phase-5+-write split, recursion guard
+================================================================================
+
+Date opened:    2026-05-04
+Cluster pilot:  atomspace_integration_phase4
+Source #:       6 of 7
+Orchestrator:   Claude (this session)
+Cross-model reviewers: Codex + Gemini (separate sessions)
+Reconciliation deliverable: findings_reconciled_crossmodel.txt
+Spec input:     feeds the eventual SPEC_DRAFT.md at cluster close.
+
+This is the AGENT-FACING source. Sources 1-5 closed:
+  - Source 1: atomspace-bridge — read-only by design.
+  - Source 2: Hyperon Space (PATCH-1 / PATCH-2) is the Phase 4 substrate.
+  - Source 3: atomspace-rocks is Phase 5+ primary durability candidate;
+              cpp-mcp ruled out (19 commits behind upstream; transport-
+              layer mismatch).
+  - Source 4: MORK / PathMap / DAS / atomspace-rocks substrate audit;
+              STAY-HYPERON-SPACE-PHASE-4 confirmed.
+  - Source 5: Decko-side semantics — DeckoCard + DeckoReference +
+              DeckoProvenance atom encoding; integrate_with_delay event
+              hook; D3-1 16-field envelope; POLICY-B trash; HTTP/Unix-
+              socket IPC contract; PATCH-3 + PATCH-4.
+
+Source 6 closes the AGENT half: how agents (Claude / Codex / Gemini /
+ASI Create / Loving-AI Ghost / future agent runtimes) discover, query,
+subscribe to, and (Phase 5+) write to the Hyperon Space mirror via MCP.
+
+Specifically, the brief asks:
+
+  (i)   What MCP server stack hosts the atom surface?
+        Choices: Ruby (extend hyperon-wiki-mcp), Python (mcp SDK or
+        fastmcp), Rust (rmcp). cpp-mcp ruled out by Source 3.
+
+  (ii)  What are the Phase 4 read-only tools/resources/prompts?
+        Constraints: Source 5's atom encoding (DeckoCard /
+        DeckoReference / DeckoProvenance) is the data model;
+        Source 5's POLICY-B (Trash field reflects state) is the
+        default filter.
+
+  (iii) How does agent identity extend D3-1?
+        V5-PROTOCOL-4's dual-actor field rule (auth_current_id vs
+        auth_as_id) suggests agent_id vs proxy_id parallel.
+
+  (iv)  How does the Phase-4-read / Phase-5+-write promotion work?
+        What gates the move from query-only to direct atom writes?
+
+  (v)   What's the recursion guard for agent → wiki write → mirror →
+        SpaceEvent → agent (subscribed) feedback loop?
+
+This source feeds Source 7 (Magus plan reconciliation) — Source 7
+checks the Phase 4 mirror + agent-MCP design against the Magus 4-phase
+plan in cards 11446 + 11448 (per project_magus_atomspace_plan_2026_03_11.md
+memory). Source 6 produces PATCH-5 (Phase 4 read-only MCP atom surface)
+and the Phase 5+ write design that Source 7 cross-references.
+
+--------------------------------------------------------------------------------
+1. CONTEXT
+--------------------------------------------------------------------------------
+
+Phase 4 baseline (locked in by Sources 1+2+3+4+5):
+  - Architecture:  Option D (Decko-callback-driven Hyperon-Space mirror).
+  - Substrate:     Hyperon Space at HEAD; in-memory; STAY confirmed.
+  - Mirror:        hyperon-wiki/mod/atomspace_mirror/ (PATCH-3) +
+                   card_atom_encoder (PATCH-4); integrate_with_delay
+                   event hook.
+  - IPC:           Stable JSON over HTTP / Unix-socket; outbox table
+                   backup; delayed_jobs is Rails-side queue, NOT IPC.
+  - Atoms:         DeckoCard (14 fields) + DeckoReference (4-code
+                   ref_type) + DeckoProvenance (16-field D3-1 envelope).
+  - Identity:      (Id <card_id>) numeric; Trash field reflects state.
+  - Mutations:     Hyperon SpaceEvent {Add, Remove, Replace} per
+                   non-draft Card::Action.
+  - Provenance:    D3-1 16-field envelope; dual-actor (auth_current_id
+                   AND auth_as_id) for human/bot proxy distinction.
+
+Phase 4 OPEN questions inherited (Source 6 owns):
+  (i)  MCP server stack: Ruby/Python/Rust? In-process or sidecar?
+       Co-located with mirror or separate?
+  (ii) Agent identity model: how does an agent (LLM session) get an
+       atom-side identity that integrates with D3-1's actor framework?
+  (iii) Phase-4-read / Phase-5+-write semantic split.
+  (iv) Recursion guard for agent-driven feedback loops.
+
+Source 6 does NOT design the substrate (Sources 2+3+4 closed it). Source
+6 does NOT design the mirror or atom encoding (Source 5 closed both).
+Source 6 does NOT reconcile against the Magus 4-phase plan; that's
+Source 7.
+
+--------------------------------------------------------------------------------
+2. INHERITED CONCLUSIONS (do not re-derive)
+--------------------------------------------------------------------------------
+
+From Source 1 (atomspace-bridge, closed 2026-05-03):
+  - Bridge is [READ-ONLY-BY-DESIGN] [BULK-IMPORT-THEN-READ].
+  - Does not satisfy Phase 4 write-through.
+
+From Source 2 (hyperon-space, closed 2026-05-04):
+  - Hyperon Space is the canonical Phase 4 substrate.
+  - SpaceMut::add/remove/replace at hyperon-space/src/lib.rs:237/255/275.
+  - SpaceObserver/SpaceEvent/SpaceCommon at lib.rs:22-126.
+  - PATCH-1 [REQUIRED]: pybind11 binding for `space_register_observer`.
+  - PATCH-2 [RECOMMENDED]: MeTTa-side `replace-atom!` grounded op.
+  - Single-threaded Rc/RefCell.
+
+From Source 3 (atomspace-linas, closed 2026-05-04):
+  - cpp-mcp at HEAD is 19 commits behind upstream hkr04/cpp-mcp;
+    transport-layer drift; ruled out for Phase 4 by V0-1 + V0-2 carry-
+    forwards.
+  - D3-1 metadata discipline finalized in Source 5.
+
+From Source 4 (mork_pathmap_das_rocks, closed 2026-05-04):
+  - V4-PROTOCOL-4: brief-flagged "verify X" notes are extraction
+    obligations, not background. Source 6 brief honors this strictly.
+
+From Source 5 (decko_semantics, closed 2026-05-04):
+  - PATCH-3 (mirror mod) + PATCH-4 (encoder) are the Phase 4 Decko-side
+    deliverables.
+  - Atom shape: DeckoCard (14 fields) + DeckoReference (4-code
+    ref_type) + DeckoProvenance (16-field D3-1 envelope).
+  - V5-PROTOCOL-4 [DUAL-ACTOR-FIELD]: D3-1 carries auth_current_id AND
+    auth_as_id; the audit trail's actor_id captures only Auth.current_id;
+    proxy persona is preserved via Card::Auth.serialize at delivery
+    time.
+  - V5-PROTOCOL-5 [POLICY-B-IS-FAITHFUL-MIRROR]: trash flips emit
+    Replace, not Remove; MeTTa queries default-filter `(Trash False)`.
+  - integrate_with_delay job runs in Ruby worker (Cardio::Job) and
+    produces a stable JSON payload to Hyperon sidecar. delayed_jobs
+    handler is NOT the IPC contract.
+
+Outside Source 6 scope (covered elsewhere):
+  - Sources 1-5: see above.
+  - Source 7: Magus plan reconciliation; SPEC_DRAFT.md assembly.
+
+--------------------------------------------------------------------------------
+3. REPO STATE SNAPSHOT (V3-PROTOCOL-1-verified during brief drafting)
+--------------------------------------------------------------------------------
+
+All paths in this section verified via Bash/Glob/Read during drafting.
+Reviewers should still re-verify any path before citing
+(per V4-PROTOCOL-4).
+
+Repo 1: hyperon-wiki-mcp (existing Ruby MCP server)
+  Path:        E:\GitHub\Magi-AGI\hyperon-wiki-mcp\
+  Remote:      origin = https://github.com/Magi-AGI/hyperon-wiki-mcp.git
+                magi-mcp = https://github.com/Magi-AGI/magi-archive-mcp.git
+                  (sibling fork; Magi Archive deck variant)
+  HEAD commit: d37e518615e8851bec1f1f8b644db637e6088755
+  HEAD date:   2026-04-09 13:45:39 -0700
+  HEAD author: Nemquae
+  HEAD msg:    "fix: Correct search_cards search_in default and
+                list_children description"
+  Status:      ACTIVE primary work-tree.
+
+  Top-level files of interest:
+    MCP-SPEC.md           MCP protocol contract reference.
+    MCP_SERVER.md         Server design doc.
+    PENDING-WORK.md       Open work items.
+    SERVER-BUGS.md        Operational quirks (cited in CLAUDE.md;
+                           5 bugs documented; #4 + #5 open).
+    Gemfile / Gemfile.lock  → mcp 0.11.0; puma ~> 6.0.
+    hyperon-wiki-mcp.gemspec  → "Ruby MCP (Model Context Protocol)
+                                 server providing AI agents with
+                                 structured JSON API access to
+                                 wiki.hyperon.dev".
+
+  Subdirectories of interest:
+    bin/                   25+ install/launch scripts (Claude Code,
+                           Claude Desktop, Codex, Cursor, Gemini, etc.)
+    lib/hyperon/wiki/mcp/  Source tree (verified file list below).
+    spec/                  Test specs.
+    archive/               Older/deprecated code.
+    scripts/               Operational scripts.
+
+  lib/ tree (verified at HEAD d37e518; full count = 14 .rb files at
+  level ≤ 2, plus 40 tool files under server/tools/):
+    auth.rb                       JWT/auth helpers.
+    client.rb              419 ln Decko HTTP client.
+    config.rb                     Server config.
+    oauth/                        9 OAuth-related files (client_cards,
+                                  credential_store, login_page,
+                                  pkce_verifier, rate_limiter,
+                                  token_issuer).
+    rack_app.rb           1027 ln Rack/Puma HTTP app.
+    schema_config.rb              MCP tool schema declaration helpers.
+    server/error_formatter.rb     MCP-side error formatting.
+    server/tools/                 40 individual MCP tool classes.
+    tools.rb              2372 ln Tool aggregator (called from
+                                   rack_app via server_context[:magi_tools]).
+    version.rb                    Gem version.
+
+  Tool inventory (40 tools at HEAD d37e518; counted via
+  `find lib/hyperon/wiki/mcp/server/tools -type f -name '*.rb' | wc -l`):
+    READ tools (verified by filename pattern):
+      fetch, find_in_card, get_card, get_card_history, get_card_outline,
+      get_card_stats, get_file_url, get_relationships, get_revision,
+      get_tags, get_types, list_children, list_trash, render_content,
+      run_query, search_by_tags, search_cards, suggest_tags, spoiler_scan
+      (Note: spoiler_scan reads card content for spoiler tags.)
+    WRITE tools (verified by filename pattern):
+      append_content, auto_link, batch_cards, create_card,
+      create_weekly_summary, delete_card, find_and_replace,
+      prepend_content, rename_card, restore_card, template_card,
+      update_card, update_section, upload_file, upload_from_url,
+      submit_feedback
+    ADMIN tools:
+      admin_backup, health_check
+    OPERATIONAL:
+      diff_card
+
+  MCP framework: ::MCP::Tool subclass pattern (verified at
+  lib/hyperon/wiki/mcp/server/tools/create_card.rb:12
+  `class CreateCard < ::MCP::Tool` with:
+    description "..."          MCP description string for tool listing.
+    annotations(read_only_hint: ..., destructive_hint: ...)
+                                 Tool annotations.
+    input_schema(properties: { ... }, required: [ ... ])
+                                 JSON Schema for tool args.
+    class << self; def call(...); ::MCP::Tool::Response.new([{...}]);
+                                 Tool entry point; receives
+                                 server_context: with :magi_tools
+                                 client.
+
+  Cluster-pilot relevance: hyperon-wiki-mcp is the EXISTING agent-MCP
+  surface. It currently exposes Decko-card-CRUD via Decko HTTP API.
+  Source 6 must decide: (a) extend this server with atom-CRUD tools
+  (Ruby), or (b) add a parallel server (Python or Rust) for atom-CRUD,
+  and leave Decko-CRUD as-is.
+
+Repo 2: hyperon-wiki (the Decko deck; Phase 4 mirror lives here)
+  Path:        E:\GitHub\Magi-AGI\hyperon-wiki\
+  HEAD commit: a1a9e62 (2026-05-01, Nemquae)
+  Status:      ACTIVE.
+  Phase 4 additions (per Source 5): PATCH-3 mod/atomspace_mirror/ +
+  PATCH-4 card_atom_encoder. Source 6 PATCH-5 may live in this repo
+  (if Ruby-MCP-extension chosen) or in hyperon-wiki-mcp.
+
+Repo 3: hyperon-experimental (the Hyperon runtime)
+  Path:        E:\GitHub\hyperon reference\hyperon-experimental\
+  HEAD commit: 3f76dc46 ("Merge pull request #1075 from
+                vsbogd/update-version")
+  Status:      ACTIVE upstream.
+  builtin_mods/ at HEAD lib/src/metta/runner/builtin_mods/ contains:
+    catalog.rs, das.rs, fileio.rs, json.rs, mod.rs, random.rs, skel.rs.
+  [VERIFIED via Bash find]: NO mcp.rs builtin module at HEAD.
+    Implication: agent-MCP-as-MeTTa-builtin is NOT pre-existing in
+    upstream Hyperon. Phase 4 cannot piggyback an existing MeTTa
+    grounded-op surface; the agent surface is OUT-OF-PROCESS.
+  [VERIFIED via Grep "MCP|mcp" hyperon-experimental → 0 files]:
+    upstream Hyperon has NO MCP coupling whatsoever. The agent
+    surface is layered on top of Hyperon at the integration tier.
+  Cargo.toml dependencies at HEAD lib/Cargo.toml:1-40 list das = 1.0.2
+  (DAS bus client), but NO rmcp/mcp/fastmcp dependency.
+
+Repo 4: cpp-mcp (Linas's fork — already ruled out by Source 3)
+  Path:        E:\GitHub\hyperon reference\cpp-mcp\
+  HEAD commit: 86856a2 ("README: add note for agent example")
+  Origin:      https://github.com/linas/cpp-mcp.git
+  Upstream:    https://github.com/hkr04/cpp-mcp.git
+  Status:      Source 3 V0-1 carry-forward: 19 commits behind upstream.
+                Transport-layer mismatch with current MCP spec.
+  Cluster-pilot relevance: REFERENCE ONLY for Source 6. Not a
+  candidate stack at HEAD.
+
+Repo 5: candidate Python MCP SDK (NOT cloned locally; verified upstream
+        package names only)
+  Package:     `mcp` (Anthropic's official Python SDK,
+                https://github.com/modelcontextprotocol/python-sdk)
+  Package:     `fastmcp` (community wrapper,
+                https://github.com/jlowin/fastmcp)
+  Status:      reviewers should consult upstream READMEs and PyPI for
+               version-pin recommendations; orchestrator has not
+               verified upstream HEAD.
+
+Repo 6: candidate Rust MCP SDK (NOT cloned locally; verified upstream
+        package name only)
+  Package:     `rmcp` (https://github.com/modelcontextprotocol/rust-sdk)
+  Status:      reviewers should consult upstream README + crates.io
+               for version-pin recommendations; orchestrator has not
+               verified upstream HEAD.
+  Phase 4 implication if chosen: rmcp links into the Hyperon Rust
+  crate directly; PATCH-1 pybind11 work would be replaced (or
+  paralleled) by direct Rust-to-Rust SpaceObserver subscription.
+  This is the "in-process Hyperon" alternative to the
+  Source 5 [HTTP-OR-UNIX-SOCKET-PRIMARY] sidecar.
+
+--------------------------------------------------------------------------------
+4. KEY FILES INVENTORY (V3-PROTOCOL-1-verified during brief drafting)
+--------------------------------------------------------------------------------
+
+For Q1 (existing MCP tool inventory):
+  hyperon-wiki-mcp/lib/hyperon/wiki/mcp/tools.rb (2372 lines)
+  hyperon-wiki-mcp/lib/hyperon/wiki/mcp/rack_app.rb (1027 lines)
+  hyperon-wiki-mcp/lib/hyperon/wiki/mcp/client.rb (419 lines)
+  hyperon-wiki-mcp/lib/hyperon/wiki/mcp/server/tools/*.rb (40 files)
+  hyperon-wiki-mcp/lib/hyperon/wiki/mcp/server/error_formatter.rb
+  hyperon-wiki-mcp/lib/hyperon/wiki/mcp/auth.rb
+  hyperon-wiki-mcp/lib/hyperon/wiki/mcp/oauth/{client_cards,
+                                                  credential_store,
+                                                  login_page,
+                                                  pkce_verifier,
+                                                  rate_limiter,
+                                                  token_issuer}.rb
+  hyperon-wiki-mcp/MCP-SPEC.md
+  hyperon-wiki-mcp/MCP_SERVER.md
+  hyperon-wiki-mcp/SERVER-BUGS.md
+  hyperon-wiki-mcp/PENDING-WORK.md
+  hyperon-wiki-mcp/Gemfile.lock (mcp 0.11.0)
+  hyperon-wiki-mcp/hyperon-wiki-mcp.gemspec
+
+For Q2 (server stack candidate evaluation):
+  Ruby:    hyperon-wiki-mcp's `mcp` gem at v0.11.0 (Gemfile.lock).
+            Tool class pattern verified at create_card.rb:12.
+  Python:  upstream `mcp` SDK (modelcontextprotocol/python-sdk).
+            Reviewers verify upstream HEAD.
+  Python:  upstream `fastmcp` package.
+            Reviewers verify upstream HEAD.
+  Rust:    upstream `rmcp` crate.
+            Reviewers verify upstream HEAD.
+  cpp-mcp: ruled out by Source 3 V0-1 (19 commits behind).
+
+For Q3 (agent identity in D3-1):
+  Source 5 D3-1 envelope (16 fields finalized):
+    source, event_schema_version, event_id, action_id, act_id,
+    super_action_id, action, draft, card_id, card_key, actor_id,
+    auth_current_id, auth_as_id, acted_at, ip_address, stage,
+    changes
+  Phase 5+ extensions noted in Source 5 Q7:
+    agent_kind ∈ {human | bot | agent_mcp | system}
+    agent_session_id (MCP session token)
+  Source 6 finalizes how agent_id, agent_session_id, proxy_id (and
+  the agent_kind enum) are minted, propagated, and recorded.
+
+For Q4 (Phase-4-read / Phase-5+-write split):
+  Source 5 Q12 verdict: "MCP agent-write surface design (consumes the
+  V1 atoms specified here; extends D3-1 with agent identity)."
+  Phase 4 default scope: agents READ atoms (queries, subscriptions
+  to SpaceEvents). Phase 5+ promotes to WRITE (replace-atom!,
+  agent-only ephemeral atoms).
+  Source 6 must define: gating criteria for promotion; what kinds of
+  atoms agents can write in Phase 5+; whether agent writes go via
+  Decko HTTP (preserving Source 5 source-of-truth invariant) or
+  direct to SpaceMut (breaking it for ephemeral atoms only).
+
+For Q5 (read-tool surface):
+  Hyperon Space query API at hyperon-experimental/lib/src/space.rs
+  (Source 2 finding); MeTTa-side query primitives at runtime/space
+  module. Tool-call interface produced by the chosen MCP framework.
+  Decko-side existing query tools (run_query, search_cards, etc.)
+  are MODELS for the tool surface but NOT the substrate; atom queries
+  bypass Decko HTTP.
+
+For Q6 (resource surface):
+  MCP resources have URI schemes. Phase 4 candidate URIs:
+    hyperon://atoms/card/<card_id>
+    hyperon://atoms/card/<card_id>/refs
+    hyperon://atoms/provenance/<event_id>
+  Reviewers propose canonical scheme; Source 7 cross-references with
+  Magus card 11448's per-entry +convention pattern (per
+  project_magus_atomspace_plan_2026_03_11.md memory).
+
+For Q7 (event subscription transport):
+  MCP supports tool calls (request/response) and resources
+  (request/response with optional subscriptions). MCP 0.x server-side
+  push for resource updates uses notifications/resources/updated and
+  notifications/resources/list_changed.
+  Reviewers verify the `mcp` Ruby gem 0.11.0's actual support for
+  resource subscriptions (`mcp` gem README / source). For Phase 4,
+  agents subscribe to a resource (e.g., card+id) and the MCP server
+  pushes notifications when SpaceEvents update the underlying atom.
+  Transport: HTTP/SSE if `mcp` gem supports it; WebSocket if not;
+  long-poll fallback.
+
+For Q8 (recursion guard):
+  Source 5 Q9 already specifies a recursion guard for Decko-mirror
+  feedback loops. Source 6 extends:
+    - Phase 4 (agent reads only): no recursion risk; agent reading
+      a SpaceEvent does NOT trigger another mirror write.
+    - Phase 5+ (agent writes): if agent calls a write tool that goes
+      VIA DECKO (preserving source-of-truth), the write triggers
+      mirror, fires SpaceEvent, agent (subscribed) sees its own
+      write echoed back. Need ORIGIN MARKING in D3-1 envelope:
+      agent_session_id present means "this event originated from an
+      agent write," allowing the agent's own subscription handler
+      to filter or deduplicate.
+    - Phase 5+ direct-SpaceMut: agent writes ephemeral atoms directly;
+      mirror NOT involved; recursion impossible by separation.
+
+For Q9 (auth surface):
+  hyperon-wiki-mcp/lib/hyperon/wiki/mcp/auth.rb implements JWT/RS256.
+  Three roles per gemspec: user, gm, admin. OAuth/PKCE in oauth/
+  subdirectory.
+  Source 6 question: does the atom-MCP surface inherit this auth (same
+  JWT, same role model, role extension to agent_atomspace_read /
+  agent_atomspace_write), or does it use a separate mechanism (e.g.,
+  MCP session token from a sidecar exchange)?
+
+For Q10 (Phase 5+ agent-write semantics):
+  Two options:
+    OPTION-A [WRITE-VIA-DECKO]: agent write tool → Decko HTTP API
+      → Decko Card.save! → mirror fires → SpaceEvent → atom updates.
+      Preserves Source 1+5 source-of-truth invariant. Decko stays
+      authoritative.
+    OPTION-B [DIRECT-SPACEMUT]: agent write tool → SpaceMut::add/
+      remove/replace directly → no Decko involvement.
+      Breaks source-of-truth invariant for atoms NOT in Decko.
+      Useful ONLY for agent-ephemeral atoms (reasoning traces,
+      temporary scratch atoms, NOT mirroring user-facing wiki
+      content).
+    OPTION-C [HYBRID]: agent writes to wiki content go via Decko;
+      agent-ephemeral atoms (under e.g. (Agent <agent_id> ...) shape)
+      go direct.
+  Source 6 must decide AND defend with citations to Source 5's
+  source-of-truth framing.
+
+For Q11 (cardtype introspection):
+  DeckoCard atoms carry TypeName per Source 5 Q6. Tool surface:
+    list_atoms_by_type(TypeName="Draft", limit=100) → atom IDs.
+  Existing wiki-MCP analog: get_types tool (lib/hyperon/wiki/mcp/
+  server/tools/get_types.rb) returns Decko cardtype list. Source 6
+  may parallel this for atom-side type introspection.
+
+For Q12 (synthesis):
+  Combines Q1-Q11 into Phase 4 PATCH-5 (read-only atom MCP surface)
+  + Phase 5+ write design.
+
+--------------------------------------------------------------------------------
+5. RESEARCH QUESTIONS
+--------------------------------------------------------------------------------
+
+Q1. EXISTING MCP SURFACE INVENTORY.
+    Establish baseline: what does the agent surface look like TODAY
+    (pre-Phase-4)?
+      (a) Confirm hyperon-wiki-mcp's tool surface count (40),
+          framework (`mcp` gem 0.11.0 Ruby), transport (Rack/Puma
+          HTTP, `bin/mcp-server-http` etc.), client (Decko HTTP API
+          via lib/hyperon/wiki/mcp/client.rb).
+      (b) Categorize tools: read / write / admin / operational.
+      (c) Document the auth surface: JWT (auth.rb), 3-role (user/gm/
+          admin per gemspec line 17), OAuth (lib/oauth/*).
+      (d) Note SERVER-BUGS.md operational quirks (Bug #4 spurious
+          "already exists"; Bug #5 restore_card on +tag Pointer).
+          These affect Phase 4 PATCH-5 design — atom-side tools must
+          not inherit the same quirks.
+      (e) Confirm: today's surface is DECKO-CARD-CRUD-VIA-HTTP, NOT
+          atom-CRUD. Phase 4's atom-MCP is NEW work, not refactor.
+
+Q2. CHOICE OF MCP SERVER STACK.
+    Three real candidates after Source 3 ruled out cpp-mcp:
+      (a) [RUBY-EXTEND]: extend hyperon-wiki-mcp with new ::MCP::Tool
+          subclasses for atom-CRUD. Same gem, same auth, same
+          deployment. Agents see one MCP server with both Decko-CRUD
+          and atom-query tools.
+            Pros: single auth surface; reuses 40-tool registration
+                  pattern; same agents already authenticated;
+                  deployment is one Rack app.
+            Cons: Ruby has no native Hyperon binding (PATCH-1 is
+                  pybind11/Python, not Ruby); atom queries must go
+                  via Hyperon-side service over HTTP/Unix-socket
+                  (echoing Source 5 sidecar IPC); 2 hops for atom
+                  reads (agent → Ruby MCP → Hyperon sidecar) where
+                  1 hop would suffice.
+      (b) [PYTHON-PARALLEL]: new Python MCP server using upstream
+          `mcp` SDK or `fastmcp`, in-process with the Hyperon Python
+          bindings (PATCH-1 enables `space_register_observer`; the
+          Python server binds atoms directly via the existing
+          hyperon Python module).
+            Pros: 1 hop for atom reads; PATCH-1 already required by
+                  Source 2; matches the in-process subscriber model
+                  (agent → Python MCP → SpaceMut).
+            Cons: separate auth; agents must authenticate twice
+                  (one for wiki-CRUD via hyperon-wiki-mcp, one for
+                  atom-CRUD via the Python server); two deployment
+                  units; auth bridging needed.
+      (c) [RUST-PARALLEL]: new Rust MCP server using upstream `rmcp`
+          crate, linked into the hyperon Rust crate directly. Skips
+          PATCH-1 entirely (Rust-to-Rust SpaceObserver).
+            Pros: simplest performance path; no Python intermediary;
+                  no PATCH-1 dependency for the atom surface.
+            Cons: separate auth (worse than Python — Rust likely
+                  needs JWT verification logic re-implemented vs
+                  reusing the Ruby auth gems); two languages to
+                  maintain; SpaceObserver lifetime/aliasing in Rust
+                  is non-trivial (Source 2's Rc/RefCell single-thread
+                  invariant must be respected).
+      Decision criteria (reviewers choose):
+        (i)  PATCH-1 dependency. PYTHON-PARALLEL inherits PATCH-1's
+             scope; RUST-PARALLEL avoids it but adds rmcp+JWT cost.
+        (ii) Agent authentication overhead. RUBY-EXTEND wins.
+        (iii) Deployment complexity. RUBY-EXTEND wins; PARALLEL
+              options need a second service.
+        (iv) Latency. PYTHON-PARALLEL or RUST-PARALLEL wins (1 hop).
+        (v)  Recursion-guard simplicity. Same across choices —
+             D3-1 origin-marking handles agent feedback regardless.
+
+      Reviewers must identify the load-bearing constraint and rank.
+      Predicted Phase 4 default (orchestrator low-confidence):
+      RUBY-EXTEND for Phase 4 read-only (lower deployment cost,
+      reuses auth); PYTHON-PARALLEL for Phase 5+ if direct
+      SpaceMut writes need to be exposed.
+
+Q3. AGENT IDENTITY IN D3-1.
+    V5-PROTOCOL-4 [DUAL-ACTOR-FIELD] established that auth_current_id
+    AND auth_as_id are SEPARATE D3-1 fields. Source 6 extends:
+      (a) Agents are NOT Decko users in v1 (per Source 5 Q10.c).
+          What is agent_id, then?
+            Option-1: agent_id is a synthetic numeric (NOT a Decko
+                      card_id), minted by the MCP server at session
+                      start (e.g., from JWT claim or session token).
+            Option-2: agent_id is a Decko card_id of an "Agent" card
+                      (a User-cardtype variant or new Agent cardtype).
+                      Phase 5+ promotion makes this work; Phase 4
+                      could pre-create Agent cards with codenames
+                      (e.g., codename="agent_claude_code",
+                      "agent_codex", "agent_gemini").
+          Predicted Phase 4 default: Option-2 (Agent-as-Decko-card).
+          Reasons: integrates with existing User card framework;
+          permissions inherited; D3-1 actor_id can hold the agent's
+          card_id directly without schema extension.
+      (b) MCP session lifetime: agent_session_id field. Sessions are
+          minted at MCP connect, expire on disconnect. Source 6 must
+          decide: is this a JWT jti claim, a UUID minted by MCP
+          server, or both?
+      (c) Agent kind enum: agent_kind ∈ {human | bot | agent_mcp |
+          system | agent_external}. Source 5 had {human | bot} as
+          Phase 4 scope. Source 6 adds agent_mcp; system + external
+          deferred to Phase 5+.
+      (d) Proxy semantics: when an agent acts on behalf of a wiki user
+          (e.g., Codex session signed in as user "lake"), is the
+          agent the actor or the proxy? Apply V5-PROTOCOL-4 logic:
+          Auth.current_id = lake; Auth.as_id = agent_claude. D3-1
+          agent_id = lake's card_id; proxy_id = agent_claude's
+          card_id. Reverse if agent acts unattended.
+          Phase 4 implication: D3-1 envelope gains 2 fields:
+          agent_session_id, agent_kind. proxy_id is conceptually
+          carried by auth_as_id (already in envelope per Source 5).
+          Total D3-1 fields: 16 (Source 5) → 18 (Source 6 add).
+
+Q4. PHASE-4-READ / PHASE-5+-WRITE PROMOTION POLICY.
+    Phase 4 = agents READ-ONLY against the Hyperon Space mirror.
+    Phase 5+ = agents WRITE.
+      (a) Phase 4 read-only justification: the mirror is sourced from
+          Decko (authoritative). If agents could write atoms directly
+          in Phase 4, atom state would diverge from Decko state.
+          Phase 4 constraint: zero atom→Decko write-back.
+      (b) Phase 5+ write criteria: empirical evidence from Phase 4
+          deployment that agents need write capabilities for tasks
+          that cannot be expressed as Decko-CRUD plus atom-read.
+          Examples (orchestrator low-confidence):
+            (i)  agent reasoning traces — ephemeral atoms not
+                 representable as wiki cards.
+            (ii) agent-only ontologies / private vocabularies —
+                 atoms used by the agent's reasoning but not
+                 surfaced in the wiki.
+            (iii) bulk atom synthesis from external knowledge —
+                 e.g., agent imports a paper's atom-encoded summary
+                 directly to Hyperon Space without creating wiki
+                 cards.
+          Phase 5+ is conditional: empirical evidence from Phase 4
+          must justify each new write-capability before promotion.
+      (c) Phase 5+ design constraints (Source 6 must specify):
+          - Decko-mirrored atoms (DeckoCard) are READ-ONLY for agents
+            even in Phase 5+. Agents update wiki cards via the
+            existing Decko CRUD path (preserving source-of-truth).
+          - Agent-ephemeral atoms (under e.g. (AgentScratch
+            <agent_id> ...) shape) are WRITEABLE directly via
+            SpaceMut; not mirrored to Decko.
+          - The split is a NAMESPACE convention (atom prefix
+            (DeckoCard ...) vs (Agent... ...)) enforced at the MCP
+            tool layer.
+
+Q5. TOOL SURFACE FOR ATOM QUERIES (PHASE 4 READ-ONLY).
+    Reviewers propose canonical tool names + JSON schemas.
+    Predicted Phase 4 minimum (orchestrator low-confidence):
+      query_atoms(pattern: <metta-expression>) → list of atoms
+      get_atom(id: <atom-id>) → single atom
+      get_card_atom(card_id: <numeric>) → DeckoCard atom (Source 5)
+      get_card_provenance(card_id: <numeric>, action_id_range: ...)
+                                           → list of DeckoProvenance
+      list_atoms_by_type(TypeName: <string>) → list of atoms
+      list_references(card_id: <numeric>, ref_type: <I|L|Q|P>)
+                                           → list of DeckoReference
+      space_stats() → atom counts, types, mirror-lag indicator
+    Reviewers should:
+      - Validate that each tool maps to a Hyperon Space query
+        primitive that exists at HEAD (Source 2 verification).
+      - Confirm that JSON schemas match MCP 0.x tool schema
+        conventions (per `mcp` 0.11.0 Ruby gem and upstream MCP spec).
+      - Flag any tool that requires substrate features not in
+        Hyperon Space at HEAD.
+
+Q6. RESOURCE SURFACE.
+    MCP supports request/response tool calls AND resource subscriptions.
+    Resources have URI schemes; agents read resources or subscribe to
+    updates.
+      (a) Phase 4 candidate URI scheme:
+          hyperon://atoms/card/<card_id>
+            → DeckoCard atom for the given card_id.
+          hyperon://atoms/card/<card_id>/refs
+            → list of DeckoReference atoms for the given card_id.
+          hyperon://atoms/provenance/<event_id>
+            → DeckoProvenance atom for the given event_id.
+          hyperon://atoms/type/<TypeName>
+            → list of atoms of the given type.
+      (b) Subscription semantics: an agent subscribes to
+          hyperon://atoms/card/<card_id>; when SpaceEvent updates the
+          atom (mirror processes a Decko Card::Action), the MCP server
+          emits notifications/resources/updated to the agent.
+          Phase 4 implication: PATCH-5 implements subscription
+          dispatch from SpaceObserver fire → MCP resource update
+          notification.
+      (c) Source 6 must confirm whether `mcp` 0.11.0 Ruby gem
+          supports server-side resource subscription notifications.
+          Reviewers grep gem source / docs for
+          notifications/resources/updated.
+      (d) Fallback if `mcp` 0.11.0 Ruby does NOT support subscriptions:
+          Phase 4 PATCH-5 polls (agents poll get_card_atom on
+          interest); Phase 5+ migration to a subscription-capable
+          framework.
+
+Q7. EVENT SUBSCRIPTION TRANSPORT.
+    Source 5 IPC contract is HTTP/Unix-socket between Decko mirror and
+    Hyperon sidecar. Source 6 must specify the agent transport:
+      - MCP over HTTP/SSE: agent connects to MCP server via SSE for
+        real-time push.
+      - MCP over WebSocket: agent connects via WS.
+      - MCP over stdio: agent runs as subprocess of MCP server (or
+        vice versa).
+      Existing hyperon-wiki-mcp ships:
+        bin/mcp-server (stdio?)
+        bin/mcp-server-http
+        bin/mcp-server-http-rack
+        bin/mcp-server-puma-direct
+        bin/mcp-server-rack-direct
+      [VERIFIED via ls]: HTTP and stdio transports both shipped.
+      Phase 4 implication: PATCH-5 picks ONE primary transport.
+      Predicted Phase 4 default: HTTP/SSE (for browser-side agent
+      compatibility) with stdio fallback for CLI agents (Codex,
+      Claude Code, Gemini CLI). Reviewers confirm or counter.
+
+Q8. RECURSION GUARD FOR AGENT FEEDBACK LOOPS.
+    Phase 5+ scope (Phase 4 read-only is loop-free).
+      (a) Loop scenario: agent writes a card via existing
+          hyperon-wiki-mcp create_card tool → Decko Card.save! →
+          mirror fires → SpaceEvent → agent (subscribed via Source 6
+          atom-MCP) sees the update → agent might react → write
+          another card → loop.
+      (b) Mitigation 1 [ORIGIN-MARKING]: D3-1 envelope's agent_id
+          (Q3) marks the originating agent. The agent's subscription
+          handler filters out events where agent_id matches its own
+          id. Agents must opt OUT (not opt in) to filter; default
+          behavior = no echo.
+      (c) Mitigation 2 [RATE-LIMITING]: Phase 4 PATCH-5 enforces a
+          per-agent write rate limit (Phase 5+ when writes are
+          enabled). Prevents pathological loops.
+      (d) Mitigation 3 [LOOP-DETECTION]: Phase 5+ heuristic: if an
+          agent writes 10 times within 1 second to the same card_id,
+          break the subscription.
+      (e) Phase 4 implication: ORIGIN-MARKING is the primary
+          mechanism. Phase 4 PATCH-5 must thread the agent_id from
+          tool-call invocation through to the SpaceEvent metadata
+          (Source 5 D3-1 envelope already accommodates this; Source 6
+          extends with agent_session_id and agent_kind).
+
+Q9. AUTHENTICATION SURFACE FOR ATOM-MCP.
+    Two options:
+      (a) [INHERIT-WIKI-AUTH]: atom-MCP inherits hyperon-wiki-mcp's
+          JWT/RS256 + 3-role + OAuth. Same JWT, role-extension:
+          agent_atomspace_read (Phase 4) + agent_atomspace_write
+          (Phase 5+). Single agent identity across both surfaces.
+      (b) [PARALLEL-AUTH]: atom-MCP has its own auth (e.g., simpler
+          API key, or an MCP-spec-native session token). Agents
+          authenticate twice.
+      Predicted Phase 4 default: (a) INHERIT-WIKI-AUTH.
+        Justification: agents are people/sessions that already
+        authenticate to the wiki. Splitting auth surfaces adds
+        complexity without operational benefit. The existing 3-role
+        model extends cleanly.
+      Reviewers confirm or propose role-model extension specifics:
+        agent_atomspace_read     read SpaceEvents, query atoms
+        agent_atomspace_write    Phase 5+ direct atom writes
+        agent_atomspace_admin    administrative tools (rebuild,
+                                  resync, etc.)
+
+Q10. PHASE 5+ AGENT-WRITE SEMANTICS.
+     OPTION-A [WRITE-VIA-DECKO]: agent write → Decko HTTP →
+       Card.save! → mirror.
+     OPTION-B [DIRECT-SPACEMUT]: agent write → SpaceMut::add/replace
+       → no Decko.
+     OPTION-C [HYBRID]: namespace split; (DeckoCard ...) writes go
+       via Decko; (Agent... ...) writes go direct.
+     Phase 4 default (Source 6 RECOMMENDS): OPTION-C.
+       Justification: preserves Source 1+5 source-of-truth invariant
+       for wiki content; allows agent-ephemeral atoms (reasoning
+       traces) without polluting wiki. The namespace boundary is
+       enforced at the tool layer (replace_atom tool checks atom
+       prefix; rejects DeckoCard writes; accepts Agent... writes).
+     Phase 4 scope: NONE. (Phase 4 is read-only.)
+     Phase 5+ scope: PATCH-6 implements OPTION-C with namespace
+     enforcement.
+     Reviewers verify OPTION-C is consistent with Source 5's
+     D3-1 envelope (agent writes carry agent_id, agent_session_id;
+     no actor_id since no human; no card_id since no card).
+     Source 6 must propose Phase 5+ atom shape for agent-ephemeral
+     atoms; predicted (orchestrator low-confidence):
+       (AgentAtom
+         (AgentId       <numeric-or-id>)
+         (SessionId     <string-or-uuid>)
+         (AtomKind      <ReasoningTrace | OntologyEntry | Scratch>)
+         (Content       <expression>)
+         (CreatedAt     <iso-8601>))
+
+Q11. CARDTYPE INTROSPECTION FOR AGENTS.
+     Agents may need "is this atom a Draft card? a Published?" to
+     make editorial decisions.
+       (a) DeckoCard atoms carry TypeName per Source 5 Q6.
+       (b) MCP tool: list_atoms_by_type(TypeName="Draft", limit=100)
+           → list of atom IDs of given type.
+       (c) Existing wiki-MCP analog: get_types tool returns Decko
+           cardtype list. Source 6 atom-side parallel:
+             atom_types() → list of TypeNames present in the Space.
+             atom_count_by_type() → {TypeName: count}.
+       (d) Reviewers verify the existing get_types tool's source at
+           hyperon-wiki-mcp/lib/hyperon/wiki/mcp/server/tools/
+           get_types.rb and propose a parallel atom-side shape.
+
+Q12. ARCHITECTURAL SYNTHESIS — PHASE 4 PATCH-5 + PHASE 5+ PATCH-6.
+     Per V5-PROTOCOL-1 [DESIGN-DRIFT-IS-DIFFERENT-FROM-FACT-DRIFT],
+     all design choices below must be GROUNDED IN CITED EVIDENCE,
+     not generic-design heuristics.
+       (a) Server stack choice (Q2):
+           Predicted Phase 4 default: RUBY-EXTEND (extend
+           hyperon-wiki-mcp with new tools).
+           Predicted Phase 5+ migration: PYTHON-PARALLEL (or
+           RUST-PARALLEL) for direct SpaceMut writes.
+           [SOURCE 6 MUST DEFEND with citations to PATCH-1 + auth
+           inheritance + deployment overhead.]
+       (b) D3-1 extension (Q3):
+           agent_session_id, agent_kind added to D3-1 envelope.
+           agent_id field reused; Phase 4 default = Agent-as-Decko-
+           card pattern.
+       (c) Tool surface (Q5 + Q11):
+           7 read tools (query_atoms, get_atom, get_card_atom,
+           get_card_provenance, list_atoms_by_type, list_references,
+           space_stats); 2 type-introspection tools (atom_types,
+           atom_count_by_type).
+       (d) Resource surface (Q6):
+           4 URI schemes (hyperon://atoms/card/<id>, .../refs,
+           .../provenance/<event_id>, .../type/<TypeName>).
+           Subscription support TBD pending `mcp` 0.11.0 Ruby gem
+           verification.
+       (e) Transport (Q7):
+           Phase 4 default = HTTP/SSE primary; stdio fallback.
+       (f) Recursion guard (Q8):
+           ORIGIN-MARKING via D3-1 agent_id (Phase 5+ scope; Phase 4
+           is read-only loop-free).
+       (g) Auth (Q9):
+           INHERIT-WIKI-AUTH; role extension to agent_atomspace_read
+           (Phase 4) + agent_atomspace_write (Phase 5+) +
+           agent_atomspace_admin (Phase 5+).
+       (h) Phase 5+ write semantics (Q10):
+           OPTION-C HYBRID; namespace split (DeckoCard ... = Decko
+           write-path; Agent... ... = direct SpaceMut).
+       (i) Required code additions (Phase 4):
+           PATCH-5 [REQUIRED FOR PHASE 4]: hyperon-wiki-mcp atom
+                                            tool extension OR new
+                                            atom-MCP server (per Q2
+                                            decision).
+           Phase 4 SCOPE = read-only tools + resources +
+           subscriptions (if `mcp` gem supports).
+       (j) Required code additions (Phase 5+, deferred):
+           PATCH-6 [DEFERRED PHASE 5+]: agent-write surface with
+                                         OPTION-C namespace split,
+                                         recursion guard, rate
+                                         limiting.
+
+--------------------------------------------------------------------------------
+6. STANDING PROTOCOLS REMINDER
+--------------------------------------------------------------------------------
+
+Inherited from Sources 1+2+3+4+5:
+
+- CF5.6 (Gemini source-location/file-identity drift): verify every
+  Gemini file/line claim via direct Read or Glob before adoption.
+  Source 5: 0 file-identity drifts; Source 6 reviewers should remain
+  vigilant for `mcp` gem source-citation drift, MCP-spec-method-name
+  drift (notifications/resources/updated etc.).
+
+- V1-Q1 (pickaxe without path filter): for any "never implemented"
+  claim, run `git log --all -S '<token>'` without a path filter.
+  Apply to Q5/Q11 (any "Hyperon Space lacks query primitive X" claim
+  needs pickaxe), Q6 (any "`mcp` gem 0.11.0 lacks resource
+  subscriptions" claim needs pickaxe).
+
+- V2-PROTOCOL-3 (audit Clone semantics): apply to Q5/Q10 — atom
+  cloning semantics in tool boundaries (does query_atoms return
+  references or copies?).
+
+- V3-PROTOCOL-1 (verify brief paths via Glob/ls before finalizing):
+  ALL paths in this brief have been V3-PROTOCOL-1-verified during
+  drafting. Hyperon-wiki-mcp paths verified at HEAD d37e518;
+  hyperon-experimental at HEAD 3f76dc46; hyperon-wiki at HEAD
+  a1a9e62; cpp-mcp at HEAD 86856a2.
+
+- V4-PROTOCOL-4 (brief-flagged "verify X" notes are extraction
+  obligations): EVERY "verify X" remaining in this brief is an
+  EXTRACTION OBLIGATION. Specifically:
+    - Q1.a: confirm `mcp` gem 0.11.0 reference at Gemfile.lock and
+            tool-class pattern at create_card.rb:12. → Codex / Gemini
+            re-verify both.
+    - Q1.c: Confirm 3-role model in gemspec line 17 + role definition
+            location in source. → Codex / Gemini find role-definition
+            file.
+    - Q2.b: Verify upstream `mcp` Python SDK or `fastmcp`. → Reviewers
+            consult upstream README + version.
+    - Q2.c: Verify upstream `rmcp` Rust crate. → Reviewers consult
+            upstream README + version.
+    - Q5: Verify each proposed read tool maps to a Hyperon Space
+          query primitive at HEAD.
+    - Q6.c: Verify whether `mcp` 0.11.0 Ruby gem supports
+            notifications/resources/updated. → Reviewers grep gem
+            source.
+    - Q7: Confirm transports shipped in hyperon-wiki-mcp/bin/.
+    - Q11.d: Verify get_types tool source at hyperon-wiki-mcp/
+             lib/hyperon/wiki/mcp/server/tools/get_types.rb.
+
+  Reviewers must execute these checks BEFORE writing findings.
+
+- V5-PROTOCOL-1 [DESIGN-DRIFT-IS-DIFFERENT-FROM-FACT-DRIFT]:
+  Source 6 has many design questions (Q2, Q3, Q5, Q6, Q9, Q10, Q11,
+  Q12). Reviewers must ground every [PROPOSED] answer in cited
+  Decko/Hyperon/MCP-spec evidence; avoid generic-design heuristics
+  unsupported by code.
+
+- V5-PROTOCOL-2 [TRACKED-FIELDS ≠ DIRTY]: relevant if Source 6
+  proposes any agent-write-tool that updates Decko cards through the
+  Source 5 mirror — encoder must read codename from cards.codename
+  not from card_changes.
+
+- V5-PROTOCOL-3 [DELAYED-JOBS-IS-NOT-AN-IPC-CONTRACT]: relevant if
+  agent-MCP proposes consuming Decko mirror events; the IPC contract
+  is Source 5's stable JSON over HTTP/Unix-socket, NOT delayed_jobs.
+
+- V5-PROTOCOL-4 [DUAL-ACTOR-FIELD]: extends to agent identity per Q3.
+  agent_id (current) vs proxy_id (as) parallel.
+
+- V5-PROTOCOL-5 [POLICY-B-IS-FAITHFUL-MIRROR]: agent-side query
+  defaults must filter `(Trash False)` per Source 5 convention.
+
+Standard cluster-pilot rules:
+
+- Time-indexed snapshot deltas: HEAD as of:
+    decko (gem)              2025-10-15  Ethan McCutchen
+    hyperon-wiki             2026-05-01  Nemquae
+    hyperon-wiki-mcp         2026-04-09  Nemquae
+    hyperon-experimental     2026-04-29ish  vsbogd PR-1075 merge
+                              [Reviewer: re-verify exact date.]
+    cpp-mcp                  86856a2 (Source 3 history)
+
+- Bidirectional fork-divergence: hyperon-wiki-mcp has a magi-mcp
+  remote (Magi Archive variant). Source 6 reviewers should run
+  `git log origin/main..magi-mcp/main` and reverse to check whether
+  Magi-Archive-MCP and hyperon-wiki-mcp have diverged tool surfaces
+  for cluster-close documentation refresh purposes.
+
+- Orientation-file drift: AGENTS.md / CLAUDE.md / GEMINI.md exist in
+  hyperon-wiki-mcp. Treat with skepticism per cluster pattern; cite
+  README.md, MCP-SPEC.md, MCP_SERVER.md, and code only.
+  hyperon-wiki/CLAUDE.md is the orchestration anchor and IS
+  authoritative for THIS repo's cluster-pilot history.
+
+- One-writer rule: orchestrating model executes wiki writes; advisory
+  models do not write wiki state. (Source 6 may produce wiki-edit
+  audit-table additions for Source 7 / cluster close.)
+
+--------------------------------------------------------------------------------
+7. DELIVERABLE FORMAT (per agent)
+--------------------------------------------------------------------------------
+
+Each model produces:
+  scripts/archive/atomspace_integration_phase4/source6_agent_mcp_surface/
+    findings_claude.txt     (orchestrator extraction OR
+                             post-reconciliation pass per Source 4/5
+                             precedent)
+    findings_codex.txt
+    findings_gemini.txt
+
+Format follows Sources 1+2+3+4+5's findings pattern:
+  - Q1–Q12 in order.
+  - [VERIFIED] / [INFERRED] / [NOT FOUND] / [CO-VERIFIED] / [NEW] /
+    [PROPOSED] tags.
+    [PROPOSED] is appropriate for design-question answers (Q2, Q3,
+    Q5, Q6, Q7, Q9, Q10) where there is no canonical answer to
+    verify against — reviewers should propose-or-counter, citing
+    code/docs for any constraints they identify.
+    Per V5-PROTOCOL-1, [PROPOSED] answers REQUIRE cited grounding.
+  - Direct file:line citations for all VERIFIED claims.
+  - Pickaxe (without path filter) for any negative-existence claim.
+  - For Q12, recommended Phase 4 PATCH-5 spec, with explicit
+    dependencies on Sources 2+3+5 design.
+
+After all three findings land, orchestrator (Claude) produces:
+  findings_reconciled_crossmodel.txt
+
+Reconciliation includes:
+  - Per-question consensus on VERIFIED facts.
+  - Per-question synthesis on PROPOSED design choices.
+  - V-N-X dissents (V = Claude/Codex/Gemini, N = question, X =
+    sub-issue).
+  - Source-of-truth checks (CF5.6 verifications + V3-PROTOCOL-1
+    checks).
+  - Bottom Line for SPEC_DRAFT.md, with explicit answers to:
+      Q12.a: Server stack choice + justification.
+      Q12.b: D3-1 extension fields finalized.
+      Q12.c: Tool surface finalized.
+      Q12.d: Resource surface finalized.
+      Q12.e: Transport finalized.
+      Q12.f: Recursion guard finalized.
+      Q12.g: Auth finalized.
+      Q12.h: Phase 5+ write design.
+      Q12.i: PATCH-5 + PATCH-6 specifications.
+  - Dependency conditions for Source 7.
+
+Prediction (orchestrator, low-confidence):
+Source 6 closes with [PHASE-4-MCP-ATOM-SURFACE-DRAFTED]
+[RUBY-EXTEND-PRIMARY] [PYTHON-OR-RUST-PARALLEL-PHASE-5+]
+[D3-1-EXTENDED-WITH-AGENT_SESSION_ID-AND-AGENT_KIND]
+[OPTION-C-HYBRID-PHASE-5+-WRITE-NAMESPACE-SPLIT].
+Source 6 produces PATCH-5 (Phase 4) + PATCH-6 (Phase 5+) and the
+extended D3-1 envelope (16 → 18 fields).
+
+================================================================================
+END OF BRIEF — Source 6
+================================================================================

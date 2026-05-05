@@ -1,0 +1,247 @@
+AtomSpace Integration Phase 4 - Source 6
+Agent-facing MCP surface - Codex findings
+============================================================
+
+Reviewer: Codex
+Date: 2026-05-04
+Brief: scripts/archive/atomspace_integration_phase4/source6_agent_mcp_surface/brief.txt
+
+Summary verdict
+---------------
+
+Source 6 supports the brief's broad direction, with three important corrections:
+
+1. Phase 4 should use [RUBY-EXTEND-PRIMARY] for the agent-facing read/query MCP surface, but only as a read surface backed by the Source 5 mirror/outbox sidecar API. Reusing hyperon-wiki-mcp's JWT/OAuth/Rails-account path is the lowest-risk way to expose Decko-grounded atoms to agents.
+2. Ruby MCP 0.11.0 is not subscription-ready in the way the brief implies. It has protocol constants and SSE transport support, but the gem's default server has no resource-specific subscription registry/update API, and hyperon-wiki-mcp does not register resources today. Phase 4 should treat subscriptions as [POLLING-FIRST] unless PATCH-5 explicitly implements resource subscription state and notification dispatch.
+3. Existing MCP writes do not propagate MCP session identity into Decko action/mirror semantics. D3-1's Source 5 dual-actor fields must be extended with agent/session origin fields, but PATCH-5/PATCH-3 must also carry those fields through the request path. A schema-only D3-1 extension is insufficient.
+
+Primary SHAs verified
+---------------------
+
+- hyperon-wiki-mcp: d37e518615e8851bec1f1f8b644db637e6088755, 2026-04-09, origin https://github.com/Magi-AGI/hyperon-wiki-mcp.git.
+- hyperon-wiki: a1a9e627dc392c0913b0e72ff2fe730348f273c3, local log date 2026-05-04.
+- decko: 93c54deadaf6645e61427940910fe1dc35112f36, 2025-10-15.
+- hyperon-experimental: 3f76dc460da6961f57f69f6c3e550c59c74ada83, 2026-02-11.
+
+Q1. Existing MCP surface
+------------------------
+
+Verdict: [MCP-SURFACE-REAL] [TOOL-INVENTORY-DRIFT] [ANNOTATION-DRIFT] [MAGI-MCP-DIVERGENT-SIBLING]
+
+hyperon-wiki-mcp is real and substantial, but the "40 tools" count is a file-count, not a uniform exposed-tool count. I found 40 tool class files under `lib/hyperon/wiki/mcp/server/tools`, but the active launchers register different subsets:
+
+- `bin/mcp-server`: 37 `Hyperon::Wiki::Mcp::Server::Tools::*` registrations; stdio transport at `bin/mcp-server:184`.
+- `bin/mcp-server-http`: 24 registrations.
+- `bin/mcp-server-puma-direct`: 24 registrations.
+- `bin/mcp-server-rack-direct`: 27 registrations.
+
+PATCH-5 should therefore add atom tools through a shared registry or update every launcher. Adding a class file is not enough.
+
+There is also annotation drift in existing write tools. `CreateCard` is a write/destructive tool, but `create_card.rb:17-19` sets `read_only_hint: true` and `destructive_hint: true`; `update_card.rb:17` and `rename_card.rb:16` also mark write tools read-only. Atom tools must not inherit this pattern. Read-only atom tools should set `read_only_hint: true, destructive_hint: false`; future write tools must not claim read-only semantics.
+
+`SERVER-BUGS.md` remains relevant to Source 6: the spurious "already exists" bug is documented at `SERVER-BUGS.md:259-267`, restore-card +tag behavior at `SERVER-BUGS.md:279-295`, and the verify-after-writes guard at `SERVER-BUGS.md:322`.
+
+Bidirectional fork check: `magi-mcp/main` is not a simple ahead/behind fork of `hyperon-wiki-mcp`. The remotes have no merge-base in this checkout, and `origin/main...magi-mcp/main` reports 26 commits unique to hyperon-wiki-mcp and 197 unique to magi-mcp. Do not import Magi MCP assumptions into Source 6 without a separate audit.
+
+Q2. Server-stack choice
+-----------------------
+
+Verdict: [RUBY-EXTEND-PRIMARY-PHASE-4] [PYTHON-PARALLEL-PHASE-5+-WRITE-CANDIDATE] [RUST-PARALLEL-DEFERRED] [CPP-MCP-RULED-OUT]
+
+For Phase 4 reads, Ruby extension is the correct primary path. The current Ruby server already has the Decko-authenticated card API surface, RS256 JWT flow, three-role model, and server transports. `hyperon-wiki-mcp.gemspec:11-14` describes the RS256 JWT and role model; `MCP-SPEC.md:53-58` documents JWT claims; `rack_app.rb:895-930` issues access tokens and maps roles to scopes.
+
+The Python path is attractive only after PATCH-1/PATCH-2 work because it is closest to Hyperon Space writes, but today Python lacks observer bindings. Hyperon Space has `SpaceMut::add/remove/replace` at `hyperon-space/src/lib.rs:237/255/275`, but Python exposes only `SpaceRef.add_atom/remove_atom/replace_atom` at `python/hyperon/base.py:205/211/217`; `register_observer` has zero matches under `python/`. `PY_SPACE_NO_SUBST_API` in `python/hyperonpy.cpp:387` has no observer slot.
+
+The Rust path is technically clean for SpaceObserver integration but duplicates auth/deployment work for Phase 4. Use it only if the implementation plan chooses a Rust mirror service from Source 2 Path II; do not make it the agent-facing MCP server by default.
+
+Official SDK spot-checks:
+- The official Python MCP SDK is at https://github.com/modelcontextprotocol/python-sdk and includes the `mcp.server.fastmcp` quickstart style.
+- The official Rust MCP SDK is at https://github.com/modelcontextprotocol/rust-sdk and documents `rmcp` server support.
+
+Q3. Agent identity in D3-1
+-------------------------
+
+Verdict: [D3-1-EXTEND-REQUIRED] [MCP-SESSION-NOT-PROPAGATED-TO-DECKO] [DUAL-ACTOR-MUST-STAY]
+
+Source 5's dual-actor rule remains load-bearing. `Card::Auth.current_id` and `Card::Auth.as_id` must both remain in D3-1 because bot proxy execution can change `as_id` without changing `current_id`.
+
+For Source 6, I recommend extending D3-1 with:
+
+- `agent_session_id`: MCP JWT `jti` or MCP session id.
+- `agent_kind`: at minimum `human`, `bot`, `external_mcp_agent`, `scheduled_job`, or equivalent enum.
+- Optional later fields: `agent_client_id` and `agent_card_id`, if agents become Decko cards.
+
+However, current MCP request plumbing does not carry this through to Decko actions. In hyperon-wiki-mcp, `client.rb:271-279` builds only `Authorization` and `Content-Type` headers. On the Rails side, `mod/mcp_api/set/abstract/mcp_api/base_controller.rb:31-39` verifies the bearer token and sets account/role, while `cards_controller.rb:75-90`, `:96-117`, `:122-128`, and `:134-150` execute Card create/update/delete/rename under `Card::Auth.as(current_account.name)`. I did not find propagation of JWT `jti`, MCP session id, or agent-kind into the card action/mirror payload.
+
+The Rails JWT service does include a `jti`: `mod/mcp_api/lib/mcp_api/jwt_service.rb:13-24`. That is useful, but not enough until PATCH-5/PATCH-3 passes it into the Source 5 mirror event.
+
+Q4. Phase-4-read / Phase-5+-write split
+---------------------------------------
+
+Verdict: [PHASE-4-READ-ONLY-MCP] [OPTION-C-HYBRID-PHASE-5+] [DECKO-CARD-WRITES-VIA-DECKO-ONLY]
+
+I agree with the brief's split, with a stricter namespace guard:
+
+- Phase 4 MCP: read/query atoms only; writes remain Decko CRUD plus mirror emission.
+- Phase 5+ MCP: direct Hyperon writes only for agent-owned or scratch namespaces.
+- DeckoCard/DeckoReference/DeckoProvenance writes should continue through Decko/mirror APIs, not direct SpaceMut writes.
+
+This preserves Source 5 POLICY-B. Decko delete/trash maps to Hyperon Replace with `Trash true`, not Remove. MCP query defaults must filter `Trash false` unless `include_trash: true`.
+
+Q5. Atom tools and resources
+----------------------------
+
+Verdict: [READ-TOOL-SET-VALID-WITH-ID-CORRECTION] [GET-ATOM-ID-UNSUPPORTED] [TYPE-INTROSPECTION-VIA-DECKO-AND-MIRROR]
+
+The proposed read tool family is mostly right, but a generic `get_atom(id)` is not grounded in Hyperon Space. Hyperon Space exposes structural operations, not stable handle IDs. The public trait has `query`, `atom_count`, and `visit` at `hyperon-space/src/lib.rs:175`, `:202`, and `:212`; Python exposes `get_atoms`, `query`, and `subst` at `python/hyperon/base.py:229`, `:248`, and `:255`. I do not see a stable atom handle API suitable for generic `get_atom(id)`.
+
+Recommended Phase 4 tool set:
+
+- `query_atoms(pattern, limit, include_trash=false)`
+- `get_card_atom(card_id, include_trash=false)`
+- `get_card_provenance(card_id=nil, event_id=nil, action_id_range=nil)`
+- `list_references(card_id, ref_type=nil, include_trash=false)`
+- `list_atoms_by_type(type_name, limit, include_trash=false)`
+- `atom_types()`
+- `atom_count_by_type()`
+- `space_stats()`
+
+Omit `get_atom(id)` unless the Source 5 sidecar introduces a synthetic, documented atom-id registry. Stable external identities should be Decko `card_id`, action/event ids, and explicit DeckoReference targets.
+
+Q6. Subscriptions and change notification
+-----------------------------------------
+
+Verdict: [POLLING-FIRST] [RUBY-SUBSCRIPTIONS-NOT-READY-BY-DEFAULT] [SERVER-PUSH-REQUIRES-PATCH-5-WORK]
+
+Ruby MCP 0.11.0 has pieces of resource subscription support, but not a complete application-level resource update mechanism in this server.
+
+Verified gem facts:
+
+- `mcp/methods.rb:13-17` defines resource list/read/subscribe/unsubscribe methods.
+- `mcp/methods.rb:30-31` defines resource notification constants.
+- `mcp/server/capabilities.rb:25-29` parses resource subscribe capability; `:70-72` can set `resources.subscribe`.
+- `mcp/server.rb:115-116` installs no-op subscribe/unsubscribe handlers.
+- `mcp/server.rb:427-433` defaults resources to `{ listChanged: true }`, not `subscribe: true`.
+- `mcp/server.rb:189-192` exposes `notify_resources_list_changed`, but I did not find a corresponding first-class `notify_resources_updated` helper.
+- `mcp/server/transports/streamable_http_transport.rb:69-125` can send notifications over streamable HTTP/SSE sessions.
+
+Verified application facts:
+
+- `hyperon-wiki-mcp` has no `resources:` server configuration in the launcher/source paths I checked.
+- `rack_app.rb:272-279` implements `text/event-stream`, but current usage is MCP transport, not atom-resource subscription semantics.
+
+Conclusion: Phase 4 should ship polling and explicit read tools first. If subscriptions are required, PATCH-5 must implement resource registration, subscription state, and notification dispatch against Source 5 mirror events.
+
+Q7. Transport
+-------------
+
+Verdict: [HTTP-SSE-PRIMARY] [STDIO-LOCAL-DEV] [CONVENTIONAL-EVENT-BUS-INTERNAL]
+
+The transport choice should match Source 3 and Source 5:
+
+- Agent-facing MCP: HTTP/SSE via existing Rack/Sinatra/Puma paths.
+- Local debugging: stdio remains useful via `bin/mcp-server`.
+- Internal Decko -> mirror events: conventional outbox/sidecar IPC, not delayed_jobs handler parsing and not Atomese-native streams.
+
+`rack_app.rb:520-580` handles JSON-RPC MCP messages over HTTP. `rack_app.rb:272-279` handles SSE. Source 5 still controls mirror/outbox payload shape.
+
+Q8. Recursion guard / origin marking
+------------------------------------
+
+Verdict: [D3-1-ORIGIN-MARKING-REQUIRED] [RECURSION-GUARD-MUST-BE-IN-MIRROR-MOD]
+
+A Source 6 MCP server can add origin fields, but recursion prevention has to live where writes are emitted: the Source 5 mirror mod / outbox writer.
+
+Minimum fields:
+
+- `origin_system`: e.g. `decko`, `mcp`, `sidecar`, `agent`.
+- `origin_request_id`: stable idempotency key for this write.
+- `agent_session_id`: JWT `jti` or MCP session id.
+- `agent_kind`: human/bot/external/scheduled/etc.
+
+Existing hyperon-wiki-mcp token issuance already gives us a session-like `jti`; `rack_app.rb:895-930` issues tokens with `session_id`, and `mod/mcp_api/lib/mcp_api/jwt_service.rb:13-24` includes `jti`. The missing part is carrying that value into Decko's action/mirror event and suppressing mirror re-emission when the event originated from the mirror itself.
+
+Q9. Auth surface
+----------------
+
+Verdict: [INHERIT-WIKI-MCP-AUTH] [ADD-ATOM-SCOPES-LATER] [DO-NOT-FORK-AUTH]
+
+Reuse hyperon-wiki-mcp auth for Phase 4. It already has RS256 JWT, role mapping, OAuth metadata, and Decko account binding:
+
+- `rack_app.rb:283-310` advertises `mcp:read`, `mcp:write`, and `mcp:admin` scopes.
+- `rack_app.rb:895-930` issues tokens and maps role to scope.
+- `rack_app.rb:943-954` creates per-user tools with role/account env.
+- `mod/mcp_api/set/abstract/mcp_api/base_controller.rb:31-39` verifies bearer tokens and sets current role/account.
+- `mod/mcp_api/lib/mcp/roles.rb:31-44` defines `admin`, `gm`, and `user` plus Decko-role mapping.
+
+Do not add a parallel auth system for atom MCP. If Source 7 wants atom-specific grants, layer them as scopes/claims on this existing auth path.
+
+Q10. Phase 5+ write tools
+-------------------------
+
+Verdict: [DEFER-WRITES] [AGENT-NAMESPACE-ONLY-DIRECT-WRITES] [PATCH-1-PATCH-2-STILL-BLOCKING]
+
+Direct MCP write tools should be deferred. When introduced, they should only write agent-owned atoms or scratch working spaces directly to Hyperon Space. Decko-backed atoms must go through Decko writes so card actions, trash policy, review status, and provenance remain canonical.
+
+Implementation blockers remain:
+
+- Python observer gap: no Python `register_observer`.
+- MeTTa replace gap: Source 2 PATCH-2 still needed for ergonomic replace paths.
+- Single-threaded Hyperon Space runtime: `Rc<RefCell<...>>` architecture requires a central mirror service or strict single-writer discipline.
+
+PATCH-6 should specify namespace boundaries before any direct-write MCP tool ships.
+
+Q11. Cardtype / schema introspection
+------------------------------------
+
+Verdict: [EXISTING-DECKO-TYPE-INTROSPECTION-REUSABLE] [ATOM-TYPE-INTROSPECTION-NEW]
+
+Existing Decko type tooling can be reused for card/cardtype introspection. `get_types.rb:11` defines `GetTypes`, marks it read-only at `:15-16`, and calls `tools.list_types` at `:32-35`. `tools.rb:708-710` implements `list_types` through the `/types` endpoint.
+
+Atom type introspection is separate. PATCH-5 needs an atom-side type listing derived from the Source 5 encoder/mirror, not just Decko cardtype listing. In Phase 4, the atom type registry should be explicit and small: DeckoCard, DeckoReference, DeckoProvenance, Trash, review/convention child-card encodings, and any mirror metadata atoms.
+
+Q12. Synthesis / patch recommendations
+--------------------------------------
+
+Verdict: [PATCH-5-RUBY-READ-MCP] [PATCH-6-PHASE-5+-HYBRID-WRITES] [SOURCE-6-SUPPORTS-OPTION-D]
+
+PATCH-5: Phase 4 Ruby atom MCP read surface
+
+- Extend hyperon-wiki-mcp, but add atom tools through a shared registry used by all launchers.
+- Back tools with the Source 5 mirror/sidecar API, not direct delayed_jobs parsing and not atomspace-bridge.
+- Use existing JWT/OAuth/role infrastructure.
+- Add D3-1 agent/session propagation from JWT `jti` or MCP session id into mirror events.
+- Default all card-backed atom queries to `Trash false`.
+- Implement read tools first: query, card atom fetch, references, provenance, type listing, stats.
+- Treat resources/subscriptions as optional v2 of PATCH-5 unless resource subscription state is implemented explicitly.
+- Correct MCP annotations for all new tools.
+
+PATCH-6: Phase 5+ write surface
+
+- Direct Hyperon writes only for agent-owned namespaces.
+- Decko-backed atoms remain Decko-write/mirror-read.
+- Bridge SpaceObserver events to the chosen agent event bus only after PATCH-1/PATCH-2 and mirror-service topology are settled.
+- Use conventional event-bus/RPC transport for process boundaries.
+
+Candidate reconciliation issues
+-------------------------------
+
+V6-Candidate-1: Brief overstates Ruby subscription readiness.
+Evidence: Ruby mcp gem has constants/capability plumbing and SSE transport, but default subscribe handlers are no-op (`mcp/server.rb:115-116`), default resources capability lacks `subscribe` (`mcp/server.rb:427-433`), and hyperon-wiki-mcp registers no resources today. Resolution candidate: record [POLLING-FIRST] and make server-push a PATCH-5 implementation item.
+
+V6-Candidate-2: Generic `get_atom(id)` is not grounded in Hyperon Space identity.
+Evidence: Hyperon Space public APIs expose structural query/visit/count, not stable atom handles. Resolution candidate: omit generic `get_atom(id)` or define sidecar synthetic ids; prefer `get_card_atom(card_id)` and provenance/event ids.
+
+V6-Candidate-3: Agent identity extension must include propagation, not only schema fields.
+Evidence: JWT `jti` exists in token issuance, but current MCP client/Rails card endpoints do not carry it into Card action/mirror payloads. Resolution candidate: PATCH-5/PATCH-3 must pass `agent_session_id` and `agent_kind` explicitly.
+
+V6-Candidate-4: Existing MCP tool annotations are unreliable.
+Evidence: create/update/rename write tools mark `read_only_hint: true`. Resolution candidate: new atom tools must set annotations manually and a later cleanup should fix existing write-tool annotations.
+
+V6-Candidate-5: Tool inventory should be launcher-aware.
+Evidence: 40 tool files but 37/24/24/27 launcher registrations. Resolution candidate: shared registry or explicit multi-launcher patch requirement.
+
+Bottom line
+-----------
+
+Source 6 should not reopen the Phase 4 architecture. It confirms Option D's agent-facing surface: Ruby MCP for authenticated read/query access to the Decko-grounded Hyperon mirror, with Python/Rust reserved for later write/subscription services. The critical Source 6 addition is not a new substrate; it is disciplined identity propagation from MCP session/JWT into Source 5's D3-1 provenance envelope, plus a polling-first read tool set that does not pretend Ruby MCP subscriptions already exist.

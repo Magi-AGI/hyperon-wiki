@@ -1,0 +1,1072 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 7
+Magus 4-phase plan reconciliation: cross-check the cluster-pilot reconciliations
+(Sources 1-6) against the Magi Archive Magus planning tree (4 cards) and confirm
+Workstream-B (parallel implementation-planning Claude session) output is faithful
+to the locked spec.
+================================================================================
+
+Date opened:    2026-05-05
+Cluster pilot:  atomspace_integration_phase4
+Source #:       7 of 7  (cluster-pilot CLOSURE source)
+Orchestrator:   Claude (this session, Workstream A)
+Cross-model reviewers: Codex + Gemini (separate sessions)
+Reconciliation deliverable: findings_reconciled_crossmodel.txt
+Spec input:     Source 7 closes the cluster pilot. The cluster-close
+                deliverable bundle (SPEC_DRAFT.md + wiki-edit batch + +AI
+                Draft proposals on Magus cards) follows in a separate
+                gated session after sign-off here.
+
+This is the PLANNING-DOCUMENT source. Sources 1-6 closed:
+  - Source 1: atomspace-bridge — read-only by design.
+  - Source 2: Hyperon Space (PATCH-1 / PATCH-2) is the Phase 4 substrate.
+  - Source 3: atomspace-rocks Phase 5+ candidate; cpp-mcp ruled out.
+  - Source 4: STAY-HYPERON-SPACE-PHASE-4 confirmed; ROCKS-PATH primary /
+              MORK-PATH secondary / DAS-PATH Phase 6+ for Phase 5+ durability.
+  - Source 5: PATCH-3 + PATCH-4 mirror core; D3-1 16-field envelope;
+              POLICY-B faithful-mirror trash; integrate_with_delay event hook;
+              dual-actor (auth_current_id + auth_as_id) provenance.
+  - Source 6: PATCH-5 atom-MCP read surface (8 tools) + PATCH-6 Phase 5+
+              write deferred; 20-field D3-1 (16 + agent_session_id, agent_kind,
+              origin_system, origin_request_id); RUBY-EXTEND-PRIMARY-PHASE-4;
+              POLLING-FIRST resource subscriptions; CF5.6.E + V6-PROTOCOL-1
+              (launcher-aware tool inventory) + V6-PROTOCOL-2 (request-path
+              propagation for provenance).
+
+Source 7 closes the cluster pilot. It does NOT design new substrate, mirror,
+encoder, or agent surface (Sources 1-6 closed all of those). It DOES three
+things, all of which require reviewer triangulation:
+
+  (i)   Reconcile the cluster-pilot phase numbering (Y, 2026-05-01) against
+        the older Magus 4-phase numbering (2026-03-11) recorded in Magi
+        Archive card 11446. Produce a crosswalk, identify load-bearing
+        differences, and specify what must change in the Magus tree.
+
+  (ii)  Cross-check substantive cluster-pilot findings (four-layer atomspace
+        taxonomy, MorkDB-delete blocker, MORK volatility / 8-crate / 400M-
+        not-500M, `from hyperon import MCP` apocryphal, atomspace-pgres
+        not-the-lowest-friction-seam, dual-actor D3-1, POLICY-B trash,
+        integrate_with_delay hook, RUBY-EXTEND-PRIMARY) against contractual
+        and architectural commitments in the Magus tree. Identify any
+        cluster-pilot finding that contradicts a Magus contractual claim.
+
+  (iii) Verify Workstream-B output fidelity. A parallel Claude session
+        produced two new RichText cards under the Magus parent today
+        (2026-05-04 → 2026-05-05): card 17117 "AtomSpace Mirror Event-
+        Mechanism Spec" and card 17120 "AtomSpace Mirror System Integration
+        Plan." These cards consume Source 5 + Source 6 reconciliations as
+        their locked spec. Source 7 reviewers must verify that 17117 + 17120
+        faithfully reflect the cluster-pilot record without drift, addition,
+        or omission, and flag any divergence as a candidate V7-X record.
+
+The cluster-pilot CLOSE bundle that follows Source 7 sign-off (gated, separate
+session) will produce: SPEC_DRAFT.md at the cluster archive root, +AI Draft
+proposals on Magus cards 11446 and/or 11448, the top-level CLAUDE.md cluster
+section + audit table for atomspace_integration_phase4, the Claude memory
+project_atomspace_phase4_pilot_2026_05_05.md, and the cluster commit. None of
+those writes happen during Source 7 extraction.
+
+--------------------------------------------------------------------------------
+1. CONTEXT (cluster pilot baseline; not re-derived in Source 7)
+--------------------------------------------------------------------------------
+
+Phase 4 architecture (locked by Sources 1-6):
+
+  Substrate:        Hyperon Space at HEAD; in-memory; single-process Rc/RefCell
+                    (Source 2 + Source 4 STAY confirmed).
+  Mirror (Decko):   hyperon-wiki/mod/atomspace_mirror/ (PATCH-3) +
+                    card_atom_encoder.rb (PATCH-4); integrate_with_delay
+                    event hook on %i[create update delete] with defensive
+                    `next if action&.draft` filter; outbox ActiveRecord
+                    table for sidecar-unavailable failover.
+  IPC contract:     Stable JSON over HTTP / Unix-socket, primary; outbox
+                    table backup; delayed_jobs is Rails-side queue, NOT
+                    IPC contract.
+  Atom shape (V1):  DeckoCard (14 explicit fields including Codename read
+                    from cards.codename column at mirror time, NOT from
+                    card_changes per V5-PROTOCOL-2) + DeckoReference
+                    (4-code ref_type set: I/L/Q/P) + DeckoProvenance
+                    (D3-1 envelope; 16 fields locked at Source 5,
+                    extended to 20 at Source 6 with agent_session_id,
+                    agent_kind, origin_system, origin_request_id).
+  Trash policy:     POLICY-B faithful mirror — Decko delete (trash &&
+                    trash_changed?) emits Hyperon Replace(old, new_with_
+                    trash_true), NOT Remove. MeTTa queries default-filter
+                    (Trash False).
+  Identity (atom):  (Id <numeric_card_id>) primary key; stable across
+                    renames; (Name "<full+name>") updates while (Id N)
+                    preserved.
+  Identity (actor): Dual-actor — auth_current_id (Auth.current_id;
+                    "who pushed the button") AND auth_as_id (Card::Auth.
+                    serialize at delivery time; "what permission persona
+                    executed the write"). card_acts.actor_id ALONE is
+                    insufficient.
+  Upstream patches: PATCH-1 [REQUIRED, UPSTREAM-BLOCKING] pybind11 binding
+                    for c/src/space.rs:464-468 `space_register_observer`
+                    (already exists in C ABI; binding is the gap);
+                    PATCH-2 [RECOMMENDED, UPSTREAM] MeTTa-side replace-
+                    atom! grounded operator.
+  Agent MCP surface: PATCH-5 [REQUIRED, PHASE-4] — 8 read-only tools on
+                    extended hyperon-wiki-mcp Ruby server (RUBY-EXTEND-
+                    PRIMARY-PHASE-4); resource scheme hyperon://atoms/
+                    card/{id}; POLLING-FIRST (Ruby mcp 0.11.0 server.rb
+                    113-117 confirms resources/subscribe / resources/
+                    unsubscribe are no-op stubs).
+  Phase 5+ writes:  PATCH-6 [DEFERRED] — agent atom writes; OPTION-C
+                    HYBRID (wiki-content writes route via Decko to
+                    preserve source-of-truth; agent-ephemeral atoms
+                    under (Agent <agent_id> ...) shape go direct).
+
+Phase 5+/6+ deferrals (locked by Sources 3+4):
+  Phase 5+ (primary store / durability): atomspace-rocks PRIMARY,
+    MORK SECONDARY (MorkDB delete blocker), DAS PHASE 6+ deferred.
+  Phase 6+ (distributed): DAS the canonical layer.
+
+Standing protocols carried into Source 7:
+  V3-PROTOCOL-1: verify all file paths via ls/Glob at HEAD before citation.
+  V4-PROTOCOL-1: every code claim cites <file>:<line-range>.
+  V4-PROTOCOL-2: SHA references unambiguous.
+  V4-PROTOCOL-3: bidirectional fork audit before "diverged tradition" labels.
+  V4-PROTOCOL-4: brief-flagged "verify X" notes are extraction obligations.
+  V5-PROTOCOL-1 through V5-PROTOCOL-5: design-discipline (tracked-fields ≠
+    dirty; delayed_jobs not IPC; codename omission; dual-actor; POLICY-B).
+  V6-PROTOCOL-1: launcher-aware tool inventory (4-of-5 launchers register
+    full tool set; 1 debug-stub launcher registers 0).
+  V6-PROTOCOL-2: request-path propagation — JWT jti and session_id thread
+    end-to-end through Ruby auth → tool invocation → Decko HTTP client →
+    encoder → outbox → sidecar to satisfy D3-1 provenance.
+  CF5.6: Gemini source-location claims verified via ls/Glob before
+    reconciliation (was Perception cluster pilot 2026-05-01 default;
+    32% of cluster-pilot V-N-X dissents were Gemini source-location drift).
+  CF5.6.E: [CONSTANT-CITED-FOR-IMPLEMENTATION-READINESS] — citing a
+    protocol constant (`resources_subscribe`, etc.) as evidence of feature
+    readiness without verifying handler implementation; promoted at
+    Source 6 after ≥2 instances.
+
+--------------------------------------------------------------------------------
+2. INHERITED CONCLUSIONS (do not re-derive)
+--------------------------------------------------------------------------------
+
+R1.1   atomspace-bridge is [READ-ONLY-BY-DESIGN] [BULK-IMPORT-THEN-READ];
+       does not satisfy Phase 4 write-through requirements. (Source 1.)
+R2.1   Hyperon Space is the canonical Phase 4 substrate. (Source 2.)
+R2.2   PATCH-1 [REQUIRED, UPSTREAM-BLOCKING] pybind11 binding for
+       space_register_observer exists at hyperon-experimental
+       c/src/space.rs:464-468 in the C ABI; Python binding is the gap.
+       (Source 6 V0-4 verified the C ABI extern.)
+R2.3   PATCH-2 [RECOMMENDED, UPSTREAM] MeTTa-side replace-atom! grounded
+       operator. (Source 2.)
+R3.1   cpp-mcp at HEAD is 19 commits behind upstream hkr04/cpp-mcp;
+       transport-layer drift; ruled out for Phase 4. (Source 3 V0-1.)
+R4.1   STAY-HYPERON-SPACE-PHASE-4 confirmed. ROCKS-PATH primary / MORK-PATH
+       secondary / DAS-PATH Phase 6+ for Phase 5+ durability. (Source 4.)
+R4.2   Four-layer atomspace taxonomy (Classical / Hyperon Space / DAS /
+       MORK) — these are FOUR DIFFERENT artifacts, not facets of one
+       AtomSpace. (Source 4 + AtomSpace cluster pilot 2026-04-29.)
+R4.3   MorkDB cannot delete links — Phase 5+/MORK-PATH primary-store
+       promotion is gated on MorkDB delete impl. (AtomSpace cluster pilot
+       2026-04-29 + Source 4.)
+R4.4   MORK is single-process triemap, NOT a "distributed backend." 8-crate
+       Cargo workspace; ~400M (not 500M) atom RAM scaling. (AtomSpace
+       cluster pilot 2026-04-29.)
+R4.5   `from hyperon import MCP` is apocryphal — verified Source 6 brief
+       drafting via Glob+Grep on hyperon-experimental at HEAD 3f76dc46:
+       NO mcp.rs builtin module, ZERO MCP coupling in upstream Hyperon.
+       The agent surface is OUT-OF-PROCESS. (AtomSpace cluster pilot 2026-
+       04-29 + Source 6 brief-time verification.)
+R5.1   PATCH-3 (mirror mod) + PATCH-4 (encoder) are the Phase 4 Decko-side
+       deliverables. (Source 5.)
+R5.2   D3-1 16-field envelope; codename read from cards.codename at mirror
+       time, NOT card_changes (V5-PROTOCOL-2). (Source 5.)
+R5.3   POLICY-B faithful-mirror trash: Decko delete emits Replace, not
+       Remove; MeTTa queries default-filter (Trash False). (Source 5
+       V5-PROTOCOL-5.)
+R5.4   Dual-actor D3-1: auth_current_id AND auth_as_id; card_acts.actor_id
+       alone insufficient. (Source 5 V5-PROTOCOL-4.)
+R5.5   delayed_jobs is Rails-side queue, NOT the IPC contract. Non-Rails
+       sidecars consume the explicit JSON payload; do NOT parse the
+       handler column. (Source 5 V5-PROTOCOL-3.)
+R5.6   integrate_with_delay event hook on %i[create update delete] with
+       defensive `next if action&.draft` filter; outbox ActiveRecord
+       table backup. (Source 5.)
+R6.1   Server-stack choice [RUBY-EXTEND-PRIMARY-PHASE-4]: extend hyperon-
+       wiki-mcp Ruby server with atom-query tools that proxy to Python
+       sidecar over HTTP/Unix-socket. PATCH-1 dependency, auth inheritance,
+       dual-actor handling, single deployment story all favor Ruby for
+       Phase 4. Phase 5+ upgrade path: parallel Python-side MCP surface
+       (OPTION-C) for direct hyperonpy access once PATCH-1 is upstream
+       and there's power-user demand. (Source 6.)
+R6.2   POLLING-FIRST resource subscriptions: Ruby mcp gem 0.11.0
+       server.rb 113-117 has `# No op handlers for currently unsupported
+       methods` for resources/subscribe and resources/unsubscribe;
+       agents poll resources/read on TTL until handler implementation
+       lands upstream. (Source 6 + CF5.6.E.)
+R6.3   D3-1 envelope extended to 20 fields: 16 (Source 5) + agent_session_id
+       + agent_kind + origin_system + origin_request_id. (Source 6.)
+R6.4   8-tool PATCH-5 read surface (verbatim from Source 6 reconciliation
+       :353-371 and :989-991): query_atoms, get_card_atom,
+       get_card_provenance, list_references, list_atoms_by_type,
+       atom_types, atom_count_by_type, space_stats. NO get_atom(id)
+       (Hyperon Space has no atom-id primary key; lookup is pattern-match
+       only — verified hyperon-space/src/lib.rs:175/202/212 +
+       python/hyperon/base.py:205/211/217/229/248/255). (Source 6.)
+R6.5   PATCH-6 [DEFERRED-PHASE-5+]: agent atom-write surface; OPTION-C
+       HYBRID. (Source 6.)
+R6.6   V6-PROTOCOL-1 [LAUNCHER-AWARE-TOOL-INVENTORY]: 5 binaries in
+       hyperon-wiki-mcp/bin/ — 4 production launchers (mcp-server,
+       mcp-server-http, mcp-server-puma-direct, mcp-server-rack-direct)
+       with currently DIVERGENT tool-registration inventories
+       (37 / 24 / 24 / 27 respectively at HEAD d37e518), plus 1 debug
+       stub mcp-server-http-rack with 0 tools. Locked Source 6
+       conclusion: PATCH-5 must target the 4 production launchers via
+       a shared tool-registry module to prevent further divergence;
+       the debug stub is left untouched. (Source 6 :73-74, :117-122,
+       :780-786, :964-969, :1042-1043.)
+R6.7   V6-PROTOCOL-2 [REQUEST-PATH-PROPAGATION-FOR-PROVENANCE]: JWT jti
+       and session_id MUST thread end-to-end (Ruby auth → tool invocation
+       → Decko HTTP client → encoder → outbox → sidecar) for D3-1 origin
+       fields. Current client.rb 184-188 + 275-283 propagate ONLY
+       Authorization + Content-Type; gap is real PATCH-3/PATCH-5 work.
+
+V0-K dissents from Sources 1-6 carry forward as standing carry-forwards;
+none open against Source 7's reconciliation surface. Source 7 introduces
+new V7-X candidates per reviewer findings.
+
+--------------------------------------------------------------------------------
+3. SOURCE DOCUMENT INVENTORY
+--------------------------------------------------------------------------------
+
+Source 7's "source" is FOUR Magi Archive RichText cards (live wiki state)
+plus the ON-DISK cluster-pilot reconciliations in this repo.
+
+Wiki cards (Magi Archive — wiki.magi-agi.org):
+
+  Card A — parent
+    Name:    Neoterics+Magus+Atomspace Layer - Wiki Integration Plan
+    ID:      11446
+    Type:    RichText
+    Created: 2026-03-11T04:05:57Z (single revision; no updates since)
+    Source:  Pre-cluster-pilot RFP-rooted plan; the contractual root.
+    URL:     https://wiki.magi-agi.org/Neoterics+Magus+Atomspace_Layer_-_
+             Wiki_Integration_Plan
+    Updated_at:   2026-03-11T04:05:57Z [CONFIRMED orchestrator-fetched
+                  at brief time].
+    Long-Term Vision section (load-bearing for Source 7):
+      Phase 2 (Post-Phase 1): Local Atomspace Shadow Store
+        "Atomspace runs alongside Postgres, populated from wiki content,
+        PLN reasoning over wiki knowledge. Self-referential improvement
+        cycle begins."
+      Phase 3: Atomspace as Primary Store
+        "Migrate from Postgres to Atomspace. Every Decko feature gets
+        Atomspace-native equivalent."
+      Phase 4: Distributed Atomspace + Full Cognitive Stack
+        "Connect to distributed Atomspace cloud. Local becomes hot cache.
+        PLN, ECAN, OpenPsi, HERMES, AIRIS, MAGUS fully operational."
+
+  Card B — Phase 1 Implementation Draft
+    Name:    Neoterics+Magus+Atomspace Layer - Wiki Integration Plan+
+             Phase 1 Implementation Draft
+    ID:      11448
+    Type:    RichText
+    Created: 2026-03-11T04:13:11Z; Updated 2026-03-11T04:38:09Z
+             (2 revisions; no updates since)
+    Source:  Pre-cluster-pilot Phase 1 build sequence.
+    Status:  "TENTATIVE DRAFT — Pending Anna's formal proposal and team
+             review" (verbatim, unchanged since 2026-03-11).
+    Per-Entry Card Structure section (load-bearing for Source 7):
+      [Entry Name] (main card — displays expert-reviewed content)
+      ├── +expert_reviewed     (gold-sealed version, immutable until merge)
+      ├── +ai_draft            (accumulated AI updates, pending merge)
+      ├── +review_status       (status, reviewer, dates, audit trail)
+      ├── +description         (overview text)
+      ├── +links               (GitHub repos, demos, papers)
+      └── +roadmap             (development roadmap)
+    Post-Deadline Atomspace Integration section:
+      "Local Atomspace as shadow store alongside Postgres; card-to-atom
+      mapping; Ignis-inspired symbolic extraction; self-referential
+      improvement cycle; Eventually: Atomspace replaces Postgres as
+      primary store; Eventually: distributed Atomspace cloud integration."
+
+  Card C — Workstream-B output (Event-Mechanism Spec)
+    Name:    Neoterics+Magus+Atomspace Layer - Wiki Integration Plan+
+             AtomSpace Mirror Event-Mechanism Spec
+    ID:      17117
+    Type:    RichText
+    Created: 2026-05-04T19:39:35Z; latest update 2026-05-05T06:15:56Z
+             (9 revisions; produced by parallel Claude session in
+             Workstream B over 2026-05-04 → 2026-05-05).
+    Source:  Workstream-B (parallel implementation-planning Claude
+             session) consuming Source 5 + Source 6 reconciliations
+             as locked spec.
+    Status:  "RECONCILED (Source 5) — Ready for implementation"
+    Scope:   Source 5 PATCH-1..4 mirror core + Workstream-B working
+             decision for PATCH-5 (recorded in §8 of card content).
+
+  Card D — Workstream-B output (System Integration Plan)
+    Name:    Neoterics+Magus+Atomspace Layer - Wiki Integration Plan+
+             AtomSpace Mirror System Integration Plan
+    ID:      17120
+    Type:    RichText
+    Created: 2026-05-05T06:15:18Z; latest update 2026-05-05T06:34:02Z
+             (2 revisions; produced by parallel Claude session in
+             Workstream B today).
+    Source:  Workstream-B operational layer companion to Card C.
+    Status:  "DRAFT — open questions, decisions land here as they're made."
+    Scope:   Bootstrap, drift detection, drift reconciliation, read-side
+             staleness contract, bidirectional mutation policy, auth on
+             read side, lossy V1 encoding for collection cardtypes,
+             schema/encoding evolution, observability, multi-replica,
+             testing.
+
+Sibling card outside Source 7 reconciliation surface:
+  Card E:    Neoterics+Magus+Atomspace Layer - Wiki Integration Plan+
+             AWS Infrastructure and Handoff Plan (ID 14837, 2026-03-24)
+             — infrastructure-only; covered by Workstream B's
+             implementation track separately. Listed for completeness;
+             Source 7 reviewers do NOT need to audit unless a
+             cluster-pilot finding contradicts it (none expected).
+
+On-disk cluster-pilot reconciliations (already on local filesystem):
+  scripts/archive/atomspace_integration_phase4/source1_atomspace_bridge_
+    writepath/findings_reconciled_crossmodel.txt
+  scripts/archive/atomspace_integration_phase4/source2_hyperon_space_
+    writeapi/findings_reconciled_crossmodel.txt
+  scripts/archive/atomspace_integration_phase4/source3_atomspace_linas_
+    design/findings_reconciled_crossmodel.txt
+  scripts/archive/atomspace_integration_phase4/source4_mork_pathmap_das_
+    rocks/findings_reconciled_crossmodel.txt
+  scripts/archive/atomspace_integration_phase4/source5_decko_semantics/
+    findings_reconciled_crossmodel.txt
+    (NOTE: Source 5 has v1 body lines 1-915 plus v2 addendum lines 916-end.
+     Reviewers consult both as the spec consumed by Workstream B.)
+  scripts/archive/atomspace_integration_phase4/source6_agent_mcp_surface/
+    findings_reconciled_crossmodel.txt
+
+--------------------------------------------------------------------------------
+4. CARD CONTENT — embedded excerpts (verbatim from get_card calls 2026-05-05)
+--------------------------------------------------------------------------------
+
+Reviewers MAY cite directly from the verbatim excerpts below without
+re-fetching for routine cross-reference, BUT the V4-PROTOCOL-4 quality
+gate in §10/§11 requires direct get_card calls to verify (a) each card's
+current updated_at and revision count, and (b) any drift-critical
+section before classifying it as a candidate V7-X dissent. Embedded
+excerpts are citeable; identity, freshness, and drift assertions
+require live re-fetch.
+
+[Card A — 11446] Long-Term Vision: Atomspace Integration
+
+> The RFP explicitly calls out "Distributed Atomspace + MORK backend" as
+> a future expansion. This aligns with our full integration plan:
+>
+> Phase 2 (Post-Phase 1): Local Atomspace Shadow Store
+> Atomspace runs alongside Postgres, populated from wiki content, PLN
+> reasoning over wiki knowledge. Self-referential improvement cycle begins.
+>
+> Phase 3: Atomspace as Primary Store
+> Migrate from Postgres to Atomspace. Every Decko feature gets Atomspace-
+> native equivalent.
+>
+> Phase 4: Distributed Atomspace + Full Cognitive Stack
+> Connect to distributed Atomspace cloud. Local becomes hot cache. PLN,
+> ECAN, OpenPsi, HERMES, AIRIS, MAGUS fully operational.
+
+[Card A — 11446] Future Compatibility (excerpt)
+
+> - Mid-to-high level detail wiki content covering each SingularityNET project
+> - Distributed Atomspace + MORK backend for self-improving intelligence loops
+> - In-app chat interface (MCP tool assists users from within the wiki)
+> - Dedicated model training on wiki content for LLM chatbot
+> - Ongoing editorial/maintenance workflows, server hosting, review cycles
+
+[Card B — 11448] Per-Entry Card Structure (verbatim)
+
+> [Entry Name] (main card — displays expert-reviewed content)
+> ├── +expert_reviewed     (gold-sealed version, immutable until merge)
+> ├── +ai_draft            (accumulated AI updates, pending merge)
+> ├── +review_status       (status, reviewer, dates, audit trail)
+> ├── +description         (overview text)
+> ├── +links               (GitHub repos, demos, papers)
+> └── +roadmap             (development roadmap)
+
+[Card B — 11448] Status header (verbatim)
+
+> Status: TENTATIVE DRAFT — Pending Anna's formal proposal and team review
+
+[Card B — 11448] Post-Deadline Atomspace Integration (verbatim)
+
+> After the 3-week delivery, the real symbolic perception pipeline begins.
+> This is Phase 2+ from the parent plan:
+>
+> - Local Atomspace as shadow store alongside Postgres
+> - Card-to-atom mapping (designed to be natural from Phase 1 card hierarchy)
+> - Ignis-inspired symbolic extraction (MeTTa code → Atomspace atoms,
+>   PLN docs → PLN rules)
+> - Self-referential improvement cycle
+> - Eventually: Atomspace replaces Postgres as primary store
+> - Eventually: distributed Atomspace cloud integration
+
+[Card C — 17117] §1 Status & Numbering Reconciliation (verbatim, key claim)
+
+> This plan follows the (Y) numbering system locked in 2026-05-01. Note
+> that this differs from the 2026-03-11 RFP parent numbering (Phase 2 =
+> shadow, Phase 3 = primary, Phase 4 = distributed):
+>
+> - Phase 3 (Closed): Read-only semantic mirror (READONLY-ATOMSPACE-BRIDGE)
+>   — superseded by this plan for the write-through track.
+> - Phase 4 (This Plan): Co-canonical write-through via Decko callback-
+>   driven mirror. Decko/PostgreSQL remains the source of truth; every
+>   non-draft Card mutation is mirrored to a Hyperon Space instance.
+> - Phase 5+: Primary AtomSpace storage with Decko-as-editor; substrate
+>   migration to RocksDB / MORK / DAS.
+> - Phase 6+: Distributed knowledge management.
+
+[Card C — 17117] §3 PATCH set table (paraphrased; verbatim claims):
+  PATCH-1: REQUIRED, UPSTREAM-BLOCKING — pybind11 observer binding.
+  PATCH-2: RECOMMENDED, UPSTREAM — MeTTa replace-atom!.
+  PATCH-3: REQUIRED — mod/atomspace_mirror/ ... independently shippable,
+           does not block on PATCH-5 / Source 6.
+  PATCH-4: REQUIRED — card_atom_encoder.rb ... independently shippable,
+           does not block on PATCH-5 / Source 6.
+
+[Card C — 17117] §8 PATCH-5 Working Decision (verbatim, key claim)
+
+> Working decision: Option A — extend the existing Ruby hyperon-wiki-mcp
+> server with atom-query and subscribe tools that proxy to the Python
+> sidecar over HTTP/Unix-socket. Not part of the Source 5 PATCH-1..4
+> mirror core; revise only if Source 6 reconciliation in Workstream A
+> overturns it.
+
+[Card C — 17117] §10 Research Archives — points to source1..source6
+  reconciliations on disk.
+
+[Card D — 17120] §12 Cross-references (verbatim, contains a stale memory
+pointer flagged for Source 7):
+
+> - Companion event-mechanism spec: sibling card AtomSpace Mirror Event-
+>   Mechanism Spec (renamed from "Implementation Plan").
+> - Parent: Atomspace Layer - Wiki Integration Plan (RFP-rooted, 2026-03-11).
+> - Phase 1 build: sibling Phase 1 Implementation Draft.
+> - Research archives: scripts/archive/atomspace_integration_phase4/
+>   source{1..6}_*/ in the hyperon-wiki repo.
+> - Memory pointers: project_atomspace_phase4_program_2026_05_01.md,
+>   feedback_cluster_pilot_stop_rule.md, feedback_research_vs_
+>   implementation_workstreams.md.
+
+NOTE FOR REVIEWERS: feedback_cluster_pilot_stop_rule.md was DELETED in this
+session 2026-05-04 after the parallel-workstream resolution; it was based
+on a wrong diagnosis of cluster-pilot retirement. Its replacement is
+feedback_research_vs_implementation_workstreams.md. Card D §12 carries
+the stale pointer; this is a Source 7 candidate V7-X.
+
+--------------------------------------------------------------------------------
+5. KEY RECONCILIATION DIMENSIONS
+--------------------------------------------------------------------------------
+
+Five dimensions in priority order. Reviewers structure findings by these.
+
+DIMENSION 1 — Phase numbering crosswalk
+  Magus 11446 (2026-03-11):                  Cluster-pilot Y (2026-05-01):
+    Phase 1: wiki at hyperon.dev               Phase 1+2: shipped April 2026
+    Phase 2: local shadow store                Phase 3: read-only mirror
+                                               Phase 4: co-canonical write-through
+    Phase 3: primary store                     Phase 5+: primary store
+    Phase 4: distributed                       Phase 6+: distributed
+
+  Load-bearing differences (NOT a 1:1 rename):
+    (a) Magus Phase 2 ("shadow store") splits into TWO cluster phases:
+        Phase 3 (read-only mirror) and Phase 4 (co-canonical write-through).
+        These are distinct architectures, not refinements of one design.
+    (b) Magus Phase 2 says "PLN reasoning over wiki knowledge" — PLN
+        cluster pilot No-Go theorem (2026-04-25) constrains this: global
+        PLN inference over wiki content is infeasible; Phase 5+ PLN-over-
+        AtomSpace must be characterized as "semantic queries Postgres
+        cannot trivially answer," not full inference.
+    (c) Magus Phase 2 says "self-referential improvement cycle begins" —
+        cluster-pilot Phase 4 (co-canonical write-through) does NOT close
+        this loop; that's Phase 5+/Phase 6+ territory.
+    (d) Magus Phase 4 ("Distributed Atomspace") corresponds to cluster
+        Phase 6+, not Phase 4.
+
+DIMENSION 2 — Substantive cluster-pilot findings vs Magus contractual claims
+  Findings to fold (each numbered for reviewer cross-check):
+    F1   Four-layer atomspace taxonomy (R4.2) vs Magus framing
+         "Distributed Atomspace + MORK backend." Magus phrasing conflates
+         DAS (distributed) with MORK (in-process triemap); cluster pilot
+         says these are different layers serving different roles.
+    F2   MorkDB delete blocker (R4.3): MORK-PATH primary-store promotion
+         is gated. Magus card 11446 names MORK as a "backend" without this
+         caveat. Phase 5+ scope must include MorkDB-delete as upstream
+         block.
+    F3   MORK volatility / 8-crate / 400M (R4.4): MORK is single-process
+         triemap, not distributed. Magus phrasing implies otherwise.
+    F4   `from hyperon import MCP` apocryphal (R4.5): Magus card 11446
+         doesn't claim this directly, but the implied "MCP" framing is
+         out-of-process sidecar via Ruby PATCH-5 (R6.1), NOT in-process
+         Hyperon MeTTa MCP.
+    F5   atomspace-pgres NOT the lowest-friction seam (R1.1): Magus card
+         11446 Phase 2 says "alongside Postgres" — one natural reading is
+         pg-side bridge. Cluster pilot Source 1 ruled this out. The actual
+         seam is integrate_with_delay event hook + outbox table + JSON
+         IPC + Python sidecar (R5.1, R5.6, R6.1).
+    F6   Per-entry +convention (Magus 11448): cluster-pilot V1 atom shape
+         covers (Id, Name, Key, Codename, TypeId, TypeName, LeftId, RightId,
+         Content, Trash, CreatedAt, UpdatedAt, CreatorId, UpdaterId) but
+         does NOT individually atomize +expert_reviewed / +ai_draft /
+         +review_status / +description / +links / +roadmap as DISTINCT
+         atom types. They're Decko subcards represented as nested
+         DeckoCards with (LeftId N) pointing at the parent. Phase 5+
+         encoder lift may dispatch these as typed editorial relations.
+    F7   HERMES deferral: Magus 11446 Phase 4 names HERMES, AIRIS,
+         MAGUS as "fully operational" at Phase 4. Cluster pilot project
+         memory marks HERMES as Phase 5+/Phase 6+ L2/L3 destination.
+         Conflict: Magus Phase 4 ≠ cluster Phase 4 on this.
+         CARD-IDENTITY NOTE: the HERMES proposal lives in Magi Archive
+         card `Neoterics+Metta+drive-docs+Hypergraph-RFP-Lakes` (ID 741,
+         Markdown, updated 2025-10-25), whose first content line reads
+         "Proposal Title: HERMES: A Causal Goal Graph Constructor for
+         AGI-Driven Knowledge Development." A name-only search for
+         "HERMES" misses ID 741 because its Decko name is
+         Hypergraph-RFP-Lakes; the related cards
+         `+HERMES-Technical-Appendix` (ID 737),
+         `+Hermes-V4` (ID 739), `+MAGI-HERMES-SCENARIOS` (ID 745),
+         `HERMES Priority Integration Analysis 2025` (ID 2431), and
+         `HERMES Priority Integration Extended (6-15)` (ID 2432) are
+         supporting/derivative artifacts. Reviewers cite ID 741 as the
+         HERMES proposal locus and may cite the sibling IDs for
+         operational/scenario context.
+    F8   PLN/ECAN/OpenPsi/AIRIS/MAGUS Phase 4 operational claims:
+         - PLN cluster pilot 2026-04-25: most paper-only or paper-leaning;
+           No-Go theorem constrains scope.
+         - ECAN cluster pilot 2026-04-26: AttentionBank is Layer 2/3
+           bridge but Loving AI Ghost OpenPsi-coupling unwired post-2018;
+           Hyperon-era AttentionBroker is engineering-surrogate not
+           literal 2009 ECAN.
+         - OpenPsi cluster pilot 2026-04-28: Hanson runtime branch +
+           AttentionBank coupling 2016-2019 lifecycle; HYBRID/PAPER-
+           LEANING MeTTa-port equation tally.
+         - AIRIS: Cook & Hammer 2024 paper; CTF/research-tier integration
+           into Hyperon NOT operational at Phase 4 substrate.
+         - MAGUS: Magi-team proposal, no canonical Hyperon operational
+           code. Magus card 11446 itself is the Magus proposal.
+         Magus 11446 Phase 4 "fully operational" claim is aspirational
+         under cluster-pilot ground truth.
+
+DIMENSION 3 — Per-entry +convention consistency in the Magus tree itself
+  Magus card 11448 specifies +expert_reviewed / +ai_draft / +review_status /
+  +description / +links / +roadmap as the per-entry pattern.
+  Cards C (17117) and D (17120) are NEW spec/system cards under 11446 with
+  DESCRIPTIVE NAMES, NOT subcards under any +convention.
+  Question for Source 7: are C and D structurally appropriate as direct
+  RichText children of 11446 (they're top-level specs, not "entries"
+  needing the per-entry convention)? Or should they be re-anchored as
+  +ai_draft children of 11448 (or a new entry-shaped card)?
+  Note: Hyperon Wiki has a NEWER 2026-05-05 +content-as-inclusion-shell
+  convention (per Claude memory reference_wiki_content_subcard_convention)
+  that supersedes the Magus pattern, but that newer convention applies
+  to the Hyperon Wiki not the Magi Archive. The Magus tree lives in
+  Magi Archive where 11448's pattern is the standing reference.
+
+DIMENSION 4 — Workstream-B output fidelity (Cards C 17117 + D 17120)
+  Workstream B consumed Source 5 reconciliation (v1+v2) and Source 6
+  reconciliation as locked spec. Source 7 reviewers verify:
+    (a) Card C §1 numbering reconciliation matches cluster-pilot R5/R6
+        records (verbatim Phase 3/Phase 4/Phase 5+/Phase 6+ definitions
+        align).
+    (b) Card C §3 PATCH set (PATCH-1..4) matches Source 5 R5.1/R5.5/R5.6
+        — counts, REQUIRED-vs-RECOMMENDED-vs-UPSTREAM-BLOCKING tags,
+        independently-shippable claim for PATCH-3 + PATCH-4 not
+        contradicting Source 6 ordering.
+    (c) Card C §4 atom encoding matches R5.2, R5.3, R5.4 (14-field
+        DeckoCard, 4-code DeckoReference, 16-field DeckoProvenance).
+        Source 6's 20-field extension is NOT in Card C — verify whether
+        this is an omission (gap), an intentional Source-5-only scope
+        (declared in the card scope blurb: "PATCHes 1–4, locked"), or a
+        drift.
+    (d) Card C §5 POLICY-B matches V5-PROTOCOL-5 verbatim.
+    (e) Card C §6 IPC + idempotency + recursion guard matches R5.5, R5.6.
+    (f) Card C §8 PATCH-5 working decision was published BEFORE Source 6
+        reconciliation closed (Card C latest update 2026-05-05T06:15:56Z;
+        Source 6 reconciliation written 2026-05-04 by orchestrator before
+        that). Question: does Card C §8's "Option A" working decision
+        align with Source 6 R6.1 [RUBY-EXTEND-PRIMARY-PHASE-4]? They
+        appear to (both name extending hyperon-wiki-mcp Ruby server with
+        atom-query+subscribe tools proxied to Python sidecar). Confirm
+        no semantic drift between "Option A" wording and "RUBY-EXTEND-
+        PRIMARY-PHASE-4" verdict.
+    (g) Card C §10 Research Archives points to source1..source6/ — confirm
+        path correctness post-Source-6-close.
+    (h) Card D outline: are these the right Phase-4 operational concerns?
+        (Bootstrap, drift detection, drift reconciliation, read-side
+        staleness, bidirectional mutation, auth, lossy V1, schema
+        evolution, observability, multi-replica, testing.) Reviewers
+        flag any concern that Card D omits (e.g., backup/restore, GDPR
+        deletion, audit-log retention).
+    (i) Card D §6 (Authorization on read side) labels itself
+        "OPEN — needs an answer before any agent reads the AtomSpace,
+        regardless of which approach." This is a HARD Phase 4 blocker
+        that the cluster-pilot record did not surface explicitly. Is
+        this a load-bearing carry-forward Source 7 should formalize as
+        V7-X-AUTH-ON-READ-MIRROR?
+    (j) Card D §12 carries STALE memory pointer
+        feedback_cluster_pilot_stop_rule.md (deleted 2026-05-04 in this
+        session). Confirm and flag for cluster-close edit batch fix.
+
+DIMENSION 5 — Magus-tree update scope
+  Source 7 reviewers recommend the cluster-close edit batch scope for the
+  Magus tree:
+    (a) Does card 11446 need an +AI Draft child folding in cluster-pilot
+        numbering (Y) + the substantive findings (F1-F8)? If yes, what
+        sections? If no, why not?
+    (b) Does card 11448 need an +AI Draft child? Card 11448 is itself
+        marked TENTATIVE DRAFT — Pending Anna's formal proposal. Has
+        Anna's proposal landed? (Reviewer answer: cluster-pilot has no
+        evidence either way; orchestrator confirms Magi Archive history
+        shows no updates to 11448 since 2026-03-11T04:38:09Z. Anna's
+        proposal status is OUT-OF-BAND for the cluster pilot.)
+    (c) Do Cards C and D need any update to reflect Source 6 closure?
+        Card C should likely incorporate Source 6 R6.1-R6.7 (PATCH-5
+        consolidation, 20-field D3-1, RUBY-EXTEND-PRIMARY, POLLING-FIRST,
+        V6-PROTOCOL-1/2). Recommend specific update path: minimal-diff
+        update vs standalone +addendum subcard.
+    (d) Should a NEW Magus card be created for cluster-pilot consolidation
+        (e.g., +Cluster Pilot Findings Summary)?
+
+--------------------------------------------------------------------------------
+6. SPECIFIC QUESTIONS (S7.QN)
+--------------------------------------------------------------------------------
+
+Reviewers answer each Q with a single-label verdict from §7 plus evidence.
+
+S7.Q1  Phase numbering crosswalk — does the Magus 11446 → cluster-pilot Y
+       mapping in Dimension 1 hold? Specifically, is "Magus Phase 2 splits
+       into cluster Phase 3 + Phase 4" the right framing, or is there a
+       cleaner mapping?
+       Evidence: cite both Magus 11446 Long-Term Vision text and Card C
+       §1 numbering text. Verdict vocabulary: [CROSSWALK-CONFIRMED] /
+       [CROSSWALK-NEEDS-REVISION].
+
+S7.Q2  Cluster-pilot finding F1 (four-layer taxonomy) vs Magus
+       "Distributed Atomspace + MORK backend" framing — does the cluster-
+       pilot taxonomy supersede the Magus framing, or do they coexist
+       (Magus shorthand for the taxonomy)?
+       Verdict: [SUPERSEDES-MAGUS] / [COEXISTS-AS-SHORTHAND] /
+       [CONTRADICTS-MAGUS].
+
+S7.Q3  Cluster-pilot finding F2 (MorkDB delete blocker) — should this be
+       added to Magus tree as an explicit Phase 5+ blocker note?
+       Verdict: [REQUIRED-UPDATE] / [OPTIONAL-UPDATE] / [NOT-NEEDED].
+
+S7.Q4  Cluster-pilot finding F3 (MORK in-process not distributed) — does
+       this contradict Magus 11446 Future Compatibility line "Distributed
+       Atomspace + MORK backend for self-improving intelligence loops"?
+       Verdict: [CONTRADICTS] / [DOES-NOT-CONTRADICT-PROPER-READING] /
+       [AMBIGUOUS].
+
+S7.Q5  Cluster-pilot finding F4 (`from hyperon import MCP` apocryphal) —
+       does any Magus card claim or imply Hyperon-native MCP at the
+       MeTTa-builtin layer? Does Card C / Card D §architecture line up
+       with R4.5 (out-of-process sidecar via Ruby + Python)?
+       Verdict: [MAGUS-NEUTRAL] / [MAGUS-IMPLIES-NATIVE-MCP-AND-CONTRADICTED]
+       / [WORKSTREAM-B-CARDS-CORRECT].
+
+S7.Q6  Cluster-pilot finding F5 (atomspace-pgres not lowest-friction) —
+       does Magus 11446 Phase 2 "alongside Postgres" framing imply pg-
+       side bridge, or is the integrate_with_delay event hook in scope
+       under that framing?
+       Verdict: [MAGUS-AGNOSTIC-ON-SEAM] / [MAGUS-IMPLIES-PG-SIDE] /
+       [WORKSTREAM-B-RESOLVES-AMBIGUITY].
+
+S7.Q7  Cluster-pilot finding F6 (per-entry +convention) — does the V1
+       atom shape (DeckoCard with LeftId/RightId nesting) faithfully
+       capture +expert_reviewed / +ai_draft / +review_status / +description
+       / +links / +roadmap, or is there an information-loss gap that
+       Phase 5+ encoder lift must address?
+       Verdict: [V1-CAPTURES-VIA-NESTING] / [V1-LOSSY-PHASE-5-LIFT-NEEDED]
+       / [V1-INADEQUATE-CHANGE-PHASE-4].
+
+S7.Q8  Cluster-pilot finding F7 (HERMES deferral) — confirm HERMES is
+       properly Phase 5+ / Phase 6+ L2/L3 destination and NOT in scope
+       for cluster Phase 4. Card 11446 Phase 4 names HERMES "fully
+       operational" — does Source 7 recommend a parenthetical correction
+       in the +AI Draft proposal?
+       Verdict: [DEFERRAL-CONFIRMED-CORRECTION-RECOMMENDED] /
+       [DEFERRAL-CONFIRMED-NO-CORRECTION-NEEDED] /
+       [HERMES-IN-SCOPE-FOR-PHASE-4-VIA-X].
+       (Card-identity context: ID 741 = `Neoterics+Metta+drive-docs+
+       Hypergraph-RFP-Lakes`, holds the HERMES proposal text; supporting
+       cards 737/739/745/2431/2432. See F7 in §5 for the full identity
+       table. Reviewers verify ID 741 is reachable via direct get_card
+       call before citing existence.)
+
+S7.Q9  Cluster-pilot finding F8 (PLN/ECAN/OpenPsi/AIRIS/MAGUS Phase 4
+       operational claims) — for each named system, is Magus 11446 Phase 4
+       "fully operational" defensible at the cluster Phase 4 substrate
+       (Hyperon Space + mirror)? List per-system status:
+         - PLN: ?
+         - ECAN: ?
+         - OpenPsi: ?
+         - AIRIS: ?
+         - MAGUS: ?
+       Verdict per system: [OPERATIONAL-AT-PHASE-4] / [PAPER-ONLY] /
+       [PARTIAL-FRAGMENTED-REVIVAL] / [NOT-IN-SCOPE].
+
+S7.Q10 Per-entry +convention consistency (Dimension 3) — are Cards C
+       (17117) and D (17120) structurally appropriate as direct RichText
+       children of 11446 with descriptive names?
+       Verdict: [STRUCTURAL-OK-TOP-LEVEL-SPECS] / [SHOULD-BE-AI-DRAFT-
+       CHILDREN-OF-11448] / [SHOULD-BE-REANCHORED-UNDER-NEW-ENTRY].
+
+S7.Q11 Workstream-B fidelity — Card C 17117 §3 PATCH set vs Source 5 R5.1/
+       R5.5/R5.6: does Card C correctly state PATCH-3 + PATCH-4 are
+       "independently shippable" without blocking on PATCH-5 / Source 6?
+       Verdict: [FIDELITY-CONFIRMED] / [DRIFT-FROM-SOURCE-5] /
+       [REQUIRES-MINOR-CORRECTION].
+
+S7.Q12 Workstream-B fidelity — Card C 17117 §4 atom encoding: does the
+       16-field DeckoProvenance match R5.2 + R5.4 (Source 5)? Note that
+       Source 6 R6.3 extended D3-1 to 20 fields; Card C scope is "Source 5
+       PATCH-1..4, locked." Is omission of the 4 Source-6 agent-identity
+       fields a deliberate scope cap or an oversight?
+       Verdict: [FIDELITY-CONFIRMED-SCOPE-EXPLICIT] /
+       [DRIFT-FROM-SOURCE-6-NEEDS-UPDATE] / [IDIOMATIC-DEFERRAL-OK].
+
+S7.Q13 Workstream-B fidelity — Card C 17117 §8 PATCH-5 working decision
+       "Option A" vs Source 6 R6.1 [RUBY-EXTEND-PRIMARY-PHASE-4]: do these
+       align? Should Card C be updated post-Source-6-close to reference
+       R6.1 verdict explicitly?
+       SPECIFIC WORDING-DRIFT FLAG: Card C §8 reads "extend the existing
+       Ruby hyperon-wiki-mcp server with atom-query and SUBSCRIBE tools."
+       Source 6 R6.2 [POLLING-FIRST] excludes server-push subscriptions
+       from the Phase 4 8-tool surface; subscribe-tool work is PATCH-5 v2
+       contingent on upstream Ruby mcp gem implementing the no-op stubs
+       at server.rb:113-117. Reviewers must explicitly classify this as
+       (i) cosmetic wording drift to fix in Card C, (ii) substantive
+       semantic drift requiring a re-scope of §8, or (iii) acceptable
+       reading where "subscribe tools" abbreviates the polling-first
+       resource subscription surface specified by R6.4.
+       Verdict: [ALIGNED-NO-UPDATE-NEEDED] / [ALIGNED-UPDATE-RECOMMENDED]
+       / [SEMANTIC-DRIFT-REQUIRES-CORRECTION].
+
+S7.Q14 Workstream-B fidelity — Card D 17120 outline coverage: does the
+       11-section open-questions list cover the Phase 4 operational
+       surface, or are there gaps? Specifically check:
+         - backup / restore / disaster-recovery
+         - GDPR / right-to-be-forgotten alignment with POLICY-B
+         - audit-log retention for D3-1 provenance
+         - capacity planning (atom count growth, RAM scaling at 400M cap)
+         - integration with existing Decko admin tooling
+       Verdict: [COVERAGE-COMPLETE] / [COVERAGE-GAPS-NAMED] /
+       [REORGANIZATION-RECOMMENDED].
+
+S7.Q15 Card D 17120 §6 (Authorization on read side) — is this a hard
+       Phase 4 blocker that should be promoted to a cluster-pilot
+       carry-forward (V7-X-AUTH-ON-READ-MIRROR)? Note that none of
+       Sources 1-6 surfaced this explicitly as a Phase 4 blocker; the
+       Workstream-B card flagged it independently.
+       Verdict: [LOAD-BEARING-PROMOTE-TO-V7-X] /
+       [PHASE-5-PLUS-DEFERRABLE] / [SOURCE-5-IMPLICITLY-COVERED].
+
+S7.Q16 Magus tree update scope — recommend the cluster-close edit batch
+       for the Magus tree:
+         (a) +AI Draft child of card 11446 (yes/no, scope if yes)
+         (b) +AI Draft child of card 11448 (yes/no, scope if yes)
+         (c) Updates to Card C 17117 (none / minor / major)
+         (d) Updates to Card D 17120 (none / minor / major; specifically
+             the stale memory pointer feedback_cluster_pilot_stop_rule.md
+             requires correction)
+         (e) New Magus card creation (yes/no; if yes, name + scope)
+       Verdict: structured recommendation table in the findings.
+
+S7.Q17 Closing question — does Source 7 reconciliation produce any new
+       PATCH (PATCH-7+) or new V-PROTOCOL? Or is the cluster-pilot
+       extraction now complete with the Source-1-through-Source-6
+       PATCH set + standing protocols + Source-7 V7-X carry-forwards?
+       Verdict: [EXTRACTION-COMPLETE] / [NEW-PATCH-IDENTIFIED] /
+       [NEW-V-PROTOCOL-IDENTIFIED].
+
+--------------------------------------------------------------------------------
+7. VERDICT VOCABULARY
+--------------------------------------------------------------------------------
+
+Single-label per question per V4-PROTOCOL-4 single-label verdict rule.
+
+For phase-numbering crosswalk (S7.Q1):
+  [CROSSWALK-CONFIRMED]            mapping in Dimension 1 holds.
+  [CROSSWALK-NEEDS-REVISION]       reviewer proposes alternative mapping.
+
+For substantive-findings folding (S7.Q2-Q9):
+  [SUPERSEDES-MAGUS]               cluster-pilot finding overrides Magus.
+  [COEXISTS-AS-SHORTHAND]          Magus phrasing is shorthand for the
+                                   cluster-pilot taxonomy/finding.
+  [CONTRADICTS-MAGUS]              cluster-pilot finding conflicts with
+                                   Magus claim — load-bearing.
+  [REQUIRED-UPDATE]                Magus tree must be updated.
+  [OPTIONAL-UPDATE]                update would clarify but isn't required.
+  [NOT-NEEDED]                     Magus framing remains accurate.
+  [DEFERRAL-CONFIRMED-CORRECTION-RECOMMENDED]
+  [DEFERRAL-CONFIRMED-NO-CORRECTION-NEEDED]
+  [HERMES-IN-SCOPE-FOR-PHASE-4-VIA-X]
+  [OPERATIONAL-AT-PHASE-4]         per-system status verdict.
+  [PAPER-ONLY]
+  [PARTIAL-FRAGMENTED-REVIVAL]
+  [NOT-IN-SCOPE]
+
+For per-entry-convention check (S7.Q7, S7.Q10):
+  [V1-CAPTURES-VIA-NESTING]
+  [V1-LOSSY-PHASE-5-LIFT-NEEDED]
+  [V1-INADEQUATE-CHANGE-PHASE-4]
+  [STRUCTURAL-OK-TOP-LEVEL-SPECS]
+  [SHOULD-BE-AI-DRAFT-CHILDREN-OF-11448]
+  [SHOULD-BE-REANCHORED-UNDER-NEW-ENTRY]
+
+For Workstream-B fidelity (S7.Q11-Q15):
+  [FIDELITY-CONFIRMED]
+  [FIDELITY-CONFIRMED-SCOPE-EXPLICIT]
+  [DRIFT-FROM-SOURCE-N]
+  [REQUIRES-MINOR-CORRECTION]
+  [ALIGNED-NO-UPDATE-NEEDED]
+  [ALIGNED-UPDATE-RECOMMENDED]
+  [SEMANTIC-DRIFT-REQUIRES-CORRECTION]
+  [COVERAGE-COMPLETE]
+  [COVERAGE-GAPS-NAMED]
+  [REORGANIZATION-RECOMMENDED]
+  [LOAD-BEARING-PROMOTE-TO-V7-X]
+  [PHASE-5-PLUS-DEFERRABLE]
+  [SOURCE-5-IMPLICITLY-COVERED]
+
+For closure (S7.Q17):
+  [EXTRACTION-COMPLETE]
+  [NEW-PATCH-IDENTIFIED]
+  [NEW-V-PROTOCOL-IDENTIFIED]
+
+--------------------------------------------------------------------------------
+8. OUTPUT SPEC
+--------------------------------------------------------------------------------
+
+Each reviewer produces a plain-text findings file the user pastes into:
+  scripts/archive/atomspace_integration_phase4/source7_magus_plan_
+    reconciliation/findings_codex.txt
+  scripts/archive/atomspace_integration_phase4/source7_magus_plan_
+    reconciliation/findings_gemini.txt
+
+Format per reviewer:
+
+  Section 1: brief sign-off or specific corrections to this brief
+             (under 100 words).
+  Section 2: per-question verdicts S7.Q1 through S7.Q17 with single-
+             label verdict + evidence (cite Magus card name + section,
+             cluster-pilot reconciliation file:line where applicable).
+  Section 3: candidate V7-X dissents from prior reviewer's anticipated
+             positions (Codex anticipates Gemini drift; Gemini anticipates
+             Codex over-specificity, etc.).
+  Section 4: Magus-tree update recommendation table (S7.Q16) with
+             concrete scope per row.
+  Section 5: closure verdict (S7.Q17) plus any final standing-protocol
+             or carry-forward additions.
+
+Orchestrator (Claude) produces:
+  scripts/archive/atomspace_integration_phase4/source7_magus_plan_
+    reconciliation/findings_reconciled_crossmodel.txt
+
+Format:
+  Section 1: Three-way sign-off header.
+  Section 2: Executive summary of consensus + dissent.
+  Section 3: Per-question consensus S7.Q1-Q17.
+  Section 4: V-N-X dissent table with resolutions (V7-X records).
+  Section 5: Phase-numbering crosswalk (final, locked).
+  Section 6: Magus-tree update scope (final, locked) — drives
+             cluster-close edit batch.
+  Section 7: Cluster-pilot closure verdict and SPEC_DRAFT.md outline.
+  Section 8: Carry-forwards beyond Source 7 (any L2/L3 destination
+             items, Phase 5+ scope notes).
+
+--------------------------------------------------------------------------------
+9. REPO STATE SNAPSHOT (V3-PROTOCOL-1-verified during brief drafting)
+--------------------------------------------------------------------------------
+
+Local repo paths (verified at brief drafting time):
+
+  hyperon-wiki (this repo)
+    Path: E:\GitHub\Magi-AGI\hyperon-wiki\
+    HEAD: a1a9e62 ("Close Perception cluster pilot wiki-edit pass
+                     (2026-05-01)") — same as Source 6 brief.
+    Status: ACTIVE; scripts/archive/atomspace_integration_phase4/ tree
+            is UNTRACKED (cluster-pilot artifacts; commit at cluster
+            close).
+
+  hyperon-wiki-mcp
+    Path: E:\GitHub\Magi-AGI\hyperon-wiki-mcp\
+    HEAD: d37e518 ("fix: Correct search_cards search_in default and
+                     list_children description") — same as Source 6.
+
+  hyperon-experimental
+    Path: E:\GitHub\hyperon reference\hyperon-experimental\
+    HEAD: 3f76dc46 ("Merge pull request #1075 from vsbogd/update-version")
+          — same as Source 6.
+
+  cpp-mcp (reference only; ruled out at Source 3)
+    HEAD: 86856a2 — same as Source 6.
+
+Magi Archive wiki state at brief drafting time (verified via MCP):
+  Card 11446: updated_at 2026-03-11T04:05:57Z (1 revision since create).
+  Card 11448: updated_at 2026-03-11T04:38:09Z (2 revisions since create
+              2026-03-11T04:13:11Z; no updates since).
+  Card 14837: updated_at 2026-03-24T22:17:49Z.
+  Card 17117: updated_at 2026-05-05T06:15:56Z (9 revisions; created
+              2026-05-04T19:39:35Z by parallel Workstream-B Claude
+              session).
+  Card 17120: updated_at 2026-05-05T06:34:02Z (2 revisions; created
+              2026-05-05T06:15:18Z).
+
+Cluster-pilot reconciliations on disk (verified via Glob):
+  source1_atomspace_bridge_writepath/findings_reconciled_crossmodel.txt
+  source2_hyperon_space_writeapi/findings_reconciled_crossmodel.txt
+  source3_atomspace_linas_design/findings_reconciled_crossmodel.txt
+  source4_mork_pathmap_das_rocks/findings_reconciled_crossmodel.txt
+  source5_decko_semantics/findings_reconciled_crossmodel.txt
+  source6_agent_mcp_surface/findings_reconciled_crossmodel.txt
+
+--------------------------------------------------------------------------------
+10. STANDING PROTOCOLS (carry forward to Source 7)
+--------------------------------------------------------------------------------
+
+V3-PROTOCOL-1: verify all path/file-existence claims via ls/Glob at HEAD
+               before citation. Source 7 is light on file-grep but heavy
+               on Magi Archive card-existence claims; reviewers verify
+               via search_cards + get_card before asserting "card X
+               exists / contains Y."
+V3-PROTOCOL-2: every wiki claim cites <card name>:<section> or
+               <card name>:<verbatim quote>.
+V3-PROTOCOL-3: bidirectional verification — if you cite a Magus claim,
+               also cite the cluster-pilot finding it interacts with.
+V4-PROTOCOL-1: every code claim cites <file>:<line-range>; SHA-pinned.
+V4-PROTOCOL-2: SHA references unambiguous.
+V4-PROTOCOL-3: bidirectional fork audit before "diverged tradition" labels
+               (not directly applicable in Source 7 but inherited).
+V4-PROTOCOL-4: brief-flagged "verify X" notes are extraction obligations,
+               not background. Source 7 brief flags:
+                 - Verify HERMES proposal card by direct get_card on
+                   `Neoterics+Metta+drive-docs+Hypergraph-RFP-Lakes`
+                   (ID 741); a name-only search for "HERMES" misses it
+                   because the Decko card name is Hypergraph-RFP-Lakes.
+                   Confirm the proposal text still opens with "Proposal
+                   Title: HERMES: A Causal Goal Graph Constructor..."
+                 - Verify Anna's formal proposal status by checking card
+                   11448 history for any update past 2026-03-11; if found,
+                   include in findings.
+                 - Verify cards C (17117) and D (17120) content matches
+                   the embedded verbatim excerpts in §4 of this brief
+                   by direct get_card call (orchestrator extracted at
+                   brief time; reviewers re-fetch as a quality gate).
+                 - Verify launcher inventory (R6.6 / V6-PROTOCOL-1) by
+                   reading bin/ in hyperon-wiki-mcp at HEAD d37e518:
+                   5 binaries total, 4 production launchers with
+                   divergent tool counts, 1 debug stub mcp-server-http-
+                   rack with 0 tools.
+                 - Verify PATCH-5 tool list (R6.4) by reading Source 6
+                   findings_reconciled_crossmodel.txt :353-371 and
+                   :989-991 directly; do NOT re-derive from prior brief
+                   versions or from the inline tool-class file list.
+V5-PROTOCOL-1 through V5-PROTOCOL-5: design-discipline carry-forwards
+               from Source 5 (TRACKED_FIELDS != Card::Dirty;
+               delayed_jobs not IPC; codename omission; dual-actor;
+               POLICY-B trash). Source 7 reviewers cite these by name
+               when they appear in Workstream-B cards.
+V6-PROTOCOL-1: launcher-aware tool inventory (Source 6 carry-forward).
+V6-PROTOCOL-2: request-path propagation for D3-1 origin fields.
+CF5.6:         Gemini source-location/file-identity claims verified
+               via ls/Glob/get_card BEFORE citation (Perception cluster
+               pilot 2026-05-01 default). For Source 7 reviewers,
+               this means: any "card N at Magi Archive contains text
+               X" claim from Gemini gets cross-checked by the
+               orchestrator via direct get_card call at reconciliation
+               time.
+CF5.6.E:       [CONSTANT-CITED-FOR-IMPLEMENTATION-READINESS] — Source 6
+               carry-forward. Citing a protocol constant or named-feature
+               as evidence of feature readiness without verifying handler
+               implementation. For Source 7 reviewers: any claim that
+               "Magus card N specifies feature X is operational at
+               Phase 4" gets cross-checked against cluster-pilot finding
+               for that feature.
+
+--------------------------------------------------------------------------------
+11. REVIEWER WORKFLOW
+--------------------------------------------------------------------------------
+
+Codex and Gemini reviewers (separate sessions; user is the relay):
+
+Step 1 — Read this brief end-to-end.
+Step 2 — Verify the embedded card excerpts in §4 by direct Magi Archive
+         get_card calls (V4-PROTOCOL-4 quality gate). If any drift,
+         report in Section 1 of findings.
+Step 3 — Read on-disk reconciliations for Sources 1-6 (file paths in §3).
+         For each, identify the R-N records that load-bear on Source 7
+         dimensions and questions.
+Step 4 — Answer Q1-Q17 with single-label verdict + evidence.
+Step 5 — Produce candidate V7-X dissent records anticipating peer
+         reviewer drift.
+Step 6 — Produce S7.Q16 update-scope recommendation table.
+Step 7 — Sign off on closure (S7.Q17).
+Step 8 — Output to user as plain text; user pastes into findings_codex.txt
+         / findings_gemini.txt under source7_magus_plan_reconciliation/.
+
+Orchestrator (Claude this session):
+
+Step A — Wait for both reviewer findings on disk.
+Step B — Write findings_reconciled_crossmodel.txt at the source7_*
+         path. Three-way sign-off gate.
+Step C — On reconciliation sign-off, produce the cluster-close edit
+         bundle (gated, separate session): SPEC_DRAFT.md outline,
+         +AI Draft proposals for Magus cards, top-level CLAUDE.md
+         cluster section, Claude memory project file, the cluster
+         commit. Do NOT execute any wiki write or commit until the
+         user authorizes the edit batch.
+
+--------------------------------------------------------------------------------
+12. OUT-OF-SCOPE FOR SOURCE 7
+--------------------------------------------------------------------------------
+
+NOT in Source 7 scope:
+  - Re-deriving Sources 1-6 findings (use the reconciliations as locked).
+  - Any wiki write, commit, or memory edit (those are cluster-close
+    deliverables, gated separately).
+  - Audit of card 14837 (AWS Infrastructure) unless a cluster-pilot
+    finding contradicts it (none expected).
+  - Audit of HERMES card 741 internal content (only existence /
+    Phase-deferral confirmation).
+  - Anna's formal proposal status (out-of-band; orchestrator confirms
+    no update in Magi Archive history; reviewers note for the record
+    only).
+  - Magi Archive vs Hyperon Wiki convention reconciliation
+    (reference_wiki_content_subcard_convention.md is Hyperon Wiki only;
+    Magus tree is Magi Archive where 11448 pattern stands).
+  - SPEC_DRAFT.md authoring (cluster-close work).
+  - Any additional cluster pilot beyond Source 7 (extraction CLOSES at
+    Source 7; further design questions roll into Phase 5+ scope).
+
+--------------------------------------------------------------------------------
+13. CLOSURE NOTE
+--------------------------------------------------------------------------------
+
+Source 7 is the cluster-pilot CLOSURE source for atomspace_integration_
+phase4. After three-way sign-off on findings_reconciled_crossmodel.txt
+the cluster-pilot extraction phase is COMPLETE.
+
+The Phase 4 implementation work continues (Workstream B; Cards C + D
++ the mod/atomspace_mirror/ skeleton + PATCH-3/PATCH-4 ship; PATCH-5
+follows; PATCH-6 deferred Phase 5+; PATCH-1 + PATCH-2 upstream-blocking
+work in hyperon-experimental). That implementation track is OUTSIDE
+the cluster pilot's scope per feedback_research_vs_implementation_
+workstreams.md (cluster-pilot research and implementation are separate
+parallel workstreams; closing the cluster pilot does not block or
+retire implementation).
+
+If a future cluster pilot is needed (e.g., for Phase 5+ substrate
+migration to atomspace-rocks; for HERMES L2/L3 design; for the agent
+auth-on-read-mirror question if S7.Q15 promotes to V7-X), it will open
+fresh under a new program directory under scripts/archive/.
+
+--------------------------------------------------------------------------------
+END OF BRIEF
+--------------------------------------------------------------------------------

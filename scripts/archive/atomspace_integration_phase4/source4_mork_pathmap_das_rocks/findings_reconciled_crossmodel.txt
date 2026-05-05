@@ -1,0 +1,1130 @@
+================================================================================
+ATOMSPACE PHASE 4 RESEARCH — SOURCE 4
+Cross-model reconciliation (Claude + Codex + Gemini)
+================================================================================
+
+Reconciler: Claude (orchestrator)
+Date:       2026-05-04
+Repos:      MORK            @ 4cef6f77 (2026-04-19, ClarkeRemy)
+            PathMap         @ cd6f3506 (2025-09-22, Luke Peterson)
+            mork_ffi        @ 4bbc3350 (2025-12-12, Patrick Hammer)
+            DAS             @ f4da3d78 (2026-04-29, Andre Luiz de Senna)
+            atomspace-rocks @ 6577a5bc (2026-01-21, Linas Vepstas)
+Brief:      scripts/archive/atomspace_integration_phase4/
+            source4_mork_pathmap_das_rocks/brief.txt
+
+Reviewer findings reconciled:
+  findings_codex.txt   (317 lines, dated 2026-05-04, Codex review pass)
+  findings_gemini.txt  (153 lines, dated 2026-05-04, Gemini review pass)
+  findings_claude.txt  (728 lines, dated 2026-05-04, orchestrator extraction
+                        pass produced post-reconciliation v1 in response to
+                        Codex authorization for Option 1 "Claude extraction
+                        now, then reconciliation").
+
+NOTE — RECONCILIATION CHRONOLOGY:
+  v1 — Initial reconciliation written before findings_claude.txt; note at
+       top declared "findings_claude.txt not produced." That statement was
+       true at v1 time but superseded.
+  v2 (this file, post-Claude-extraction) — Same v1 body preserved verbatim
+       below, plus an APPENDED ADDENDUM at end-of-file integrating
+       findings_claude.txt's V0-1 through V0-4 NEW findings, V4-PROTOCOL-4,
+       and the NO-CONFLICT layer-difference resolutions for the apparent
+       Codex/Gemini DAS disputes. Per Codex's reconciliation guidance:
+       "preserve the existing Q12 consensus, add V0-1 through V0-4, and
+       explicitly mark the apparent Codex/Gemini DAS disputes as layer-
+       differences rather than conflicts."
+  See "RECONCILIATION ADDENDUM (v2)" at end of file for the post-extraction
+  material.
+
+Tag legend:
+  [CONSENSUS]      both reviewers agree on substance.
+  [V-N-X]          dissent: V is the reviewer, N is the question, X is the
+                   sub-issue.
+  [BRIEF-DRIFT]    error in the orchestrator's own brief.txt (none in
+                   Source 4; brief was V3-PROTOCOL-1-verified).
+  [CF5.6]          Gemini source-location/file-identity drift (none
+                   logged in Source 4 at line-citation level).
+  [NEW-CODEX]      finding contributed only by Codex.
+  [NEW-GEMINI]     finding contributed only by Gemini.
+  [VERIFIED-CLAUDE] independently re-read by Claude orchestrator during
+                    reconciliation.
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+
+Source 4 closes with [CONSENSUS] [STAY-HYPERON-SPACE-PHASE-4]. None of
+MORK, PathMap, mork_ffi, DAS, or atomspace-rocks is a viable Phase 4
+substrate replacement; all lack the SpaceObserver-equivalent surface
+required for the co-canonical mirror. Phase 4 architecture unchanged.
+
+For Phase 5+, both reviewers converge on the Phase 5+ option ranking:
+  - ROCKS-PATH (primary): atomspace-rocks is mature, maintainer-preferred,
+    real write-path, supports Frame versioning, single-user constraint
+    means atomspace-cog or equivalent network layer is needed for multi-
+    Decko-deployment.
+  - MORK-PATH (secondary): research-stage; PathMap dependency is research-
+    stage; no observer; mork_ffi is reference-only.
+  - DAS-PATH (Phase 6+ distributed): consolidated at singnet/das HEAD;
+    multi-backend AtomDB; planned but not-yet-implemented direct DBMS
+    write-back per das/README.md:114-120.
+
+Codex contributed three NEW findings worth elevating:
+  - PathMap version mismatch (0.1.0 declared vs 0.3.0 required by MORK)
+  - mork_ffi path drift (../../MORK vs sibling ../MORK in this workspace)
+  - merkleize symbol not in PathMap HEAD by grep (MORK calls it; would
+    fail to build)
+
+These reframe MORK + mork_ffi from "research-stage" to "research-stage
+AND not currently buildable in this workspace layout."
+
+Three new standing protocols (V4-PROTOCOL-1/2/3) added.
+
+Source 4 produces NO new SPEC_DRAFT patches beyond Source 2's PATCH-1 +
+PATCH-2 and Source 3's D3-1 metadata discipline. It produces the Q7
+cross-substrate comparison table for SPEC_DRAFT.md.
+
+================================================================================
+PER-QUESTION CONSENSUS
+================================================================================
+
+--------------------------------------------------------------------------------
+Q1. MORK KERNEL WRITE-API
+--------------------------------------------------------------------------------
+
+[CONSENSUS] MORK has a real in-process write API; not a Hyperon Space
+SpaceMut equivalent.
+
+Verified citations (combined; both reviewers complementary):
+  - `MORK/Cargo.toml:1-14` — 8-crate workspace, default member kernel/.
+  - `MORK/kernel/src/space.rs:38` — canonical `pub struct Space`,
+    backed by `PathMap<()>`. (Codex's :38 is the struct line; brief
+    pre-populated :36 was the comment opening; both within tolerance.)
+  - `MORK/kernel/src/space.rs:835/836` — `add_all_sexpr(&mut self,
+    r: &[u8])` / `remove_all_sexpr(&mut self, r: &[u8])`. (Gemini)
+  - `MORK/kernel/src/space.rs:860/861` — `add_sexpr(&mut self, r,
+    pattern, template)` / `remove_sexpr(&mut self, ...)`. (both)
+  - `MORK/kernel/src/space.rs:862` — `load_sexpr_impl`. (Codex)
+  - `MORK/kernel/src/space.rs:509` — `load_csv(...)`. (Gemini)
+  - `MORK/kernel/src/space.rs:848/849` — `self.btm.insert(data, ())` /
+    `self.btm.remove(data)`. (Gemini)
+  - `MORK/kernel/src/space.rs:884-885` — write-zipper mutation:
+    `set_val(())`, `remove_val(true)`. (Codex)
+  - `MORK/kernel/src/space.rs:982-987` — backup/restore via
+    ArenaCompactTree. (Codex)
+  - `MORK/kernel/src/space.rs:31-33` — `pub static mut transitions`,
+    `unifications`, `writes` counters. (both)
+  - `MORK/kernel/src/space.rs:1362` — `writes` increment site (in
+    template application). (Gemini)
+
+[CONSENSUS] No native observer/event API in MORK kernel at HEAD.
+  - Codex: pickaxe `watch` returned only `kernel/bench_scripts/watch.sh`
+    (a bench script, not an observer surface).
+  - Gemini Q10: NOT FOUND for observer/event mechanism.
+
+Phase 4 implication (consensus):
+  - MORK is a real write substrate but the public API is S-expression /
+    trie / path oriented, NOT atom-oriented like Hyperon SpaceMut.
+  - `static mut` counters are not a per-instance observer pattern.
+  - For Phase 4, MORK is NOT a substrate.
+
+--------------------------------------------------------------------------------
+Q2. MORK SPACE TYPE vs HYPERON SPACEMUT
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [NOT-A-PHASE-4-SUBSTRATE]. MORK is architecturally distinct
+from Hyperon SpaceMut.
+
+Verified divergences:
+  - MORK uses concrete `impl Space` blocks; no trait abstraction for
+    mutation.
+  - MORK's `Expr` is a raw byte-pointer/buffer-based representation
+    (Gemini cites space.rs:450; not re-verified).
+  - Hyperon Space uses an atom-oriented `Atom` enum.
+  - Identity translation: structural Hyperon atoms <-> MORK path-based
+    trie keys would require a custom mapper.
+  - Observer translation: Hyperon's per-instance SpaceObserver vs MORK's
+    global `static mut` counters would require an emit-on-write shim
+    inside any wrapper.
+
+Phase 4 implication (consensus):
+  - Adapter cost is significant. Phase 4 will not absorb it.
+  - Phase 5+ MORK-PATH would require a fresh adapter project (NOT
+    mork_ffi, which is a reference checkpoint per Q4).
+
+--------------------------------------------------------------------------------
+Q3. PATHMAP MATURITY AND PERSISTENCE SHAPE
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [RESEARCH-STAGE-SUBSTRATE]. PathMap is promising but not
+production-ready for Phase 4 wiki write-back.
+
+Verified evidence:
+  - `PathMap/README.md:6` claims efficient multi-threaded use.
+  - `PathMap/README.md:18-20` notes nightly-toolchain requirement and
+    arena_compact = read-only mmap trie format.
+  - `PathMap/Cargo.toml:23-29` (Codex cites :25-31; brief shows :23-29):
+    default features `["graft_root_vals", "slim_ptrs"]`; `nightly`
+    feature uses unstable Rust APIs; `arena_compact` opt-in via
+    `dep:memmap2`.
+    [VERIFIED-CLAUDE: re-read PathMap/Cargo.toml; nightly + bridge_nodes
+    + old_cursor flagged "WILL BE REMOVED EVENTUALLY".]
+  - `PathMap/src/trie_map.rs:39-40` — unsafe Send/Sync impls (Codex).
+  - `PathMap/pathmap-book/src/2.00.01_concurrency.md:1-3` — concurrency
+    chapter is still a stub (Codex).
+  - `PathMap/src/arena_compact.rs:907/942` — `open_mmap` and
+    `dump_from_zipper`; not a transactional WAL persistence layer
+    (Codex).
+  - `PathMap/pathmap-book/src/SUMMARY.md` — A.0002 "Smart Ptr & Resource
+    Mgmt Improvement" listed as unresolved (Gemini).
+
+[NEW-CODEX-CRITICAL-V4-PROTOCOL-1] [VERIFIED-CLAUDE] Two build-
+readiness drifts:
+
+  Drift 1: PathMap version mismatch.
+    - `MORK/Cargo.toml:32` (workspace.dependencies) requires
+      `pathmap = { path = "../PathMap/", version = "0.3.0",
+                  features = ["jemalloc", "arena_compact", "nightly"] }`.
+    - `PathMap/Cargo.toml:3` declares `version = "0.1.0"`.
+      [VERIFIED-CLAUDE: re-read PathMap/Cargo.toml lines 1-3.]
+    - This is a build-readiness blocker. Cargo will reject MORK's
+      version constraint against PathMap HEAD. Either MORK is pinned
+      to a different PathMap revision than HEAD, or a PathMap-side
+      version bump is pending.
+
+  Drift 2: merkleize symbol absent in PathMap HEAD.
+    - `MORK/kernel/src/space.rs:1680` calls `self.btm.merkleize()`
+      (Gemini cites the call site; consistent).
+    - `MORK/kernel/src/space.rs:1679-1682` is the periodic_merkleize
+      hook (Codex).
+    - Grep `merkleize` in `PathMap/src/` returns ZERO matches.
+      [VERIFIED-CLAUDE: re-ran grep.]
+    - Either the symbol exists behind a feature gate not surfaced
+      by grep (e.g., an extension trait), or PathMap HEAD lacks the
+      method MORK calls. Without a build, this is unverified.
+
+  Phase-4/5+ implication: MORK + PathMap as a Phase 5+ substrate
+  candidate must FIRST resolve build-readiness against PathMap HEAD
+  before any adapter work. This is a meaningful cost adder for the
+  MORK-PATH option.
+
+[V-Gemini-Q3-merkleize-claim] Gemini's [VERIFIED] "Periodic Merkleize
+is supported" framing implies PathMap HEAD provides the method. Codex
+caught the absence by grep. Gemini's framing is too strong; Codex's
+"do not count that feature as verified without a build" is correct.
+
+Phase 4 implication (consensus):
+  - PathMap is research-stage with significant build-readiness
+    concerns at HEAD.
+  - Not a Phase 4 substrate.
+
+--------------------------------------------------------------------------------
+Q4. MORK_FFI PRODUCTION-READINESS + MORKDB DELETE-BLOCKING
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [REFERENCE-CHECKPOINT-NOT-PRODUCTION].
+
+Verified evidence:
+  - `mork_ffi/` history: only 3 commits (Patrick Hammer, 2025-12-12).
+    Original commits explicitly say "Commit with mork_ffi folder of
+    the PeTTa main branch" — this is a copied snapshot, not a
+    maintained integration layer.
+  - `mork_ffi/src/lib.rs:10-12` — global `OnceLock<Mutex<Space>>` for
+    state (Codex; Gemini consistent).
+  - `mork_ffi/src/lib.rs:42-138` — string-command FFI surface:
+    `add-atoms`, `remove-atoms`, `mm2-exec`, `get-atoms`, `match`
+    (Codex).
+  - `mork_ffi/morkspaces.pl:8-32` — Prolog adapter wrapping the
+    string-command FFI (Codex).
+  - `mork_ffi/build.sh:1-3` — builds Rust cdylib + SWI-Prolog C shim
+    (Codex).
+
+[NEW-CODEX-V4-PROTOCOL-1] [VERIFIED-CLAUDE] Path-fragility:
+  - `mork_ffi/Cargo.toml:7-9` points to `../../MORK/{frontend, expr,
+    kernel}`.
+    [VERIFIED-CLAUDE: re-read mork_ffi/Cargo.toml lines 1-13.]
+  - In the actual workspace layout
+    (`E:\GitHub\hyperon reference\mork_ffi\`), `../../MORK` resolves
+    to `E:\GitHub\MORK` which does not exist; the actual MORK is at
+    `E:\GitHub\hyperon reference\MORK` i.e. `../MORK` from mork_ffi.
+  - This is a layout-fragility bug in mork_ffi. Either mork_ffi was
+    authored against a deeper directory layout, or it should be
+    relocated to `E:\GitHub\hyperon reference\Magi-AGI\mork_ffi` /
+    similar.
+
+[CONSENSUS-MORKDB-DELETE-BLOCK-VERIFIED]
+  - `das/src/atomdb/morkdb/MorkDB.cc:268-270` — `Utils::error("MORKDB
+    does not support deleting links.", false); return false;`.
+    [Pre-verified by orchestrator during brief drafting; Codex re-
+    verified at HEAD; Gemini cited :268.]
+  - `das/src/atomdb/morkdb/MorkDB.h:55-57` — TODO matches: implement
+    once MORK supports deleting S-expression links (Codex; not surfaced
+    by Gemini).
+  - MORK kernel itself supports trie removal via `btm.remove(data)`
+    at space.rs:849 (Gemini); the DAS adapter is the blocker, not the
+    kernel.
+
+Phase 4/5+ implication (consensus):
+  - MorkDB-via-DAS cannot delete links. Any Phase 5+ DAS-PATH that
+    uses MorkDB as the AtomDB backend inherits this blocker.
+  - DAS with MongoDB or Redis backends does not have this blocker;
+    DAS-PATH viability depends on which AtomDB backend is selected.
+  - mork_ffi is a reference checkpoint only; not a production bridge.
+
+--------------------------------------------------------------------------------
+Q5. DAS STATE AT HEAD vs CLUSTER-PILOT
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [DAS-IS-PHASE-6+-DISTRIBUTED]. DAS is active and
+consolidated; current shape is distributed query/agent infrastructure,
+NOT a Phase 4 local wiki write surface.
+
+Verified evidence:
+  - `das/README.md:8-20` — current repo set; old single-purpose repos
+    (das-atom-db, das-query-engine, das-attention-broker, das-postgres-
+    lobe, das-poc, etc.) are frozen and deprecated.
+  - `das/README.md:43-44` — backend can be any DBMS or combination.
+  - `das/src/atomdb/AtomDBSingleton.cc:14-27` — supports `morkdb`,
+    `redismongodb`, `remotedb`. (Codex)
+  - `das/src/atomdb/` — adapters for Mongo, Redis, MorkDB
+    (das/src/atomdb/morkdb/BUILD:13-17; Gemini).
+  - `hyperon-experimental/lib/Cargo.toml:31-35` — DAS tag 1.0.2.
+  - `hyperon-experimental/lib/src/metta/runner/builtin_mods/das.rs:
+    66-70` — `new-das!` registration; `:187-195` — DistributedAtomSpace
+    in DynSpace. (Source 2 cross-reference.)
+
+[NEW-CODEX-IMPORTANT-NUANCE] [V-Gemini-Q5-write-back-omission]
+  - `das/README.md:114-120` (Codex re-verified): direct DBMS backends
+    support PostgreSQL and Mork, BUT "newly created atoms are not sent
+    back to the DBMS yet."
+  - `das/src/atomdb/remotedb/RemoteAtomDBPeer.h:20-24` — describes
+    cached remote AtomDB plus optional local persistence (Codex).
+  - `das/src/atomdb/remotedb/RemoteAtomDBPeer.cc:315-395` — adds
+    written to cache; deletes affect cache/local persistence, NOT
+    the remote source (Codex).
+  - This means DAS's current persistence semantics are NOT a Phase 4
+    write-back model. DAS adds-to-cache, doesn't write-through.
+
+Gemini omitted the write-back-not-implemented finding. Codex's
+discovery is critical for the Phase 6+ DAS-PATH evaluation:
+DAS-PATH presumes write-back semantics that DAS does not yet provide.
+
+Phase 4/5/6+ implication:
+  - DAS-PATH for Phase 6+ requires upstream das to implement DBMS
+    write-back. Until then, DAS-PATH is a "pending feature" path,
+    not an immediately-usable substrate.
+  - Phase 4 is unaffected; it stays on Hyperon Space.
+
+--------------------------------------------------------------------------------
+Q6. ATOMSPACE-ROCKS AS PHASE 5+ DURABILITY CANDIDATE
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [PRIMARY-PHASE-5+-CANDIDATE]. atomspace-rocks is the
+strongest Source 4 durability candidate; mature, real write-path,
+maintainer-preferred. Constraint: classical-AtomSpace-side, single-user.
+
+Verified evidence:
+  - `atomspace-rocks/README.md:7-14` — single-user, local-host only,
+    one running AtomSpace executable per DB.
+  - `atomspace-rocks/README.md:61-88` — Version 1.6.1, all unit tests
+    passing, large-project use, message-passing StorageNode support,
+    `*open-ro-*` (Codex).
+  - `atomspace-rocks/README.md:146-153` — frame/change-set semantics.
+  - `atomspace-rocks/opencog/persist/rocks/RocksStorage.h:42` —
+    `class RocksStorage : public StorageNode` (Gemini).
+  - `atomspace-rocks/opencog/persist/rocks/RocksStorage.h:55` —
+    read-only mode added in commit 984ef28 (Gemini cross-ref to
+    Source 3 Q11).
+  - `atomspace-rocks/opencog/persist/rocks/RocksStorage.h:143-170` —
+    full StorageNode override surface: open/read-only, store/remove/
+    load atom, store/load/update value, store/load AtomSpace, frame
+    DAG operations (Codex).
+  - `atomspace-rocks/opencog/persist/rocks/RocksIO.cc:260-394` —
+    real writeAtom/storeAtom/storeValue (Codex). Gemini cites
+    RocksIO.cc:371 / :800 specifically — both correct, different
+    function granularities.
+  - `atomspace-rocks/opencog/persist/rocks/RocksFrame.cc:42` —
+    versioned frame support (Gemini); :45-72 — frame deletion limited
+    to top frames (Codex).
+
+Consequence (consensus):
+  - Mature local durability option for Phase 5+.
+  - Classical-AtomSpace-side; adopting requires C++/Scheme/classical
+    translation (already ruled off Phase 4 critical path in Source 3).
+  - Single-user constraint means multi-Decko-deployment requires
+    layering atomspace-cog network distribution.
+
+Phase 5+ implication (consensus):
+  - ROCKS-PATH is the primary Phase 5+ candidate.
+  - Adapter cost: classical-AtomSpace bridge layer (similar to
+    Source 3 Q12.b discussion). Significant but bounded.
+
+--------------------------------------------------------------------------------
+Q7. CROSS-CUTTING PERSISTENCE COMPARISON
+--------------------------------------------------------------------------------
+
+[CONSENSUS] Cross-substrate comparison table. Both reviewers produced
+substantively similar tables; combined and corrected here.
+
+| Substrate       | Storage     | Identity   | Transactional | Concurrency        | Observability | Status      | Phase Fit             |
+|-----------------|-------------|------------|---------------|--------------------|---------------|-------------|-----------------------|
+| Hyperon Space   | RAM         | Structural | No            | Single-thread      | SpaceObserver | Active      | 4 (STAY)              |
+| MORK            | RAM+Memmap  | Trie-path  | No            | static-mut/global  | None          | Active      | 5+ (Exploratory)      |
+| PathMap         | RAM+Memmap  | Trie-path  | No            | nightly+unsafe     | None          | Doc-mode    | 5+ (Substrate dep)    |
+| DAS             | Disk+Net    | MD5-Hash   | Partial       | Distributed        | High-level    | Active      | 6+ (Distributed)      |
+| atomspace-rocks | Disk        | UUID       | Yes           | Single-user/proc   | None          | Active      | 5+ (Primary durable)  |
+| atomspace-pgres | Disk        | UUID       | Yes           | Multi-process      | None          | Deprecated  | N/A (Source 3 closed) |
+| Classical AtomSp| RAM         | Handle     | N/A           | shared_mutex pools | REMOVED@HEAD  | Active      | Reference only        |
+| atomspace-bridge| Disk-RO     | Content    | No            | Process-pool       | None          | Read-only   | N/A (Source 1 closed) |
+
+[NEW-CLAUDE-RECONCILIATION] Three correction notes vs the reviewer
+tables:
+  - Gemini's table marked atomspace-pgres concurrency "Multi-process";
+    Source 3 Q3 found classical AtomSpace handles thread-races via
+    std::shared_mutex pools but pgres uses Postgres connection pool
+    sized 3 (atomspace-bridge cluster pilot). Either framing is OK
+    given pgres is N/A for Phase 4.
+  - Gemini's table omits atomspace-bridge (closed in Source 1); included
+    here for completeness.
+  - Gemini's table identifies Hyperon Space concurrency as "Single-
+    thread" — consistent with Source 2 Q4 finding.
+
+--------------------------------------------------------------------------------
+Q8. IDENTITY MODEL CROSS-SUBSTRATE COMPARISON
+--------------------------------------------------------------------------------
+
+[CONSENSUS] No Source 4 substrate should own Phase 4 identity. Phase 4
+identity remains Decko-first: card_id / agent_id / action_id / timestamp
+in the D3-1 provenance envelope (Source 3).
+
+Per-substrate identity (verified):
+  - MORK: trie-key based, structural encoding of expression tree.
+  - PathMap: path-based identity by construction.
+  - DAS: MD5-hashed handle from type + name (Gemini cites
+    `expression_hasher.cc:10`; Codex cites `das/src/commons/atoms/
+    Node.cc:54` delegating to `Hasher::node_handle` and `das/src/
+    commons/atoms/Link.cc:68` to `Hasher::link_handle`). Both correct;
+    different file granularities.
+  - atomspace-rocks: inherits classical Handle/UUID (Source 3 Q2).
+  - Hyperon Space: structural atom identity (Source 2 Q7).
+
+[CONSENSUS-D3-1] No substrate natively supports the D3-1 provenance
+envelope at the storage layer. Provenance metadata MUST remain in the
+Hyperon Space layer.
+
+Phase 4/5+ implication: D3-1 metadata discipline is a Hyperon-Space-
+layer convention; substrate-side IDs are implementation metadata not
+load-bearing for Phase 4 round-trip semantics.
+
+--------------------------------------------------------------------------------
+Q9. CONCURRENCY MODEL COMPARISON
+--------------------------------------------------------------------------------
+
+[CONSENSUS] No substrate offers a simpler Phase 4 concurrency model
+than Hyperon Space.
+
+Per-substrate concurrency (verified):
+  - Hyperon Space: deliberately synchronous in-process API (Source 2
+    Q4). Maintainer-acknowledged single-thread design.
+  - MORK: Rust methods require `&mut self`; global `static mut`
+    counters; no observer concurrency contract (Codex).
+  - PathMap: claims multi-threaded efficiency (`README.md:6`); has
+    unsafe Send/Sync impls (`trie_map.rs:39-40`); concurrency book
+    chapter is a stub (`pathmap-book/src/2.00.01_concurrency.md:1-3`).
+    [Codex caveat: do NOT treat "multi-threaded" claim as load-
+    bearing without code/doc/test corroboration. V4-PROTOCOL-2.]
+  - mork_ffi: serializes through one global `Mutex<Space>` (Codex,
+    Gemini).
+  - DAS: built for distributed components, service bus, thread pools,
+    queues, optional Redis/Mongo clusters.
+  - atomspace-rocks: mutexes/atomics internally; deployment is one
+    executable per DB.
+
+Phase 4/5+ implication:
+  - Phase 4 stays on Hyperon Space's single-process model.
+  - Phase 5+ multi-process scaling: requires either DAS-distributed
+    OR a Hyperon-side mirror service with cross-process IPC layered
+    on top.
+  - ROCKS-PATH adopts atomspace-cog's network distribution layer
+    (Source 3 Q11 cross-ref) for multi-Decko-deployment.
+
+--------------------------------------------------------------------------------
+Q10. WRITE-BACK OBSERVABILITY (SUBSTRATE-LEVEL)
+--------------------------------------------------------------------------------
+
+[CONSENSUS] Hyperon Space remains the only reviewed substrate with the
+needed write-event observer shape.
+
+Per-substrate observability (verified):
+  - MORK: NOT FOUND for observer/event API at HEAD by grep (Codex,
+    Gemini).
+  - PathMap: NOT FOUND. PathMap is a data structure, not a domain
+    event substrate.
+  - mork_ffi: NOT FOUND for observer or event callback surface.
+  - DAS: high-level agent notifications via Service Bus and command
+    proxies, but checked AtomDB APIs expose add/delete/query methods
+    rather than a provenance-bearing atom write stream (Codex).
+  - atomspace-rocks: StorageNode message operations and barriers, but
+    NO Phase 4 SpaceEvent equivalent (Codex). Classical signal API
+    REMOVED at HEAD per Source 3 Q3.
+
+[CONSENSUS-V4-PROTOCOL-3] Service-bus / RPC / storage-message APIs
+are NOT write-back observers unless they emit atom-level
+add/remove/replace events with the Phase 4 provenance envelope.
+
+Phase 4/5+ implication:
+  - Phase 4 keeps the event envelope at the Hyperon/Decko integration
+    layer.
+  - Phase 5+ migration to a durable substrate must NOT push observability
+    down into the durability layer; it must remain at the Hyperon Space
+    layer.
+
+--------------------------------------------------------------------------------
+Q11. CROSS-PORTFOLIO DIRECTION ALIGNMENT
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [DIVERGENCE-CONTINUES]. The portfolios are complementary,
+not converged.
+
+Per-portfolio direction (verified):
+  - Linas (atomspace-rocks, atomspace-pgres, atomspace-linas):
+    classical-AtomSpace local durability + analytics + Atomese/Values/
+    flows. Source 3 closed.
+  - MORK (Vandervorst-lineage; recent author ClarkeRemy):
+    trie/unification/database research; Z3 SMT integration; DTL/
+    decision-tree learning examples; strong candidate for future
+    Hyperon-native substrate work.
+  - Patrick Hammer (mork_ffi, PeTTa):
+    thin experimental FFI snapshot; not a maintained integration layer.
+  - Luke Peterson (PathMap):
+    trie-as-foundation; book-authoring mode at HEAD; long-term substrate.
+  - SingularityNET (DAS, Andre Senna et al.):
+    active distributed production; multi-backend AtomDB; Phase 6+
+    natural fit.
+
+Phase 4/5+ implication (consensus):
+  - No evidence Phase 4 should switch away from Hyperon Space.
+  - Phase 5+ should preserve an option set until Phase 4 empirics
+    surface the actual access pattern.
+  - The four-layer cluster-pilot taxonomy (Classical/Hyperon/DAS/MORK)
+    IS the snapshot of divergence; not a convergence target.
+
+--------------------------------------------------------------------------------
+Q12. ARCHITECTURAL SYNTHESIS
+--------------------------------------------------------------------------------
+
+[CONSENSUS] [STAY-HYPERON-SPACE-PHASE-4]
+[PHASE-5+-DURABILITY-DEFERRED-WITH-OPTION-RANKING]
+[DAS-IS-PHASE-6+-DISTRIBUTED]
+[CLUSTER-PILOT-FINDINGS-CONFIRMED].
+
+Source 4 does NOT override Source 2. Phase 4 architecture unchanged.
+
+Per-question synthesis answers:
+
+  Q12.a Switch to alternate substrate for Phase 4?  NO.
+        - None of MORK, PathMap, mork_ffi, DAS, atomspace-rocks has a
+          SpaceObserver-equivalent write-event observer surface.
+        - All require adapter-project work to translate atom-oriented
+          Hyperon API to substrate-native API.
+        - Phase 4 schedule cannot absorb the adapter cost.
+
+  Q12.b Phase 5+ durability: ROCKS-PATH / MORK-PATH / DAS-PATH?
+        Decision DEFERRED to post-Phase-4 empirical evidence.
+        Recommended option ranking (consensus):
+          - ROCKS-PATH: PRIMARY. Mature, maintainer-preferred,
+            real write-path with Frame versioning. Single-user
+            constraint requires atomspace-cog network distribution.
+          - MORK-PATH: SECONDARY. Hyperon-native trie research; PathMap
+            dependency is research-stage; build-readiness drifts
+            (Codex Q3 + Q4 caveats). Reserved for "Hyperon-native
+            future" if Phase 4 hits Hyperon-Space scale ceilings.
+          - DAS-PATH: PHASE 6+ DISTRIBUTED. Direct DBMS write-back
+            not yet implemented (`das/README.md:114-120`); pending
+            upstream feature. For multi-Decko-deployment scaling,
+            not for Phase 5+ in-process durability.
+
+  Q12.c Adopt any substrate-specific pattern in Phase 4 now?  NO.
+        - D3-1 metadata discipline (Source 3) is sufficient for
+          Phase 4 observability.
+        - Substrate-specific patterns (rocks Frame versioning, MORK
+          merkleization, DAS pub/sub) are Phase 5+/6+ design inputs.
+
+  Q12.d mork_ffi for Phase 5+ MORK bridge?  NO (reference only).
+        - 3-commit history; copied from PeTTa main branch.
+        - Path-fragility (V4-PROTOCOL-1; ../../MORK vs ../MORK).
+        - Phase 5+ MORK-PATH should build a fresh PyO3-style or
+          pybind11-style adapter.
+
+Phase 4 wiring (UNCHANGED from Source 3 reconciliation):
+  1. Decko after_save callback → durable event queue.
+  2. Mirror worker resolves event into D3-1 envelope:
+       {action_type, card_id|agent_id, before_atom, after_atom,
+        action_id, timestamp, source}.
+  3. Hyperon Space update via SpaceMut (PATCH-1 enables Python
+     observer; PATCH-2 enables MeTTa replace-atom!).
+  4. SpaceObserver fires synchronously.
+  5. Agent-facing MCP publishes resources/tools (Source 6).
+  6. L1 agent loop subscribes (Phase 5+ extends per Design Note D).
+
+================================================================================
+DISSENT FLAGS (V-N-X)
+================================================================================
+
+V-Codex-vs-Gemini-Q1-method-citations  [COMPLEMENTARY-NOT-DISSENT]
+  Codex cited add_sexpr/remove_sexpr/load_sexpr_impl at :860-862 +
+  set_val/remove_val at :884-885 + backup/restore at :982-987.
+  Gemini cited add_all_sexpr/remove_all_sexpr at :835/836 +
+  add_sexpr/remove_sexpr at :860/861 + load_csv at :509 +
+  btm.insert/remove at :848/849.
+  RESOLUTION: complementary. Both cite real methods at correct lines;
+  reviewers found different parts of the API surface. Combined
+  citations adopted in this reconciliation.
+
+V-Gemini-Q3-merkleize-claim  [VERIFICATION-OVERSTATED]
+  Gemini cited "Periodic Merkleize is supported: MORK `interpret` calls
+  `self.btm.merkleize()` every 10 seconds" at MORK space.rs:1680. Codex
+  caught: PathMap HEAD does not expose `merkleize` by grep.
+  [VERIFIED-CLAUDE: Grep `merkleize` in PathMap/src/ returns ZERO.]
+  RESOLUTION: Gemini's [VERIFIED] tag for "Periodic Merkleize is
+  supported" is too strong. The CALL exists in MORK; the CALLEE absence
+  in PathMap HEAD is unverified without a build. Reframe as
+  [CALLER-EXISTS] [CALLEE-NOT-VERIFIED].
+
+V-Gemini-Q5-write-back-omission  [SIGNIFICANT-OMISSION]
+  Gemini Q5 verdict: [DAS-IS-PHASE-6+-DISTRIBUTED] without flagging
+  the not-yet-implemented direct-DBMS write-back. Codex caught:
+  `das/README.md:114-120` says "newly created atoms are not sent back
+  to the DBMS yet"; `RemoteAtomDBPeer.cc:315-395` writes adds to cache
+  not source.
+  RESOLUTION: adopt Codex's nuance. DAS-PATH for Phase 6+ presumes
+  write-back semantics that DAS does not yet provide. Pending upstream
+  feature.
+
+V-Codex-NEW-PathMap-version-mismatch  [BUILD-READINESS-BLOCKER]
+  PathMap/Cargo.toml:3 declares 0.1.0; MORK/Cargo.toml:32 requires
+  0.3.0. [VERIFIED-CLAUDE.]
+  RESOLUTION: V4-PROTOCOL-1. MORK + PathMap as a Phase 5+ candidate
+  must FIRST resolve build-readiness before adapter work.
+
+V-Codex-NEW-mork_ffi-path-drift  [BUILD-READINESS-BLOCKER]
+  mork_ffi/Cargo.toml:7-9 points to `../../MORK/{frontend, expr,
+  kernel}`; actual workspace has MORK at `../MORK/`. [VERIFIED-CLAUDE.]
+  RESOLUTION: mork_ffi is layout-fragile in this workspace. Reference-
+  only status reinforced.
+
+V-Codex-NEW-MorkDB-h-TODO  [STRENGTHENS-CLUSTER-PILOT-FINDING]
+  `das/src/atomdb/morkdb/MorkDB.h:55-57` has matching TODO comment:
+  implement once MORK supports deleting S-expression links. Cluster-
+  pilot finding (MorkDB.cc:268-270) is reinforced by the explicit
+  developer-side TODO. Gemini didn't surface the .h-side TODO.
+  RESOLUTION: cite both .cc and .h in SPEC_DRAFT for Phase 4/5+
+  blocker documentation.
+
+V-orchestrator-brief-Q1-line-imprecision  [MINOR]
+  brief.txt §3 cited MORK `Space` struct at "kernel/src/space.rs:36"
+  (the comment opening); reviewers cite :38 (the struct line). Both
+  near-correct; reviewers preferred the actual `pub struct` line.
+  RESOLUTION: adopt :38 for SPEC_DRAFT.
+
+================================================================================
+NEW PROTOCOLS / LESSONS FOR CLUSTER-PILOT REGISTRY
+================================================================================
+
+V4-PROTOCOL-1: For Rust path-dependencies, verify BOTH the dependency
+path and the package version in the actual workspace layout before
+treating a bridge as build-ready. Specifically:
+  (a) `cargo metadata` or manual path resolution: does the relative
+      `path = "..."` in Cargo.toml resolve to an existing directory?
+  (b) Version constraint: does the dependent's required version match
+      the dependency's declared `version` in its Cargo.toml?
+Source 4 caught two instances:
+  - PathMap version 0.1.0 declared vs MORK requires 0.3.0.
+  - mork_ffi points to `../../MORK` but actual layout has `../MORK`.
+
+V4-PROTOCOL-2: Treat "multi-threaded" / "thread-safe" / "concurrent"
+substrate claims as UNPROVEN until the code, docs, and tests identify
+the actual synchronization contract. Specifically:
+  - README claim alone is insufficient.
+  - `unsafe impl Send`/`Sync` is a code-level claim; verify the
+    rationale in comments or test the contract.
+  - Concurrency-chapter stubs in design books indicate the concurrency
+    story is unfinished.
+Source 4 caught: PathMap README claims multi-threaded efficiency, but
+the concurrency book chapter is a stub and Send/Sync is unsafe-impl.
+
+V4-PROTOCOL-3: A service bus, RPC command dispatch, or storage-message
+API does NOT count as a write-back observer unless it emits atom-level
+add/remove/replace events with the Phase 4 D3-1 provenance envelope.
+"DAS has notifications" / "Rocks has barriers" / "atomspace-pgres has
+queue" are not equivalent to "SpaceObserver fires Add/Remove/Replace
+events." Source 4 verified: no Source 4 substrate satisfies this
+criterion at the substrate layer.
+
+================================================================================
+CF5.6 ADJUDICATIONS (CUMULATIVE)
+================================================================================
+
+Source 4 logged ZERO Gemini line-citation drifts (all cited lines were
+verified consistent with HEAD). Source 4 logged ONE Gemini verification-
+overstated incident (Q3 merkleize-supported claim).
+
+Source 4 logged ZERO orchestrator-side path drifts (V3-PROTOCOL-1
+applied during brief drafting; all paths pre-verified before
+finalizing).
+
+Source 4 logged TWO Codex-NEW build-readiness blockers (PathMap version
+mismatch + mork_ffi path drift) as V4-PROTOCOL-1 cases.
+
+Drift summary across Sources 1-4:
+  Source 1: 5 Gemini file-identity drifts.
+  Source 2: 5 Gemini line-citation drifts (3 line offsets + 1 fact
+            drift + 1 wording).
+  Source 3: 1 Gemini framing imprecision + 3 ORCHESTRATOR brief-side
+            path drifts.
+  Source 4: 0 Gemini line drifts + 1 Gemini verification-overstated +
+            2 Codex-NEW build-readiness blockers.
+
+Drift type signature evolution: Source 4's drift profile is BUILD-
+READINESS rather than file-identity. This reflects the substrate-
+comparison question: as scope shifts from "does this file exist" to
+"does this build", verification methodology must extend to dependency
+graphs and version constraints (V4-PROTOCOL-1).
+
+================================================================================
+BOTTOM LINE FOR SPEC_DRAFT.md
+================================================================================
+
+PHASE 4 ARCHITECTURE: unchanged from Sources 1+2+3.
+  - Substrate:    Hyperon Space at HEAD.
+  - Durability:   Decko/Postgres via after_save callbacks.
+  - Write API:    SpaceMut::add/remove/replace.
+  - Observer:     SpaceObserver (with Source 2 PATCH-1 binding).
+  - MeTTa:        add-atom, remove-atom (with Source 2 PATCH-2 for
+                  replace-atom!).
+  - Metadata:     D3-1 provenance envelope (Source 3).
+
+NEW Phase 4 design discipline from Source 4: NONE beyond Source 3.
+
+Required code additions (UNCHANGED from Source 2):
+  PATCH-1 [REQUIRED]: pybind11 binding for `space_register_observer`
+    in python/hyperonpy.cpp.
+  PATCH-2 [RECOMMENDED]: MeTTa-side `replace-atom!` grounded op.
+
+NEW Phase 5+ option set (Source 4):
+  ROCKS-PATH (primary):
+    - atomspace-rocks RocksStorageNode-derived adapter to Hyperon Space.
+    - + atomspace-cog network layer for multi-Decko deployment.
+    - Adapter cost: classical-AtomSpace bridge layer.
+    - Maturity: production (atomspace-rocks 1.6.1 unit tests passing).
+
+  MORK-PATH (secondary):
+    - Fresh PyO3 / pybind11 adapter wrapping MORK kernel as a Hyperon
+      SpaceMut implementation.
+    - PRECONDITION: resolve PathMap version mismatch (V4-PROTOCOL-1)
+      and verify build against PathMap HEAD.
+    - PRECONDITION: build observer-on-write shim around MORK's static
+      counters.
+    - Adapter cost: substantial; research-stage substrate adoption.
+
+  DAS-PATH (Phase 6+ distributed):
+    - PRECONDITION: upstream das/ implements direct-DBMS write-back
+      (currently "newly created atoms are not sent back to the DBMS
+      yet" per das/README.md:114-120).
+    - For multi-Decko-deployment scaling, not Phase 5+ in-process
+      durability.
+
+DECISION CRITERION for Phase 5+ substrate selection:
+  Defer to post-Phase-4 empirical evidence. Track:
+    - Phase 4 atom write rate (per Decko worker).
+    - Phase 4 mirror memory growth.
+    - Multi-Decko-deployment requirements (single-host or multi-host).
+    - L1 agent introspection patterns (Design Note D anchor).
+
+================================================================================
+SOURCE-DEPENDENT RE-EVALUATION CONDITIONS FOR SOURCES 5-7
+================================================================================
+
+Source 5 (Decko semantics inventory):
+  REQUIRED. Source 4 reaffirms D3-1 metadata discipline as a Hyperon-
+  Space-layer convention. Source 5 must define the canonical atom
+  encoding for:
+    - card_id, action_id, agent_id (provenance fields).
+    - before_atom / after_atom (the actual card content).
+    - timestamp, action_type (the envelope).
+  Source 5 should reference Source 4 Q8 (no substrate natively
+  supports D3-1; must remain in Hyperon Space layer).
+
+Source 6 (agent-facing MCP surface):
+  REQUIRED. Source 4 confirms cpp-mcp is not the right substrate
+  (Source 3 Q8 closed). Source 6 selects between:
+    - `mcp` Python SDK / `fastmcp` (if mirror service is Python).
+    - `rmcp` Rust crate (if mirror service is Rust).
+  Decision blocks on PATCH-1 implementation language.
+
+Source 7 (Magus plan reconciliation):
+  Condition: align cluster-pilot phase numbering (Phase 3 = read-only
+    mirror; Phase 4 = co-canonical write-through; Phase 5+ = primary
+    store / distributed) with Magus plan in cards 11446 + 11448.
+  Condition: Source 7 should evaluate whether the user's commit history
+    in zariuq fork (per memory) or other forks contains substrate-
+    specific work that affects Phase 5+ option ranking.
+
+================================================================================
+CARRY-FORWARD ITEMS FOR PHASE-4 CLUSTER-PILOT REGISTRY
+================================================================================
+
+C4-1: MORK has a real write API (add_sexpr/remove_sexpr at MORK/kernel/
+  src/space.rs:860/861) but it is S-expression / trie / path oriented,
+  NOT atom-oriented like Hyperon SpaceMut. Adapter cost is significant.
+
+C4-2: PathMap version mismatch: PathMap/Cargo.toml:3 declares 0.1.0;
+  MORK/Cargo.toml:32 requires 0.3.0. V4-PROTOCOL-1 case. MORK + PathMap
+  as a Phase 5+ candidate must resolve before adapter work.
+
+C4-3: PathMap merkleize symbol absent in HEAD by grep; MORK calls it at
+  space.rs:1680. Caller exists; callee unverified without a build.
+
+C4-4: mork_ffi has 3 commits; path-fragile in this workspace
+  (../../MORK vs ../MORK). Reference checkpoint only; not production.
+
+C4-5: MorkDB delete-block at das/src/atomdb/morkdb/MorkDB.cc:268-270
+  confirmed; MorkDB.h:55-57 has matching developer TODO. Any DAS-PATH
+  using MorkDB inherits this blocker.
+
+C4-6: DAS direct-DBMS write-back not yet implemented (das/README.md:
+  114-120); RemoteAtomDBPeer caches adds rather than writing through.
+  DAS-PATH for Phase 6+ presumes write-back DAS does not yet provide.
+
+C4-7: atomspace-rocks 1.6.1 is the primary Phase 5+ durability
+  candidate. RocksStorage : StorageNode at RocksStorage.h:42; real
+  storeAtom/removeAtom at RocksIO.cc:371/800; Frame versioning at
+  RocksFrame.cc:42. Single-user constraint requires atomspace-cog
+  network layer for multi-Decko deployment.
+
+C4-8: No Source 4 substrate provides a SpaceObserver-equivalent.
+  Observability MUST stay at the Hyperon Space layer for Phase 4 and
+  Phase 5+ alike.
+
+C4-9: D3-1 metadata discipline (Source 3) is a Hyperon-Space-layer
+  convention; substrate-side IDs are implementation metadata.
+
+C4-10: Phase 5+ option ranking: ROCKS-PATH primary, MORK-PATH
+  secondary, DAS-PATH = Phase 6+ distributed. Decision DEFERRED to
+  post-Phase-4 empirical evidence.
+
+================================================================================
+RECONCILIATION ADDENDUM (v2) — POST-CLAUDE-EXTRACTION
+================================================================================
+
+This addendum integrates the parallel Claude extraction pass
+(findings_claude.txt, 728 lines, 2026-05-04) with the v1 reconciliation
+above. Per Codex's reconciliation guidance: "preserve the existing Q12
+consensus, add V0-1 through V0-4, and explicitly mark the apparent
+Codex/Gemini DAS disputes as layer-differences rather than conflicts."
+
+Outcome: NO architecture-changing dissents. Q12 consensus
+[STAY-HYPERON-SPACE-PHASE-4] / [ROCKS-PATH-PRIMARY] /
+[MORK-PATH-SECONDARY-WITH-BLOCKERS] / [DAS-PATH-PHASE-6+-DISTRIBUTED]
+all confirmed. Three brief drifts caught by Claude extraction; two
+apparent reviewer disputes resolved as NO-CONFLICT layer-differences;
+four NEW findings added.
+
+--------------------------------------------------------------------------------
+A2. APPARENT REVIEWER DISPUTES RESOLVED AS NO-CONFLICT LAYER-DIFFERENCES
+--------------------------------------------------------------------------------
+
+[NO-CONFLICT-1] DAS hashing algorithm citation.
+
+  Claude extraction Section D resolution (vs the v1 dissent flag treating
+  Codex/Gemini hashing citations as "different file granularities"):
+
+  Codex Q8 cited:  das/src/commons/atoms/Node.cc:54
+                   das/src/commons/atoms/Link.cc:68
+                   `Hasher::node_handle(...)`, `Hasher::link_handle(...)`
+
+  Gemini Q8 cited: das/src/hasher/expression_hasher.cc:10
+                   "MD5 hashing of type + name"
+
+  Resolution: NO CONFLICT. Codex cites the public API entry points;
+  Gemini cites the hash implementation. Both are correct at different
+  layers of the same call chain.
+
+  Verified call chain (from findings_claude.txt:332-345):
+    - expression_hasher.cc:7  `#include "mbedtls/md5.h"`
+    - expression_hasher.cc:10 `unsigned char md5_buffer[16];` (Gemini)
+    - expression_hasher.cc:13-18 mbedtls_md5_init/starts/update/finish/free
+    - commons/atoms/Atom.cc:57 `string Atom::named_type_hash() const {
+                                    return Hasher::type_handle(this->type); }`
+    - commons/atoms/Link.cc:68 `string Link::handle() const { return
+                                    Hasher::link_handle(this->type,
+                                                        this->targets); }`
+                                                              (Codex)
+    - commons/atoms/LinkSchema.cc:219, 220, 246 also call Hasher::*
+
+  Adopt for SPEC_DRAFT (combined): "DAS atom handles are MD5 hex digests
+  (mbedtls-based) computed by the Hasher subsystem
+  (das/src/hasher/expression_hasher.cc) and exposed via
+  Hasher::node_handle / Hasher::link_handle / Hasher::type_handle in
+  das/src/commons/atoms/."
+
+[NO-CONFLICT-2] DAS AtomDB adapter citation.
+
+  Codex Q5 cited:  das/src/atomdb/AtomDBSingleton.cc:14-27 listing
+                   "morkdb", "redismongodb", "remotedb"  (3 backends)
+
+  Gemini Q5 cited: das/src/atomdb/BUILD:13-17 listing
+                   inmemorydb, morkdb, redis_mongodb, remotedb
+                   (4 backends)
+
+  Resolution: NO CONFLICT. Different views of the same adapter set.
+  BUILD lists 4 backends as Bazel `cc_library` deps (compile-in);
+  AtomDBSingleton.cc:20-24 dispatches at runtime on `atomdb_type`
+  string and selects 3 (morkdb/redismongodb/remotedb).
+
+  This produces V0-2 (below): inmemorydb is compile-in but not
+  runtime-selectable.
+
+  Adopt for SPEC_DRAFT (combined): "DAS AtomDB has 4 backends compiled
+  in (inmemorydb, morkdb, redis_mongodb, remotedb) per
+  das/src/atomdb/BUILD:13-17. Runtime dispatch via AtomDBSingleton.cc
+  selects from 3 (morkdb, redismongodb, remotedb) per
+  AtomDBSingleton.cc:20-24."
+
+--------------------------------------------------------------------------------
+B2. NEW FINDINGS (V0-1 THROUGH V0-4)
+--------------------------------------------------------------------------------
+
+[V0-1] PathMap fork-state cluster-pilot carry-forward correction.
+  [DOCUMENTATION-REFRESH-NOT-ARCHITECTURE-CHANGE]
+
+  Brief.txt:187-189 said:
+    "Repo 2: PathMap (Rust trie substrate; Luke Peterson lineage)
+     Remote:      https://github.com/luketpeterson/PathMap
+                                              (verify origin URL)."
+
+  V3-PROTOCOL-4 verification (Claude extraction Section A):
+     `git remote -v` →
+        origin   https://github.com/zariuq/PathMap.git
+        upstream https://github.com/Adam-Vandervorst/PathMap.git
+     `git rev-list --count master..upstream/master` → 245
+     `git rev-list --count upstream/master..master` →   0
+
+  Status: FALSIFIED. Local clone is zariuq's fork (NOT luketpeterson's).
+  Upstream-namespace owner is Adam Vandervorst (NOT Luke Peterson, NOT
+  Zarathustra Goertzel). Local zariuq fork is **245 commits BEHIND**
+  Adam-Vandervorst/PathMap upstream/master.
+
+  Per Codex's reconciliation guidance, this is a CLUSTER-CLOSE
+  DOCUMENTATION REFRESH ITEM, not a Source 4 architecture change.
+  Carry-forward propagation:
+
+  1. HYPERON_CLUSTER_FINDINGS.md (AtomSpace cluster section, closed
+     2026-04-29): attributes PathMap to "Luke Peterson author" — same
+     drift; flag for orientation-doc refresh at cluster close.
+
+  2. CLAUDE.md (this repo): wiki-edit audit table for AtomSpace cluster
+     pilot lists wiki card 7429 ("Knowledge Representations+PathMap")
+     with description "Luke Peterson author, foundational MORK trie
+     substrate, sibling-repo classification, pathmap-book status,
+     Lean/ZAM caveat" — flag for refresh; correct attribution should
+     read "Adam-Vandervorst-architected; Luke Peterson and zariuq
+     contributors on downstream forks."
+
+  3. Wiki card 7429 itself at wiki.magi-agi.org/Knowledge+Representations
+     +PathMap — flag for cluster-close refresh; correct primary author
+     attribution; preserve Luke Peterson and zariuq as documentation/
+     fork contributors.
+
+  4. Source 4 brief.txt:187, :189 — flagged here as v2 reconciliation
+     drift; brief itself is preserved historical artifact.
+
+  V0-1 does NOT change the Phase 4 / Phase 5+ architecture decisions.
+  PathMap remains research-stage substrate dependency for MORK-PATH;
+  the maturity assessment is unchanged. Only the lineage/attribution
+  is corrected.
+
+[V0-2] [INMEMORYDB-NOT-RUNTIME-SELECTABLE] in DAS.
+
+  See [NO-CONFLICT-2] above. DAS BUILD lists 4 backends compiled in
+  (inmemorydb, morkdb, redis_mongodb, remotedb); AtomDBSingleton.cc
+  dispatches 3 at runtime. inmemorydb is compile-only or dev-only,
+  not selectable via the standard runtime config.
+
+  Phase 6+ DAS-PATH implication: deployment-topology characterization
+  must distinguish in-memory dev backend from morkdb/redismongodb/
+  remotedb production backends.
+
+[V0-3] [PERIODIC-MERKLEIZE-FEATURE-GATED-VERSION-INCOMPATIBILITY]
+
+  Refines v1 V-Gemini-Q3-merkleize-claim disposition. MORK calls
+  `self.btm.merkleize()` ONLY under feature flag `periodic_merkleize`
+  (NOT in MORK's default features `["grounding", "specialize_io"]`).
+
+  Verified at MORK/kernel/src/space.rs:1679-1682:
+     #[cfg(feature = "periodic_merkleize")]
+     if self.last_merkleize.elapsed().as_secs() >= 10 {
+         self.btm.merkleize();
+         self.last_merkleize = Instant::now();
+     }
+
+  Default-feature builds compile FINE against PathMap HEAD (local
+  zariuq, 0.1.0); only enabling `periodic_merkleize` triggers the
+  version-incompatibility (PathMap 0.1.0 lacks merkleize symbol).
+
+  This is a refinement of Codex Q3's caveat; not a strict blocker but
+  a feature-gate-conditional one. v1's [CALLER-EXISTS]
+  [CALLEE-NOT-VERIFIED] reframing is correct and now refined as
+  [CALLEE-NOT-VERIFIED-AT-PATHMAP-HEAD-AND-DEFAULT-BUILD-UNAFFECTED].
+
+  Phase 5+ MORK-PATH commitment implication: if `periodic_merkleize`
+  becomes desirable, must use upstream Adam-Vandervorst/PathMap
+  (presumably 0.3.0+ on upstream/master) NOT zariuq's stale fork.
+
+[V0-4] [MORK-FFI-FROM-PETTA-EXTRACTION-LAYOUT-PROVENANCE]
+
+  Refines v1 V-Codex-NEW-mork_ffi-path-drift disposition. mork_ffi
+  commit history shows it was extracted from
+  `patham9/PeTTa/main/mork_ffi/` — Patrick Hammer's PeTTa fork (NOT
+  zariuq/PeTTa). The `../../MORK/` path-deps assume the original PeTTa
+  layout (sibling: PeTTa↔MORK; mork_ffi inside PeTTa).
+
+  In our hyperon-reference/ checkout, mork_ffi and MORK are siblings,
+  so the path is broken.
+
+  Phase 4 implication unchanged: do not use mork_ffi as production
+  bridge (consensus). If Phase 5+ MORK-PATH ever needs an FFI bridge,
+  write a fresh one tailored to the actual deployment layout, not a
+  re-extraction of mork_ffi.
+
+--------------------------------------------------------------------------------
+C2. NEW STANDING PROTOCOL — V4-PROTOCOL-4
+--------------------------------------------------------------------------------
+
+V4-PROTOCOL-4: Brief-flagged "verify X" notes must be acted on at
+extraction time.
+
+  When the brief itself flags "(verify origin URL)" or "verify content
+  type" or any similar uncertainty marker, the brief drafter is
+  signaling unresolved verification debt. Reviewers must verify before
+  relying on the brief's framing — defaulting to the brief's unverified
+  claim propagates the drift.
+
+  Source 4 brief.txt:189 said "(verify origin URL)" for PathMap remote.
+  Both reviewers (Codex + Gemini) defaulted to the brief's "Luke
+  Peterson lineage" framing without verifying the origin URL. Claude
+  extraction caught the drift via V3-PROTOCOL-4 (fork-vs-upstream).
+  Result: 245-commits-behind state quantified, lineage corrected.
+
+  V4-PROTOCOL-4 governs Sources 5-7 brief drafting:
+    - Brief drafters: avoid flagging "verify X" notes that aren't
+      acted on; either verify-and-cite at brief-drafting time OR
+      remove the flag.
+    - Reviewers: any "verify X" note in a brief is an extraction
+      OBLIGATION, not background. Verify before relying.
+
+--------------------------------------------------------------------------------
+D2. ADDENDUM-LEVEL DISSENT/CONFIRMATION SUMMARY
+--------------------------------------------------------------------------------
+
+V-CodexGemini-DAS-hashing  [NO-CONFLICT-LAYER-DIFFERENCE]
+  Resolved: different layers of same call chain (mbedtls MD5
+  implementation in expression_hasher.cc + Hasher API in commons/atoms/).
+  Both citations correct.
+
+V-CodexGemini-DAS-AtomDB  [NO-CONFLICT-LAYER-DIFFERENCE]
+  Resolved: BUILD = 4 backends compile-in; AtomDBSingleton = 3 runtime-
+  selectable. Both citations correct. inmemorydb is dev-only (V0-2).
+
+V-Claude-V0-1  [BRIEF-DRIFT-CARRY-FORWARD-FROM-CLUSTER-PILOT]
+  PathMap is Vandervorst-architected, not Luke-Peterson-lineage.
+  Local clone is zariuq's fork, 245 commits behind upstream.
+  Cluster-close documentation refresh required.
+
+V-Claude-V0-2  [DAS-DEPLOYMENT-TOPOLOGY-NUANCE]
+  inmemorydb compile-in but not runtime-selectable. Phase 6+ DAS-PATH
+  topology characterization required.
+
+V-Claude-V0-3  [MERKLEIZE-FEATURE-GATE-REFINEMENT]
+  Codex's caveat is feature-gate-conditional. Default-feature builds
+  unaffected. v1 [CALLER-EXISTS] [CALLEE-NOT-VERIFIED] correct;
+  refined to [DEFAULT-BUILD-UNAFFECTED].
+
+V-Claude-V0-4  [MORK-FFI-PETTA-EXTRACTION-PROVENANCE]
+  mork_ffi extracted from patham9/PeTTa, not authored standalone.
+  v1 path-fragility caveat correct; provenance now traced.
+
+--------------------------------------------------------------------------------
+E2. ADDENDUM-LEVEL CARRY-FORWARDS FOR CLUSTER-PILOT REGISTRY
+--------------------------------------------------------------------------------
+
+C4-11: PathMap is Vandervorst-architected (NOT Luke-Peterson-lineage as
+  earlier documented). Local hyperon-reference/PathMap clone is
+  zariuq's fork, 245 commits behind upstream Adam-Vandervorst/PathMap.
+  Cluster-close documentation refresh required for HYPERON_CLUSTER_
+  FINDINGS.md AtomSpace section + CLAUDE.md (this repo) AtomSpace
+  cluster wiki-edit audit table + wiki card 7429 description.
+
+C4-12: DAS AtomDB has 4 backends compiled in (inmemorydb, morkdb,
+  redis_mongodb, remotedb) per das/src/atomdb/BUILD:13-17; 3 runtime-
+  selectable per AtomDBSingleton.cc:20-24. inmemorydb is compile-/
+  dev-only.
+
+C4-13: MORK's `periodic_merkleize` feature is non-default and
+  feature-gates the merkleize() call against PathMap. Default-build
+  consumers unaffected by V4-PROTOCOL-1 PathMap version mismatch
+  (per V0-3).
+
+C4-14: mork_ffi was extracted from patham9/PeTTa; path-deps assume
+  the PeTTa layout. Source 5+ FFI work should write fresh, not
+  re-extract mork_ffi.
+
+--------------------------------------------------------------------------------
+F2. CARRY-FORWARD PROTOCOL FOR SOURCES 5-7
+--------------------------------------------------------------------------------
+
+V4-PROTOCOL-4 (brief-flagged "verify X" notes are extraction obligations)
+adopted as a carry-forward to Sources 5-7 per Codex's guidance.
+
+Sources 5-7 brief drafters must:
+  - Verify all paths via Glob/ls/Read at brief-drafting time
+    (V3-PROTOCOL-1 from Source 3).
+  - Verify all citations at HEAD (V3-PROTOCOL-2 from Source 3).
+  - For substrate/repo claims, verify path-deps + version constraints
+    (V4-PROTOCOL-1 from Source 4).
+  - Avoid placeholder "verify X" markers; if uncertain, either resolve
+    at drafting time OR explicitly call out the uncertainty as a
+    research-question rather than a fact-claim (V4-PROTOCOL-4).
+
+Sources 5-7 reviewers (Codex + Gemini + parallel Claude) must:
+  - Treat any "verify X" marker remaining in the brief as an
+    extraction obligation, not background (V4-PROTOCOL-4).
+
+--------------------------------------------------------------------------------
+G2. ADDENDUM BOTTOM LINE
+--------------------------------------------------------------------------------
+
+NO architecture-changing dissents from the parallel Claude extraction.
+v1 reconciliation Q12 verdicts confirmed:
+  - Phase 4 substrate:    [STAY-HYPERON-SPACE]
+  - Phase 5+ durability:  [ROCKS-PATH-PRIMARY] /
+                           [MORK-PATH-SECONDARY-WITH-BLOCKERS] /
+                           [DAS-PATH-PHASE-6+-DISTRIBUTED-ONLY]
+  - Phase 4 patterns:     [NONE-FROM-SOURCE-4]
+                           [D3-1-METADATA-ENVELOPE-SUFFICIENT]
+  - mork_ffi:             [REFERENCE-NOT-PRODUCTION]
+
+Required code additions (UNCHANGED from Source 2):
+  PATCH-1 [REQUIRED]: pybind11 binding for `space_register_observer`.
+  PATCH-2 [RECOMMENDED]: MeTTa-side `replace-atom!` grounded op.
+
+NEW carry-forward items (cluster-close documentation refresh, NOT
+Source 4 architecture changes):
+  - PathMap lineage correction (V0-1) → HYPERON_CLUSTER_FINDINGS.md
+    + CLAUDE.md AtomSpace cluster row + wiki card 7429 description.
+
+NEW standing protocol (V4-PROTOCOL-4) — carry forward to Sources 5-7.
+
+================================================================================
+END OF RECONCILIATION — Source 4
+================================================================================

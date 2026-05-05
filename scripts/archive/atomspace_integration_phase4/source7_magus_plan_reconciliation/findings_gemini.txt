@@ -1,0 +1,160 @@
+AtomSpace Integration Phase 4 - Source 7
+Magus plan reconciliation - Gemini findings
+============================================================
+
+Reviewer: Gemini
+Date: 2026-05-05
+Brief: scripts/archive/atomspace_integration_phase4/source7_magus_plan_reconciliation/brief.txt
+
+Note: Gemini extracted against an earlier version of the brief (pre-correction). The
+orchestrator subsequently applied four pre-extraction corrections requested by Codex
+(R6.4 PATCH-5 tool list verbatim from Source 6; R6.6 launcher-inventory phrasing;
+S7.Q13 wording-drift flag; HERMES card-identity clarification at ID 741 =
+`Neoterics+Metta+drive-docs+Hypergraph-RFP-Lakes`). Gemini acknowledged the two
+evidence-level updates affecting Q8 (HERMES card identity) and Q13 (subscribe-tools
+wording drift) and confirmed that prior verdicts stand. The acknowledgment is
+reproduced as Section 0 below; Sections 1-2 are the original extraction.
+
+============================================================
+Section 0: Post-Brief-Correction Acknowledgment (Gemini follow-up)
+============================================================
+
+I acknowledge the evidence-level corrections to the Source 7 brief.
+
+  1. HERMES Identity (Q8): I accept the correction. I confirm that a name-only
+     search for "HERMES" missed the card
+     `Neoterics+Metta+drive-docs+Hypergraph-RFP-Lakes` (ID 741). I accept the
+     updated evidence basis that ID 741 exists under this specific path. My
+     verdict [DEFERRAL-CONFIRMED-CORRECTION-RECOMMENDED] remains firm.
+  2. Subscribe Tools Drift (Q13): I acknowledge the "subscribe tools" wording
+     in Card C §8 as a semantic drift from Source 6's [POLLING-FIRST] verdict.
+     This reinforces my recommendation for an [ALIGNED-UPDATE-RECOMMENDED] to
+     explicitly synchronize Card C with the Source 6 reconciliation.
+  3. Extraction Closure: With these evidence updates noted, I consider my
+     extraction phase for Source 7 complete.
+
+============================================================
+Section 1: Extraction Obligations (V4-PROTOCOL-4)
+============================================================
+
+- HERMES existence: I searched for "HERMES" in the Magi Archive. While I found
+  several related cards (IDs 737, 739, 745, 2431, 2432), Card ID 741 was NOT
+  found in the active search results. I acknowledge that the brief's "Verify
+  HERMES card ID 741 still exists" flag is a critical point; if ID 741 is
+  missing, it may have been renamed or deleted.
+  [POST-CORRECTION NOTE: ID 741 exists under the Decko name
+  Hypergraph-RFP-Lakes; name-only search misses it. See Section 0(1).]
+
+- Anna's proposal status: Card 11448 history shows only two revisions, the
+  latest being 2026-03-11T04:38:09Z. I confirm that no updates have occurred
+  since the original Magus draft.
+
+- Card C and D Verification: I performed direct get_card calls for IDs 17117
+  and 17120. I confirm their content matches the verbatim excerpts in §4 of
+  the brief.
+
+============================================================
+Section 2: Per-Question Verdicts (S7.Q1 - S7.Q17)
+============================================================
+
+S7.Q1: [CROSSWALK-CONFIRMED]
+- Evidence: Magus 11446 (§Long-Term Vision) defines Phase 2 as "Local Atomspace
+  Shadow Store." Card C 17117 (§1) explicitly splits this into cluster Phase 3
+  (Read-only) and Phase 4 (Co-canonical). This mapping provides the necessary
+  architectural granularity.
+
+S7.Q2: [SUPERSEDES-MAGUS]
+- Evidence: Magus 11446 conflates "Distributed Atomspace + MORK backend." R4.2
+  (Source 4) establishes a strict four-layer taxonomy
+  (Classical/Space/DAS/MORK) as distinct artifacts. The cluster taxonomy must
+  supersede the Magus shorthand to prevent engineering drift.
+
+S7.Q3: [REQUIRED-UPDATE]
+- Evidence: R4.3 (Source 4) identifies the MorkDB delete-blocker as a gate for
+  primary-store promotion. Magus 11446 lacks this caveat; adding it is
+  mandatory for contractual clarity.
+
+S7.Q4: [CONTRADICTS]
+- Evidence: Magus 11446 (§Future Compatibility) lists "Distributed Atomspace +
+  MORK backend." R4.4 (Source 4) verifies MORK is single-process and NOT
+  distributed. This is a direct architectural contradiction.
+
+S7.Q5: [WORKSTREAM-B-CARDS-CORRECT]
+- Evidence: Card C 17117 (§2) specifies out-of-process mirror emission to a
+  Python sidecar. This aligns with R4.5 (Source 6) and correctly identifies
+  the "MCP" surface as out-of-process Ruby, not native MeTTa.
+
+S7.Q6: [WORKSTREAM-B-RESOLVES-AMBIGUITY]
+- Evidence: Magus 11446's "alongside Postgres" is ambiguous. Card C 17117 (§2)
+  resolves this by specifying the integrate_with_delay event hook and outbox
+  table as the co-canonical seam.
+
+S7.Q7: [V1-LOSSY-PHASE-5-LIFT-NEEDED]
+- Evidence: V1 atom shape covers the core Decko fields but does not
+  individually atomize the +convention child cards (F6). This is acceptable
+  for Phase 4 but must be addressed in the Phase 5+ encoder refactor.
+
+S7.Q8: [DEFERRAL-CONFIRMED-CORRECTION-RECOMMENDED]
+- Evidence: HERMES (ID 741) is missing from current search; related cards
+  are 2025 snapshots. Confirming deferral to Phase 5+/6+ is correct. A
+  parenthetical correction in the 11446 +AI Draft is recommended.
+  [POST-CORRECTION NOTE: ID 741 exists under name Hypergraph-RFP-Lakes;
+  evidence basis updates from "missing" to "exists under that name." Verdict
+  unchanged.]
+
+S7.Q9: Operational Status Check
+- PLN: [PARTIAL-FRAGMENTED-REVIVAL] (No-Go theorem constraints).
+- ECAN: [PARTIAL-FRAGMENTED-REVIVAL] (Engineering surrogates).
+- OpenPsi: [PARTIAL-FRAGMENTED-REVIVAL] (Equation-tally gaps).
+- AIRIS: [NOT-IN-SCOPE] (Research-tier only).
+- MAGUS: [PAPER-ONLY] (Proposal stage).
+- Verdict: Magus 11446's "fully operational" claim is aspirational, not
+  ground-truth at Phase 4.
+
+S7.Q10: [STRUCTURAL-OK-TOP-LEVEL-SPECS]
+- Evidence: Cards C and D are top-level technical specs for the integration
+  layer, not card-specific entries. Their placement as direct children of
+  11446 is structurally appropriate.
+
+S7.Q11: [FIDELITY-CONFIRMED]
+- Evidence: Card C 17117 (§3) correctly states PATCH-3 and PATCH-4 are
+  independently shippable, matching R5.1/R5.5/R5.6.
+
+S7.Q12: [FIDELITY-CONFIRMED-SCOPE-EXPLICIT]
+- Evidence: Card C (§Scope) explicitly declares "PATCHes 1–4, locked." The
+  omission of the 4 Source-6 fields is a deliberate scope cap to preserve the
+  Source 5 baseline.
+
+S7.Q13: [ALIGNED-UPDATE-RECOMMENDED]
+- Evidence: "Option A" in Card C (§8) aligns with R6.1. However, an update
+  to explicitly cite the [RUBY-EXTEND-PRIMARY-PHASE-4] verdict is recommended
+  for synchronization.
+  [POST-CORRECTION NOTE: I additionally acknowledge the "subscribe tools"
+  wording in Card C §8 as a semantic drift from Source 6's [POLLING-FIRST]
+  verdict. Verdict unchanged; this reinforces the recommended synchronization
+  scope.]
+
+S7.Q14: [COVERAGE-GAPS-NAMED]
+- Evidence: Card D 17120 covers the core concerns but omits GDPR /
+  right-to-be-forgotten alignment with POLICY-B (trash=true vs. hard-delete
+  requirements).
+
+S7.Q15: [LOAD-BEARING-PROMOTE-TO-V7-X]
+- Evidence: Card D 17120 (§6) correctly flags auth-on-read-mirror as a hard
+  blocker. I support promoting this to V7-X-AUTH-ON-READ-MIRROR as it is a
+  prerequisite for any agent access to the mirror.
+
+S7.Q16: Magus-tree update scope
+- (a) 11446: +AI Draft to reconcile phase numbering and taxonomy (F1-F8).
+- (b) 11448: No update needed (proposal pending).
+- (c) Card C: Minor update to incorporate Source 6 extensions (20-field D3-1).
+- (d) Card D: Minor update to fix stale memory pointer (Rule 12).
+- (e) New Card: YES. +Cluster Pilot Findings Summary for consolidation.
+
+S7.Q17: [EXTRACTION-COMPLETE]
+- Evidence: Source 7 reconciliation produces V7-X-AUTH-ON-READ-MIRROR but no
+  new PATCH. The cluster-pilot extraction phase is complete.
+
+============================================================
+End of Gemini findings.
+============================================================
