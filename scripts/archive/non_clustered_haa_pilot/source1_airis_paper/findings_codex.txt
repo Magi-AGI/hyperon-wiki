@@ -1,0 +1,252 @@
+Codex findings - Non-clustered HAA pilot Source 1
+Cook & Hammer 2024 AIRIS paper + reference implementation
+================================================================
+
+Scope and artifacts checked
+---------------------------
+
+Primary paper: Cook & Hammer 2024, "Autonomous Intelligent Reinforcement
+Inferred Symbolism", local PDF publication_texts/2024_Cook_Hammer_AIRIS.pdf.
+Provenance sidecar confirms retrieval on 2026-05-06, size 654854 bytes, PDF
+v1.5, Firebase MD5 KH1mZXyDhfKdUI2QU6DrqA==.
+
+Local implementation SHAs verified:
+- berickcook/AIRIS_Public: f41041328d215ed623e08e015d6d88ddd2ee9d9a
+  (2026-03-26, "Merge pull request #6 from PetiteIA/IM").
+- singnet/AIRIS-general: 37861c953c338f53128e202ba49b4b0510c4bece
+  (2026-03-13, "wip checkpoint").
+- singnet/AIRIS-client: 87238d28b10ccfd2137e6729c50f4857a38aba43
+  (2024-11-05, "Update README.md").
+
+Q1. Rule structure
+------------------
+
+Verdict: IMPLEMENTATION-BACKED for Cook & Hammer 2024 rule structure;
+IMPLEMENTATION-DIVERGENT for the Goertzel 2025-09 six-tuple framing if it is
+read as original AIRIS.
+
+The Cook-Hammer paper defines Rules with Conditions plus Statement: Conditions
+include action taken, Original Value, Relative Change Positions, and Relative
+Change Original Values; Statement is the changed-into value (paper p.2, Rule
+Creation). The reference implementation directly reflects this causal-change
+model: airis_stable.py creates rules when observed values change
+(AIRIS_Public/airis_stable.py:214-220), stores action-conditioned rule data
+and relative/inclusion conditions (airis_stable.py:688-705, :1457-1470,
+:1530-1544), and stores 1D original/relative/absolute values
+(airis_stable.py:1567-1571). AIRIS-general preserves the same pattern with
+knowledge outcome ids, relative/absolute outcomes, action indexes, and
+structured/unstructured conditions (AIRIS-general/airis.py:1126-1218,
+:1244-1278).
+
+The six-tuple r = <pre, act, post, p_r, c_r, g_r> is not the Cook-Hammer paper
+formalism. Cook-Hammer has State Confidence, but not p_r firing probability or
+g_r motive-feature shift. I would record the Goertzel 2025-09 representation
+as a Hyperon-side extension / reframing, not as AIRIS source text.
+
+Q2. Cook authorship and Hammer role
+-----------------------------------
+
+Verdict: ABSENT for explicit authorship-priority language in the paper.
+
+The paper title block says "Berick Cook1 and Patrick Hammer2" and gives their
+affiliations (paper p.1). It does not say "Cook created AIRIS" or assign Hammer
+a lesser role in the prose. However, paper footnote 3 points to the
+implementation repository at berickcook/AIRIS_Public (paper p.2), and the local
+clone origin is https://github.com/berickcook/AIRIS_Public.git. Safe wording:
+"Cook & Hammer 2024 introduced AIRIS; the reference implementation cited by
+the paper is Berick Cook's AIRIS_Public repository."
+
+Q3. Repository origin discrepancy
+---------------------------------
+
+Verdict: Option (b), wiki URL misattribution.
+
+Direct local evidence: AIRIS_Public origin is
+https://github.com/berickcook/AIRIS_Public.git; AIRIS-general origin is
+https://github.com/singnet/AIRIS-general.git; AIRIS-client origin is
+https://github.com/singnet/AIRIS-client.git. Direct HEAD checks on 2026-05-06:
+curl -I -L https://github.com/singnet/AIRIS_Public returned HTTP/1.1 404 Not
+Found; curl -I -L https://github.com/berickcook/AIRIS_Public returned HTTP/1.1
+200 OK; curl -I -L https://github.com/singnet/AIRIS-general returned HTTP/1.1
+200 OK. The Reference+GitHub Repositories card should replace
+singnet/AIRIS_Public with berickcook/AIRIS_Public and add singnet/AIRIS-general
+as a separate current rewrite line.
+
+Q4. SubRep+AIRIS+MetaMo relationship
+------------------------------------
+
+Verdict: IMPLEMENTATION-DIVERGENT if treated as a description of original
+AIRIS; valid only as boundary-source extension/reframing.
+
+The SubRep/MetaMo claims in the brief, including rule tuple fields p_r/c_r/g_r,
+tripartite state x = <facts, reals, focus>, and Monte Carlo rollouts, should
+not be folded into Cook-Hammer AIRIS. Cook-Hammer discusses causal Rules,
+sub-symbolic values, Focus Values, State Confidence, heuristic planning, and
+generated State Graphs (paper pp.2-5). It does not define grounded predicates,
+saliency vectors, motive-feature shifts, or Monte Carlo rollouts. AIRIS-general
+does introduce generalized structured/unstructured JSON input and a persistent
+state_graph dictionary (airis.py:20, :58-72, :124-137), but it does not implement
+the SubRep tuple vocabulary.
+
+Q5. State representation
+------------------------
+
+Verdict: IMPLEMENTATION-BACKED for sub-symbolic arrays + focus values +
+state-graph nodes; ABSENT for the tripartite facts/reals/focus decomposition.
+
+Cook-Hammer states are environment data modified by Prediction, applied Rules,
+action, and prior-state reference (paper p.5, Data Structures). It also says
+pre-action inputs consist of sub-symbolic values (paper p.4). AIRIS_Public
+stores State objects with input_1D, input_2D, action, prev_state, applied_rules,
+applied_exceptions, compare, and confidence (AIRIS_Public/state.py:6-37).
+AIRIS-general stores per-state s_input/u_input/actions/compare/edges/grounded
+and all_rules_s/all_rules_u (airis.py:124-137, :160-173).
+
+The tripartite facts/reals/focus definition is absent. Focus exists as a local
+attention-reduction heuristic in the paper (paper p.3) and in older/reference
+implementation fields/comments (AIRIS_Public/model.py:18-21), not as a
+saliency-weight component focus(x) in a typed state tuple.
+
+Q6. State graph and Monte Carlo rollout
+---------------------------------------
+
+Verdict: IMPLEMENTATION-BACKED for state graph; ABSENT for Monte Carlo
+rollouts in this source.
+
+State graph is central in the paper: Rules are applied to current State and
+modified States are stored in a State Graph (paper p.2-3); planning searches
+the State Graph toward goal sub-states or lowest-confidence states (paper p.3).
+AIRIS_Public initializes and expands a list of State nodes
+(airis_stable.py:66-69, :391-409, :414-445), and its README says "Predicted
+States" shows each state in the action/state graph used to create the current
+plan (AIRIS_Public/README.md:90-95). AIRIS-general uses an explicit
+state_graph dictionary, with edge state heaps on predicted actions
+(airis.py:65-72, :1075-1089, :1099-1118).
+
+Repo-wide HEAD grep across AIRIS_Public/AIRIS-general/AIRIS-client found no
+substantive "Monte" or "rollout" implementation. The planning code is heap /
+heuristic prediction over generated states, not Monte Carlo rollout.
+
+Q7. Self-modification scope
+---------------------------
+
+Verdict: self-learning world-model/rule-base update is IMPLEMENTATION-BACKED;
+self-modifying code/architecture is ABSENT for this source.
+
+The paper describes Rule Creation and Rule Updating after prediction
+verification (paper p.5) and says AIRIS continuously learns while operating
+(paper p.2). Code backs this: AIRIS_Public creates/updates knowledge rules
+(airis_stable.py:214-244, :1280-1583, :1585-1819) and persists the learned
+knowledge dictionary (README.md:13; airis_stable.py:1868-1879). AIRIS-general
+loads/saves knowledge_json and state_graph_json and creates/updates rules
+(airis.py:20, :58-72, :1126-1284, :1286-1399).
+
+I found no evidence in S1 that AIRIS rewrites its own source code or modifies a
+meta-level architecture. Recommendation: AIRIS should be a new Hyperon AI
+Algorithms card with a boundary cross-link to Self-Modification and Safety, not
+a child card under Self-Mod-Safety.
+
+Q8. Curiosity / low-confidence seeking
+--------------------------------------
+
+Verdict: IMPLEMENTATION-BACKED.
+
+The paper is explicit: if no goal sub-states exist or they cannot be reached,
+"the State with the lowest Confidence becomes the Goal State", leading AIRIS to
+pursue novel situations and generate new Rules; the paper calls this an
+effective model of artificial curiosity (paper p.3). AIRIS_Public computes
+prediction confidence from predicted rules/exceptions and stores it on the
+State (airis_stable.py:394-410), then uses confidence_heap paths when planning
+runs out of direct goal states (airis_stable.py:320-333, :356-381, :441-557).
+AIRIS-general has similar "refine the accuracy of its predictions" no-goal
+README language (AIRIS-general/README.md:3) and uses match/compare heaps in
+make_plan (airis.py:264-291, :427-428).
+
+This is not ECAN. It is a self-contained planning/exploration heuristic keyed
+to prediction confidence, not attention allocation over AtomSpace STI/LTI.
+
+Q9. Overall AIRIS verdict
+-------------------------
+
+Verdict: IMPLEMENTATION-BACKED, with extension-boundary caveat.
+
+Strongest evidence: the paper's core loop (pre-action observation, prediction,
+post-action verification, rule creation/updating, state graph planning) is
+implemented in AIRIS_Public/airis_stable.py and AIRIS-general/airis.py with
+directly corresponding artifacts: capture/pre/post functions, rule creation,
+knowledge dictionary, state graph, prediction, confidence/match scoring, and
+planning (airis_stable.py:52-99, :115-244, :302-601, :601-1129; airis.py:113-175,
+:264-428, :681-1124, :1126-1399). AIRIS-client is not the algorithm; it is a
+Minecraft/Vereya runtime client and transport wrapper (AIRIS-client/AGENTS.md:4,
+:42; airis_session.py:61-79; minecraft_client.py:223-249).
+
+Q10. Wiki card recommendation
+-----------------------------
+
+Recommended new card: `Hyperon AI Algorithms+AIRIS` plus `+tag`
+`ai_generated`. A `+AIRIS Full` card is justified if the local wiki pattern for
+HAA entries expects a Full subcard.
+
+Suggested sections:
+- Responsible: "Cook & Hammer 2024 introduced AIRIS; paper-cited reference
+  repo is Berick Cook's AIRIS_Public." Avoid uncited "Cook creator / Hammer
+  contributor" phrasing unless later external sources are added.
+- Papers: Cook & Hammer 2024 as source spec; Goertzel 2025-09
+  SubRep+AIRIS+MetaMo as Hyperon-side extension/boundary source.
+- Status: IMPLEMENTATION-BACKED for AIRIS core; SubRep tuple/tripartite/Monte
+  Carlo framing is extension, not source spec.
+- Core concepts: causal Rules, Rule Base, State Graph, State Confidence,
+  low-confidence curiosity, transparency/scrutability, limitations.
+- Implementations: berickcook/AIRIS_Public reference/stable builds; singnet/
+  AIRIS-general current generalized rewrite; singnet/AIRIS-client Minecraft
+  client only.
+- Boundaries: ECAN (attention-needed limitation, not ECAN implementation), PLN
+  (not PLN truth values), AtomSpace (not AtomSpace-backed), Self-Mod-Safety
+  (self-learning but not self-modifying-code).
+- Reference fix: change Reference+GitHub Repositories from singnet/AIRIS_Public
+  to berickcook/AIRIS_Public and add singnet/AIRIS-general.
+
+Q11. Cross-cluster boundary findings
+------------------------------------
+
+V1-1 [AIRIS-REPO-MISATTRIBUTION]: Reference+GitHub Repositories currently points
+to singnet/AIRIS_Public, but paper footnote 3 and live URL checks identify
+berickcook/AIRIS_Public as canonical; singnet/AIRIS_Public is 404. Cluster-close
+must correct the URL and add singnet/AIRIS-general separately.
+
+V1-2 [SUBREP-AIRIS-EXTENSION-NOT-SOURCE-SPEC]: Goertzel 2025-09 AIRIS tuple,
+tripartite state, motive-shift, PLN/MetaMo/SubRep integration, and Monte Carlo
+rollout language must remain boundary-source extension language. Do not
+back-propagate it into Cook-Hammer 2024.
+
+V1-3 [AIRIS-CURIOSITY-NOT-ECAN]: AIRIS low-confidence-state seeking is real, but
+does not rebuild ECAN. It is local state-graph planning/exploration, while the
+paper explicitly says additional attention mechanisms are likely needed for
+large/all-changing input streams (paper p.9, Limitations).
+
+V1-4 [AIRIS-CONFIDENCE-NOT-PLN-TV]: AIRIS State Confidence / match counts are
+prediction-quality or rule-match scores in AIRIS planning code
+(airis_stable.py:394-410; airis.py:701-703, :1032-1058), not PLN strength /
+confidence truth values.
+
+V1-5 [AIRIS-STATE-GRAPH-NOT-ATOMSPACE]: AIRIS has a state graph/world model, but
+the audited repos show no AtomSpace/MeTTa/OpenCog runtime binding. Treat any
+AtomSpace integration as future design work, not an S1 implementation fact.
+
+Q12. Vocabulary lock-in
+-----------------------
+
+The brief vocabulary is good, but I recommend adding two labels:
+- PAPER-EXTENSION: later paper/source extends or reframes a source system but
+  should not be treated as that system's original spec.
+- IMPLEMENTATION-BACKED-CORE: core formalism has direct code support, while
+  adjacent integration claims remain outside the implementation.
+
+For S1, the compact label set is:
+[IMPLEMENTATION-BACKED-CORE] for Cook-Hammer AIRIS;
+[PAPER-EXTENSION] for Goertzel 2025-09 SubRep/MetaMo AIRIS framing;
+[CLIENT-ONLY] for AIRIS-client;
+[REWRITE-WIP] for AIRIS-general relative to AIRIS_Public.
+
+No blocking dissent against the brief's P1-P16 claims. The only cluster-close
+must-fix is V1-1, and the main narrative guard is V1-2.

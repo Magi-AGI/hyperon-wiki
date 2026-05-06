@@ -1,0 +1,515 @@
+================================================================================
+NON-CLUSTERED HYPERON AI ALGORITHMS CLUSTER PILOT
+SOURCE 1 RECONCILIATION — Cook & Hammer 2024 AIRIS paper + reference impl
+================================================================================
+
+Reconciliation date: 2026-05-06
+Orchestrator:        Claude Opus 4.7 (1M)
+Reviewers:           Codex (findings_codex.txt, 252 lines, file:line discipline)
+                     Gemini (findings_gemini.txt, summary-grade)
+Brief:               source1_airis_paper_brief.txt (710 lines, 16 P-claims,
+                     12 S1.Q questions, 4 Codex pre-extraction refinements
+                     applied, §3.A pre-resolved)
+
+[EXTRACTION-COMPLETE] [SIGN-OFF-PENDING]
+
+================================================================================
+§0. RECONCILIATION SUMMARY
+================================================================================
+
+Both reviewers AGREE on the load-bearing verdicts: AIRIS-as-described-in-
+Cook & Hammer 2024 is IMPLEMENTATION-BACKED for the causal-rule + state-graph
++ low-confidence-curiosity core; the Goertzel 2025-09 SubRep+AIRIS+MetaMo
+paper's six-tuple rule structure, tripartite ⟨facts, reals, focus⟩ state,
+and Monte Carlo rollout language is a HYPERON-SIDE EXTENSION not present in
+Cook & Hammer 2024 or any of the three audited reference repos.
+
+Both reviewers AGREE on §3.A: the wiki Reference+GitHub Repositories card
+(ID 7268) is misattributed — `singnet/AIRIS_Public` is HTTP 404, paper
+footnote 3 cites `berickcook/AIRIS_Public` as canonical. `singnet/AIRIS-
+general` exists separately (active Cook-side rewrite) and is not currently
+in the wiki Reference card.
+
+Both reviewers AGREE on the wiki-card recommendation (S1.Q10): create new
+`Hyperon AI Algorithms+AIRIS` Draft card under HAA parent, with cross-link
+to (NOT subcarding under) About Hyperon+Self-Modification and Safety.
+
+Three drift findings recorded against Gemini per CF5.6 protocol:
+  D1 — L23 cite for AIRIS-general/airis.py is blank line; actual
+       s_input at L24, u_input at L30 (off-by-one, minor).
+  D2 — "1,876 lines" total for airis_stable.py is off-by-5 (actual 1881).
+  D3 — V1-3 [LIB_SPACES.METTA-PHANTOM-FILE] is HALLUCINATED; correct
+       cross-cluster phantom-file carry-forward is `lib_pln_xi.metta`
+       (PLN cluster pilot Source 11 + Source 10). Cross-archive grep for
+       "lib_spaces" returns ZERO hits in any prior pilot file. Gemini's
+       V1-3 conflates PLN's lib_pln_xi.metta gap with a different
+       (nonexistent) "spaces" filename. **This V1-3 is REJECTED in
+       reconciliation.**
+
+D3 is the load-bearing drift: it would have entered the reconciliation
+record as a phantom-file claim if not verified. CF5.6 protocol prevents
+exactly this class of drift; orchestrator-side filesystem grep caught it.
+Per `feedback_attribution_verify_against_git` standing protocol, this is
+recorded as additional Gemini-drift evidence (cumulative across pilots).
+
+Codex's V-N-X numbering (V1-1 through V1-5) is adopted as canonical —
+broader coverage, more precise framing, file:line cited throughout.
+Gemini's V1-1, V1-2 fold into Codex's V1-3, V1-4 respectively.
+
+================================================================================
+§1. PER-QUESTION VERDICTS
+================================================================================
+
+S1.Q1 — RULE STRUCTURE
+----------------------
+
+Verdict: [IMPLEMENTATION-BACKED-CORE] for Cook & Hammer 2024 four-component
+rule formalism (Conditions: action, Original Value, Relative Change Positions,
+Relative Change Original Values + Statement); [PAPER-EXTENSION] for Goertzel
+2025-09 six-tuple ⟨pre, act, post, p_r, c_r, g_r⟩.
+
+Concurrence: Both reviewers agree the SubRep tuple is paper-extension, not
+source spec.
+
+Evidence locked:
+  - Cook & Hammer 2024 paper p.2, §2 "Rule Creation."
+  - airis_stable.py:1280 `create_rule(self, act, dix, diy, oval, rval,
+    aval, rule_id, state, prev_state, prev_1d, post_1d, prev_2d, post_2d,
+    step)` — verified by orchestrator filesystem inspection.
+  - Codex additionally cites airis_stable.py:214-220, :688-705,
+    :1457-1470, :1530-1544, :1567-1571 for relative/inclusion conditions
+    and 1D original/relative/absolute value storage.
+  - AIRIS-general/airis.py:1126-1218, :1244-1278 preserves same pattern.
+  - Cook & Hammer State Confidence (paper p.3) ≈ Goertzel c_r;
+    p_r and g_r have NO Cook & Hammer counterpart.
+
+S1.Q2 — COOK AUTHORSHIP / HAMMER ROLE
+-------------------------------------
+
+Verdict: [ABSENT] for explicit paper-text authorship-priority language;
+[IMPLEMENTATION-BACKED-PRIORITY] via paper footnote 3 + repo attribution.
+
+Concurrence: Both reviewers note the paper does NOT explicitly state "Cook
+created AIRIS" or assign Hammer a lesser role in prose. Cook is first author
+by ordering convention; paper footnote 3 (page 2) cites berickcook/
+AIRIS_Public (Cook's personal repo); Cook self-identifies as "the developer
+behind the Airis project" in his airis-ai.com 2016 introduction (cited
+in `reference_airis_citations.md`).
+
+Safe wording locked: "Cook & Hammer 2024 introduced AIRIS; the reference
+implementation cited by the paper is Berick Cook's AIRIS_Public repository."
+(Codex phrasing adopted as conservative; Gemini's "Cook as creator"
+phrasing acceptable for synthesis-card content but not for Responsible-
+field uncited.)
+
+S1.Q3 — REPOSITORY ORIGIN DISCREPANCY
+-------------------------------------
+
+Verdict: Option (b) — wiki misattribution — LOCKED.
+
+Concurrence: Both reviewers + orchestrator pre-extraction WebFetch + Codex's
+`curl -I -L` independent verification all converge.
+
+Evidence locked:
+  - Cook & Hammer 2024 paper p.2, footnote 3: cites
+    `https://github.com/berickcook/AIRIS_Public` as canonical implementation.
+  - WebFetch + curl -I -L: `https://github.com/singnet/AIRIS_Public` →
+    HTTP 404. `https://github.com/berickcook/AIRIS_Public` → HTTP 200.
+    `https://github.com/singnet/AIRIS-general` → HTTP 200 (separate active
+    Cook-side rewrite).
+  - Local clone origin URLs: AIRIS_Public origin =
+    https://github.com/berickcook/AIRIS_Public.git; AIRIS-general origin =
+    https://github.com/singnet/AIRIS-general.git; AIRIS-client origin =
+    https://github.com/singnet/AIRIS-client.git.
+
+Cluster-close action LOCKED → V1-1 in §2.
+
+S1.Q4 — SUBREP+AIRIS+METAMO RELATIONSHIP
+----------------------------------------
+
+Verdict: [PAPER-EXTENSION] / [EXTENDS-AND-REFRAMES].
+
+Concurrence: Both reviewers agree the SubRep paper's framing extends Cook &
+Hammer 2024, does not faithfully describe it. Goertzel 2025-09 introduces:
+  - 6-tuple rule with p_r firing probability + g_r motive-feature shift
+  - tripartite state x = ⟨facts(x), reals(x), focus(x)⟩ as labeled
+    state-component decomposition
+  - Monte Carlo rollouts on the AIRIS state graph
+None of these are in Cook & Hammer 2024 or in airis_stable.py / AIRIS-
+general/airis.py.
+
+Cluster-close action LOCKED → V1-2 in §2.
+
+S1.Q5 — STATE REPRESENTATION
+----------------------------
+
+Verdict: [IMPLEMENTATION-BACKED] for sub-symbolic value arrays + state-graph
+nodes; [ABSENT] for tripartite ⟨facts, reals, focus⟩ decomposition.
+
+Concurrence: Both reviewers agree the tripartite formalization is absent.
+
+Evidence locked:
+  - airis_stable.py:14 `def __init__(self, input_1d, input_2d, action_space)`
+    — verified.
+  - airis_stable.py state.py L6-37 (Codex) for State object fields:
+    input_1D, input_2D, action, prev_state, applied_rules, applied_exceptions,
+    compare, confidence.
+  - AIRIS-general/airis.py L24 (`s_input`), L30 (`u_input`) — verified
+    by orchestrator. Gemini cited L23 (drift D1, off-by-one).
+  - Focus Values exist in paper p.3 + AIRIS_Public/model.py:18-21 (Codex)
+    as a delta-based attention-reduction heuristic, NOT as a saliency-
+    weight component focus(x) in a typed state tuple.
+
+S1.Q6 — STATE GRAPH AND MONTE CARLO ROLLOUTS
+--------------------------------------------
+
+Verdict: [IMPLEMENTATION-BACKED] for state graph; [ABSENT] for MC rollouts.
+
+Concurrence: Both reviewers agree.
+
+Evidence locked:
+  - State graph: Cook & Hammer 2024 paper pp.2-3.
+    airis_stable.py:66-69, :391-409, :414-445 (Codex; state-list
+    initialization + expansion).
+    airis_stable.py:302 `def make_plan(self, given_goal, generated)`
+    — heap-based planner; verified.
+    AIRIS-general/airis.py:65-72, :1075-1089, :1099-1118 (Codex;
+    state_graph dictionary + edge state heaps on predicted actions).
+  - Monte Carlo rollouts: ABSENT. Codex repo-wide HEAD grep across all
+    three repos found no substantive "Monte" or "rollout" implementation.
+    Planning is heap-based BFS/A*-style search, not MC.
+
+S1.Q7 — SELF-MODIFICATION SCOPE
+-------------------------------
+
+Verdict: [SELF-LEARNING-ONLY] — IMPLEMENTATION-BACKED for online
+rule-base/state-graph induction; ABSENT for self-modifying-code or
+meta-architecture mutation.
+
+Concurrence: Both reviewers agree.
+
+Cluster-mapping decision LOCKED: AIRIS belongs as a new
+`Hyperon AI Algorithms+AIRIS` Draft card (peer-level under HAA parent),
+NOT as a subcard of `About Hyperon+Self-Modification and Safety`. Cross-
+link from AIRIS card to Self-Mod-Safety as conceptual boundary check
+only (the two are about different concepts).
+
+Evidence locked:
+  - Cook & Hammer 2024 paper p.5, §3 (Rule Creation, Rule Updating).
+  - airis_stable.py:214-244 (Rule Creation, Codex).
+  - airis_stable.py:1280-1583 (create_rule, Codex; line 1280 verified).
+  - airis_stable.py:1585-1819 (update_rule, Codex; line 1585 verified).
+  - airis_stable.py:1868-1879 (knowledge persistence, Codex).
+  - AIRIS-general/airis.py:1126-1284, :1286-1399 (Codex; same pattern).
+
+S1.Q8 — CURIOSITY / LOW-CONFIDENCE SEEKING
+------------------------------------------
+
+Verdict: [IMPLEMENTATION-BACKED].
+
+Concurrence: Both reviewers agree.
+
+Evidence locked:
+  - Cook & Hammer 2024 paper p.3, §2 "State Graph Usage" — verbatim:
+    "the State with the lowest Confidence becomes the Goal State…
+    This results in the agent pursuing novel situations to observe
+    and generate new Rules. … This can be considered as an effective
+    model of artificial curiosity, which does not only capture aspects
+    of information gain as in [7] [Still & Precup 2012]…"
+  - airis_stable.py:394-410 (Codex; prediction confidence stored on
+    State object).
+  - airis_stable.py:320-333, :356-381, :441-557 (Codex; confidence_heap
+    paths when planning runs out of direct goal states).
+  - airis_stable.py:437-465 region verified — confidence_heap pushes
+    on `confidence != 1` branch.
+  - airis_stable.py:464 `if not new_state.anti_goal or confidence != 1`
+    — verified.
+  - airis_stable.py:559 — confidence_heap referenced in debug print;
+    verified.
+  - AIRIS-general/airis.py:264-291, :427-428 (Codex; match/compare heaps
+    in make_plan).
+
+This is NOT an ECAN reimplementation; see V1-3 in §2.
+
+S1.Q9 — OVERALL AIRIS VERDICT
+-----------------------------
+
+Verdict: [IMPLEMENTATION-BACKED-CORE] (Codex label adopted; preferred
+over plain [IMPLEMENTATION-BACKED] because adjacent SubRep integration
+claims remain outside the implementation).
+
+Concurrence: Both reviewers agree on the substance.
+
+Evidence: Cook & Hammer 2024 paper's core loop (pre-action observation,
+prediction, post-action verification, rule creation/updating, state graph
+planning) is implemented in AIRIS_Public/airis_stable.py and AIRIS-general/
+airis.py with directly corresponding artifacts. AIRIS-client is the
+Minecraft/Vereya runtime client and transport wrapper, NOT the algorithm
+(Codex distinction adopted; Gemini's findings did not differentiate).
+
+Stable-impl line counts (orchestrator-verified):
+  - AIRIS_Public/airis_stable.py: 1881 lines (Gemini stated 1,876 →
+    drift D2, off-by-5).
+  - AIRIS-general/airis.py: 1417 lines.
+
+S1.Q10 — WIKI CARD RECOMMENDATION
+---------------------------------
+
+Recommended cluster-close edit:
+
+NEW CARDS:
+  - `Hyperon AI Algorithms+AIRIS` (Draft cardtype)
+    Sections (Codex skeleton adopted):
+      1. Responsible: "Cook & Hammer 2024 introduced AIRIS; paper-cited
+         reference repo is Berick Cook's AIRIS_Public." (Avoid uncited
+         "Cook creator" phrasing in Responsible field per §S1.Q2.)
+      2. Papers: Cook & Hammer 2024 (source spec) + Goertzel 2025-09
+         SubRep+AIRIS+MetaMo (Hyperon-side extension/boundary; not source
+         spec).
+      3. Status: [IMPLEMENTATION-BACKED-CORE]; SubRep tuple/tripartite/
+         Monte Carlo framing flagged as extension.
+      4. Core Concepts: causal Rules; Rule Base; State Graph; State
+         Confidence; low-confidence-state curiosity; transparency/
+         scrutability; limitations.
+      5. Implementations:
+         - berickcook/AIRIS_Public — reference/stable builds (§3.B
+           HEAD f410413... 2026-03-26)
+         - singnet/AIRIS-general — current generalized rewrite (§3.C
+           HEAD 37861c9... 2026-03-13)
+         - singnet/AIRIS-client — Minecraft client only (§3.D HEAD
+           87238d2... 2024-11-05; community-maintained, not Cook)
+      6. Boundaries: ECAN (attention-needed limitation, NOT ECAN
+         reimplementation; cross-link); PLN (NOT PLN truth values;
+         cross-link); AtomSpace (NOT AtomSpace-backed; cross-link);
+         Self-Modification and Safety (self-LEARNING but not self-
+         MODIFYING-CODE; conceptual cross-link only).
+  - `Hyperon AI Algorithms+AIRIS+tag` Pointer with `ai_generated`.
+
+Optional `+AIRIS Full` subcard: defer decision until cluster close;
+existing HAA card pattern (PLN, ECAN, MetaMo, etc.) uses Full subcards
+for sectioned content. If AIRIS card scope grows beyond ~3K chars,
+promote to +AIRIS Full + sectioning subcards.
+
+CORRECTING EDIT:
+  - `Reference+GitHub Repositories` (ID 7268):
+    (a) Replace `singnet/AIRIS_Public` URL with `berickcook/AIRIS_Public`
+        (correct paper-cited canonical repo; same name, different owner).
+    (b) Add new entry for `singnet/AIRIS-general` (active Cook-side
+        rewrite, MIT license, last commit 2026-03-13).
+    (c) Note: this CORRECTS a same-day audit-batch oversight from
+        2026-05-05 that left singnet/AIRIS_Public in place without
+        WebFetch verification.
+
+S1.Q11 — CROSS-CLUSTER FINDINGS
+-------------------------------
+
+See §2 below for the locked V1-X carry-forwards.
+
+S1.Q12 — VOCABULARY LOCK-IN
+---------------------------
+
+Codex-proposed vocabulary additions ADOPTED:
+  - [PAPER-EXTENSION] — later paper/source extends or reframes a source
+    system but should not be treated as that system's original spec.
+  - [IMPLEMENTATION-BACKED-CORE] — core formalism has direct code
+    support, while adjacent integration claims remain outside the
+    implementation.
+
+Combined with Gemini-confirmed §5 vocab from the brief:
+  - [PAPER-ONLY]
+  - [IMPLEMENTATION-BACKED]
+  - [IMPLEMENTATION-BACKED-CORE]   (NEW)
+  - [PAPER-LEANING-HYBRID]
+  - [PAPER-EXTENSION]              (NEW)
+  - [IMPLEMENTATION-DIVERGENT]
+  - [ABSENT]
+
+This S1-locked vocabulary carries forward to S2..S5 of the non-clustered
+HAA cluster.
+
+S1-specific compact labels (Codex):
+  - [IMPLEMENTATION-BACKED-CORE] for Cook & Hammer 2024 AIRIS.
+  - [PAPER-EXTENSION] for Goertzel 2025-09 SubRep+AIRIS+MetaMo framing.
+  - [CLIENT-ONLY] for AIRIS-client.
+  - [REWRITE-WIP] for AIRIS-general relative to AIRIS_Public.
+
+================================================================================
+§2. V-N-X CARRY-FORWARDS LOCKED
+================================================================================
+
+Codex's V1-1 through V1-5 numbering adopted as canonical (broader coverage,
+file:line cited, more precise framing than Gemini's V1-1..V1-3 set).
+
+V1-1 [AIRIS-REPO-MISATTRIBUTION] — load-bearing for cluster-close.
+  Reference+GitHub Repositories (ID 7268) currently lists `singnet/
+  AIRIS_Public` (HTTP 404). Paper footnote 3 + WebFetch + curl -I -L
+  triangulated by both reviewers + orchestrator: canonical is
+  `berickcook/AIRIS_Public`. Plus `singnet/AIRIS-general` (HTTP 200,
+  active) is missing from the wiki Reference card entirely.
+  Action: cluster-close edit on card 7268. Two changes: (a) URL
+  correction, (b) new entry for AIRIS-general.
+
+V1-2 [SUBREP-AIRIS-EXTENSION-NOT-SOURCE-SPEC] — narrative guard.
+  Goertzel 2025-09 SubRep+AIRIS+MetaMo paper introduces 6-tuple rule
+  ⟨pre, act, post, p_r, c_r, g_r⟩, tripartite state ⟨facts, reals,
+  focus⟩, motive-feature shift g_r, and Monte Carlo rollout language.
+  None are present in Cook & Hammer 2024 paper or in the audited repos
+  (AIRIS_Public, AIRIS-general, AIRIS-client). Action: AIRIS card +
+  any future cross-cluster cards (e.g., when SubRep is extracted in
+  a future cluster) must mark SubRep framing as boundary/extension,
+  NOT as a description of original AIRIS.
+
+V1-3 [AIRIS-CURIOSITY-NOT-ECAN] — boundary clarification.
+  AIRIS low-confidence-state-as-Goal-State seeking is a self-contained
+  planning/exploration heuristic (paper p.3; airis_stable.py:394-410,
+  :320-333, :356-381, :441-557), NOT a reimplementation of ECAN STI/LTI
+  attention allocation over AtomSpace. Cook & Hammer paper §6
+  Limitations explicitly notes "AIRIS will likely require additional
+  attention mechanisms" — i.e., AIRIS itself does NOT contain an
+  attention-allocation system equivalent to ECAN's. Cross-link from
+  AIRIS card to ECAN must reflect this distinction.
+
+V1-4 [AIRIS-CONFIDENCE-NOT-PLN-TV] — boundary clarification.
+  AIRIS State Confidence + match counts are prediction-quality / rule-
+  match scores in AIRIS planning code (airis_stable.py:394-410;
+  AIRIS-general/airis.py:701-703, :1032-1058). They are NOT PLN strength/
+  confidence truth values (which are statistical-model truth values
+  defined by PLN cluster Sources 9-11). Cross-link from AIRIS card to
+  PLN must reflect this distinction.
+
+V1-5 [AIRIS-STATE-GRAPH-NOT-ATOMSPACE] — boundary clarification.
+  AIRIS has a state graph / world model, but the audited repos show no
+  AtomSpace / MeTTa / OpenCog runtime binding. Any AtomSpace integration
+  is future design work, NOT an S1 implementation fact. (This affects
+  any future card-content statements positioning AIRIS as "running on
+  AtomSpace" or similar — currently UNJUSTIFIED for Hyperon-side
+  storage backend integration.)
+
+================================================================================
+§3. DRIFT FINDINGS (CF5.6 STANDING-PROTOCOL)
+================================================================================
+
+Three drift findings recorded against Gemini's findings_gemini.txt; all
+caught by orchestrator filesystem verification per CF5.6 protocol locked
+since Perception cluster pilot 2026-05-01.
+
+D1 [GEMINI-OFF-BY-ONE-AIRIS-GENERAL-LINE] — minor.
+  Gemini cited AIRIS-general/airis.py L23 for s_input/u_input
+  dictionaries. Orchestrator verification: L23 is blank line; actual
+  s_input definition at L24, u_input at L30. Off-by-one. Reconciliation
+  uses corrected L24/L30 line refs.
+
+D2 [GEMINI-AIRIS-STABLE-LINE-COUNT-OFF-BY-5] — minor.
+  Gemini stated airis_stable.py is "1,876 lines." Orchestrator
+  verification via `wc -l`: 1881 lines. Off-by-5. Recorded for cumulative
+  Gemini-drift evidence (per `feedback_attribution_verify_against_git`
+  standing protocol).
+
+D3 [GEMINI-LIB_SPACES-PHANTOM-FILE-HALLUCINATION] — load-bearing,
+    REJECTED in reconciliation.
+  Gemini's V1-3 carry-forward asserted: "lib_spaces.metta remains a
+  phantom-file citation for HAA (confirmed in Source 1-7); all MeTTa-
+  runtime findings from Phase 4 carry forward." Orchestrator verification
+  via cross-archive grep:
+    - `lib_spaces` → 0 hits in any prior pilot file (only in Gemini's
+      just-written findings).
+    - `lib_pln_xi` → 55 hits across 12 files, 8 in PLN cluster pilot
+      Source 10/11 alone.
+  The actual phantom-file carry-forward from PLN cluster pilot is
+  `lib_pln_xi.metta` (cited by xiPLN.tex but not located in any clone).
+  Gemini conflated the PLN-cluster phantom file with a different
+  (nonexistent) "spaces" filename.
+  ACTION: Gemini's V1-3 is REJECTED. Codex's V1-3 (AIRIS curiosity ≠
+  ECAN) is adopted as canonical V1-3. The PLN pilot's lib_pln_xi.metta
+  gap remains a separate PLN-cluster carry-forward (already documented
+  in CLAUDE.md Source-text gaps section), not an AIRIS-cluster finding.
+
+Cumulative Gemini source-location/file-identity drift across closed
+pilots (per `feedback_gemini_file_identity_verification.md` baseline):
+8/25 dissents = 32% across 5 prior pilots. This S1 reconciliation adds
+3 more drift findings (D1 + D2 + D3) to the cumulative count.
+
+================================================================================
+§4. CLUSTER-CLOSE ACTION ITEMS
+================================================================================
+
+Required at S1 cluster-close (orchestrator wiki-edit batch):
+
+C1 [NEW-CARD-AIRIS] Create `Hyperon AI Algorithms+AIRIS` Draft card with
+   sections per §S1.Q10. Include `+tag` Pointer subcard with `ai_generated`.
+
+C2 [NEW-CARD-AIRIS-OPTIONAL-FULL] If AIRIS card content exceeds ~3K chars
+   in C1, promote to +AIRIS Full subcard pattern matching ECAN/PLN. Else
+   skip and revisit at cluster-close of S5.
+
+C3 [REFERENCE-GITHUB-CORRECTION] Update `Reference+GitHub Repositories`
+   (ID 7268) to:
+   (a) Replace `singnet/AIRIS_Public` URL with `berickcook/AIRIS_Public`.
+   (b) Add new entry for `singnet/AIRIS-general` (MIT, 17 commits via
+       GitHub web; 16 via local clone; HEAD 37861c9... 2026-03-13;
+       label as active Cook-side rewrite distinct from AIRIS_Public
+       reference/stable builds).
+   (c) Optionally add a one-line note that AIRIS-client (Minecraft) is
+       community-maintained, not Cook.
+
+C4 [REVERT-OR-NOTE-AUDIT-BATCH-OVERSIGHT] The 2026-05-05 audit-batch
+   left singnet/AIRIS_Public unchanged (with phase-5+ note for
+   atomspace-rocks added near it). Per V1-1 evidence, that audit-batch
+   edit didn't WebFetch-verify the AIRIS_Public URL. Document this as
+   a one-line note in CLAUDE.md cluster-pilot table (or as part of C3's
+   commit message) so future audit-batches WebFetch-verify URLs before
+   claiming corrections.
+
+Optional follow-on (not strictly required for S1 close):
+
+C5 [CROSS-CLUSTER-NOTE] Add a one-line cross-link in
+   `About Hyperon+Self-Modification and Safety+Self-Modification and
+   Safety Full` noting that AIRIS is a self-LEARNING (not self-MODIFYING-
+   CODE) system per V1-5. Defer to S5 close-batch or AIRIS card creation
+   at C1.
+
+C6 [PROTOCOL-PROMOTION-CANDIDATE] If a second-instance of "wiki-edit
+   without WebFetch verification" lands in S2..S5, promote to a standing
+   protocol per CF5.6.E ≥2-instance criterion: "Reference cards
+   correcting external URLs require fresh WebFetch verification before
+   the edit, not just citation against memory or prior pilot output."
+   Single-instance for now; no protocol promotion at S1.
+
+================================================================================
+§5. PROVISIONAL S2 SCOPE INPUTS
+================================================================================
+
+Both reviewers' findings inform the S2 (MetaMo) scope decision:
+  - V1-2 [SUBREP-AIRIS-EXTENSION-NOT-SOURCE-SPEC] suggests SubRep+
+    MetaMo+AIRIS framing should NOT be auto-extracted as MetaMo source;
+    Goertzel 2025-09 is a Hyperon-side design paper, not the original
+    MetaMo spec.
+  - The actual MetaMo source paper(s) need to be identified separately.
+    Candidate: `iCog-Labs-Dev/MetaMo-Python` repo + adjacent OpenPsi
+    cluster pilot V4-1 9-event-lifecycle context.
+
+Recommendation: S2 brief should pre-populate which MetaMo paper(s) are
+canonical (vs. Goertzel design papers). Defer to next cluster-pilot
+session.
+
+================================================================================
+§6. SIGN-OFF
+================================================================================
+
+Orchestrator (Claude) signs off on this reconciliation as
+[EXTRACTION-COMPLETE].
+
+Awaiting:
+  [ ] Codex sign-off
+  [ ] Gemini sign-off
+    Note: Gemini's three drift findings (D1, D2, D3) are documented in
+    §3 above. Per the established cluster-pilot pattern, drift findings
+    are not blocking sign-off — they are recorded for cumulative pilot
+    record. Gemini may acknowledge or contest in their sign-off response.
+
+Once both reviewers sign off, orchestrator executes cluster-close edit
+batch C1..C4 (and optionally C5).
+
+================================================================================
+END OF SOURCE 1 RECONCILIATION
+================================================================================

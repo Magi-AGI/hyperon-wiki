@@ -1,0 +1,13 @@
+Source: Cook & Hammer 2024, "Autonomous Intelligent Reinforcement Inferred Symbolism"
+Canonical record: https://kth.diva-portal.org/smash/record.jsf?pid=diva2%3A1890142
+Retrieved from: https://434267010-files.gitbook.io/~/files/v0/b/gitbook-x-prod.appspot.com/o/spaces%2FE0eZgP8lxRNljW57Uw4H%2Fuploads%2FoL5Fo04gLzjClgEqpoNs%2FAIRIS%20Paper.pdf?alt=media&token=f8a5eef1-4139-490b-a7fc-7f80d6f3667d
+Retrieved on: 2026-05-06
+Retrieved by: Claude Opus 4.7 (1M context) for Non-Clustered HAA cluster pilot Source 1
+File: 2024_Cook_Hammer_AIRIS.pdf
+Size: 654854 bytes
+MD5: KH1mZXyDhfKdUI2QU6DrqA== (per Firebase Storage metadata)
+PDF version: 1.5
+Firebase Storage timeCreated: 2024-10-25T13:06:06.620Z
+URL discovery path: AIRIS citations memory file (reference_airis_citations.md)
+  → KTH/DiVA record diva2:1890142 (canonical)
+  → gitbook PDF mirror (used for retrieval; canonical mirror per memory file)

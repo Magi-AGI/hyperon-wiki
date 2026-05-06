@@ -1,0 +1,109 @@
+Gemini findings - Non-clustered HAA pilot Source 1
+Cook & Hammer 2024 AIRIS paper + reference implementation
+================================================================
+
+Source 1 Extraction Findings — Cook & Hammer 2024 AIRIS paper +
+reference implementation
+
+S1.Q1 — Rule structure alignment
+- Verdict: [IMPLEMENTATION-DIVERGENT] / [PAPER-LEANING-HYBRID]
+- The Goertzel 2025-09 SubRep paper's 6-tuple framing (⟨pre, act,
+  post, p_r, c_r, g_r⟩) is an extension not found in the original
+  Cook & Hammer 2024 paper or the reference code.
+- Cook & Hammer 2024 defines rules based on Original Value, Relative
+  Change Positions, and Relative Change Original Values (§2, p.2).
+- airis_stable.py (L1280) implements create_rule using parameters
+  like act, dix, diy (relative positions), oval (original value),
+  and rval (result value). It uses a confidence attribute but does
+  not formalize firing probability p_r or motive-shift g_r as part
+  of the core tuple.
+
+S1.Q2 — Authorship & Creator Role
+- Verdict: [IMPLEMENTATION-BACKED-PRIORITY]
+- The paper text does not explicitly state "Cook is creator."
+  However, footnote 3 (p.2) points directly to berickcook/AIRIS_Public
+  (Cook's personal repo).
+- Memory-file P4 is confirmed by Cook's blog (airis-ai.com), where
+  he self-identifies as the developer. The paper authorship order
+  (Cook first) and the repo attribution provide indirect but
+  consistent evidence of priority.
+
+S1.Q3 — Repository origin resolution
+- Verdict: Option (b) — wiki misattributed URL.
+- WebFetch verification confirms:
+    - https://github.com/singnet/AIRIS_Public → 404 Not Found.
+    - https://github.com/berickcook/AIRIS_Public → 200 OK
+      (Canonical repo cited in paper p.2 fn.3).
+- I acknowledge the need to fix Card 7268 and add singnet/AIRIS-general.
+
+S1.Q4 — SubRep 2025 paper relationship
+- Verdict: [EXTENDS-AND-REFRAMES]
+- Goertzel's description in SubRep_Minecraft_AIRIS_v2.json adds the
+  Monte Carlo rollout framing and the ⟨facts, reals, focus⟩ state
+  representation, neither of which are in the original paper or
+  reference code.
+
+S1.Q5 — State representation
+- Verdict: [PAPER-ONLY] / [ABSENT]
+- Cook & Hammer 2024 defines state as arrays of integers (Grid World
+  §5, p.6).
+- airis_stable.py (L14) uses input_1d and input_2d. AIRIS-general
+  (L23) uses s_input (structured) and u_input (unstructured)
+  dictionaries.
+- The ⟨facts, reals, focus⟩ tripartite decomposition from Goertzel
+  2025-09 is ABSENT from both the paper and the code.
+
+S1.Q6 — State-graph & Monte Carlo rollouts
+- Verdict: [PAPER-ONLY] (Graph) / [ABSENT] (MC Rollouts)
+- The paper (§2, p.3) and code (airis_stable.py L18, L315) confirm
+  the State Graph for planning.
+- However, the "Monte Carlo rollouts" claim is ABSENT. The paper
+  describes deterministic rule application + heuristic search.
+  airis_stable.py (L302) uses a heap-based BFS/A* planner, not MC
+  rollouts.
+
+S1.Q7 — Self-modification scope
+- Verdict: [SELF-LEARNING-ONLY]
+- Both the paper (§3) and code (airis_stable.py L1585 update_rule)
+  demonstrate online rule induction. No code or paper text describes
+  AIRIS modifying its own logic, planner, or meta-architecture.
+- Recommendation: Create a standalone Hyperon AI Algorithms+AIRIS
+  card. Link to Self-Modification and Safety only as a conceptual
+  boundary check.
+
+S1.Q8 — Curiosity / low-confidence seeking
+- Verdict: [IMPLEMENTATION-BACKED]
+- The paper (§2, p.3) explicitly defines curiosity as seeking the
+  state with the lowest confidence when goals are unreachable.
+- airis_stable.py (L437-465) implements planning logic that
+  prioritizes states based on confidence. L464
+  (if not new_state.anti_goal or confidence != 1) and the use of
+  a confidence_heap (L559) confirm the mechanism.
+
+S1.Q9 — Overall AIRIS Verdict
+- Verdict: [IMPLEMENTATION-BACKED]
+- The core causality-based learning and planning framework described
+  in the paper has a high-fidelity reference implementation in
+  airis_stable.py (verified 1,876 lines).
+
+S1.Q10 — Wiki card recommendation
+- I concur with the suggested skeleton. Section 1: Responsible must
+  include Cook as creator. Section 5: Implementations must resolve
+  the berickcook vs singnet URL discrepancy.
+
+S1.Q11 — Cross-cluster findings
+- V1-1: AIRIS curiosity is a Self-Contained Goal-Generator distinct
+  from ECAN's global importance-based attention allocation.
+- V1-2: AIRIS rule-confidence is a local heuristic for planning,
+  sharing conceptual but not mathematical inheritance with PLN
+  truth-values.
+- V1-3: lib_spaces.metta remains a phantom-file citation for HAA
+  (confirmed in Source 1-7); all MeTTa-runtime findings from Phase 4
+  carry forward.
+
+S1.Q12 — Verdict Vocabulary
+- I confirm the §5 vocabulary ([PAPER-ONLY] / [IMPLEMENTATION-BACKED]
+  / [PAPER-LEANING-HYBRID] / [IMPLEMENTATION-DIVERGENT] / [ABSENT])
+  for use in S2..S5.
+
+I am standing by for the peer review of Codex's output.

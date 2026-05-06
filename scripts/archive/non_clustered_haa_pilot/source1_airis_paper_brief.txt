@@ -1,0 +1,710 @@
+================================================================================
+NON-CLUSTERED HYPERON AI ALGORITHMS CLUSTER PILOT
+SOURCE 1 BRIEF — Cook & Hammer 2024 AIRIS paper + reference implementation
+================================================================================
+
+§0. SOURCE IDENTITY
+-------------------
+Cluster pilot:    Non-clustered Hyperon AI Algorithms
+Source number:    1 of ~4-5 (S2..S5 to be locked after S1 reconciliation)
+Source name:      Cook & Hammer 2024 AIRIS paper + reference implementation
+Pilot brief date: 2026-05-06 (READY for reviewer extraction; pre-extraction
+                   reviewer corrections from Codex 2026-05-06 applied; PDF
+                   retrieved + §4 populated; §3.A pre-resolved by orchestrator)
+Orchestrator:     Claude Opus 4.7 (1M)
+Reviewers:        Codex + Gemini (cross-model triangulation)
+
+Pilot order chosen: Option A (Backlog Burn-down) per user direction 2026-05-05,
+following both reviewers' agreement that AIRIS is the correct first source.
+Rationale: smallest, most well-defined entry point; resolves a concrete missing-
+card gap from the wiki audit (`scripts/archive/wiki_card_audit_2026_05_05/
+audit_report.md` §4.3); establishes the cluster's verdict vocabulary for paper-
+only vs implementation-backed claims before tackling more entangled sources
+(MetaMo bridges to OpenPsi/PRIMUS; Pattern Mining bridges to closed Perception
+pilot; NACE/AI-DSL/MOSES each have their own dependency surfaces).
+
+Provisional cluster source plan (S2..S5 NOT YET LOCKED — reviewers may propose
+adjustments after S1 reconciliation):
+  S1 — AIRIS (Cook & Hammer 2024)                                  [THIS BRIEF]
+  S2 — MetaMo (TBD: paper bundle + iCog-Labs-Dev/MetaMo-Python +
+       hyperon-openpsi adjacency to closed OpenPsi pilot)
+  S3 — Pattern Mining (CROSS-CLUSTER VERIFICATION + RESIDUAL scope only,
+       per Codex 2026-05-06 review: opencog/miner + hyperon-miner-family
+       were already audited by Perception cluster pilot S2/S3. S3 here
+       is NOT a fresh extraction; it's a synthesis/verification source
+       reconciling Perception findings with non-clustered HAA Pattern
+       Mining card content + identifying any non-Perception residual
+       pattern-mining scope (e.g., ngeiswei/miner if not already covered).
+       Decision on whether to keep S3 or absorb into S2/S4/S5 deferred
+       until after S1 reconciliation.)
+  S4 — Concept Blending + Semantic Parsing
+       (Goertzel/Eskridge concept-blending paper(s);
+        singnet/semantic-parsing + RelEx + Link Grammar)
+  S5 — NACE + AI-DSL + MOSES + MeTTa-NARS coverage sweep
+       (patham9/NACE; singnet/ai-dsl; opencog/moses + iCog-Labs-Dev/metta-moses;
+        patham9/metta-nars)
+  Self-Modification and Safety (boundary card) — coverage decision deferred:
+       may attach to AIRIS as boundary cross-link (S1) OR earn its own micro-
+       cluster source if literature scope justifies.
+
+This S1 deliverable feeds into:
+  (a) Creation of a new wiki card `Hyperon AI Algorithms+AIRIS` (and `+AIRIS Full`
+      if scope justifies) — explicit cluster output per audit_report.md §2.9 +
+      §4.3.
+  (b) Tag subcard `+tag` carrying `ai_generated`.
+  (c) Boundary cross-link decision: does the new AIRIS card link OUTWARD to
+      `About Hyperon+Self-Modification and Safety+Self-Modification and Safety
+      Full`, or does the Self-Mod-Safety card need a back-link added?
+  (d) Reference+GitHub Repositories audit: the existing `singnet/AIRIS_Public`
+      entry needs verification (orchestrator pre-extraction observation: the
+      local clone's git remote points to `berickcook/AIRIS_Public.git`, not
+      `singnet/AIRIS_Public.git`. See §3.A below — possibly stale wiki
+      attribution).
+  (e) Cluster-pilot vocabulary lock-in for the remaining S2..S5: how to label
+      "paper-only", "implementation-backed", "paper-leaning hybrid" verdicts
+      in the non-clustered HAA cluster vocabulary (this builds on PLN cluster
+      Sources 9-11 hybrid vocabulary).
+
+
+§1. SCOPE AND DELIVERABLE
+-------------------------
+S1 is a paper read + reference-codebase audit with a specific orientation:
+establish the relationship between (a) the formal AIRIS framework as published
+by Cook & Hammer 2024, and (b) what berickcook/AIRIS_Public + singnet/AIRIS-
+general + singnet/AIRIS-client actually implement.
+
+Single-deliverable: findings_codex.txt / findings_gemini.txt addressing the
+S1.Q* questions in §5 below. Plain text. Use page/section citations for paper
+claims (e.g., "paper §2 ¶2", "paper p.4 fig.3 caption"); file:line for code
+claims; full-or-unambiguous SHA refs for git claims.
+
+The orchestrator will subsequently produce findings_reconciled_crossmodel.txt
+applying the established cross-model triangulation pattern (V-N-X dissent
+recording + protocol promotion criteria CF5.6.E).
+
+
+§2. ARTIFACTS TO READ
+---------------------
+PRIMARY (must read in full):
+  Cook & Hammer 2024, "Autonomous Intelligent Reinforcement Inferred Symbolism"
+    Canonical record:  https://kth.diva-portal.org/smash/record.jsf?pid=diva2%3A1890142
+    Local file:        publication_texts/2024_Cook_Hammer_AIRIS.pdf
+    Provenance:        publication_texts/2024_Cook_Hammer_AIRIS.provenance.txt
+    Retrieved:         2026-05-06 from gitbook mirror with download token;
+                       654854 bytes, PDF v1.5, MD5 KH1mZXyDhfKdUI2QU6DrqA==
+    Page count:        10 (full paper inc. references)
+    Citation:          Cook, B., Hammer, P. (2024). "Autonomous Intelligent
+                       Reinforcement Inferred Symbolism." KTH/DiVA portal,
+                       diva2:1890142. Published 2024-10-25 per Firebase
+                       Storage timeCreated.
+    Affiliations:      Cook¹ — SingularityNET; Hammer² — KTH Royal Institute
+                       of Technology.
+
+CROSS-REFERENCE (read targeted sections only when answering specific S1.Q*):
+  E:\GitHub\hyperon reference\AIRIS_Public                    (162 commits)
+    - airis_stable.py    (119,617 bytes — main reference implementation)
+    - airis_aux.py       (128,446 bytes — auxiliary)
+    - airis_old.py       (112,139 bytes — predecessor)
+    - airis_test.py      (974 bytes — minimal test harness)
+    - puzzle_game_driver.py (52,321 bytes — grid-world puzzle game driver,
+                            the canonical AIRIS demo per README)
+    - puzzle_game_driver_universal.py (45,568 bytes)
+    - puzzle_game_interactional_motivation.py (33,020 bytes)
+    - cartpole.py / mountaincar.py (gym environment drivers)
+    - mnist_driver2.py (20,079 bytes)
+    - rule_viewer.py / Knowledge_View.py (knowledge-base inspection tools)
+    - minds_eye.py (planning visualization)
+    - README.md
+  E:\GitHub\hyperon reference\AIRIS-general                   (16 commits)
+    - airis.py           (78,648 bytes — single-file Python library, no
+                         external packages, last touched 2026-03-13
+                         "wip checkpoint")
+    - README.md / CLAUDE.md / AGENTS.md / GEMINI.md (already populated
+      with sister-repo orientation per orchestrator scan)
+    - LICENSE
+  E:\GitHub\hyperon reference\AIRIS-client                    (small)
+    - minecraft_client.py + binary setup
+    - This is a Minecraft client wrapper, not the core algorithm.
+
+ADJACENT (boundary checks; read as needed):
+  publication_texts/mattermost_papers/SubRep_Minecraft_AIRIS_v2.json
+    Goertzel 2025-09-12, "Integrating SubRep with AIRIS (and PLN): General
+    Direction and Minecraft Use-Case." Hyperon-side framing of AIRIS
+    integration with SubRep + MetaMo + PLN in a Minecraft game-AI context.
+    NOTE per AI Acknowledgement: "Lots of use of GPT5-Pro and Claude in
+    preparing this document." Treat as design-intent paper, not authoritative
+    AIRIS specification.
+  Hammer's gist replication:
+    https://gist.github.com/patham9/ac25f7c85c82cebc0cb816823a4a6499
+    Per AIRIS citations memory: "informal gist explicitly labeled as a
+    replication of Cook's AIRIS." Reviewers should sanity-check whether
+    this matches what Cook & Hammer 2024 paper formalizes.
+  Cook's project blog:
+    http://airis-ai.com/   (and 2016 introduction:
+    https://airis-ai.com/2016/11/17/introduction/)
+    Cook self-describes there as "the developer behind the Airis project."
+    Reviewer use: confirm Cook authorship priority of the framework vs paper
+    authorship as Cook&Hammer 2024.
+
+WIKI CARDS (read at orchestrator's request only; cluster-close edit targets):
+  - Reference+GitHub Repositories (ID 7268)
+    Lists `singnet/AIRIS_Public` — needs verification per §3.A finding.
+  - About Hyperon+Self-Modification and Safety+Self-Modification and Safety Full
+    Boundary card. Determine whether AIRIS belongs as new HAA card (likely)
+    or as subcard of Self-Mod-Safety (less likely given AIRIS scope).
+  - Hyperon AI Algorithms (parent index — for navigation context)
+  - Hyperon AI Algorithms+ECAN+AI / Hyperon AI Algorithms+PLN+AI
+    (Pattern reference for +AI proposal child structure on Published parents.
+     For new HAA cards, the orchestrator will create as Draft directly per
+     CLAUDE.md wiki-edit semantics; +AI structure only matters if AIRIS
+     parent already has Published siblings.)
+
+
+§3. ORCHESTRATOR-PRE-POPULATED CODEBASE FACTS
+----------------------------------------------
+Per `feedback_git_history_in_brief.md`: orchestrator pre-populates commits +
+remotes + branches + last-update + author hints. Reviewers should not
+re-derive routine history unless load-bearing; per CF5.6 (2026-05-01) and
+the standing attribution-verification protocol, reviewers MUST re-run
+git/WebFetch verification for S1.Q3 and any disputed identity claim.
+Routine history pre-population is a starting point, not a constraint on
+re-verification of load-bearing claims.
+
+§3.A — REPOSITORY ORIGIN / OWNERSHIP CONFLICT
+  PRE-RESOLVED BY ORCHESTRATOR 2026-05-06 (paper-internal evidence + WebFetch).
+  Reviewers may verify but the verdict is locked unless materially refuted.
+
+  Discrepancy: local clone at E:\GitHub\hyperon reference\AIRIS_Public has
+    origin = https://github.com/berickcook/AIRIS_Public.git
+  Wiki Reference+GitHub Repositories (ID 7268) lists:
+    <a href="https://github.com/singnet/AIRIS_Public">singnet/AIRIS_Public</a>
+
+  Orchestrator 3-way verification:
+    1. Cook & Hammer 2024 paper §2, footnote 3 (page 2 of retrieved PDF):
+       "The current implementation is available in the corresponding
+       open-source repository on Github: https://github.com/berickcook/
+       AIRIS_Public"
+       → Paper itself authoritatively cites berickcook/AIRIS_Public.
+    2. WebFetch https://github.com/singnet/AIRIS_Public → HTTP 404
+       (does NOT exist on GitHub).
+    3. WebFetch https://github.com/berickcook/AIRIS_Public → 200 OK,
+       AGPL-3.0, master branch, README confirms "Last updated 12/30/2023"
+       (37 stars, 12 forks).
+
+  VERDICT: Option (b) — wiki has misattributed URL. The canonical AIRIS
+  reference repo is `berickcook/AIRIS_Public` (Cook's personal repo
+  cited by the paper itself). `singnet/AIRIS_Public` does not exist.
+
+  Cluster-close action: orchestrator will fix Reference+GitHub Repositories
+  (ID 7268) to point to berickcook/AIRIS_Public. Note this CORRECTS a
+  same-day audit-batch edit (2026-05-05) that left the singnet URL in
+  place; the audit-batch did NOT verify the URL existence at that time.
+
+  Additional finding (orchestrator pre-extraction): a separately active
+  repo `singnet/AIRIS-general` exists (200 OK, MIT license, 17 commits)
+  and is NOT currently listed in the wiki's Reference+GitHub Repositories
+  card. Cluster-close action: add this entry. See §3.C for git history.
+
+§3.B — berickcook/AIRIS_Public (Cook's reference) commit summary:
+  Total commits:    162 commits on master.
+  HEAD (full SHA): f41041328d215ed623e08e015d6d88ddd2ee9d9a
+  HEAD author:     Berick <berickcook@gmail.com> (Cook's personal email)
+  HEAD date:       2026-03-26T12:31:38-08:00
+  HEAD message:    "Merge pull request #6 from PetiteIA/IM"
+  Note: README claims "Last updated 12/30/2023" but actual git activity
+        runs through 2026-03-26 (PR #6 from PetiteIA/IM merged). The
+        README static text and git activity are out of sync.
+  HEAD-1 to HEAD-19 (last 20):
+      f410413 Merge pull request #6 from PetiteIA/IM
+      4a85467 minor
+      098fd03 minor
+      1a1fff9 minor
+      2747d22 03_movie_3
+      37cb012 IM_Tutorial_02
+      8dfa3a1 03_movie.gif
+      ffe5ace IM_Tuturoal
+      59b7c01 IM_Tutorial_02
+      e4bed03 Merge pull request #5 from PetiteIA/IM
+      7d85a0c Merge branch 'replay' into IM
+      54c5c4e 00_movie.mp4
+      d69039e minor
+      f559cd0 01_movie.mp4
+      856c5f5 02_Sniff_demonstration.md
+      be35cbd 02_Sniff_demonstration.md
+      d4b2cc1 02_Sniff_demonstration.md
+      f3fbda6 imo
+      55ea32e 02_Sniff_demonstration.md
+      868ef2c 02_Sniff_demonstration.md
+  Initial commit:   9cd18e6 Initial commit
+                    9219d17 Initial Commit
+                    aca0a48 Added Images
+  Branches:         master (default), origin/dependabot/pip/numpy-1.22.0
+  README claim:     "Last updated 12/30/2023" — predates Cook & Hammer 2024
+                    paper publication. Reviewers must reconcile: paper-vs-
+                    code lifecycle (was code frozen pre-paper, or is paper
+                    a retrospective formalization?).
+
+§3.C — singnet/AIRIS-general commit summary:
+  Total commits:    16 on master (orchestrator local clone; GitHub web
+                    view reports 17 — possible 1-commit drift; reviewers
+                    may verify via fresh `git fetch && git log`).
+  HEAD (full SHA): 37861c953c338f53128e202ba49b4b0510c4bece
+  HEAD author:     Berick <berick.cook@singularitynet.io>
+                   (Cook's SingularityNET email — confirms Cook is
+                    the active committer on the singnet-side rewrite,
+                    not just the personal AIRIS_Public repo)
+  HEAD date:       2026-03-13T14:23:26-08:00
+  HEAD message:    "wip checkpoint"
+  HEAD-1 to HEAD-9 (last 10):
+                    37861c9 wip checkpoint
+                    4c57ded wip checkpoint
+                    eed074f Merge remote-tracking branch 'origin/master'
+                    4f31871 Bug fixes
+                    2ac4f2b Create LICENSE
+                    3e0997b rework checkpoint. create_rule, predict, update_rule complete.
+                    1b9f0ba Rule Storage refactor. Initial create_rule
+                    d3ab880 Compare is stable
+                    06c450f Compare refactor checkpoint 2
+                    d6f14c0 Compare refactor checkpoint.
+  Initial:          af560af Initial commit from personal repo
+                    6f4f4e2 Create README.md
+                    3a9454d Adds multi-step planning. Need to more thoroughly test.
+  Last commit date: 2026-03-13 (committer Berick Cook via SingularityNET
+                    email — verified above).
+  Files at HEAD:    airis.py (78KB), AGENTS.md, CLAUDE.md, GEMINI.md,
+                    LICENSE, README.md.
+  Per CLAUDE.md in repo: "AIRIS (Autonomous Intelligent Reinforcement
+                    Inferred Symbolism) General is a Python implementation
+                    of a causal reasoning agent... Pure Python with standard
+                    library dependencies only (no external packages required)
+                    ...this is a general-purpose implementation; environment-
+                    specific AIRIS clients exist in separate repositories."
+
+§3.D — singnet/AIRIS-client commit summary:
+  HEAD (full SHA): 87238d28b10ccfd2137e6729c50f4857a38aba43
+  HEAD author:     Ilya_Fedotov <fedotow.ilja@gmail.com>
+                   (community contributor, not Cook; the Minecraft client
+                    is community-maintained.)
+  HEAD date:       2024-11-05T16:25:32+03:00
+  HEAD message:    "Update README.md"
+  HEAD-1 to HEAD-8 (full HEAD-history):
+                    87238d2 Update README.md
+                    eddf09f Added binary setup
+                    7a98917 Simple changes
+                    c66455b Added Linux; Make Readme prettier
+                    709a909 Fix download link
+                    8e134b3 Merge pull request #1 from SERGOPLC/patch-1
+                    f6a0ffd Update minecraft_client.py
+                    000ed63 Create README.md
+                    8d542f7 init
+  Scope:            Minecraft client only. Not the AIRIS algorithm.
+
+§3.E — File-existence assertions (per CF5.6 verification protocol from
+       Perception cluster pilot 2026-05-01):
+  - airis_stable.py exists at AIRIS_Public/airis_stable.py     ✓ verified
+  - airis_old.py exists at AIRIS_Public/airis_old.py            ✓ verified
+  - airis_aux.py exists at AIRIS_Public/airis_aux.py            ✓ verified
+  - airis_test.py exists at AIRIS_Public/airis_test.py          ✓ verified
+  - airis.py exists at AIRIS-general/airis.py                   ✓ verified
+  - puzzle_game_driver.py exists at AIRIS_Public/puzzle_game_driver.py
+                                                                  ✓ verified
+  - Knowledge.npy reported as runtime-generated file by README — NOT a
+    repo artifact; reviewers should not assert its in-repo presence.
+
+
+§4. ORCHESTRATOR-PRE-POPULATED PAPER FINDINGS (verify, do not relitigate)
+-------------------------------------------------------------------------
+The orchestrator has read the paper in full (10 pages). The following
+paper-internal facts are documented for reviewers to use as reference;
+reviewers may challenge any if they disagree, but should not need to
+re-extract from the PDF for these claims.
+
+Page references are to the retrieved 10-page PDF.
+
+P1. Paper title: "Autonomous Intelligent Reinforcement Inferred Symbolism."
+    The acronym AIRIS is introduced in the abstract.
+
+P2. Authors: Berick Cook¹ and Patrick Hammer² (TWO authors, in this order).
+    Affiliations:
+      ¹ SingularityNET
+      ² KTH Royal Institute of Technology
+    Author ordering is conventional first-author/co-author (Cook first).
+
+P3. Venue: KTH/DiVA portal record diva2:1890142. The paper appears to be
+    a stand-alone arXiv-style/preprint format with section numbering,
+    figure captions, and a references section; it is not labeled as a
+    conference proceedings paper. Reviewers should NOT assume AGI-24
+    or other specific venue without explicit paper-text evidence.
+
+P4. Repository citation in paper. Page 2, footnote 3:
+    "The current implementation is available in the corresponding
+    open-source repository on Github: https://github.com/berickcook/
+    AIRIS_Public"
+    This is the AUTHORITATIVE paper-internal repository attribution.
+    Resolves §3.A in favor of berickcook/AIRIS_Public (option b).
+
+P5. Abstract claim (verbatim): "This paper introduces AIRIS (Autonomous
+    Intelligent Reinforcement Inferred Symbolism) to enable causality-
+    based artificial intelligent agents. The system builds sets of causal
+    rules from observations of changes in its environment which are
+    typically caused by the actions of the agent. These rules are similar
+    in format to rules in expert systems, however rather than being
+    human-written, they are learned entirely by the agent itself as it
+    keeps interacting with the environment."
+    Keywords: Procedure Learning · Experiential Learning · Autonomous
+    Agent · Causal Reasoning · Artificial General Intelligence.
+
+P6. Architecture (§3, page 4, Fig. 1). Four primary components:
+    (1) Rule Base — learned rules.
+    (2) State Graph — internal world model; current + future predicted
+        states.
+    (3) Pre-Action Observation — sequence of processes incl. Planning,
+        Prediction, Goal Heuristic.
+    (4) Post-Action Observation — sequence of processes incl. Prediction
+        Verification, Rule Creation, Rule Updating.
+
+P7. Rule structure (§2, page 2; §4, page 5). A Rule's Conditions consist
+    of:
+      - the action that was taken
+      - the Original Value (the value prior to the action)
+      - the Relative Change Positions (positions of other values that
+        also changed, relative to Original Value's position)
+      - the Relative Change Original Values (those values prior to the
+        action)
+      - a list of other Rules that were observed to be true for the
+        prediction
+    The Statement is what the Original Value changed into.
+    NOTE for S1.Q1: this is paper-formal. The Goertzel 2025-09 SubRep
+    boundary paper describes rules as r = ⟨pre(r), act(r), post(r),
+    p_r, c_r, g_r⟩ — a 6-tuple including firing probability p_r and
+    motive-shift g_r. The Cook & Hammer 2024 paper does NOT formalize
+    p_r or g_r. AIRIS has State Confidence (0:1) as the prediction-
+    confidence value (§2 "State Graph Creation," page 3), which roughly
+    corresponds to c_r. **The Goertzel 2025-09 framing is an extension/
+    reframing, not a faithful description of the Cook & Hammer 2024
+    formalism.**
+
+P8. State representation. The paper describes inputs as "sub-symbolic
+    values which capture the presence of different object types at the
+    existing locations of the environment" (§3 Pre-Action Environment).
+    For the Grid World Puzzle Game: "a two dimensional array of
+    integers that represent the objects in the game world, and a one
+    dimensional array of integers that represent the inventory of items
+    collected by the agent" (§5 Grid World Puzzle Game, page 6).
+    NOTE for S1.Q5: the Cook & Hammer 2024 paper does NOT formalize
+    state as the tripartite x = ⟨facts(x), reals(x), focus(x)⟩ that
+    Goertzel 2025-09 §2.1 attributes to AIRIS. Focus Values DO exist
+    in Cook & Hammer 2024 — but as "values that changed from previous
+    State" (§2 State Graph Creation, page 3), a delta-based saliency
+    mechanism, NOT as a labeled tripartite state component. **The
+    Goertzel 2025-09 ⟨facts, reals, focus⟩ formalization is a Hyperon-
+    side reframing not present in the Cook & Hammer 2024 paper.**
+
+P9. State Graph and goal-directed planning (§2, page 3 + §3, page 4).
+    "The State Graph represents the system's internal world model, and
+    is used to make plans and achieve goals." Goal Sub-States are
+    sub-states matching Rule Conditions whose Statement results in
+    achieving the agent's specified Goal. Planning traces a path from
+    current State to Goal State through the State Graph.
+    NOTE for S1.Q6: the Cook & Hammer 2024 paper describes
+    DETERMINISTIC rule application + heuristic goal-state search. There
+    is NO mention of "Monte Carlo rollouts" anywhere in the paper. The
+    Goertzel 2025-09 SubRep paper §2.1 claim that "AIRIS maintains a
+    directed state graph G for Monte Carlo rollouts" is **paper-
+    divergent** — state graph confirmed, MC rollouts NOT in Cook &
+    Hammer 2024.
+
+P10. Curiosity (§2 State Graph Usage, page 3). VERBATIM:
+     "If no Goal Sub-States exist or the Goal Sub-States cannot be
+     reached, then the State with the lowest Confidence becomes the
+     Goal State... This results in the agent pursuing novel situations
+     to observe and generate new Rules. ... This can be considered as
+     an effective model of artificial curiosity, which does not only
+     capture aspects of information gain as in [7] [Still & Precup
+     2012], but leads to deliberate interactions planned by the agent
+     using the empirically-causal knowledge it possesses."
+     **CONFIRMED**: AIRIS curiosity = lowest-State-Confidence-as-Goal-
+     State mechanism. Paper explicitly frames this as an artificial-
+     curiosity mechanism. This is implementation-backed (puzzle-game
+     experiments demonstrate it; §5).
+
+P11. Self-modification scope (LOAD-BEARING for cluster-mapping decision).
+     The paper describes AIRIS modifying its OWN Rule Base + State
+     Graph based on observations (online rule induction; §3 Rule
+     Creation, Rule Updating, page 4-5). It does NOT describe AIRIS
+     modifying its own architecture, rule format, planning algorithm,
+     or any other meta-level structure. AIRIS is a self-LEARNING
+     system, not a self-MODIFYING-CODE system. The wiki boundary card
+     `About Hyperon+Self-Modification and Safety` is about a different
+     concept (Hyperon-side meta-MeTTa / MeTTa-source-modifying-MeTTa /
+     ASI safety literature).
+     RECOMMENDATION for S1.Q7: AIRIS belongs as new HAA card, NOT as
+     subcard of Self-Mod-Safety. Cross-link only.
+
+P12. Comparisons cited in the paper (§1 Introduction):
+     - Pearl's causal networks [9 = Verma & Pearl 1990] — needs
+       pre-specified causal model; AIRIS distinct (no pre-spec).
+     - Cyc [4 = Lenat et al. 1990] — AIRIS doesn't need prior logical
+       knowledge.
+     - Non-Axiomatic Reasoning System (NARS) [10 = Wang 2013] — AIRIS
+       doesn't demand logical encodings of inputs.
+     - PDDL [1] — same.
+     - Information-theoretic curiosity [7 = Still & Precup 2012] — AIRIS
+       extends beyond information gain.
+     - Reinforcement Learning [5 = Moerland et al. 2023, 8 = Sutton &
+       Barto 2018] — comparison baselines.
+
+P13. Empirical results (§5 Experiments & Comparisons, pages 5-9).
+     - Grid World Puzzle Game (13 levels): untrained agent completes all
+       levels in 4,612 timesteps; trained replay in 921; novel level in
+       67 timesteps (best possible 54).
+     - Cartpole [2 = Geva & Sitte 1993]: AIRIS solved in 130 episodes
+       (first 200 score at 32 episodes); DQN baseline 200+ episodes
+       (first 200 at 60+ episodes).
+     - MNIST: 91% first run, 97% second run, 99% on second test run.
+     - All demonstrate data-efficiency claim.
+
+P14. Limitations (§6, page 9). Verbatim: "AIRIS is not able to learn
+     rules for events that occur regardless of the agent's action."
+     Other limitations:
+     - High-dimensional inputs (e.g., video) → computational cost.
+     - Will require attention mechanisms to prioritize task-relevant
+       values (NOTE for S1.Q11: this is a forward bridge to ECAN-like
+       attention allocation).
+     - Extension to 3D continuous spaces requires more research.
+     - Robot Operating System + Semantic SLAM mentioned as future
+       integration.
+
+P15. References (10 total, full list):
+     [1] Aeronautiques et al. (1998) — PDDL technical report.
+     [2] Geva, S., Sitte, J. (1993) — cartpole experiment benchmark,
+         IEEE Control Systems Magazine 13(5), 40-51.
+     [3] Giarratano, J.C., Riley, G. (1998) — Expert Systems, PWS
+         Publishing.
+     [4] Lenat, D.B. et al. (1990) — Cyc, CACM 33(8), 30-49.
+     [5] Moerland, T.M. et al. (2023) — Model-based RL survey,
+         Foundations and Trends in ML 16(1), 1-118.
+     [6] Salman, O.S., Salman, A.S. (2022) — MNIST deep learning,
+         Future of Information and Communication Conference.
+     [7] Still, S., Precup, D. (2012) — information-theoretic curiosity,
+         Theory in Biosciences 131, 139-148.
+     [8] Sutton, R.S., Barto, A.G. (2018) — RL textbook, MIT Press.
+     [9] Verma, T., Pearl, J. (1990) — Causal networks, in Machine
+         Intelligence and Pattern Recognition vol. 9, 69-76, Elsevier.
+     [10] Wang, P. (2013) — Non-axiomatic logic, World Scientific.
+
+P16. Memory-file reconciliation against retrieved paper:
+     - reference_airis_citations.md P1-P3 (Cook + Hammer, 2024,
+       KTH/DiVA): all confirmed.
+     - reference_airis_citations.md "Cook is creator, Hammer is
+       co-author/replicator" — partially confirmed. Paper text does
+       NOT explicitly assert "Cook is creator." However, footnote 3
+       attributes the implementation to berickcook/AIRIS_Public (Cook's
+       personal repo), which is consistent with the framing. Cook's
+       2016 airis-ai.com blog post (cited in memory file) is the
+       direct authorship-priority source; the 2024 paper only
+       INDIRECTLY confirms via repo attribution.
+     - reference_airis_citations.md "Robot Bug benchmark in ActPC-Chem
+       paper draft (Dec 2024) as the canonical AIRIS grid-world demo"
+       — paper DOES NOT mention "Robot Bug" anywhere. The grid-world
+       demo is described as the puzzle game (§5 Grid World Puzzle
+       Game), with Fig. 2 showing a 13-level grid game. Memory's
+       caution "NOT independently verified, must not enter paper
+       without direct source check" is correct; the Robot Bug
+       attribution remains unverified.
+
+The orchestrator's pre-populated findings are intended as starting points,
+not as final reviewer verdicts. Reviewers should produce their own S1.Q*
+extractions and may challenge any P-level claim with paper evidence.
+
+
+§5. PER-QUESTION TASKS (S1.Q1 .. S1.Q12)
+-----------------------------------------
+Reviewers address each question with their findings vocabulary:
+  PAPER-ONLY        — formalism in paper has no implementation in any of
+                       AIRIS_Public, AIRIS-general, AIRIS-client.
+  IMPLEMENTATION-BACKED — formalism in paper has direct working code in
+                       at least one repo (cite file:line).
+  PAPER-LEANING-HYBRID — formalism partially implemented; gaps documented.
+  IMPLEMENTATION-DIVERGENT — code differs materially from paper formalism;
+                       cite which artifact (paper §X vs file:line) and how.
+  ABSENT             — neither paper nor any code reflects this concept.
+
+S1.Q1: Paper-vs-implementation alignment for AIRIS rule structure.
+  The Goertzel 2025-09 SubRep+AIRIS+MetaMo paper (boundary source)
+  describes AIRIS rules as tuples r = ⟨pre(r), act(r), post(r), p_r,
+  c_r, g_r⟩ where p_r is firing probability, c_r is confidence,
+  g_r is predicted motive-feature shift. Does this match the Cook &
+  Hammer 2024 paper formalism? Does it match what airis_stable.py
+  implements? PAPER-ONLY / IMPLEMENTATION-BACKED / PAPER-LEANING-HYBRID
+  / IMPLEMENTATION-DIVERGENT.
+
+S1.Q2: Cook authorship + Hammer role verification.
+  Verify per memory P4: paper text says Cook is creator vs Hammer
+  is co-author/contributor. Quote paper §X if claim is explicit.
+  If paper text does not assert authorship priority either way,
+  state ABSENT.
+
+S1.Q3: Repository origin discrepancy resolution (§3.A).
+  Reviewers each WebFetch (or gh-CLI) https://github.com/singnet/
+  AIRIS_Public and https://github.com/berickcook/AIRIS_Public —
+  do they resolve to the same repo, different repos, redirect, or
+  404? Pick (a)/(b)/(c) per §3.A. Cite HTTP status / redirect chain.
+
+S1.Q4: SubRep+AIRIS+MetaMo Goertzel 2025-09 paper relationship.
+  Does Goertzel's Hyperon-side description of AIRIS match the original
+  Cook & Hammer 2024 framework, or does it extend/reframe? List any
+  divergences. Treat the SubRep paper as boundary source, NOT the
+  AIRIS spec.
+
+S1.Q5: AIRIS state representation.
+  Per Goertzel 2025-09 §2.1: "x = ⟨facts(x), reals(x), focus(x)⟩
+  where facts(x) is grounded predicates, reals(x) holds numeric
+  attributes, focus(x) ∈ [0,1]^F contains saliency weights."
+  Does Cook & Hammer 2024 paper define state representation this way?
+  Does any of airis_stable.py / airis.py implement this tripartite
+  decomposition?
+
+S1.Q6: AIRIS state-graph and Monte Carlo rollout claim.
+  Per Goertzel 2025-09 §2.1: "AIRIS maintains a directed state graph
+  G for Monte Carlo rollouts." Verify in Cook & Hammer 2024 paper
+  AND in airis_stable.py / airis.py. PAPER-ONLY / IMPL-BACKED.
+
+S1.Q7: Self-modification scope.
+  Does Cook & Hammer 2024 (or the implementations) include self-
+  modification of the agent's own rule-base or world model?
+  This boundary-checks the wiki cluster-mapping decision: should the
+  new AIRIS card link to / be hosted under
+  About Hyperon+Self-Modification and Safety, or stand alone in
+  Hyperon AI Algorithms?
+
+S1.Q8: Curiosity / low-confidence-state seeking.
+  Per Goertzel 2025-09 §2.1: AIRIS "seeks low-confidence states
+  to discover new causal relationships." Verify in Cook & Hammer 2024
+  paper text + airis_stable.py impl. This is potentially a key
+  cluster-narrative finding (curiosity-as-architecture distinct from
+  ECAN attention-allocation; cross-cluster boundary with closed
+  ECAN cluster pilot).
+
+S1.Q9: Verdict for AIRIS as a whole.
+  Pick one: PAPER-ONLY / IMPLEMENTATION-BACKED / PAPER-LEANING-HYBRID
+  / IMPLEMENTATION-DIVERGENT. Justify with the strongest single piece
+  of evidence per direction.
+
+S1.Q10: Wiki card content recommendation.
+  What sections should the new `Hyperon AI Algorithms+AIRIS` card
+  include? Suggested skeleton (modify if you disagree):
+    - Responsible (Berick Cook + Patrick Hammer; cluster-pilot
+      verifies safe wording per §4.P5)
+    - Papers (Cook & Hammer 2024 + Goertzel 2025-09 SubRep+AIRIS
+      design boundary)
+    - Status (per S1.Q9 verdict)
+    - Core Concepts (rule structure, state representation,
+      state graph, curiosity)
+    - Implementations (3 repos with comparative status; resolve
+      §3.A discrepancy)
+    - Boundary cards (Self-Modification and Safety; SubRep
+      reference; MetaMo bridge — preview for S2)
+    - Tag subcard with `ai_generated`
+
+S1.Q11: Cross-cluster boundary findings.
+  Any V-N-X protocols or cluster-bridge findings that should be
+  recorded as cluster-pilot carry-forwards? In particular:
+    - Does AIRIS curiosity (S1.Q8) rebuild ECAN-style attention
+      allocation in a self-contained way?
+    - Does AIRIS rule-confidence relate to PLN truth-values?
+    - Does AIRIS state graph relate to AtomSpace?
+  Lock anything load-bearing as V1-X.
+
+S1.Q12: Cluster-pilot vocabulary lock-in.
+  Confirm or refine the §5 verdict vocabulary for use across
+  S2..S5 (MetaMo, Pattern Mining, Concept Blending, Semantic Parsing,
+  NACE/AI-DSL/MOSES/MeTTa-NARS).
+
+
+§6. STANDING PROTOCOLS (CARRY-FORWARD FROM PRIOR PILOTS)
+---------------------------------------------------------
+Reviewers should follow protocols established in earlier closed pilots:
+
+  CF5.6 (Perception 2026-05-01): Verify file-existence claims via direct
+        filesystem check before adoption. Do NOT infer from architectural
+        patterns / CMake / README. (8/25 dissents = 32% of cluster-pilot
+        V-N-X across 5 prior pilots were Gemini source-location/file-
+        identity drift.) Orchestrator §3.E pre-populates files for both
+        reviewers; reviewers verify with their own ls/Glob.
+
+  feedback_pickaxe_for_dead_code (ECAN 2026-04-26): Use `git log --all
+        -S '<token>'` for any "never implemented" / "dead enum" claim;
+        current-HEAD grep is not sufficient. AIRIS_Public has 162 commits
+        — substantive history exists; do not assert "never implemented"
+        from HEAD-only inspection.
+
+  feedback_attribution_verify_against_git (PLN cluster + standing):
+        Cross-check author attribution + identity-between-artifacts
+        claims against git/source. Gemini drifts on V-N-X identity
+        assertions per multiple prior pilots.
+
+  feedback_bidirectional_fork_divergence (OpenPsi 2026-04-28): When
+        comparing two repos (here: berickcook/AIRIS_Public vs
+        singnet/AIRIS-general), run git log A..B AND B..A AND grep both
+        directions before labeling as divergent traditions. Stale fork
+        ≠ isolated tradition.
+
+  V3-PROTOCOL-1/2/3, V4-PROTOCOL-1/2/3/4 (ECAN/OpenPsi pilots): Caller-
+        analysis time-indexing of executable couplings; preserve
+        timeline references.
+
+  Two-paradigm vocabulary (PLN cluster Sources 9-11 + this pilot S1):
+        PAPER-ONLY / IMPLEMENTATION-BACKED / PAPER-LEANING-HYBRID /
+        IMPLEMENTATION-DIVERGENT / ABSENT. Apply strict-literal vs
+        engineered-surrogate disambiguation when relevant (carries from
+        ECAN cluster pilot 0/4 strict-literal-port finding).
+
+
+§7. NON-GOALS (DO NOT EXTRACT)
+------------------------------
+- Do NOT compare AIRIS to OpenAI Gym / RL benchmarks for performance.
+  S1 is paper-vs-impl coherence, not benchmarking.
+- Do NOT extract from the Goertzel 2025-09 SubRep paper exhaustively;
+  use it only as a Hyperon-side boundary source for S1.Q1/Q4/Q5/Q6/Q8.
+- Do NOT pre-empt S2 (MetaMo) extraction. S1's reference to MetaMo is
+  bounded to "boundary cross-link recommendation" only.
+- Do NOT propose wiki edits beyond what S1.Q10 asks for. The cluster-
+  close edit batch is the orchestrator's role per CLAUDE.md wiki-edit
+  protocol (one writer only).
+
+
+§8. ORCHESTRATOR PRE-EXTRACTION CHECKLIST
+-----------------------------------------
+Status as of 2026-05-06:
+  [✓] Retrieved Cook & Hammer 2024 paper PDF from gitbook mirror (token-
+      authenticated) and placed at publication_texts/2024_Cook_Hammer_
+      AIRIS.pdf with provenance file. 654854 bytes, PDF v1.5.
+  [✓] Read paper in full (10 pages) and populated §4 with P1..P16 claims.
+  [✓] §3 git history populated with full HEAD SHAs (per Codex review
+      2026-05-06 requirement #2).
+  [✓] §3 wording softened to permit re-verification of load-bearing
+      identity claims (per Codex review 2026-05-06 requirement #3).
+  [✓] §3.A repo-origin discrepancy pre-resolved by 3-way evidence
+      (paper §2 footnote 3 + 2x WebFetch). Verdict: berickcook/AIRIS_
+      Public is canonical; singnet/AIRIS_Public is a 404. (Per Codex
+      review 2026-05-06 requirement #4.)
+  [✓] S3 Pattern Mining scope narrowed in §0 to cross-cluster
+      verification + residual only, avoiding re-audit of Perception-
+      cluster surfaces (per Codex non-blocking note 2026-05-06).
+
+Pre-extraction state: COMPLETE. Reviewers may begin S1.Q1..S1.Q12
+extraction in parallel (Codex + Gemini independently, no shared draft).
+Findings files to be written to:
+  scripts/archive/non_clustered_haa_pilot/source1_airis_paper/
+    findings_codex.txt
+    findings_gemini.txt
+  After both are received, orchestrator produces:
+    findings_reconciled_crossmodel.txt
+  And then the cluster-close edit batch creates the new wiki cards
+  per S1.Q10 recommendation.
+
+
+================================================================================
+END OF SOURCE 1 BRIEF (DRAFT — pending pre-extraction paper retrieval)
+================================================================================

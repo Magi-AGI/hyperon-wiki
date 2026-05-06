@@ -22,8 +22,9 @@ The role of this file is the **wiki-edit audit trail and engineering-roadmap anc
 | AtomSpace Backend Integration | 2026-04-29 | 9 (5 existing + 4 new) | `scripts/archive/atomspace_pilot/source1` … `source4` |
 | Perception / Neural-Symbolic | 2026-05-01 | 6 (3 existing annotated + 3 new); wiki-edit pass closed 2026-05-01 | `scripts/archive/perception_pilot/source1` … `source5` |
 | AtomSpace Integration Phase 4 | 2026-05-05 | 2 (1 new rollup card under `Neoterics+Magus+...` parent + 1 tag subcard) — research-track cluster pilot, not a content pilot | `scripts/archive/atomspace_integration_phase4/source1` … `source7` |
+| Non-clustered Hyperon AI Algorithms (Source 1 only — partial cluster, S2..S5 pending) | Source 1 (AIRIS) closed 2026-05-06 | 5 (2 new on Hyperon AI Algorithms+AIRIS subtree: +AIRIS Full + tag; +AI proposal child + tag; plus Reference+GitHub Repositories URL correction) | `scripts/archive/non_clustered_haa_pilot/source1_airis_paper` |
 
-All six are closed for this iteration. Substantive findings live in `HYPERON_CLUSTER_FINDINGS.md` (see header). The AtomSpace Integration Phase 4 pilot is a *research-track* cluster pilot: its primary deliverables are the on-disk Source-1-through-7 reconciliations (locked PATCH set, V7-X carry-forwards, phase-numbering crosswalk) plus a single human-facing rollup card in the Magi Archive `Neoterics+Magus` subtree. It did NOT touch the Hyperon-content cards. The wiki-edit audit tables below record which cards in *this* wiki were modified by the content-track cluster pilots; the Phase 4 pilot has its own short audit row added below.
+All six closed clusters above are closed for this iteration; the Non-clustered HAA cluster has only Source 1 (AIRIS) closed and remains in progress (S2 MetaMo, S3 Pattern Mining residual, S4 Concept Blending + Semantic Parsing, S5 NACE + AI-DSL + MOSES + MeTTa-NARS still to extract). Substantive findings live in `HYPERON_CLUSTER_FINDINGS.md` (see header). The AtomSpace Integration Phase 4 pilot is a *research-track* cluster pilot: its primary deliverables are the on-disk Source-1-through-7 reconciliations (locked PATCH set, V7-X carry-forwards, phase-numbering crosswalk) plus a single human-facing rollup card in the Magi Archive `Neoterics+Magus` subtree. It did NOT touch the Hyperon-content cards. The wiki-edit audit tables below record which cards in *this* wiki were modified by the content-track cluster pilots; the Phase 4 pilot has its own short audit row added below.
 
 ---
 
@@ -155,6 +156,39 @@ Total: 1 substantive card + 1 tag subcard. Both verified post-write via `get_car
 - `CLAUDE.md` (this file) — status table extended with AtomSpace Integration Phase 4 row; new audit subsection above; new "Phase 4 architecture lock-in" engineering-roadmap section below; Claude-specific references extended; "What's next" updated.
 - `scripts/archive/atomspace_integration_phase4/source1..7/` — 7 source directories with brief.txt + findings_codex.txt + findings_gemini.txt + findings_reconciled_crossmodel.txt each. The Source 5 reconciliation has v1 + v2 addendum structure. All committed as part of cluster close.
 
+### Non-clustered Hyperon AI Algorithms cluster pilot — Source 1 (AIRIS) close (2026-05-06)
+
+This is a **partial-cluster** entry — only Source 1 (AIRIS) of the Non-clustered HAA cluster is closed. The cluster continues with S2 (MetaMo), S3 (Pattern Mining residual / cross-cluster verification scope), S4 (Concept Blending + Semantic Parsing), S5 (NACE + AI-DSL + MOSES + MeTTa-NARS) still pending. The cluster pilot was authorized 2026-05-05 with Option A (backlog burn-down) pilot ordering: Non-clustered HAA → MeTTa runtime → PRIMUS → Cross-org sweeps.
+
+| Card | ID | Action |
+|---|---|---|
+| Hyperon AI Algorithms+AIRIS+AIRIS Full | 7495 (new) | Draft technical-depth card — Cook & Hammer 2024 source spec, IMPLEMENTATION-BACKED-CORE verdict, Core Concepts (Causal Rules + State Graph + State Confidence/Curiosity + Self-modification scope + Comparisons), 3-repo Implementations table with full HEAD SHAs, Empirical Results, Limitations, Boundaries (vs ECAN/PLN/AtomSpace/Self-Mod-Safety/SubRep), cluster-pilot extraction archive pointer. |
+| Hyperon AI Algorithms+AIRIS+AIRIS Full+tag | 7496 (new) | Pointer (`ai_generated`). |
+| Hyperon AI Algorithms+AIRIS+AI | 7497 (new) | Draft +AI proposal child for Published parent (ID 801) — proposes V1-5 caveat note (AtomSpace integration is forward-looking, not current implementation), stale `singnet/AIRIS-scripts` URL fix (HTTP 404), pointer to +AIRIS Full. Apply or reject at human reviewer's discretion. |
+| Hyperon AI Algorithms+AIRIS+AI+tag | 7498 (new) | Pointer (`ai_generated`). |
+| Reference+GitHub Repositories | 7268 | URL correction: `singnet/AIRIS_Public` → `berickcook/AIRIS_Public` (paper-cited canonical; `singnet/AIRIS_Public` returns HTTP 404). New entry added: `singnet/AIRIS-general` (active Cook-side rewrite, MIT). |
+
+Total: 4 new cards (2 substantive + 2 tag subcards) + 1 corrective edit. All verified post-write via `get_card`.
+
+**Sources covered**:
+- Source 1 (Cook & Hammer 2024 AIRIS paper + reference impl): paper retrieved 2026-05-06 to `publication_texts/2024_Cook_Hammer_AIRIS.pdf` (KTH/DiVA diva2:1890142, 654854 bytes, MD5 KH1mZXyDhfKdUI2QU6DrqA==). [IMPLEMENTATION-BACKED-CORE] verdict locked. Five V-N-X carry-forwards: V1-1 [AIRIS-REPO-MISATTRIBUTION] (load-bearing); V1-2 [SUBREP-AIRIS-EXTENSION-NOT-SOURCE-SPEC] (narrative guard against the Goertzel 2025-09 SubRep paper's six-tuple/tripartite-state/MC-rollout extensions being treated as Cook & Hammer source); V1-3 [AIRIS-CURIOSITY-NOT-ECAN]; V1-4 [AIRIS-CONFIDENCE-NOT-PLN-TV]; V1-5 [AIRIS-STATE-GRAPH-NOT-ATOMSPACE]. [EXTRACTION-COMPLETE].
+
+**CF5.6.E criterion-met → standing protocol promoted**: Two instances of "wiki edit referencing external URL without WebFetch verification" landed within this cluster pilot's window — (1) the 2026-05-05 audit-correction batch left `singnet/AIRIS_Public` in `Reference+GitHub Repositories` without verifying it (V1-1); and (2) a separate stale `singnet/AIRIS-scripts` URL was found in the existing AIRIS Published parent's `+content` subcard. Both URLs return HTTP 404. Per CF5.6.E ≥2-instance promotion criterion (originally locked at AtomSpace Integration Phase 4 close 2026-05-05), the standing protocol "wiki edits referencing external URLs must include fresh WebFetch verification immediately before the edit; cite the verification (HTTP status + redirect path) in the edit's commit message or notes" is **promoted from candidate to live**. Saved to memory as `feedback_webfetch_verify_external_urls.md`.
+
+**Drift findings against Gemini extraction (cumulative count update)**:
+- D1 (off-by-one AIRIS-general airis.py L23 → actual L24/L30 for s_input/u_input).
+- D2 (line count off-by-5: airis_stable.py "1,876" → actual 1881).
+- D3 (LOAD-BEARING REJECTED): Gemini's V1-3 carry-forward asserted `lib_spaces.metta` as "phantom-file citation for HAA (confirmed in Source 1-7)." Cross-archive grep returned 0 hits for `lib_spaces` (only Gemini's just-written findings) vs 55 hits across 12 files for `lib_pln_xi`. Gemini conflated the PLN-cluster phantom file with a different (nonexistent) "spaces" filename. Codex's V1-3 (AIRIS-CURIOSITY-NOT-ECAN) adopted as canonical V1-3.
+
+Cumulative Gemini source-location/file-identity drift across closed pilots: previously 8/25 dissents = 32% across 5 prior pilots (per `feedback_gemini_file_identity_verification.md`). This S1 reconciliation adds 3 more drift findings (D1+D2+D3) to the cumulative count. CF5.6 protocol continues to apply.
+
+### Documentation-file edits (this repo, Non-clustered HAA Source 1 close)
+
+- `CLAUDE.md` (this file) — cluster-pilot status table extended with partial-cluster row; new audit subsection above; CF5.6.E protocol-promotion note; "What's next" updated.
+- `publication_texts/2024_Cook_Hammer_AIRIS.pdf` + `publication_texts/2024_Cook_Hammer_AIRIS.provenance.txt` — paper retrieved + provenance.
+- `scripts/archive/non_clustered_haa_pilot/source1_airis_paper_brief.txt` (710 lines, 16 P-claims, 12 S1.Q questions, 4 Codex pre-extraction refinements applied, §3.A pre-resolved by orchestrator).
+- `scripts/archive/non_clustered_haa_pilot/source1_airis_paper/findings_codex.txt` + `findings_gemini.txt` + `findings_reconciled_crossmodel.txt` — three-way reviewer extraction + reconciliation. Three-way sign-off (Codex 2026-05-06, Gemini 2026-05-06, orchestrator Claude 2026-05-06).
+
 ---
 
 ## Phase 4 architecture lock-in (this repo's engineering roadmap)
@@ -284,7 +318,9 @@ Claude memory at `C:\Users\Lake\.claude\projects\E--GitHub-Magi-AGI-hyperon-wiki
 - `project_atomspace_cluster_pilot_2026_04_29.md` — AtomSpace Backend Integration cluster pilot summary; four-layer taxonomy; Phase 3 READONLY-ATOMSPACE-BRIDGE lock-in; key SHAs; archive paths
 - `project_perception_pilot_2026_05_01.md` — Perception/Neural-Symbolic cluster pilot summary; trilateral framing; AtomSpace-Scheme vs MeTTa-runtime stack distinction; Linas Vepstas Hyperon-era portfolio mapping; key SHAs; archive paths
 - `project_atomspace_phase4_pilot_2026_05_05.md` — AtomSpace Integration Phase 4 cluster pilot summary (research-track 7-source pilot closed); locked PATCH set (PATCH-1..PATCH-6); V7-1..V7-5 carry-forwards (auth-on-read pre-implementation gate; subscribe-wording fix; cognitive-stack reframing; stale-pointer; D3-1 count-convention); phase-numbering crosswalk; rollup card 17124
-- `feedback_gemini_file_identity_verification.md` — CF5.6 cluster-pilot default: verify Gemini file-existence claims via ls/Glob before adoption (8/25 dissents = 32% Gemini source-location/file-identity drift across 5 pilots)
+- `project_haa_cluster_pilot_source1_2026_05_06.md` — Non-clustered HAA cluster pilot Source 1 (AIRIS — Cook & Hammer 2024) close summary; [IMPLEMENTATION-BACKED-CORE] verdict; V1-1..V1-5 carry-forwards (repo misattribution; SubRep extension narrative-guard; curiosity-not-ECAN; confidence-not-PLN; state-graph-not-AtomSpace); 4 new wiki cards (7495 +AIRIS Full + 7496 tag + 7497 +AI + 7498 tag); Reference+GitHub Repositories URL correction; D3 Gemini lib_spaces.metta phantom-file hallucination rejected
+- `feedback_webfetch_verify_external_urls.md` — standing protocol promoted from CF5.6.E ≥2-instance criterion 2026-05-06: wiki edits referencing external URLs must include fresh WebFetch verification immediately before the edit; cite HTTP status + redirect path in edit notes/commit message
+- `feedback_gemini_file_identity_verification.md` — CF5.6 cluster-pilot default: verify Gemini file-existence claims via ls/Glob before adoption (8/25 dissents = 32% Gemini source-location/file-identity drift across 5 pilots; +3 more in HAA Source 1)
 - `feedback_research_vs_implementation_workstreams.md` — research and implementation are separate parallel workstreams; do not collapse one into the other without owner authorization (Phase 4 program 2026-05-04 incident)
 - `feedback_parallel_claude_handoff.md` — two Claude sessions in same project share memory + compaction framing → identical drift; ask before tool calls
 - `project_user_loving_ai_ghost_history.md` — user has 18 commits in `leungmanhin/loving-ai-ghost`; defer to user recollection on Ghost/OpenPsi/STI design intent
@@ -293,7 +329,7 @@ Claude memory at `C:\Users\Lake\.claude\projects\E--GitHub-Magi-AGI-hyperon-wiki
 - `project_wiki_quality_bar.md` — Ben Goertzel approval bar
 
 For multi-model continuity, the canonical record lives:
-- in this repo at `scripts/archive/{pln,ecan,openpsi,atomspace,perception}_pilot/` and `scripts/archive/atomspace_integration_phase4/` (extraction archives) and the wiki itself (cards listed in the audit tables above);
+- in this repo at `scripts/archive/{pln,ecan,openpsi,atomspace,perception}_pilot/`, `scripts/archive/atomspace_integration_phase4/`, and `scripts/archive/non_clustered_haa_pilot/` (extraction archives) and the wiki itself (cards listed in the audit tables above);
 - in `E:\GitHub\hyperon reference\HYPERON_CLUSTER_FINDINGS.md` (substantive source-code findings, cross-model-readable);
 - in `E:\GitHub\Magi-AGI\hyperon-wiki-mcp\SERVER-BUGS.md` (MCP bugs and operational conventions).
 
@@ -301,10 +337,16 @@ For multi-model continuity, the canonical record lives:
 
 ## What's next (post-pilot work)
 
-The PLN, ECAN/Attention, OpenPsi/Motivation, AtomSpace Backend Integration, Perception/Neural-Symbolic, and AtomSpace Integration Phase 4 cluster pilots are closed (2026-04-25, 2026-04-26, 2026-04-28, 2026-04-29, 2026-05-01, 2026-05-05 respectively). Other clusters remain (each its own multi-source pilot):
+The PLN, ECAN/Attention, OpenPsi/Motivation, AtomSpace Backend Integration, Perception/Neural-Symbolic, and AtomSpace Integration Phase 4 cluster pilots are closed (2026-04-25, 2026-04-26, 2026-04-28, 2026-04-29, 2026-05-01, 2026-05-05 respectively). The **Non-clustered Hyperon AI Algorithms** cluster pilot is in progress: Source 1 (AIRIS — Cook & Hammer 2024) closed 2026-05-06; Sources 2..5 pending. Other clusters remain (each its own multi-source pilot):
 
+- **Non-clustered HAA cluster — Sources 2..5 (in progress)**:
+  - S2: MetaMo (paper bundle + iCog-Labs-Dev/MetaMo-Python + hyperon-openpsi adjacency to closed OpenPsi pilot)
+  - S3: Pattern Mining (cross-cluster verification + residual scope only — see brief §0; opencog/miner + hyperon-miner-family already audited by Perception cluster pilot)
+  - S4: Concept Blending + Semantic Parsing (Goertzel/Eskridge concept-blending paper(s) + singnet/semantic-parsing + RelEx + Link Grammar)
+  - S5: NACE + AI-DSL + MOSES + MeTTa-NARS (patham9/NACE; singnet/ai-dsl; opencog/moses + iCog-Labs-Dev/metta-moses; patham9/metta-nars)
+  - Per Option A (backlog burn-down) pilot ordering authorized 2026-05-05.
 - **MeTTa runtime** (`hyperon-experimental`, `MeTTa-IL`, `PeTTa`, MORK production angle — note: substantial MORK + AtomSpace + DAS coverage now lives in the AtomSpace Backend Integration cluster pilot 2026-04-29 + AtomSpace Integration Phase 4 cluster pilot 2026-05-05; residual MeTTa-runtime-specific topics include MeTTa-IL semantics, PeTTa runtime closure, and MORK-server deployment topology beyond what the AtomSpace pilots covered).
-- **Cross-org sweeps** (asi-alliance, fetchai, F1R3FLY-io, Rejuve, Xcceleran-do, gitlab.com/nunet) — note: `hansonrobotics/*` was substantively covered by the OpenPsi cluster pilot Source 4 (2026-04-28) and residual Hanson-era post-2019 perception utilities by the Perception cluster pilot Source 5 (2026-05-01); residual non-OpenPsi-non-perception Hanson repos may still need a separate sweep.
+- **Cross-org sweeps** (asi-alliance, fetchai, F1R3FLY-io, Rejuve, Xcceleran-do, gitlab.com/nunet) — note: `hansonrobotics/*` was substantively covered by the OpenPsi cluster pilot Source 4 (2026-04-28) and residual Hanson-era post-2019 perception utilities by the Perception cluster pilot Source 5 (2026-05-01); residual non-OpenPsi-non-perception Hanson repos may still need a separate sweep. Per Codex caveat 2026-05-05, this cluster likely needs subcluster splits (asi-alliance vs partner-ventures vs distributed-compute vs bio/longevity vs iCog-Labs vs Magi).
 - **Phase 4 implementation track** — engineering work consuming the AtomSpace Integration Phase 4 cluster pilot's reconciliations as the locked spec. Runs as a SEPARATE parallel workstream per `feedback_research_vs_implementation_workstreams.md`. Deliverables: `mod/atomspace_mirror/` (PATCH-3 + PATCH-4), Ruby outbox-drain worker, Python sidecar, agent-MCP atom surface (PATCH-5), upstream PATCH-1 + PATCH-2. PATCH-1 is upstream-blocking. V7-1 [AUTH-ON-READ-MIRROR] is the load-bearing pre-implementation gate before exposing PATCH-5 reads to non-admin agents.
 - **Phase 3 READONLY-ATOMSPACE-BRIDGE prototype build** — engineering work, not an extraction pilot; benchmarks decide between `atomspace-bridge` import and `mork_ffi` + `mork_loader.py` mechanism under the read-only umbrella. Note: superseded for the write-through track by the Phase 4 architecture above; Phase 3 may still be relevant as an interim read-only delivery if the Phase 4 implementation track is delayed.
 - **Phase 5+/6+ design pass** — substrate migration to atomspace-rocks (primary) / MORK (secondary, delete blocker) / DAS (Phase 6+); HERMES + AIRIS + MAGUS L2/L3 cognitive-stack architecture. Future cluster pilot or design pass; out of scope for the current iteration.
