@@ -1,0 +1,565 @@
+SOURCE 2 RECONCILED FINDINGS — CROSS-MODEL
+================================================================================
+Source name:      MetaMo (Goertzel & Lian 2025) + reference implementations
+Reconciliation:   Codex (findings_codex.txt, 159 lines, 2026-05-06)
+                  Gemini (findings_gemini.txt, 63 lines, 2026-05-06)
+                  Orchestrator: Claude (this session, 2026-05-06)
+Brief reference:  scripts/archive/non_clustered_haa_pilot/source2_metamo_paper_brief.txt
+                  (695 lines, §4 P1..P19 populated 2026-05-06; brief title-line
+                  authorship-form drift "Lian & Goertzel" → "Goertzel & Lian"
+                  fixed post-Codex extraction; 12 occurrences replaced.)
+
+Scope check:
+  Codex covered S2.Q1..S2.Q12 with file:line evidence and 6 V2-X candidates.
+  Gemini covered S2.Q1..S2.Q12 with file:line evidence; one load-bearing
+  Principle 2 verdict that this reconciliation REJECTS via CF5.6 verification.
+
+================================================================================
+
+§0. HEADLINE VERDICTS (CROSS-MODEL TABLE)
+-----------------------------------------
+
+  Question                              Codex                          Gemini                          Reconciled
+  S2.Q1 (pseudo-bimonad alignment)      IBC + FORMAL-LAWS-PAPER-ONLY   IBC                             IBC + FORMAL-LAWS-PAPER-ONLY (Codex split adopted)
+  S2.Q2 (authorship)                    GOERTZEL-FIRST                 GOERTZEL-FIRST                  GOERTZEL-FIRST (lock V2-1)
+  S2.Q3 (repo roles)                    Trilateral split               Trilateral split                Trilateral split (lock V2-2 + V2-3 + V2-4)
+  S2.Q4 (MetaMo-extends-OpenPsi)        Subsumes-not-replaces          IBC                             Subsumes-not-replaces; V4-1 OpenPsi pilot stands
+  S2.Q5 (SubRep boundary)               Faithful (not AIRIS-style)     PAPER-LEANING-HYBRID, faithful  Faithful (lock V2-5)
+  S2.Q6 (5 principles)                  All 5 IBC                      4/5 IBC; P2 PAPER-ONLY          4/5 IBC + P2 SKELETON-IMPL — see §1.D6
+  S2.Q7 (+content audit)                4 corrections                  2 corrections                   Adopt Codex's 4-item set + Gemini's framing
+  S2.Q8 (+MetaMo Full subcards)         Fidelity recommendation        Per-subcard verdict             Per-subcard adopted; refine framing in §2.Q8
+  S2.Q9 (overall)                       PAPER-LEANING-HYBRID + IBC     IBC                             PAPER-LEANING-HYBRID + IBC (Codex more granular)
+  S2.Q10 (cross-cluster)                6 V2-X carry-forwards          3 boundary statements           Codex V2-1..V2-6 + Gemini's 3 absorbed
+  S2.Q11 (MAGUS boundary)               EXTERNAL-COMPONENT             PAPER-LEANING-HYBRID            EXTERNAL-COMPONENT (lock V2-7)
+  S2.Q12 (vocabulary)                   6 new labels                   No new labels                   Adopt Codex's 6 + retain S1 vocabulary
+
+  Verdict legend:
+    IBC = [IMPLEMENTATION-BACKED-CORE]
+    P-O = [PAPER-ONLY]
+    P-L-H = [PAPER-LEANING-HYBRID]
+
+  Reconciled overall: [PAPER-LEANING-HYBRID] / [IMPLEMENTATION-BACKED-CORE] /
+  [REFERENCE-IMPLEMENTATION-NOT-PRODUCTION] (Codex's tri-tag adopted; the
+  formal-laws split [FORMAL-LAWS-PAPER-ONLY] also retained as a sub-modifier
+  of S2.Q1 — the laws are named/checked operationally in code but not proven).
+
+================================================================================
+
+§1. CF5.6 FILE-EXISTENCE / SOURCE-LOCATION VERIFICATION
+--------------------------------------------------------
+
+CF5.6 protocol (default since 2026-05-01) requires direct filesystem
+verification of any source-location claim before adoption in reconciliation.
+Cluster-pilot default since 2026-05-01: cumulative Gemini source-location
+drift was 11/28 = ~39% across 5 prior pilots + AIRIS S1. This S2 review adds
+6 more drift findings (D1..D6), bringing cumulative to 17/34 ≈ 50%. CF5.6
+continues to apply unchanged for S3..S5.
+
+Verification environment:
+  Repo:        E:\GitHub\hyperon reference\MetaMo-Python
+  HEAD:        3ec409bd4a8b0732b8aeae5f07828cf81c165557
+  Last commit: "Update README to clarify virtual environment usage" (matches
+               brief §3.A HEAD SHA)
+
+D1 — bimonad.py: check_lax_distributive_law line number
+  Codex: L42-61. Gemini: L43.
+  Direct read: L42 is the def line ("def check_lax_distributive_law(...)").
+  Verdict: Codex correct. Gemini off by 1. NON-BLOCKING (cosmetic).
+
+D2 — bimonad.py: parallel_merge line number
+  Codex: L62. Gemini: L68.
+  Direct read: L62 is the def line ("def parallel_merge(...)"). L68 is
+  inside the function body (a comment line).
+  Verdict: Codex correct. Gemini cited a body line, not the def. Off by 6.
+  NON-BLOCKING (cosmetic) but indicates Gemini did not anchor to def lines.
+
+D3 — dynamics/stability.py: apply_homeostatic_damping line number
+  Codex: L84-88. Gemini: L65.
+  Direct read: L84 is the def line for apply_homeostatic_damping. L65 is
+  INSIDE check_contractive_update_law (a docstring closing line).
+  Verdict: Codex correct. Gemini's L65 cite is inside a different function.
+  Off by 19 lines. MEANINGFUL DRIFT — citing the wrong function's body.
+
+D4 — dynamics/stability.py: contractive update check line number
+  Codex: dynamics/stability.py:18-81 (range covering safe-region through
+  contractive check end).
+  Gemini: dynamics/stability.py:100 (cited for "implied by contractive
+  update check").
+  Direct read: file ends at L99. L100 does not exist.
+  Verdict: PHANTOM LINE CITATION. The actual check_contractive_update_law
+  is at L54. NON-BLOCKING for verdict (the fact exists), but the citation
+  is unverifiable as written. Codex's range adopted as canonical.
+
+D5 — openpsi/appraisal.py: class OpenPsiAppraisal line number
+  Codex: L17. Gemini: L18.
+  Direct read: L17 is "class OpenPsiAppraisal(AppraisalComonad):".
+  Verdict: Codex correct. Gemini off by 1. NON-BLOCKING (cosmetic).
+
+D6 — Principle 2 (Reciprocal State Simulation): IS IT IN MetaMo-Python?
+  *** LOAD-BEARING ***
+  Codex: TranslationFunctor at category/functors.py:57; identity translator
+  demo at applications/research_assistant.py:58. → IBC (with skeleton
+  qualifier, L73 of Codex findings).
+  Gemini: "[PAPER-ONLY]. Mentioned in AGI_25_METAMO_One.json but not found
+  in MetaMo-Python or MetaMo-Prototype." (line 34 of findings_gemini.txt).
+  Direct read: category/functors.py L57-77 contains:
+      class TranslationFunctor:
+          """
+          Implements Principle 2: Reciprocal Motivational State Simulation.
+          ...
+          """
+          def __init__(self, translation_matrix: np.ndarray):
+              self.translation_matrix = translation_matrix
+          def simulate_peer(self, state_a: MotivationalState) -> MotivationalState:
+              ...
+              simulated_G = np.dot(self.translation_matrix, state_a.G)
+              simulated_M = np.dot(self.translation_matrix[:6, :6], state_a.M)
+              return MotivationalState(G=np.clip(...), M=np.clip(...))
+  And applications/research_assistant.py L57-58:
+      identity_matrix = np.eye(NUM_GOALS)
+      translator = TranslationFunctor(identity_matrix)
+  And applications/research_assistant.py L88 actually invokes it:
+      simulated_ethics = translator.simulate_peer(state_curiosity)
+  Verdict: Gemini claim REJECTED. Principle 2 is NOT [PAPER-ONLY]; it has
+  a working class with a real `simulate_peer` method that is exercised by
+  the demo loop. Codex's read is correct.
+  Reconciled verdict for Principle 2: [SKELETON-IMPLEMENTATION] (more
+  precise than Codex's IBC because the demo uses an identity matrix, which
+  is a degenerate case — but the class exists, the method runs, and the
+  research_assistant.py loop calls it). [IMPLEMENTATION-BACKED] is the
+  canonical label; "skeleton" is a sub-modifier indicating the demo is
+  identity-only, not a non-trivial functor.
+
+CF5.6 outcome: Codex's line citations are 100% accurate across the spot
+checks (D1..D5 def-line cites + D6 file-existence). Gemini drifts on 5/6
+checked items including 1 load-bearing verdict (D6). Standing CF5.6
+protocol applies unchanged for S3..S5.
+
+================================================================================
+
+§2. PER-QUESTION RECONCILED ANSWERS
+------------------------------------
+
+§2.Q1 — Pseudo-bimonad formalism alignment (paper vs implementation)
+  Reconciled: [IMPLEMENTATION-BACKED-CORE] + [FORMAL-LAWS-PAPER-ONLY].
+  Paper: Goertzel & Lian 2025 paper-1 §2 defines X = G × M, Ψ comonad,
+  D monad, lax distributive law, F = D ∘ Ψ. Paper-2 §2-3 repeats the
+  operational equations.
+  Implementation: MetaMo-Python instantiates the skeleton — MotivationalState
+  at core/state.py:8 (X = G × M); MetaMoPseudoBimonad at category/bimonad.py:12
+  (F = D ∘ Ψ); check_lax_distributive_law at category/bimonad.py:42 (numerical
+  distortion ≤ LAX_DISTRIBUTIVE_DELTA, not categorical proof);
+  parallel_merge at category/bimonad.py:62 (lax-monoidal structure ϕ).
+  Limit: code names and operationally checks the laws but does not prove
+  them in a categorical sense. The [FORMAL-LAWS-PAPER-ONLY] sub-modifier
+  is canonical: laws are paper-rigorous but only operationally checked
+  in implementation.
+  V2-X ref: locked — see §3.
+
+§2.Q2 — Authorship order
+  Reconciled: [GOERTZEL-FIRST]. Both papers list "Ben Goertzel and
+  Ruiting Lian" as authors. The wiki +content card 7334 has "Ruiting Lian,
+  Ben Goertzel" reversed and must be corrected at S2 close.
+  Note: Git commits in MetaMo-Python (12 commits, all by Nahom Senay) and
+  MetaMo-Prototype (24 commits, all by Dagemawi Bekele) do NOT match the
+  paper authors; the repos are reference/prototype implementations
+  authored by iCog-Labs/glicerico engineers, not by Goertzel/Lian
+  directly. This supports describing them as reference/prototype builds,
+  not paper supplements.
+  V2-X ref: locked V2-1 — see §3.
+
+§2.Q3 — MetaMo-Python vs MetaMo-Prototype vs hyperon-openpsi
+  Reconciled: TRILATERAL CLASSIFICATION (both reviewers agree):
+    - iCog-Labs-Dev/MetaMo-Python (12 commits, 2026-03-18, Nahom Senay):
+      [CATEGORY-THEORY-REFERENCE] / [IMPLEMENTATION-BACKED-CORE]. Compact
+      reference of the formal MetaMo skeleton (X = G × M, F = D ∘ Ψ,
+      principles 1/3/4/5 + skeleton P2). LLM layer present
+      (google-genai). PRIMARY MetaMo implementation at HEAD.
+    - glicerico/MetaMo-Prototype (24 commits, 2026-03-06, Dagemawi
+      Bekele): [HEURISTIC-PROTOTYPE] / [REFINED-ENGINE]. Active
+      LangGraph/LLM rewrite with rich goal/modulator dynamics (engine.py
+      step pipeline). NO formal categorical structure; targeted rg
+      returns zero hits for "bimonad", "comonad", "MAGUS", "OpenPsi"
+      formal abstractions. PARALLEL prototype, not the categorical
+      implementation.
+    - iCog-Labs-Dev/hyperon-openpsi (575 commits, 2026-02-28):
+      [OPENPSI-PREDECESSOR-SUBSTRATE] / [OPERATIONAL-PREDECESSOR]. Mature
+      MeTTa OpenPsi implementation with traditional MindAgent +
+      Demand/Modulator patterns. Targeted rg at HEAD for "MetaMo",
+      "metamo", "MAGUS", "magus", "individuation", "transcendence"
+      returned ZERO matches. Recent commit 01936f1 (2026-02-24) aligns
+      formulas with the OpenPsi paper, NOT MetaMo.
+  Wiki +content card 7334's framing "GitHub: hyperon-openpsi" as THE
+  MetaMo implementation is INCORRECT. Coherent framing must list all
+  three with their roles.
+  V2-X ref: locked V2-2, V2-3, V2-4 — see §3.
+
+§2.Q4 — MetaMo extends OpenPsi boundary (cross-cluster, load-bearing)
+  Reconciled: MetaMo SUBSUMES + EXTENDS OpenPsi at the formal layer.
+    - Paper-1 §1.1: MetaMo sits one level higher than OpenPsi; OpenPsi
+      procedures/parameters can be slotted into MetaMo.
+    - Paper-2 §3.1 ("OpenPsi as the Appraisal Comonad"): OpenPsi's
+      affective modulators are mapped to the Ψ operator.
+    - Code: MetaMo-Python/openpsi/appraisal.py:17 has class
+      OpenPsiAppraisal(AppraisalComonad), grounding the 2011 OpenPsi
+      logic in the 2025 MetaMo formalism in MetaMo-Python only.
+      hyperon-openpsi (the production-style codebase) at HEAD has
+      ZERO MetaMo/MAGUS naming — the formal grounding is one-way:
+      MetaMo-Python imports OpenPsi semantics into the comonad layer,
+      but hyperon-openpsi is NOT a strict-literal MetaMo implementation.
+  Cross-cluster impact: the OpenPsi cluster pilot 2026-04-28's V4-1
+  9-event executable-coupling lifecycle finding STANDS UNCHANGED.
+  MetaMo reframes OpenPsi at a higher abstraction layer; it does not
+  invalidate the OpenPsi pilot's lower-layer runtime findings.
+
+§2.Q5 — SubRep 2025-09 boundary (S1.V1-2 analog)
+  Reconciled: SubRep's MetaMo description is FAITHFUL to the AGI 2025
+  papers. Brief P19 confirmed by both reviewers.
+    - SubRep §4 attributes X = G × M, F = D ∘ Ψ, pseudo-bimonad
+      composition, and the five principles to MetaMo: VERIFIED against
+      AGI_25_METAMO_One.json paper-1 directly.
+    - This is materially DIFFERENT from AIRIS S1.V1-2: in AIRIS, SubRep
+      added new reframings (six-tuple, tripartite-state, MC-rollout) NOT
+      in Cook & Hammer 2024. In MetaMo, SubRep does NOT add unattested
+      extensions — it summarizes the source papers faithfully.
+  Carry-forward: SubRep extension drift is AIRIS-specific. Do NOT
+  generalize an "extension drift" guard to MetaMo. Each HAA source
+  must be checked individually.
+  V2-X ref: locked V2-5 — see §3.
+
+§2.Q6 — Five design principles verification
+  Reconciled (per CF5.6 D6 above):
+    1. Modular Appraisal-Decision Interface: [IMPLEMENTATION-BACKED-CORE].
+       AppraisalComonad + DecisionMonad as separate ABCs at
+       category/functors.py:7 + :32; MetaMoPseudoBimonad composition
+       at category/bimonad.py:12.
+    2. Reciprocal Motivational State Simulation: [IMPLEMENTATION-BACKED]
+       (with skeleton sub-modifier — the demo uses an identity
+       translation matrix). TranslationFunctor at category/functors.py:57
+       with simulate_peer method (L66-77); identity translator
+       constructed at applications/research_assistant.py:58 and INVOKED
+       at applications/research_assistant.py:88. Gemini's [PAPER-ONLY]
+       verdict REJECTED (CF5.6 D6 above).
+    3. Parallel Motivational Compositionality: [IMPLEMENTATION-BACKED-CORE].
+       parallel_merge at category/bimonad.py:62; exercised at
+       applications/research_assistant.py:76 + :93.
+    4. Homeostatic Drive Stability: [IMPLEMENTATION-BACKED-CORE].
+       is_in_safe_region at dynamics/stability.py:18; check_contractive_update_law
+       at dynamics/stability.py:54; apply_homeostatic_damping at
+       dynamics/stability.py:84 (Gemini's L65 cite was wrong — see
+       CF5.6 D3); applied at applications/research_assistant.py:99.
+    5. Incremental Objective Embodiment: [IMPLEMENTATION-BACKED-CORE].
+       calculate_blend_factor at dynamics/coherence.py:10;
+       blend_states at dynamics/coherence.py:24; applied at
+       applications/research_assistant.py:106.
+  Limit: no checked-in tests (`rg --files -g "*test*"` returns nothing);
+  AGENTS.md:23 confirms no formal test suite. The principles are
+  implemented as DEMO/REFERENCE LOGIC, not validated system behavior.
+  This is consistent with the [REFERENCE-IMPLEMENTATION-NOT-PRODUCTION]
+  overall verdict.
+
+§2.Q7 — Wiki +content (ID 7334) audit
+  Reconciled corrections (Codex 4 + Gemini 2 → reconciled 4):
+    P-content-1: Authorship order: "Ruiting Lian, Ben Goertzel" →
+                 "Ben Goertzel and Ruiting Lian".
+    P-content-2: Replace "GitHub: hyperon-openpsi" as THE MetaMo
+                 implementation with the trilateral repo split:
+                   - MetaMo-Python: primary formal reference.
+                   - MetaMo-Prototype: heuristic engine prototype.
+                   - hyperon-openpsi: predecessor OpenPsi substrate.
+    P-content-3: State explicitly that MetaMo's OpenPsi relation is
+                 "subsumes/extends at formal layer" — NOT replacement,
+                 NOT proof that hyperon-openpsi is a MetaMo strict-literal
+                 implementation.
+    P-content-4: MAGUS attributed to Mikeda 2024 / Magi-side framework,
+                 NOT invented by Goertzel/Lian. Description: MetaMo USES
+                 MAGUS as the decision monad component.
+  Implementation: at S2 close, author the +AI proposal child against
+  +content (7334). The +AI proposal is reviewer-discretion to apply
+  (per Published-vs-Draft edit protocol).
+
+§2.Q8 — +MetaMo Full Draft subcards audit
+  Reconciled per-subcard verdicts:
+    - ID 7135 (Core Mechanisms): [STANDS] if it states X = G × M, Ψ, D,
+      F = D ∘ Ψ, lax law, safe region, and the five principles. [REFINE]
+      if it implies the code formally verifies monad/comonad laws or is
+      production Hyperon/AtomSpace code. Apply [IMPLEMENTATION-BACKED-CORE]
+      / [FORMAL-LAWS-PAPER-ONLY] split language.
+    - ID 7137 (Historical Lineage): [REFINE]. Preserve OpenPsi/MAGUS
+      lineage but state MetaMo is a higher-level design language over
+      OpenPsi, not a replacement. Cite OpenPsi as predecessor/substrate
+      and MAGUS as external decision-theory component (Mikeda 2024).
+    - ID 7139 (Status): [REFINE]. List MetaMo-Python and MetaMo-Prototype
+      in addition to hyperon-openpsi. Use trilateral classification:
+      MetaMo-Python = "reference implementation"; MetaMo-Prototype =
+      "heuristic prototype"; hyperon-openpsi = "predecessor / operational
+      OpenPsi substrate".
+  Publications stubs: use final author names ("Ben Goertzel and Ruiting
+  Lian") and avoid carrying "Peeps" or "Body" double-blind placeholders
+  into wiki-facing prose.
+  Implementation: at S2 close, refine the three sectioning subcards via
+  update_card (Draft cardtype, direct edit per the cluster-close pattern).
+
+§2.Q9 — Overall MetaMo verdict
+  Reconciled: [PAPER-LEANING-HYBRID] / [IMPLEMENTATION-BACKED-CORE] /
+  [REFERENCE-IMPLEMENTATION-NOT-PRODUCTION].
+    - Formal papers are real, published, and internally explicit.
+    - MetaMo-Python implements the core state/operator skeleton with
+      named source files, principles 1/3/4/5 fully and Principle 2 in
+      skeleton form.
+    - But: no test suite, no package metadata, no formal law checker
+      beyond numeric distortion, no MeTTa/AtomSpace integration, no
+      Hyperon runtime binding.
+    - hyperon-openpsi has zero MetaMo/MAGUS naming; not the MetaMo
+      impl. MetaMo-Prototype is heuristic/parallel, not the formal
+      bimonad implementation.
+
+§2.Q10 — Cross-cluster boundary findings
+  Reconciled boundaries (Codex 6 V2-X + Gemini's 3 absorbed into V2-X):
+    - AIRIS boundary: MetaMo bimonad does NOT turn AIRIS State Confidence
+      into PLN truth-values, ECAN STI, or AtomSpace state. Separate
+      motivational formalism. (Gemini phrasing: "MetaMo bimonad is
+      orthogonal to AIRIS; it defines the 'feeling then choosing'
+      pipeline for any reasoner, including AIRIS." — adopted as
+      complementary framing.)
+    - ECAN/OpenPsi boundary: MetaMo's contractive Homeostatic Drive
+      Stability is a formal stability principle, not ECAN economic
+      attention and not a revival of OpenPsi's default-selector/STI
+      coupling. (Gemini phrasing: "MetaMo's contractive stability is a
+      meta-level dampener that complements ECAN's STI/LTI dynamics by
+      preventing goal-collapse." — adopted as complementary framing.)
+    - PLN boundary: Paper-2 applies MetaMo to PLN inference control as
+      a CONCEPTUAL WALKTHROUGH; local code does not implement PLN
+      integration. [PAPER-ONLY-APPLICATION] for PLN control until code
+      appears.
+    - AtomSpace boundary: Paper-2 + roadmap discuss Hyperon/AtomSpace
+      grounding, but MetaMo-Python and MetaMo-Prototype operate on
+      independent NumPy state vectors. [PAPER-ROADMAP-ONLY] for
+      AtomSpace embedding. (Gemini phrasing: "No evidence of direct
+      AtomSpace binding in MetaMo-Python or MetaMo-Prototype" —
+      verified, adopted.)
+  V2-X refs: V2-1..V2-7 locked — see §3.
+
+§2.Q11 — MetaMo ↔ MAGUS boundary
+  Reconciled: [MAGUS-BOUNDARY-EXTERNAL-COMPONENT].
+    - Paper-2 §2-3 + conclusion identify MAGUS as the decision-monad
+      side of the composition: OpenPsi is the appraisal comonad, MAGUS
+      is the hierarchical decision/goal system, F = D ∘ Ψ.
+    - Paper-2 reference [8] attributes MAGUS to Mikeda 2024 — MAGUS is
+      NOT a Goertzel/Lian invention.
+    - Code: MetaMo-Python/magus/decision.py has class
+      MagusDecision(DecisionMonad), but this is a compact class with
+      scoring + goal updates, NOT the Magi Archive's MAGUS framework
+      (which is the Mikeda 2024 cognitive-stack design).
+  Wiki text may say MetaMo USES/INSTANTIATES MAGUS as D, but should
+  NOT imply MAGUS was created by Goertzel/Lian, and should NOT imply
+  MetaMo-Python implements the full MAGUS system.
+  V2-X ref: locked V2-7 — see §3.
+
+§2.Q12 — Vocabulary for S3..S5
+  Reconciled: adopt Codex's 6 new labels + retain S1 vocabulary.
+  S2 additions:
+    - [IMPLEMENTATION-BACKED-CORE]: formal-paper core has direct
+      reference-code support, but only at skeleton/demo level.
+    - [FORMAL-LAWS-PAPER-ONLY]: category-theory laws/principles
+      described in paper; code names/checks them operationally but
+      does not prove them.
+    - [REFERENCE-IMPLEMENTATION-NOT-PRODUCTION]: small implementation
+      useful for wiki/source mapping, not production Hyperon
+      integration.
+    - [HEURISTIC-PROTOTYPE]: practical LLM/routing prototype with
+      goals/modulators but without the formal categorical structure.
+    - [OPENPSI-PREDECESSOR-SUBSTRATE]: operational OpenPsi codebase
+      used as lineage/substrate, not a MetaMo implementation by name.
+    - [MAGUS-BOUNDARY-EXTERNAL-COMPONENT]: MAGUS is the decision-monad
+      ingredient but remains a separate Magi-side conceptual framework.
+  S1 vocabulary kept unchanged: [PAPER-ONLY] / [IMPLEMENTATION-BACKED] /
+  [PAPER-LEANING-HYBRID] / [IMPLEMENTATION-DIVERGENT] / [ABSENT] /
+  [IMPLEMENTATION-BACKED-CORE].
+
+================================================================================
+
+§3. V2-X CARRY-FORWARDS (LOCKED)
+---------------------------------
+
+V2-1 [METAMO-AUTHORSHIP-ORDER-WIKI-DRIFT] — load-bearing for wiki edits
+  Both papers: "Ben Goertzel and Ruiting Lian", Goertzel first.
+  Wiki +content card 7334: "Ruiting Lian, Ben Goertzel" (reversed).
+  Action at S2 close: +AI proposal child against +content with
+  authorship correction.
+
+V2-2 [METAMO-PYTHON-PRIMARY-REFERENCE]
+  iCog-Labs-Dev/MetaMo-Python is the PRIMARY MetaMo reference
+  implementation at HEAD. README, applications/, category/, openpsi/,
+  magus/, dynamics/ all wired. 12 commits / Nahom Senay.
+
+V2-3 [HYPERON-OPENPSI-PREDECESSOR-NOT-METAMO-IMPL] — load-bearing for wiki
+  hyperon-openpsi at HEAD has zero MetaMo/MAGUS naming. Targeted rg
+  for "MetaMo", "metamo", "MAGUS", "magus", "individuation",
+  "transcendence" → 0 matches. Recent OpenPsi paper-alignment work
+  (commit 01936f1, 2026-02-24) is OpenPsi-side, not MetaMo-side.
+  hyperon-openpsi is the predecessor OpenPsi substrate, not THE MetaMo
+  implementation.
+
+V2-4 [METAMO-PROTOTYPE-HEURISTIC-PARALLEL-PROTOTYPE]
+  glicerico/MetaMo-Prototype is a separate heuristic LangGraph/LLM
+  routing engine, not a duplicate of MetaMo-Python. No bimonad/comonad/
+  MAGUS/OpenPsi formal abstractions. Should be listed under "heuristic
+  prototype" if MetaMo-related repo resources are updated, but NOT
+  treated as the categorical implementation.
+
+V2-5 [SUBREP-METAMO-FAITHFUL-AIRIS-EXTENSION-GUARD] — narrative-guard
+  SubRep §4's MetaMo description (X = G × M, F = D ∘ Ψ, 5 principles)
+  is FAITHFUL to the AGI 2025 source papers. This is NOT analogous to
+  AIRIS S1.V1-2: SubRep adds extensions to AIRIS but does NOT add
+  extensions to MetaMo. Do NOT generalize an "extension drift" rule
+  from AIRIS to MetaMo or to other HAA cards by analogy. Each source
+  must be checked individually.
+
+V2-6 [METAMO-TWO-DUPLICATE-NOT-BYTE-IDENTICAL] — non-blocking diagnostic
+  publication_texts/mattermost_papers/MetaMo_Two.json (30,585 bytes,
+  SHA256 06540A1201A55AAC491AFF7645CA8E5FBD8B827E97593B21952A559498B84545)
+  and MetaMo_Two__1_.json (30,762 bytes, SHA256
+  5534360701ABF10CC913AC81383D8DAFD17F1B6FA1FD8AA0679EF1C7DDD9AF32) are
+  NOT byte-identical. The duplicate is 177 bytes longer; likely a
+  later draft. Reviewers used MetaMo_Two.json per brief §2. Reconciler
+  recommendation: DEFER diff-and-pick to a future cleanup pass; the
+  S2 verdicts are stable against the version Codex+Gemini both used,
+  and the principles/equations/MAGUS attribution are stable across
+  both files (spot-checked). Track in extraction archive metadata if
+  S2 close commits are made.
+
+V2-7 [MAGUS-BOUNDARY-EXTERNAL-COMPONENT] — load-bearing for cluster
+  boundaries
+  MAGUS is attributed to Mikeda 2024 (paper-2 reference [8]), not
+  invented by Goertzel/Lian. MetaMo-Python/magus/decision.py is a
+  compact reference class implementing DecisionMonad, NOT the full
+  Magi Archive MAGUS framework. Wiki text must say MetaMo USES MAGUS
+  as the decision component, not that MetaMo IS MAGUS.
+
+REJECTED candidates:
+  Gemini "(2) Reciprocal State Simulation: [PAPER-ONLY]" REJECTED via
+  CF5.6 D6 — TranslationFunctor exists at category/functors.py:57 with
+  simulate_peer method actively invoked at research_assistant.py:88.
+  Reconciled verdict: [IMPLEMENTATION-BACKED] (skeleton/identity-only
+  demo).
+
+================================================================================
+
+§4. CROSS-CLUSTER PRECIS (FOR FUTURE PILOTS)
+---------------------------------------------
+
+For S3 (Pattern Mining residual), S4 (Concept Blending + Semantic
+Parsing), S5 (NACE + AI-DSL + MOSES + MeTTa-NARS):
+  - V2-1 (authorship-order drift) prompts a wiki-card review for ALL
+    HAA Published parents at end of cluster: do +content cards have
+    correct author ordering? Likely a non-S2-only audit item.
+  - V2-3 (predecessor-vs-current-impl) is generalizable: when a
+    predecessor codebase has zero naming overlap with the framework
+    described in a paper, it is the predecessor not the impl.
+  - V2-5 (SubRep guard) is narrative-only and does NOT cross-bind.
+  - V2-6 (duplicate-not-identical) is a publication_texts/ hygiene
+    note; recommend a one-shot SHA256 sweep of mattermost_papers/ at
+    cluster close to identify other __1_ duplicates.
+  - V2-7 (MAGUS external component) anchors a future PRIMUS / MAGUS
+    cluster pilot's scoping: Mikeda 2024 is the canonical MAGUS source.
+
+CF5.6 cumulative drift count (orchestrator's running counter):
+  - Pre-HAA (5 prior pilots): 8/25 dissents = 32% Gemini source-location
+    drift.
+  - HAA Source 1 (AIRIS, 2026-05-06): +3 drifts (D1+D2+D3 in S1
+    reconciliation).
+  - HAA Source 2 (MetaMo, 2026-05-06): +6 drifts (D1+D2+D3+D4+D5+D6 in
+    this reconciliation; D6 LOAD-BEARING).
+  - Cumulative: 17/34 ≈ 50%. CF5.6 protocol applies unchanged for
+    S3..S5; if cumulative breaches 60% at S3 or S4 close, reconsider
+    whether to escalate Gemini line cites to "claim-only, do not adopt
+    line numbers without orchestrator filesystem verification".
+
+================================================================================
+
+§5. CLUSTER-CLOSE EDIT BATCH PRECIS (S2 → wiki state)
+------------------------------------------------------
+
+Per cluster-pilot pattern (Audit + Refine + Propose), at S2 close the
+wiki-edit batch will execute (reviewer discretion at +AI proposal
+application):
+
+  C1 — REFINE +MetaMo Full+Core Mechanisms (ID 7135) via update_card
+       (Draft cardtype). Apply [IMPLEMENTATION-BACKED-CORE] /
+       [FORMAL-LAWS-PAPER-ONLY] split language. Cite reference impl at
+       MetaMo-Python with file:line for the principal constructs.
+
+  C2 — REFINE +MetaMo Full+Historical Lineage (ID 7137) via update_card.
+       Preserve OpenPsi/MAGUS lineage; state MetaMo as higher-level
+       design language over OpenPsi (not replacement); cite Mikeda 2024
+       for MAGUS.
+
+  C3 — REFINE +MetaMo Full+Status and Resources (ID 7139) via
+       update_card. Replace "GitHub: hyperon-openpsi" framing with
+       trilateral repo classification (MetaMo-Python primary +
+       MetaMo-Prototype heuristic + hyperon-openpsi predecessor).
+       Add cluster-pilot extraction archive pointer.
+
+  C4 — CREATE +AI proposal child for +content (ID 7334) via
+       create_card (Draft cardtype, +AI under Hyperon AI Algorithms+MetaMo).
+       Propose the 4 P-content-N corrections from §2.Q7. Apply or
+       reject at human reviewer's discretion.
+
+  C5 — CREATE +AI+tag Pointer subcard for C4 (ai_generated).
+
+  C6 — (OPTIONAL) Reference+GitHub Repositories audit pass for the
+       three MetaMo-related repos: confirm MetaMo-Python and
+       MetaMo-Prototype are listed, with correct authorship/role
+       framing. Pre-write WebFetch verification of the GitHub URLs
+       per feedback_webfetch_verify_external_urls.md.
+
+Pre-write protocol (per memory):
+  - WebFetch all external URLs before any C4/C5 +AI proposal text
+    that references GitHub repos (C6 also applies).
+  - Verify card existence with get_card before any create_card
+    (per feedback_query_all_cardtypes_in_audits.md and the
+    "already-exists" Wiki MCP Bug #4 pattern).
+  - Verify after every write with get_card.
+
+================================================================================
+
+§6. SOURCE-TEXT GAPS / OPEN ITEMS FROM S2
+------------------------------------------
+
+  - MetaMo_Two__1_.json byte-mismatch with MetaMo_Two.json: deferred to
+    a publication_texts/ hygiene pass; not blocking S2 close.
+  - No checked-in test suite in MetaMo-Python (rg --files for tests
+    returns nothing); AGENTS.md:23 confirms. Future pilot: if a test
+    suite appears upstream, principle-by-principle validation level
+    may upgrade from [REFERENCE-IMPLEMENTATION-NOT-PRODUCTION] to a
+    higher tier.
+  - hyperon-openpsi recent OpenPsi paper-alignment work (commit
+    01936f1, 2026-02-24) is documented in the OpenPsi cluster pilot
+    archive but NOT in MetaMo wiki cards; this is correct (the
+    OpenPsi cluster pilot owns that lineage), but the MetaMo wiki
+    cards should not silently re-attribute hyperon-openpsi work to
+    MetaMo as a result.
+
+================================================================================
+
+§7. THREE-WAY SIGN-OFF
+----------------------
+
+Codex sign-off: PENDING (this reconciliation document is being relayed
+                for review).
+Gemini sign-off: PENDING (this reconciliation document is being relayed
+                 for review).
+Orchestrator (Claude) sign-off: 2026-05-06. Reconciliation locked
+                                pending three-way confirmation. CF5.6
+                                verification log in §1. V2-1..V2-7
+                                locked in §3.
+
+After three-way sign-off, S2 cluster-close edit batch (C1..C6 in §5)
+proceeds with one-writer-only protocol, sequential-not-parallel writes,
+pre-write WebFetch verification of all external URLs, and verify-after-write
+get_card on every write.
+
+================================================================================
+END OF SOURCE 2 RECONCILED FINDINGS
+================================================================================

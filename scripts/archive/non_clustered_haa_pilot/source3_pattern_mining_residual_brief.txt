@@ -1,0 +1,601 @@
+================================================================================
+SOURCE 3 BRIEF — Pattern Mining residual + cross-cluster verification
+                 (Non-clustered Hyperon AI Algorithms cluster pilot)
+================================================================================
+Source name:      Pattern Mining residual scope (NOT a from-scratch extraction)
+Cluster:          Non-clustered Hyperon AI Algorithms (HAA), Source 3 of 5
+Source-1 closed:  AIRIS, 2026-05-06 (commit 65783e2)
+Source-2 closed:  MetaMo, 2026-05-06 (this session, pending C1-C6 wiki batch)
+Pilot order:      Option A (backlog burn-down) authorized 2026-05-05.
+Brief drafted:    2026-05-06 (this session)
+Brief author:     Claude (orchestrator)
+
+§0. SOURCE IDENTITY
+-------------------
+
+This brief is **NARROWLY SCOPED** to residuals not covered by the closed
+Perception/Neural-Symbolic cluster pilot (closed 2026-05-01,
+`scripts/archive/perception_pilot/`). The Perception pilot already
+exhaustively covered the canonical Pattern Mining stack:
+
+  Perception S2 baseline:  opencog/miner (Classic Scheme/C++ PatternMiner)
+                           + ngeiswei/miner referenced.
+  Perception S3:           hyperon-miner trio:
+                             - trueagi-io/hyperon-miner
+                             - iCog-Labs-Dev/hyperon-miner
+                             - zariuq/hyperon-miner
+  Perception S4:           rejuve-bio/neural-subgraph-matcher-miner
+                           (separate neural-GNN paradigm).
+
+**Reviewers MUST NOT re-extract those repos.** Their findings are
+authoritative in the Perception pilot reconciliations:
+
+  scripts/archive/perception_pilot/source2_classic_fishgram_miner/
+      findings_reconciled_crossmodel.txt
+  scripts/archive/perception_pilot/source3_hyperon_symbolic_miner/
+      findings_reconciled_crossmodel.txt
+  scripts/archive/perception_pilot/source4_hyperon_neural_perception/
+      findings_reconciled_crossmodel.txt
+
+Treat those reconciliations as **frozen prior art** for S3.
+
+S3 scope = three things only:
+
+  (1) RESIDUAL REPO AUDIT — three opencog/miner forks + pattern-index
+      that the Perception pilot did not adopt as primary or secondary
+      sources. Verify they are stale forks / separate paradigms / out
+      of scope, NOT separate traditions or active substrates.
+
+  (2) CROSS-CLUSTER WIKI VERIFICATION — verify the HAA-cluster wiki
+      Pattern Mining cards (whatever their current state) are aligned
+      with the Perception pilot's reconciled findings. Identify any
+      drift, omissions, or naming-convention misalignments between
+      `Hyperon AI Algorithms+Pattern Mining*` (HAA cluster naming)
+      and `Implementation Families+Neural Pattern Mining` /
+      `Knowledge Representations+...` (Perception pilot naming).
+
+  (3) BOUNDARY LOCK — confirm SGNN (glicerico) and any other "pattern-
+      adjacent" repos are NOT pattern-mining, do NOT belong to S3, and
+      should be deferred to S4 (Concept Blending + Semantic Parsing) or
+      the cross-org cluster.
+
+Reviewers should produce a **lighter brief than S1 or S2** (target
+~150-250 lines per findings file) reflecting the residual nature of
+the source. Most P-claims are in the Perception pilot; S3's job is
+verification + boundary tightening + wiki-card alignment, not new
+P-claim extraction.
+
+================================================================================
+
+§1. SCOPE AND DELIVERABLE
+-------------------------
+
+Deliverable per reviewer (Codex + Gemini, parallel and independent):
+
+  scripts/archive/non_clustered_haa_pilot/source3_pattern_mining_residual/
+      findings_codex.txt
+      findings_gemini.txt
+
+Per-question structure following the closed S1 + S2 pattern. Twelve
+S3.Q questions (smaller set than S2's 12 because residual scope), with
+file:line evidence per CF5.6 protocol.
+
+After both findings files arrive, the orchestrator (Claude this session)
+produces:
+
+  scripts/archive/non_clustered_haa_pilot/source3_pattern_mining_residual/
+      findings_reconciled_crossmodel.txt
+
+Three-way sign-off (Codex + Gemini + orchestrator) before any cluster-
+close edit batch on the wiki.
+
+Cluster pilot ordering for S3..S5 (Option A):
+  S3 (this brief): Pattern Mining residual            — current
+  S4:              Concept Blending + Semantic Parsing — next
+  S5:              NACE + AI-DSL + MOSES + MeTTa-NARS  — last
+
+================================================================================
+
+§2. ARTIFACTS TO READ
+---------------------
+
+(2.1) Perception pilot frozen prior art (READ AS REFERENCE, NOT
+      RE-EXTRACTION):
+
+  scripts/archive/perception_pilot/source2_classic_fishgram_miner/
+    findings_reconciled_crossmodel.txt
+    findings_codex.txt
+    findings_gemini.txt
+    source2_classic_fishgram_miner_brief.txt
+
+  scripts/archive/perception_pilot/source3_hyperon_symbolic_miner/
+    findings_reconciled_crossmodel.txt
+    findings_codex.txt
+    findings_gemini.txt
+    source3_hyperon_symbolic_miner_brief.txt
+    source3_repo_survey.txt
+
+  scripts/archive/perception_pilot/source4_hyperon_neural_perception/
+    findings_reconciled_crossmodel.txt
+    findings_codex.txt
+    findings_gemini.txt
+    source4_hyperon_neural_perception_brief.txt
+
+(2.2) Residual repos (in scope for S3):
+
+  RESIDUAL-MINER-FORKS (opencog/miner family — confirm stale/divergent):
+    leungmanhin/miner @ HEAD 9b3e7cfd9bf0553d0973d40682e932af7ba14449
+                       (2022-04-07 "Merge pull request #62 from
+                        opencog/explicit-cow"; LOCAL-FORK-STALE-LIKELY)
+    singnet/miner     @ HEAD 67971716a09a9b03a86e0134416b9f29d6565fb3
+                       (2021-08-12 "Merge pull request #32 from
+                        ngeiswei/merge-opencog-to-singnet";
+                        LOCAL-FORK-STALE-LIKELY)
+    ngeiswei/miner    @ HEAD 339cc494ebd2fb29c3537176fa446f21b39c5d83
+                       (2025-06-17 "Merge pull request #68 from
+                        ngeiswei/add-proof-comment"; the local clone
+                        named `miner2`; ACTIVE-MAINTAINER-FORK —
+                        ngeiswei is the opencog/miner upstream
+                        maintainer per Perception pilot.)
+
+    Local clone path on this machine: E:\GitHub\hyperon reference\
+      miner-leungmanhin/   (leungmanhin/miner)
+      miner-singnet/       (singnet/miner)
+      miner2/              (ngeiswei/miner)
+
+  PATTERN-INDEX (separate paradigm — pattern indexing != pattern
+  mining; check whether wiki should treat as in-scope for HAA Pattern
+  Mining or carve out as separate concept):
+    singnet/pattern-index @ HEAD a72459e (2020-07-24 "Merge pull
+                            request #5 from ngeiswei/merge-opencog-to-
+                            singnet"; upstream is opencog/pattern-index)
+    Local clone path:    E:\GitHub\hyperon reference\pattern-index\
+
+  Perception-pilot-baseline reference (for fork comparisons; DO NOT
+  re-extract):
+    opencog/miner @ HEAD 444eb6474c304775c457410592fa47a51455e36c
+                   (Perception S2 baseline; local clone at
+                    E:\GitHub\hyperon reference\miner\)
+
+(2.3) Out-of-scope-for-S3, flag-and-defer (do NOT extract; just
+      confirm boundary):
+
+  glicerico/SGNN @ HEAD 92d8e3a (2025-11-05 "Fix nokogiri
+                  vulnerabilities" — Ruby/Jekyll dep fix, not core
+                  algorithm work). README says "Implementation of
+                  Self-Governing Neural Networks for speech act
+                  classification" trained on the SwDA corpus — this
+                  is text/dialog classification, NOT pattern mining.
+                  Probable cross-cluster destination: S4 (Concept
+                  Blending + Semantic Parsing) or cross-org sweeps.
+
+  glicerico/SGNN-Self-Governing-Neural-Networks-Projection-Layer @
+                  HEAD 79ccf33 (2018-12-31). Older variant — same
+                  category as SGNN above.
+
+(2.4) Wiki cards in scope for verification (HAA-cluster Pattern
+      Mining naming):
+
+  Reviewers should query for any card whose name matches the regex:
+    `Hyperon AI Algorithms\+Pattern Mining*`
+    `Pattern Mining*` (Markdown stubs)
+  And cross-check against:
+    `Implementation Families+Neural Pattern Mining` (created 2026-05-01
+                                                    by Perception pilot,
+                                                    ID 7442)
+    `Knowledge Representations+Sensory` (ID 7439) — adjacent
+    Reference+GitHub Repositories (ID 7268) — for repo-list audit
+
+  The original 2026-05-05 audit identified a "FISHGRAM Pattern Mining"
+  Markdown card that was re-edited per audit task #69 (closed). S3
+  should re-verify that re-edit's content matches Perception pilot
+  reconciliations, especially the trilateral framing (symbolic+neural+
+  perception-portfolio).
+
+  AUDIT METHODOLOGY GUARDRAIL: per
+  feedback_query_all_cardtypes_in_audits.md (locked 2026-05-06):
+  query Draft + Markdown + **Published** cardtypes, NOT just
+  Draft+Markdown. The HAA-cluster Published parents (e.g., AIRIS,
+  NACE, AI-DSL, MOSES, MetaMo, MeTTa-NARS, Semantic Parsing,
+  MeTTa-Motto) all use the +content shell pattern. If a Pattern
+  Mining Published parent exists, its actual content lives in a
+  separate +content RichText subcard.
+
+================================================================================
+
+§3. ORCHESTRATOR-PRE-POPULATED CODEBASE FACTS
+----------------------------------------------
+
+§3.A — Repository inventory and git-history snapshot
+
+This section is pre-populated to remove redundant git work for
+reviewers. Do not re-run these git commands; verify HEAD SHAs match
+your local clones, then use the SHAs in your findings.
+
+Residual repos (in scope, file-existence VERIFIED 2026-05-06):
+
+  REPO                  HEAD SHA                                    DATE         COMMITS  REMOTE
+  ---                   ---                                         ---          ---      ---
+  leungmanhin/miner     9b3e7cfd9bf0553d0973d40682e932af7ba14449    2022-04-07   12,140   github.com/leungmanhin/miner.git
+  singnet/miner         67971716a09a9b03a86e0134416b9f29d6565fb3    2021-08-12   12,145   github.com/singnet/miner.git
+  ngeiswei/miner        339cc494ebd2fb29c3537176fa446f21b39c5d83    2025-06-17   12,133   github.com/ngeiswei/miner.git (local: miner2/)
+  singnet/pattern-index a72459eXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2020-07-24       77   github.com/singnet/pattern-index.git
+                                                                                          upstream: github.com/opencog/pattern-index.git
+
+(Note: pattern-index HEAD short-SHA captured as `a72459e`; reviewers
+should `git rev-parse HEAD` for the full 40-char SHA.)
+
+Perception-pilot baseline (out of scope for re-extraction; SHAs given
+for reference and for fork-divergence comparisons):
+
+  REPO                                       HEAD SHA                                    DATE         REMOTE
+  ---                                        ---                                         ---          ---
+  opencog/miner                              444eb6474c304775c457410592fa47a51455e36c    2025-09-24   github.com/opencog/miner.git
+  trueagi-io/hyperon-miner                   b5d8bcdXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2025-01-30   github.com/trueagi-io/hyperon-miner.git
+  iCog-Labs-Dev/hyperon-miner                51963a7XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2025-11-10   github.com/iCog-Labs-Dev/hyperon-miner.git (local: hyperon-miner-2/)
+  zariuq/hyperon-miner                       1ad4820XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2025-11-10   github.com/zariuq/hyperon-miner.git
+  rejuve-bio/neural-subgraph-matcher-miner   cfc23f8XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2026-04-22   github.com/rejuve-bio/neural-subgraph-matcher-miner.git
+
+(Reviewers may resolve full SHAs locally if needed; the residual scope
+does not require re-running history on baseline repos.)
+
+Out-of-scope (for boundary lock at S3.Q11 — DO NOT extract):
+
+  REPO              HEAD SHA      DATE         REMOTE
+  ---               ---           ---          ---
+  glicerico/SGNN    92d8e3a       2025-11-05   github.com/glicerico/SGNN.git
+  glicerico/SGNN-…  79ccf33       2018-12-31   github.com/glicerico/SGNN-Self-Governing-Neural-Networks-Projection-Layer.git
+
+§3.B — File-existence assertions (per CF5.6 verification protocol from
+       feedback_gemini_file_identity_verification.md)
+
+The following file paths were verified to exist on this machine
+2026-05-06:
+
+  E:\GitHub\hyperon reference\miner-leungmanhin\        (leungmanhin/miner)
+  E:\GitHub\hyperon reference\miner-singnet\            (singnet/miner)
+  E:\GitHub\hyperon reference\miner2\                   (ngeiswei/miner)
+  E:\GitHub\hyperon reference\pattern-index\            (singnet/pattern-index)
+  E:\GitHub\hyperon reference\miner\                    (opencog/miner — baseline)
+  E:\GitHub\hyperon reference\SGNN\                     (glicerico/SGNN — out of scope)
+  scripts\archive\perception_pilot\                     (Perception pilot archive)
+
+CF5.6 cumulative drift count (orchestrator's running counter through
+HAA Source 2 close): 17/34 ≈ 50%. Standard CF5.6 file-existence and
+line-citation verification protocol applies for S3.
+
+§3.C — KEY OPEN QUESTION FOR REVIEWERS (residual cross-cluster
+       verification)
+
+The Perception pilot 2026-05-01 produced two key cluster-narrative
+findings that S3 must verify against current wiki state:
+
+  (i) Trilateral framing: symbolic pattern mining (opencog/miner +
+      hyperon-miner trio) + neural pattern mining
+      (rejuve-bio/neural-subgraph-matcher-miner) + perception-portfolio
+      (Vepstas's 5-repo Hyperon-era stack: sensory + agents + motor +
+      evidence + atomese-simd) are THREE distinct paradigms with ZERO
+      cross-grep references. Wiki cards should reflect this trilateral
+      separation, not collapse them.
+
+  (ii) [PARTIAL-FRAGMENTED-REVIVAL] verdict: the DeSTIN-FISHGRAM-PLN
+       coupling described in the 2013 Goertzel/Sanders/O'Neill/Yu paper
+       is NOT wired in current Hyperon code. The wiki must not imply
+       it is.
+
+S3 verification questions (to anchor findings):
+  - Does the HAA-cluster Pattern Mining wiki card content reflect
+    the trilateral framing?
+  - Does it correctly cite the [PARTIAL-FRAGMENTED-REVIVAL] verdict?
+  - Does it correctly distinguish the three paradigms by paper /
+    repo / authorship?
+  - Does it have a "What It Is NOT" disambiguation block (analog of
+    the About Hyperon+Vision card 7445 pattern)?
+
+Verdict at S3 close should pick a coherent framing aligned with the
+Perception pilot reconciliations.
+
+================================================================================
+
+§4. ORCHESTRATOR-PRE-POPULATED PRIOR-ART REFERENCES
+----------------------------------------------------
+
+This is a residual-scope brief. **§4 is intentionally light.** Most
+P-claims are already extracted and reconciled in the Perception pilot
+archive. Reviewers should treat those as authoritative and reference
+them rather than re-extracting.
+
+P-claims to verify-against-prior-art (NOT to re-extract):
+
+P1. opencog/miner = Classic Scheme/C++ PatternMiner. Authors include
+    Nil Geisweiller, Linas Vepstas, Kasim, and others.
+    Source: Perception S2 reconciliation.
+
+P2. opencog/miner is paper-faithful to the Chi/Xia/Yang/Muntz 2005
+    pattern-mining methodology family (per Perception S2 V0-X carry-
+    forwards).
+    Source: Perception S2 reconciliation.
+
+P3. hyperon-miner trio (trueagi-io / iCog-Labs-Dev / zariuq) is a
+    MeTTa port of opencog/miner. iCog-Labs-Dev is the active fork at
+    HEAD with team-overlap at Basliel/Amsalu/Tezena. zariuq is Zar
+    Goertzel's own fork (per project_zar_goertzel_cluster_contributor.md).
+    Source: Perception S3 reconciliation.
+
+P4. rejuve-bio/neural-subgraph-matcher-miner is the SPMiner/GNN-based
+    neural-mining lineage. Verdict tags: [SPMiner-LINEAGE] /
+    [GNN-NEURAL-MINING] / [PARADIGM-DISTINCT-NEURAL] /
+    [STRICTLY-EMPIRICAL] / [PARALLEL-NON-INTEGRATED].
+    Source: Perception S4 reconciliation.
+
+P5. Linas Vepstas is also a major contributor to opencog/miner per
+    Perception S2 reconciliation. (Cross-cluster note: Vepstas's
+    Hyperon-era portfolio was mapped at Perception cluster pilot
+    close; see Implementation Families+Attention and Motivation
+    card 4751.)
+    Source: Perception S2 reconciliation.
+
+P6. The 2013 DeSTIN-FISHGRAM-PLN paper (Goertzel/Sanders/O'Neill/Yu)
+    is retrieved at publication_texts/2013_Goertzel_Sanders_ONeill_Yu_DeSTIN_PLN.pdf.
+    The 2013 FISHGRAM was a fragmented architectural experiment, not
+    the basis for any current Hyperon implementation. Verdict
+    [PARTIAL-FRAGMENTED-REVIVAL] is locked.
+    Source: Perception S1 reconciliation.
+
+P7. The wiki Markdown card "FISHGRAM Pattern Mining" was re-edited
+    2026-05-05 per the standalone audit-correction batch (closed task
+    #69). S3 must verify the re-edit content matches the Perception
+    pilot reconciliations.
+    Source: scripts/archive/wiki_card_audit_2026_05_05/audit_report.md
+
+Residual P-claims to extract (S3-specific, fresh extraction expected):
+
+P8. leungmanhin/miner status at HEAD 9b3e7cfd (2022-04-07): is it a
+    stale fork of opencog/miner with no MeTTa port, no Hyperon
+    integration, no novel algorithms? (Hypothesis: yes; verdict tag
+    [STRICT-FORK-STALE]; verify via bidirectional fork-divergence
+    grep per feedback_bidirectional_fork_divergence.md.)
+
+P9. singnet/miner status at HEAD 6797171 (2021-08-12): is it a stale
+    pre-singnet-merge snapshot of opencog/miner? (Hypothesis: yes;
+    verdict tag [STRICT-FORK-STALE-MERGED-UPSTREAM]; bidirectional
+    grep verification required.)
+
+P10. ngeiswei/miner status at HEAD 339cc494 (2025-06-17): does it
+     contain ngeiswei's pre-merge work that becomes opencog/miner
+     mainline at the next merge cycle? (Hypothesis: ACTIVE-MAINTAINER-
+     FORK — ngeiswei IS the upstream maintainer of opencog/miner.
+     Recent commits add proof comments and unit tests for
+     MinerUtils::is_pat_more_abstract. Verdict tag [ACTIVE-MAINTAINER-
+     SCRATCH] or similar.)
+
+P11. singnet/pattern-index at HEAD a72459e (2020-07-24): is this a
+     SEPARATE paradigm from opencog/miner (pattern indexing for fast
+     AtomSpace lookup, with its own pattern-mining algorithms following
+     the OpenCog wiki Pattern_miner methodology)? README explicitly
+     says: "this is not a wrapper around OpenCog's PatternMatcher"
+     and the pattern-mining functionality is "not a wrapper around
+     OpenCog's PatternMiner". Verify scope: is this in-scope for HAA
+     Pattern Mining wiki coverage, or a separate concept that needs
+     its own wiki card?
+
+P12. SGNN out-of-scope confirmation: SGNN README says "Implementation
+     of Self-Governing Neural Networks for speech act classification"
+     trained on SwDA corpus. This is text/dialog classification, NOT
+     pattern mining. Cross-cluster destination: confirm S4 (Concept
+     Blending + Semantic Parsing) or cross-org sweeps. Recent commit
+     activity is Ruby/Jekyll dependency-fix, suggesting the actual
+     SGNN code may not be the active part of the repo at HEAD.
+
+P13. Cross-cluster boundary statement: HAA-cluster wiki cards must
+     CITE the Perception pilot reconciliations as authoritative for
+     the symbolic/neural/perception trilateral framing, NOT
+     re-derive it. The HAA cluster's role is to anchor the
+     "Pattern Mining" *concept* card; the Perception pilot's role
+     was to extract the *implementations*.
+
+================================================================================
+
+§5. PER-QUESTION TASKS (S3.Q1 .. S3.Q12)
+-----------------------------------------
+
+S3.Q1: WIKI HAA-PATTERN-MINING CARD INVENTORY (audit methodology
+       guardrail).
+  Query the wiki for all cards matching `Hyperon AI Algorithms+Pattern
+  Mining*` and `Pattern Mining*` (Markdown stubs). Apply the all-
+  cardtypes audit rule (Draft + Markdown + Published per
+  feedback_query_all_cardtypes_in_audits.md). Report exhaustive list
+  with IDs, cardtypes, and parent/child relationships. If a Published
+  parent exists, follow the +content shell to its RichText subcard.
+
+S3.Q2: PERCEPTION-PILOT-RECONCILIATION CITATION COVERAGE.
+  Verify the HAA Pattern Mining card content cites or aligns with the
+  three Perception pilot reconciliations (S2 classic FISHGRAM, S3
+  hyperon-miner trio, S4 neural-subgraph-matcher-miner). Identify
+  any drift: claims in the HAA card that contradict Perception findings,
+  or Perception findings missing from the HAA card.
+
+S3.Q3: TRILATERAL FRAMING VERIFICATION.
+  Does the HAA Pattern Mining card content reflect the Perception
+  pilot's trilateral framing (symbolic + neural + perception-portfolio,
+  zero cross-grep)? If not, propose specific corrections.
+
+S3.Q4: [PARTIAL-FRAGMENTED-REVIVAL] CITATION.
+  Does the HAA Pattern Mining card correctly cite the
+  [PARTIAL-FRAGMENTED-REVIVAL] verdict for the 2013 DeSTIN-FISHGRAM-
+  PLN coupling? The card MUST NOT imply current Hyperon code wires
+  this coupling.
+
+S3.Q5: leungmanhin/miner FORK STATUS.
+  Bidirectional fork-divergence per feedback_bidirectional_fork_divergence.md.
+  Run: `git log opencog/master..leungmanhin/master --oneline` AND
+       `git log leungmanhin/master..opencog/master --oneline`.
+  Report divergence direction. Verdict from {[STRICT-FORK-STALE],
+  [STRICT-FORK-DIVERGED], [STRICT-FORK-NOVEL-CONTRIBUTIONS]}.
+
+S3.Q6: singnet/miner FORK STATUS.
+  Same bidirectional check for singnet/miner. Note: 2021-08-12 HEAD
+  commit message explicitly says "Merge pull request #32 from
+  ngeiswei/merge-opencog-to-singnet" — the fork was synced to
+  upstream and then went stale. Verdict expected: [STRICT-FORK-
+  STALE-MERGED-UPSTREAM].
+
+S3.Q7: ngeiswei/miner FORK STATUS (THIS IS DIFFERENT).
+  ngeiswei is the OPENCOG/MINER MAINTAINER. The fork is active
+  (HEAD 2025-06-17). Run bidirectional check. The relationship is
+  likely opencog/miner ← ngeiswei/miner (ngeiswei's fork is upstream-
+  staged work; opencog/master is downstream-released). Verdict
+  [ACTIVE-MAINTAINER-SCRATCH] or [PRE-MERGE-STAGING-FORK]. Identify
+  any commits in ngeiswei/miner not yet in opencog/miner, with
+  hypothesis they are ahead-of-upstream patches.
+
+S3.Q8: singnet/pattern-index PARADIGM CLASSIFICATION.
+  Read README.md. Confirm:
+    - Pattern Index is "an index for fast lookup of patterns in
+      the AtomSpace", NOT a PatternMatcher wrapper, NOT a PatternMiner
+      wrapper.
+    - It HAS its own pattern-mining algorithms following the OpenCog
+      wiki Pattern_miner methodology.
+    - It is built for disk-based indexing (not RAM-only).
+  Verdict from {[PATTERN-INDEX-SEPARATE-PARADIGM-IN-SCOPE],
+  [PATTERN-INDEX-SEPARATE-CONCEPT-NEEDS-OWN-CARD],
+  [PATTERN-INDEX-OUT-OF-SCOPE]}. State explicitly whether HAA
+  Pattern Mining wiki coverage should INCLUDE pattern-index or
+  CARVE OUT pattern-index as its own wiki concept.
+
+S3.Q9: SGNN BOUNDARY LOCK (out-of-scope confirmation).
+  Confirm SGNN is speech-act-classification, NOT pattern mining.
+  Confirm the cross-cluster destination is S4 or cross-org sweeps.
+  Confirm recent dependency-fix commit activity is Ruby/Jekyll,
+  not Python/MeTTa. Recommend WHERE in the cluster pilot ordering
+  SGNN should be picked up (S4? cross-org? both?).
+
+S3.Q10: CROSS-CLUSTER WIKI ALIGNMENT.
+  Cross-check that the existing wiki cards `Implementation Families+
+  Neural Pattern Mining` (ID 7442 from Perception cluster close) and
+  the HAA Pattern Mining cards do NOT duplicate or contradict each
+  other. The Perception card owns the *implementations*; the HAA
+  card (if it exists) should own the *Hyperon-AI-Algorithms-cluster
+  framing of the concept*. Identify drift.
+
+S3.Q11: V3-X CARRY-FORWARDS (load-bearing for HAA cluster narrative).
+  Lock V3-N tags for all corrections / re-framings emerging from
+  S3.Q1-Q10. Categorize each as load-bearing or non-blocking. At
+  minimum:
+    V3-1 — HAA Pattern Mining wiki card cross-cluster citation
+    coverage (load-bearing for trilateral framing).
+    V3-2 — leungmanhin/miner fork verdict.
+    V3-3 — singnet/miner fork verdict.
+    V3-4 — ngeiswei/miner fork verdict.
+    V3-5 — singnet/pattern-index paradigm classification (load-
+    bearing for HAA Pattern Mining scope).
+    V3-6 — SGNN cross-cluster boundary (narrative-guard, like
+    AIRIS V1-2 / MetaMo V2-5).
+
+S3.Q12: CLUSTER-CLOSE EDIT BATCH PRECIS.
+  Propose the C-N writes the orchestrator should plan for S3 close
+  (mirror of S1's C1-C4 pattern and S2's C1-C6 pattern). Likely
+  shape: refine HAA Pattern Mining +Foo Full subcards (if Draft
+  cardtype) to cite Perception reconciliations and trilateral
+  framing; create +AI proposal child against HAA Pattern Mining
+  +content (if Published parent); optionally create or update a
+  pattern-index wiki card under Knowledge Representations or its
+  own placement. Pre-write WebFetch on any GitHub URLs referenced.
+
+================================================================================
+
+§6. STANDING PROTOCOLS (CARRY-FORWARD FROM PRIOR PILOTS)
+---------------------------------------------------------
+
+All standing protocols from the closed pilots remain in force for S3.
+This brief carries them forward unchanged:
+
+  P1. Cross-model triangulation (Codex + Gemini + orchestrator
+      reconciliation).
+  P2. Wiki edit protocol: one-writer-only; sequential not parallel;
+      verify-after-every-write with get_card; treat "already exists"
+      as real until proven spurious.
+  P3. CF5.6 file-existence verification before adopting any reviewer's
+      file-location/line-number claim. Cumulative Gemini drift through
+      HAA S2 close: 17/34 ≈ 50%.
+  P4. Pickaxe before "never used" / "dead code" claims (use `git log
+      --all -S '<token>'` not just current-HEAD grep). Pattern Mining
+      / FISHGRAM / DeSTIN cross-references from the 2013 paper are
+      a likely target for pickaxe.
+  P5. Bidirectional fork-divergence: run `git log A..B` AND `git log
+      B..A` AND grep both directions. Stale fork ≠ isolated tradition.
+      Required for S3.Q5/Q6/Q7.
+  P6. Attribution verify against git: cross-check any "Verified"
+      claim about authorship/SHAs/identity-between-artifacts.
+  P7. WebFetch verify external URLs immediately before any wiki
+      edit that adds, modifies, or relays a URL (per
+      feedback_webfetch_verify_external_urls.md, promoted from
+      candidate to standing 2026-05-06 at AIRIS S1 close).
+  P8. Wiki audits MUST query Draft + Markdown + Published, not just
+      Draft + Markdown (per feedback_query_all_cardtypes_in_audits.md,
+      locked 2026-05-06).
+  P9. Research-vs-implementation workstream separation: this brief
+      is research-track. Any wiki-state-touching writes happen at
+      cluster close per the C-N batch pattern, not during reviewer
+      extraction.
+  P10. Parallel-Claude handoff awareness: wiki writes from THIS
+       session must be coordinated with any parallel Claude session
+       per feedback_parallel_claude_handoff.md.
+
+================================================================================
+
+§7. NON-GOALS (DO NOT EXTRACT)
+-------------------------------
+
+Reviewers MUST NOT:
+
+  - Re-extract findings from opencog/miner, hyperon-miner trio, or
+    rejuve-bio/neural-subgraph-matcher-miner. The Perception pilot
+    reconciliations are authoritative.
+  - Re-derive the trilateral framing from scratch. Cite the
+    Perception cluster pilot's locked verdict.
+  - Re-process the 2013 DeSTIN-FISHGRAM-PLN paper. Use the
+    Perception S1 reconciliation.
+  - Extract SGNN. Boundary-lock only (S3.Q9).
+  - Touch wiki state. Reviewer extraction is read-only on the wiki
+    (get_card, search, etc. are fine; create_card / update_card /
+    delete_card are not).
+  - Generalize an "extension drift" guard from AIRIS V1-2 or
+    MetaMo V2-5 to S3 by analogy. Each source is checked
+    individually.
+
+================================================================================
+
+§8. ORCHESTRATOR PRE-EXTRACTION CHECKLIST
+------------------------------------------
+
+Before reviewers begin extraction, orchestrator must complete:
+  [✓] §3 git history populated with HEAD SHAs for residual repos
+       (full SHA for ngeiswei, leungmanhin, singnet/miner; short SHA
+       for pattern-index — reviewers may resolve to full).
+  [✓] §3 git history references for Perception-baseline repos
+       (short SHAs; out-of-scope-for-extraction).
+  [✓] §3 git history references for SGNN out-of-scope repos (short
+       SHAs, boundary-lock only).
+  [✓] §4 P1..P13 framed: P1-P7 cite Perception reconciliations as
+       prior art (verify, do not re-extract); P8-P13 are S3-specific
+       residual claims for fresh extraction.
+  [✓] §3.C key open question framed: cross-cluster wiki alignment.
+  [✓] Pre-resolved Perception pilot frozen-prior-art reference paths.
+  [✓] Sign off on §3 git history (reviewers may verify).
+
+Once orchestrator signals "§4 ready, extraction may begin," reviewers
+may begin per-question extraction in parallel (Codex + Gemini
+independently, no shared draft).
+
+Findings files target paths:
+  scripts/archive/non_clustered_haa_pilot/source3_pattern_mining_residual/
+    findings_codex.txt
+    findings_gemini.txt
+After both received, orchestrator produces:
+    findings_reconciled_crossmodel.txt
+
+================================================================================
+END OF SOURCE 3 BRIEF (READY FOR REVIEWER EXTRACTION — narrow residual scope)
+2026-05-06
+================================================================================

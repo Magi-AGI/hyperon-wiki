@@ -1,0 +1,159 @@
+Codex findings - Source 2 MetaMo paper/reference-code audit
+================================================================
+
+Scope
+-----
+
+Brief reviewed: scripts/archive/non_clustered_haa_pilot/source2_metamo_paper_brief.txt
+Primary paper sources:
+- publication_texts/mattermost_papers/AGI_25_METAMO_One.json
+- publication_texts/mattermost_papers/MetaMo_Two.json
+- publication_texts/mattermost_papers/Architectural_Synthesis_Roadmap_MetaMo_0_5__5_.json (roadmap context only)
+
+Repos checked:
+- iCog-Labs-Dev/MetaMo-Python @ 3ec409bd4a8b0732b8aeae5f07828cf81c165557
+- glicerico/MetaMo-Prototype @ 3b6b25c3c6d898c33bb79df7a05f80bc7d85bf14
+- iCog-Labs-Dev/hyperon-openpsi @ 3b356c5e51d4490b587351721a8cd4187da5817a
+
+Overall verdict
+---------------
+
+MetaMo is [PAPER-LEANING-HYBRID] with an [IMPLEMENTATION-BACKED-CORE] in MetaMo-Python. The two papers define the formal framework; MetaMo-Python implements a compact reference skeleton for X = G x M, Psi, D, F = D o Psi, lax-law checking as bounded numerical distortion, homeostatic damping, and incremental blending. It does not implement proof-grade category-theory laws, enriched category machinery, tubular topology, AtomSpace/MeTTa embedding, or production Hyperon integration. MetaMo-Prototype is a separate [HEURISTIC-PROTOTYPE], and hyperon-openpsi is the [OPENPSI-PREDECESSOR-SUBSTRATE], not the primary MetaMo implementation at HEAD.
+
+S2.Q1 - pseudo-bimonad formalism: paper vs implementation
+---------------------------------------------------------
+
+Paper side: verified. Paper-1 defines X = G x M, the appraisal comonad Psi, decision monad D, lax distributive law, and composite F = D o Psi in section 2; the archived JSON stores the full paper text at AGI_25_METAMO_One.json:7. Paper-2 repeats the operational equations for Hyperon/OpenPsi/MAGUS in sections 2-3; full text is at MetaMo_Two.json:7.
+
+Implementation side: partially verified in MetaMo-Python. README.md:3 identifies it as a Python implementation of MetaMo; README.md:18-20 names Appraisal Comonad, Decision Monad, and Pseudo-Bimonad F = D o Psi; README.md:84-88 documents G and M vector dimensions. core/state.py:8-14 defines MotivationalState with G and M; core/config.py:1-7 fixes NUM_GOALS=8 and NUM_MODULATORS=6. category/functors.py:7-29 defines AppraisalComonad, category/functors.py:32-55 defines DecisionMonad, and category/functors.py:57 defines TranslationFunctor. category/bimonad.py:12-23 defines MetaMoPseudoBimonad and executes F = D o Psi; category/bimonad.py:42-61 implements a lax-law check as distance bounded by LAX_DISTRIBUTIVE_DELTA; category/bimonad.py:62 implements parallel_merge.
+
+Limit: this is operational reference code, not a formal verification of monad/comonad laws. The code checks numeric distortion, not categorical coherence. Verdict: [IMPLEMENTATION-BACKED-CORE] plus [FORMAL-LAWS-PAPER-ONLY].
+
+S2.Q2 - authorship order
+------------------------
+
+The paper text puts Ben Goertzel first and Ruiting Lian second on both papers (AGI_25_METAMO_One.json:7; MetaMo_Two.json:7). The brief's P3 is correct; the brief title line still says "Lian & Goertzel", which is a non-blocking wording drift. The existing wiki +content ordering "Ruiting Lian, Ben Goertzel" should be corrected to "Ben Goertzel and Ruiting Lian" for both paper cards. The placeholder reference names "Peeps" and "Body" are double-blind submission artifacts, not actual authors.
+
+Git attribution is separate: MetaMo-Python's 12 commits are all by Nahom/Nahom Senay, not the paper authors; MetaMo-Prototype's 24 commits are by dagemawinegash. This supports describing the repos as reference/prototype implementations, not author-written paper supplements.
+
+S2.Q3 - MetaMo-Python vs MetaMo-Prototype vs hyperon-openpsi
+------------------------------------------------------------
+
+MetaMo-Python is the primary MetaMo reference implementation. Its README names both AGI-25 papers (README.md:9-10), lists the theory components (README.md:14-20), and maps code directories to openpsi/appraisal.py and magus/decision.py (README.md:54-58). applications/research_assistant.py:4-11 imports TranslationFunctor, OpenPsiAppraisal, MagusDecision, MetaMoPseudoBimonad, blend_states, and stability damping; applications/research_assistant.py:42-58 constructs the bimonad, assistant, and translator; applications/research_assistant.py:76-107 runs parallel merges, final action selection, damping, and blending. It also has an LLM layer using google-genai (requirements.txt:1-3; llm/client.py:2-22; llm/conversation.py:7-31).
+
+MetaMo-Prototype is a separate heuristic engine, not a duplicate of MetaMo-Python. README.md:1 is just a title. engine.py:18-178 implements a dictionary-state step pipeline, with goals/modulators read at engine.py:19-21, appraisal at engine.py:34, scoring at engine.py:100, routing at engine.py:145, action selection at engine.py:169, and return at engine.py:178. post_update is engine.py:225-297. engine_state.py:67-89 defines persistent goals, anti-goals, and modulators; engine_scoring.py:208-446 contains action-scoring heuristics. It has LangGraph/LLM plumbing (graph.py:10-12, 43-45, 112, 122, 286, 297-353; parser.py:15-16, 21, 230-237). There are no bimonad/comonad/MAGUS/OpenPsi formal abstractions in this repo; a targeted search for those terms found only runner.py prompt text and README title-level MetaMo references.
+
+hyperon-openpsi is the operational OpenPsi predecessor/substrate. A targeted search at HEAD for "MetaMo", "metamo", "MAGUS", "magus", "individuation", and "transcendence" returned zero matches. The repo does implement OpenPsi-style modulators: main/modulator/modulator.metta:6-12 defines arousal, positive-valence, selection-threshold, securing-threshold, and resolution-level; main/modulator/modulator.metta:15-22 defines fetch-modulator/fetch-modulator-val; main/mind-agents/modulator-updater/modulator-updaters.metta:33-38 updates arousal/securing/selection; main/mind-agents/feeling-updater/feeling-updaters.metta:145-153 reads arousal, securing, selection, and resolution. Recent git history is OpenPsi-side work, e.g. commit 01936f1 on 2026-02-24 aligns formulas with the OpenPsi paper, not MetaMo.
+
+Conclusion for wiki contradiction: +content card 7334 should not present hyperon-openpsi as THE MetaMo implementation. Coherent framing is: MetaMo-Python = primary compact MetaMo reference; MetaMo-Prototype = separate heuristic prototype; hyperon-openpsi = predecessor OpenPsi codebase whose appraisal/modulator machinery paper-2 abstracts as Psi.
+
+S2.Q4 - MetaMo extends OpenPsi boundary
+---------------------------------------
+
+MetaMo extends/subsumes OpenPsi at the formal-design layer; it does not supersede the closed OpenPsi cluster pilot's implementation finding. Paper-1 says MetaMo sits one level higher than OpenPsi and that OpenPsi's procedures/parameters can be slotted into MetaMo (AGI_25_METAMO_One.json:7, section 1.1). Paper-2 explicitly maps OpenPsi to the comonadic appraisal layer and MAGUS to the decision layer (MetaMo_Two.json:7, sections 2-3).
+
+The code supports the boundary distinction. MetaMo-Python contains OpenPsiAppraisal as a Python class (openpsi/appraisal.py:17) that maps novelty/risk/conduciveness into six-vector modulator updates (openpsi/appraisal.py:39-75). hyperon-openpsi at 3b356c5 has OpenPsi modulators/mind-agent style code but no MetaMo/MAGUS naming. Therefore the OpenPsi pilot V4-1 remains valid: MetaMo reframes the OpenPsi operational machinery as a Psi comonad; it is not evidence that hyperon-openpsi became a strict literal implementation of the MetaMo formalism.
+
+S2.Q5 - SubRep 2025-09 boundary
+-------------------------------
+
+The brief's P19 is correct for MetaMo. The SubRep paper's MetaMo-side claims about X = G x M, F = D o Psi, pseudo-bimonad composition, and five principles are faithful to MetaMo paper-1/paper-2. This is different from AIRIS S1.V1-2: AIRIS's 6-tuple and tripartite-state/Monte-Carlo rollout language were SubRep-side extensions, but MetaMo's categorical framing is present in the source papers.
+
+Carry-forward: do not generalize "SubRep extension drift" from AIRIS to all HAA cards. For MetaMo, SubRep is mostly faithful on the formal core, while any AIRIS-specific tuple/state/rollout vocabulary remains AIRIS-side, not MetaMo-source vocabulary.
+
+S2.Q6 - five design principles
+------------------------------
+
+All five principles are present in paper-1 (AGI_25_METAMO_One.json:7, sections 3-5). Code backing in MetaMo-Python:
+
+1. Modular Appraisal-Decision Interface: AppraisalComonad and DecisionMonad are separate ABCs (category/functors.py:7-55); MetaMoPseudoBimonad composes them in category/bimonad.py:21-39.
+2. Reciprocal Motivational State Simulation: TranslationFunctor exists at category/functors.py:57; applications/research_assistant.py:58 creates an identity translator as a minimal demo.
+3. Motivational Compositionality: parallel_merge is implemented at category/bimonad.py:62-81 and exercised in applications/research_assistant.py:76 and :93.
+4. Homeostatic Motivation Stability: config constants appear in core/config.py:16-26; safe-region and contraction checks are dynamics/stability.py:18-81; homeostatic damping is dynamics/stability.py:84-88.
+5. Incremental Objective Embodiment: blend-factor and blend-state logic are dynamics/coherence.py:10-35; the research assistant applies blend_states at applications/research_assistant.py:106-107.
+
+Limit: MetaMo-Python has no checked-in test files by `rg --files -g "*test*" -g "*tests*" -g "*spec*" -g "!.git/**"`; AGENTS.md:23 also warns there is no formal test suite or package metadata. The five principles are implemented as demo/reference logic, not validated system behavior.
+
+S2.Q7 - wiki +content audit
+---------------------------
+
+Corrections I would apply at cluster close:
+
+P-content-1: Author ordering should be "Ben Goertzel and Ruiting Lian", not "Ruiting Lian, Ben Goertzel".
+
+P-content-2: Replace "GitHub: hyperon-openpsi" as the MetaMo implementation with a three-repo role split:
+- iCog-Labs-Dev/MetaMo-Python: primary compact reference implementation of the formal MetaMo skeleton.
+- glicerico/MetaMo-Prototype: heuristic LangGraph/LLM prototype with goals/modulators/action routing.
+- iCog-Labs-Dev/hyperon-openpsi: predecessor OpenPsi implementation/substrate, not MetaMo-only and not the primary MetaMo repo.
+
+P-content-3: State explicitly that MetaMo's OpenPsi relation is "subsumes/extends at formal layer", not "replacement" and not proof that the OpenPsi code is a strict literal MetaMo implementation.
+
+P-content-4: MAGUS should be described as the decision-monad component used by the paper, with MAGUS attributed to Mikeda 2024 / Magi-side framework, not invented by Goertzel/Lian.
+
+S2.Q8 - +MetaMo Full subcards audit
+-----------------------------------
+
+I did not have direct wiki card contents in local source beyond the brief's extracted card inventory, so this is a fidelity recommendation against the source evidence rather than a direct card-line edit list.
+
+Core Mechanisms/Formalism should stand if it states X = G x M, Psi, D, F = D o Psi, lax law, safe region, and five principles. It should be refined if it implies the code formally verifies monad/comonad laws or is production Hyperon/AtomSpace code. Use the split [IMPLEMENTATION-BACKED-CORE] / [FORMAL-LAWS-PAPER-ONLY].
+
+Historical Lineage should preserve the OpenPsi/MAGUS lineage but state MetaMo is a higher-level design language over OpenPsi, not a replacement. It should cite OpenPsi as predecessor/substrate and MAGUS as external decision-theory component.
+
+Status and Resources should list MetaMo-Python and MetaMo-Prototype in addition to hyperon-openpsi. hyperon-openpsi belongs under "predecessor / operational OpenPsi substrate"; MetaMo-Python belongs under "reference implementation"; MetaMo-Prototype under "heuristic prototype".
+
+The publications stubs should use final author names and avoid carrying "Peeps" or "Body" placeholders into wiki-facing prose.
+
+S2.Q9 - overall verdict
+-----------------------
+
+Verdict: [PAPER-LEANING-HYBRID] / [IMPLEMENTATION-BACKED-CORE] / [REFERENCE-IMPLEMENTATION-NOT-PRODUCTION].
+
+Reason: the formal papers are real and internally explicit; MetaMo-Python implements the core state/operator skeleton with named source files; but there is no test suite, no package metadata, no formal law checker beyond numeric distortion, no MeTTa/AtomSpace integration, no Hyperon runtime binding, and no evidence that hyperon-openpsi has been transformed into MetaMo code. MetaMo-Prototype is useful but heuristic and parallel, not evidence of the formal bimonad implementation.
+
+S2.Q10 - cross-cluster boundary findings
+----------------------------------------
+
+V2-1 [METAMO-AUTHORSHIP-ORDER-WIKI-DRIFT]: Paper authorship is Goertzel first, Lian second; +content should be corrected.
+
+V2-2 [METAMO-PYTHON-PRIMARY-REFERENCE]: The compact reference implementation is MetaMo-Python, not hyperon-openpsi.
+
+V2-3 [HYPERON-OPENPSI-PREDECESSOR-NOT-METAMO-IMPL]: hyperon-openpsi contains operational OpenPsi modulators/mind-agent code and zero MetaMo/MAGUS naming at HEAD.
+
+V2-4 [METAMO-PROTOTYPE-HEURISTIC-PARALLEL-PROTOTYPE]: MetaMo-Prototype is a separate heuristic routing engine. It should be listed if repository resources are updated, but not treated as the categorical implementation.
+
+V2-5 [SUBREP-METAMO-FAITHFUL-AIRIS-EXTENSION-GUARD]: SubRep's MetaMo formalism is faithful enough to the MetaMo source papers; the AIRIS-specific SubRep extensions remain AIRIS-only.
+
+V2-6 [METAMO-TWO-DUPLICATE-NOT-BYTE-IDENTICAL]: MetaMo_Two.json and MetaMo_Two__1_.json are not byte-identical: SHA256 06540A1201A55AAC491AFF7645CA8E5FBD8B827E97593B21952A559498B84545 vs 5534360701ABF10CC913AC81383D8DAFD17F1B6FA1FD8AA0679EF1C7DDD9AF32; sizes 30,585 vs 30,762 bytes. I used MetaMo_Two.json per brief. This is non-blocking but the "may be duplicates" note should not be silently collapsed to "identical."
+
+AIRIS boundary: MetaMo's bimonad does not turn AIRIS State Confidence into PLN truth-values, ECAN STI, or AtomSpace state. It is a separate motivational formalism.
+
+ECAN/OpenPsi boundary: MetaMo's contractive Homeostatic Drive Stability is a formal stability principle, not ECAN economic attention and not a revival of OpenPsi's default-selector/STI coupling.
+
+PLN boundary: Paper-2 applies MetaMo to PLN inference control as a conceptual walkthrough, but the local code does not implement PLN integration. Treat as [PAPER-ONLY-APPLICATION] for PLN control until code appears.
+
+AtomSpace boundary: Paper-2 discusses Hyperon/AtomSpace, and the roadmap discusses grounding abstract operators in OpenPsi, but MetaMo-Python and MetaMo-Prototype are Python demos with no AtomSpace write/read substrate. Treat AtomSpace embedding as [PAPER-ROADMAP-ONLY].
+
+S2.Q11 - MetaMo <-> MAGUS boundary
+----------------------------------
+
+Paper-2 explicitly identifies MAGUS as the decision side of the composition: OpenPsi is the appraisal comonad, MAGUS is the hierarchical decision/goal system, and their composition forms F = D o Psi (MetaMo_Two.json:7, sections 2-3 and conclusion). The same paper attributes MAGUS to Mikeda 2024 in reference [8] (MetaMo_Two.json:7). MetaMo-Python has magus/decision.py, but this is a compact class with scoring and goal updates, not the Magi Archive's MAGUS framework.
+
+Verdict: [MAGUS-BOUNDARY-EXTERNAL-COMPONENT]. Wiki text may say MetaMo uses/instantiates MAGUS as D, but should not imply MAGUS was created by Goertzel/Lian in the MetaMo papers or that MetaMo-Python implements the full MAGUS system.
+
+S2.Q12 - vocabulary
+-------------------
+
+Keep S1 vocabulary and add these S2-specific labels:
+
+- [IMPLEMENTATION-BACKED-CORE]: formal-paper core has direct reference-code support, but only at skeleton/demo level.
+- [FORMAL-LAWS-PAPER-ONLY]: category-theory laws/principles are described in paper; code names/checks them operationally but does not prove them.
+- [REFERENCE-IMPLEMENTATION-NOT-PRODUCTION]: small implementation useful for wiki/source mapping, not production Hyperon integration.
+- [HEURISTIC-PROTOTYPE]: practical LLM/routing prototype with goals/modulators but without the formal categorical structure.
+- [OPENPSI-PREDECESSOR-SUBSTRATE]: operational OpenPsi codebase used as lineage/substrate, not a MetaMo implementation by name.
+- [MAGUS-BOUNDARY-EXTERNAL-COMPONENT]: MAGUS is the decision-monad ingredient but remains a separate Magi-side conceptual framework.
+
+Protocol notes
+--------------
+
+No external URLs were fetched; all sources were local. For absence claims I used targeted `rg` at repo HEAD. For fork-divergence on MetaMo-Prototype, local remote-tracking branches show origin/main has merge-base equal to HEAD and is 0 ahead / 21 behind upstream/main, so the glicerico fork is [STRICT-FORK-BEHIND] relative to dagemawinegash upstream in the local clone.
+

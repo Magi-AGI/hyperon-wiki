@@ -1,0 +1,623 @@
+SOURCE 3 RECONCILED FINDINGS — CROSS-MODEL
+================================================================================
+Source name:      Pattern Mining residual + cross-cluster verification
+                  (Non-clustered HAA cluster pilot, Source 3 of 5)
+Reconciliation:   Codex (findings_codex.txt, 169 lines, 2026-05-06)
+                  Gemini (findings_gemini.txt, ~75 lines, 2026-05-06,
+                          extracted inline during sign-off relay)
+                  Orchestrator: Claude (this session, 2026-05-06)
+Brief reference:  scripts/archive/non_clustered_haa_pilot/
+                  source3_pattern_mining_residual_brief.txt (601 lines).
+
+Scope check:
+  Codex covered S3.Q1..S3.Q12 with file:line evidence + git rev-list
+  --left-right --count for each fork plus 7 V3-X candidates plus 5 C-N
+  cluster-close items.
+  Gemini covered S3.Q1..S3.Q12 but with multiple CF5.6-rejected
+  numerical claims (D1..D5 below) including one DIRECTION-REVERSED
+  fork-divergence verdict that would have flipped the ngeiswei tag.
+
+================================================================================
+
+§0. HEADLINE VERDICTS (CROSS-MODEL TABLE)
+-----------------------------------------
+
+  Question                                  Codex                        Gemini                   Reconciled
+  S3.Q1 (wiki card inventory)               6 cards + raw discussion     3 cards                  6-card Codex inventory adopted
+  S3.Q2 (Perception citation coverage)      stale on 4087                4087 lacks pointers      same finding, Codex more granular
+  S3.Q3 (trilateral framing)                must be added to 4087        not reflected in 4087    consensus on edit need
+  S3.Q4 ([PARTIAL-FRAGMENTED-REVIVAL])      missing from 4087            verified on 3090         must be added to 4087
+  S3.Q5 (leungmanhin/miner)                 0/44 [STRICT-FORK-STALE]     0/245 [STALE]            Codex 0/44 verified — see §1.D1
+  S3.Q6 (singnet/miner)                     5/58 [STALE-MERGED]          0/250 [STALE-MERGED]     Codex 5/58 verified — see §1.D2
+  S3.Q7 (ngeiswei/miner)                    0/8 [MERGED-BEHIND]          8/0 [SCRATCH]            Codex 0/8 verified — see §1.D3 *LOAD-BEARING*
+  S3.Q8 (pattern-index paradigm)            ADJACENT (mention-only)      SEPARATE-CONCEPT-OWN-CARD   ADJACENT adopted — see §2.Q8
+  S3.Q9 (SGNN boundary)                     [SGNN-NOT-PATTERN-MINING]    [NOT-PATTERN-MINING]     consensus
+  S3.Q10 (cross-cluster wiki alignment)     7442 = impl detail / 4087 = concept   same            consensus
+  S3.Q11 (V3-X carry-forwards)              7 candidates                 4 candidates             7 locked + 1 adjusted — see §3
+  S3.Q12 (cluster-close batch)              5 C-N items                  3 C-N items (1 stale)    Codex 5 adopted — see §5
+
+  Reconciled overall: S3 contributes NO new pattern-mining tradition.
+  Three cluster-narrative outcomes:
+    (a) HAA card 4087 is stale relative to Perception pilot 2026-05-01
+        close-out and must be refined.
+    (b) Three opencog/miner forks are all stale or merged-behind; none
+        represent active independent traditions.
+    (c) singnet/pattern-index is a real OpenCog C++/Scheme disk-oriented
+        pattern-indexing/mining infrastructure, adjacent to Pattern
+        Mining but not a fourth Hyperon-era tradition.
+
+================================================================================
+
+§1. CF5.6 FILE-EXISTENCE / FORK-DIVERGENCE VERIFICATION
+--------------------------------------------------------
+
+CF5.6 cumulative Gemini drift count entering S3: 17/34 ≈ 50% across 5
+prior pilots + AIRIS S1 + MetaMo S2.
+
+This S3 review surfaces FIVE drift findings (D1..D5) including ONE
+LOAD-BEARING direction-reversed claim that would have inverted the
+ngeiswei/miner verdict tag. Cumulative drift after S3:
+  22/39 ≈ 56%. This breaches the §4-flagged 50% midpoint and approaches
+  the 60% escalation threshold. Recommendation: at S4 or S5 close, if
+  cumulative crosses 60%, escalate Gemini line/numerical cites to
+  "claim-only, do not adopt without orchestrator filesystem
+  verification."
+
+Verification environment (orchestrator filesystem, 2026-05-06):
+
+  Local clone repos:
+    E:\GitHub\hyperon reference\miner-leungmanhin\  (leungmanhin/miner)
+    E:\GitHub\hyperon reference\miner-singnet\      (singnet/miner)
+    E:\GitHub\hyperon reference\miner2\             (ngeiswei/miner)
+    E:\GitHub\hyperon reference\miner\              (opencog/miner)
+    E:\GitHub\hyperon reference\pattern-index\      (singnet/pattern-index)
+
+  All four miner clones have `origin` (their own remote) and `upstream`
+  pointing at opencog/miner where applicable. The opencog/miner clone
+  has both `origin` (opencog/miner) and a local-path remote `ngeiswei`
+  pointing at the local miner2/ clone.
+
+D1 — leungmanhin/miner divergence count
+  Codex: `git rev-list --left-right --count origin/master...upstream/master`
+    = 0 / 44.
+  Gemini: 0 ahead, 245 behind opencog/master.
+  Direct verification (orchestrator, 2026-05-06):
+    cd 'E:\GitHub\hyperon reference\miner-leungmanhin'
+    git rev-list --left-right --count origin/master...upstream/master
+    → 0	44
+  Verdict: Codex correct (0/44). Gemini's 245 is wildly wrong — off by
+  201 commits. Reviewer note: Gemini cited a "2026-05-01 snapshot" but
+  the brief used 2026-05-06 HEAD `9b3e7cf`, and the verified count
+  AGAINST that HEAD is 44 not 245. Source of Gemini's number is
+  unverifiable.
+
+D2 — singnet/miner divergence count
+  Codex: `git rev-list --left-right --count origin/master...upstream/master`
+    = 5 / 58. Five fork-only commits identified as merge/sync metadata
+    (67971716a, 1f3ae9dcf, 0e4556709, dcb32d071, 051509827).
+  Gemini: 0 ahead, 250 behind. Implies zero fork-only commits.
+  Direct verification (orchestrator, 2026-05-06):
+    cd 'E:\GitHub\hyperon reference\miner-singnet'
+    git rev-list --left-right --count origin/master...upstream/master
+    → 5	58
+    git log --oneline origin/master --not upstream/master
+    → 67971716a, 1f3ae9dcf, 0e4556709, dcb32d071, 051509827
+        (all "Merge pull request from ngeiswei/merge-opencog-to-singnet"
+         or "Merge branch 'master' of github.com:opencog/miner")
+  Verdict: Codex correct (5/58, all merge/sync). Gemini's "0 ahead" is
+  factually wrong — there ARE 5 fork-only commits, even though they
+  are merge-metadata not novel work. The "250 behind" count is also
+  wildly off (off by 192 from actual 58).
+
+D3 — ngeiswei/miner divergence direction *** LOAD-BEARING ***
+  Codex: 0 / 8. opencog/master is 8 ahead, ngeiswei/master is 0 ahead.
+    Eight opencog-only commits identified: 444eb6474, 2643f54ab,
+    18113ca73, f283b86d5, 55b6de428, 3f0bc163e, caf6199a4, 7d667b43c.
+    Verdict tag: [MAINTAINER-FORK-MERGED-BEHIND].
+  Gemini: 8 / 0. ngeiswei is 8 ahead of opencog. Verdict tag:
+    [ACTIVE-MAINTAINER-SCRATCH].
+  Direct verification (orchestrator, 2026-05-06):
+    cd 'E:\GitHub\hyperon reference\miner'
+    git rev-list --left-right --count origin/master...ngeiswei/master
+    → 8	0      (opencog is left, ngeiswei is right; 8/0 means 8
+                   commits in opencog NOT in ngeiswei, 0 in ngeiswei
+                   NOT in opencog)
+    git log --oneline origin/master --not ngeiswei/master | head
+    → 444eb6474 Moving to new API ...
+      2643f54ab Port away from obsolete API
+      18113ca73 Modernize CMakefile to avoid warnings
+      f283b86d5 Move function out of AtomSpace to here.
+      55b6de428 Remove obsolete cog-filter
+      3f0bc163e Fix build break due to missing header file
+      caf6199a4 Merge pull request #69 from opencog/tree-from-cogutil
+      7d667b43c Copy tree.h from cogutil to here.
+    git log --oneline ngeiswei/master --not origin/master | head
+    → (empty)
+  Verdict: Codex correct (0/8 — opencog 8 ahead, ngeiswei 0 ahead).
+  Gemini's claim is DIRECTION-REVERSED. The ngeiswei changes Gemini
+  characterized as "8 ahead, staging area" are in fact merged into
+  opencog/miner already (the brief noted ngeiswei #67 + #68 had
+  appeared in opencog's history; opencog has advanced past them).
+  Verdict tag MUST be [MAINTAINER-FORK-MERGED-BEHIND], NOT
+  [ACTIVE-MAINTAINER-SCRATCH]. The narrative implication ("ngeiswei
+  is the upstream maintainer's pre-merge staging area") is OBSOLETE
+  AT THIS SNAPSHOT — ngeiswei previously was that staging area, but
+  the staged work has already merged upstream and ngeiswei has not
+  been re-advanced. Adopting Gemini's tag would have produced wiki
+  text saying "ngeiswei/miner contains 8 commits ahead of upstream"
+  which is the opposite of the truth.
+
+D4 — pattern-index divergence count
+  Codex: 1 / 3.
+  Gemini: did not provide a numerical count for pattern-index.
+  Direct verification (orchestrator, 2026-05-06):
+    cd 'E:\GitHub\hyperon reference\pattern-index'
+    git rev-list --left-right --count origin/master...upstream/master
+    → 1	3
+  Verdict: Codex correct (1/3).
+
+D5 — Wiki card inventory completeness
+  Codex: 6 cards (4087 Draft, 4086 RichText virtual parent, 3090
+    Markdown, 3089 RichText virtual parent, 7441 RichText virtual
+    parent, 7442 Draft). Plus broader raw discussion/import cards
+    flagged but not as edit targets.
+  Gemini: 3 cards (4087, 3090, 4086).
+  Direct verification (orchestrator, 2026-05-06, mcp__hyperon-wiki__get_card):
+    Hyperon AI Algorithms+Pattern Mining → Draft, ID 4087, last update
+      2026-04-10T10:57:22Z (PREDATES Perception close 2026-05-01,
+      confirming [HAA-PATTERN-MINING-CARD-STALE] verdict).
+    Implementation Families+Neural Pattern Mining → Draft, ID 7442,
+      last update 2026-05-06T18:24:28Z (current).
+    Publications+FISHGRAM Pattern Mining → Markdown, ID 3090, last
+      update 2026-05-06T18:24:03Z (current; carries the 2026-05-06
+      audit-correction edit referenced in the Perception archive).
+  RichText virtual parents (4086, 3089, 7441): naming convention is
+  consistent with the Decko-pulse +content/+name virtual-parent
+  pattern; not directly spot-checked but no reason to doubt Codex's
+  inventory. Gemini's missing inventory items are NOT a load-bearing
+  drift since they are virtual parents (not edit targets), but they
+  do illustrate Gemini's lighter inventory-search coverage relative
+  to Codex's `search_cards` thoroughness.
+
+CF5.6 outcome for S3:
+  - Codex: 5/5 verified-correct on numerical claims; 6/6 verified-
+    correct on wiki card inventory; 1/1 verified-correct on
+    direction-of-divergence narrative (D3 load-bearing).
+  - Gemini: 0/3 correct on numerical fork-divergence claims; 1
+    direction-reversed verdict tag that would have produced wrong
+    wiki text; missing virtual-parent cards from inventory (non-
+    blocking).
+  - Cumulative Gemini drift through S3: 22/39 ≈ 56%. CF5.6 protocol
+    continues unchanged. If S4 or S5 reconciliation pushes
+    cumulative ≥ 60%, escalation per §4 of S2 reconciliation.
+
+================================================================================
+
+§2. PER-QUESTION RECONCILED ANSWERS
+------------------------------------
+
+§2.Q1 — Wiki HAA-Pattern-Mining card inventory
+  Reconciled: 6-card edit target inventory (Codex's set adopted):
+    - Hyperon AI Algorithms+Pattern Mining (Draft, ID 4087) —
+      PRIMARY edit target. Stale relative to Perception close-out
+      (last update 2026-04-10, predates Perception close 2026-05-01).
+    - Pattern Mining (RichText virtual parent, ID 4086) — structural
+      only; no direct edit needed.
+    - Publications+FISHGRAM Pattern Mining (Markdown, ID 3090) —
+      already aligned post-2026-05-06 audit edit; minor wording-pass
+      candidate at S3 close (Codex C2 below).
+    - FISHGRAM Pattern Mining (RichText virtual parent, ID 3089) —
+      structural; no edit needed.
+    - Implementation Families+Neural Pattern Mining (Draft, ID 7442)
+      — already aligned with Perception Source 4 reconciliation;
+      no S3 edit needed.
+    - Neural Pattern Mining (RichText virtual parent, ID 7441) —
+      structural; no edit needed.
+  Plus already-aligned Knowledge Representations+Sensory (ID 7439)
+  per Perception Source 5 close-out.
+  Raw-discussion/import cards (4332, 4611, 4807, 5123, 6256, 6311
+  ranges) are evidence/raw-data surfaces, NOT S3 close-edit targets;
+  preserved as-is per RawData fidelity protocol.
+
+§2.Q2 — Perception-pilot citation coverage on card 4087
+  Reconciled: STALE. Card 4087 (last update 2026-04-10) names hyperon-
+  miner and opencog/miner and cites the whitepaper plus O'Neill &
+  Goertzel 2012 FISHGRAM, but it lacks:
+    - Citation of the Perception cluster pilot S2/S3/S4
+      reconciliations as authoritative prior art.
+    - rejuve-bio/neural-subgraph-matcher-miner mention.
+    - Knowledge Representations+Sensory (ID 7439) cross-link.
+    - Implementation Families+Neural Pattern Mining (ID 7442)
+      cross-link.
+    - Exact [PARTIAL-FRAGMENTED-REVIVAL] verdict for 2013 DeSTIN-
+      FISHGRAM-PLN coupling.
+  Edit target: C1 (cluster-close).
+
+§2.Q3 — Trilateral framing
+  Reconciled: NOT REFLECTED in card 4087. The card currently presents
+  pattern mining mostly as one symbolic/roadmap concept (hyperon-
+  miner + opencog/miner + MORK-native + TransWeave + downstream
+  PRIMUS roles). Must be revised to reflect the Perception-locked
+  trilateral framing:
+    1. Symbolic mining: opencog/miner + hyperon-miner trio
+       ([METTA-PORT-OF-MINER]).
+    2. Neural mining: rejuve-bio/neural-subgraph-matcher-miner
+       ([SPMiner-LINEAGE] / [GNN-NEURAL-MINING] /
+        [PARADIGM-DISTINCT-NEURAL] / [STRICTLY-EMPIRICAL] /
+        [PARALLEL-NON-INTEGRATED]).
+    3. Perception/embodiment portfolio: opencog/sensory + sibling
+       Vepstas Hyperon-era repos ([ATOMSPACE-SCHEME-STACK]; not
+       wired to miners).
+  A "What It Is Not" disambiguation block should also be added
+  (analog of the About Hyperon+Vision card 7445 pattern):
+    NOT FISHGRAM continuation by name; NOT current DeSTIN-FISHGRAM-
+    PLN wiring; NOT ECAN attention; NOT a single integrated Hyperon
+    runtime path.
+  Edit target: C1.
+
+§2.Q4 — [PARTIAL-FRAGMENTED-REVIVAL] verdict citation
+  Reconciled: MISSING from card 4087, must be added. Current wording
+  ("pattern mining feeds PLN/WILLIAM/Symbolic Heads/SubRep" plus
+  MORK-native/TransWeave directions) reads as implementation claim;
+  must be qualified as roadmap/whitepaper claim. The card MUST
+  explicitly state: the 2013 DeSTIN-FISHGRAM-PLN coupling is NOT
+  wired in current Hyperon code; the pieces exist as fragmented
+  parallel tracks per Perception cluster pilot finding.
+  Edit target: C1.
+  Card 3090 (Publications+FISHGRAM Pattern Mining) is already aligned
+  post-2026-05-06 audit edit.
+
+§2.Q5 — leungmanhin/miner fork status
+  Reconciled (per CF5.6 D1): [STRICT-FORK-STALE]. 0 ahead / 44 behind
+  opencog/miner. No fork-only commits; substantively stale legacy
+  fork.
+  V3-X ref: locked V3-2 — see §3.
+
+§2.Q6 — singnet/miner fork status
+  Reconciled (per CF5.6 D2): [STRICT-FORK-STALE-MERGED-UPSTREAM]. 5
+  ahead / 58 behind opencog/miner. The 5 ahead-commits are ALL
+  merge/sync metadata (PRs #30/#31/#32 from ngeiswei/merge-opencog-
+  to-singnet plus two `Merge branch 'master'` commits). No novel
+  algorithm work. Substantively stale.
+  V3-X ref: locked V3-3 — see §3.
+
+§2.Q7 — ngeiswei/miner fork status *** LOAD-BEARING ***
+  Reconciled (per CF5.6 D3): [MAINTAINER-FORK-MERGED-BEHIND]. 0 ahead /
+  8 behind opencog/miner (where opencog is reference). The fork is
+  authored by Nil Geisweiller (the opencog/miner upstream maintainer)
+  but at this snapshot it has zero unmerged commits; the staged work
+  (#67 misc-fix + #68 proof comment for MinerUtils::is_pat_more_abstract)
+  has been merged into opencog/miner mainline, and opencog/master has
+  advanced 8 commits past ngeiswei/master with API/CMake/cogutil work
+  that ngeiswei has not picked up.
+  Wiki narrative implication: do NOT describe ngeiswei/miner as a
+  current "active maintainer-side staging fork." The historical
+  meaning is correct (ngeiswei is the maintainer; the fork has
+  historically been staging) but the snapshot state is "merged behind"
+  — a future re-fork is plausible but not in evidence.
+  V3-X ref: locked V3-4 — see §3.
+
+§2.Q8 — singnet/pattern-index paradigm classification
+  Reconciled: [PATTERN-INDEX-SEPARATE-PARADIGM-ADJACENT] (Codex's
+  more nuanced verdict adopted over Gemini's [PATTERN-INDEX-SEPARATE-
+  CONCEPT-NEEDS-OWN-CARD]).
+  Why Codex's framing is preferred:
+    - Codex grounded the verdict in code evidence: PatternIndexAPI.h
+      L55-61 (create/customize/query/mine), PatternIndexAPI.h L182-208
+      (minePatterns), PatternIndexAPI.cc L507-525 (minePatterns
+      wrappers), TypeFrameIndex.cc L581-745 (mining routine), tests/
+      pattern-index/PatternIndexAPIUTest.cxxtest L170-179 (mining
+      tests). README.md L272-307 documents minePatterns and
+      pi-mine-patterns. So pattern-index DOES implement mining, but
+      its architectural paradigm (disk-based subgraph indexing for
+      huge SCM-file lookup, not RAM-only AtomSpace) is adjacent to
+      Pattern Mining, not orthogonal.
+    - Codex's fork verification: 1 ahead / 3 behind opencog/pattern-
+      index; the origin-only commit is a singnet merge PR. Stale
+      legacy OpenCog C++/Scheme infrastructure.
+    - Codex's recommendation is conditional: "should be mentioned in
+      HAA Pattern Mining or Reference+GitHub Repositories as adjacent
+      legacy AtomSpace indexing/mining infrastructure, but it should
+      not be collapsed into the symbolic hyperon-miner tradition or
+      the neural GNN tradition. A future curated card such as
+      Knowledge Representations+Pattern Index would be reasonable
+      if the user wants durable documentation."
+  Edit target: C3 in §5 captures the optional path.
+  V3-X ref: locked V3-5 — see §3.
+
+§2.Q9 — SGNN boundary lock
+  Reconciled: consensus [SGNN-NOT-PATTERN-MINING] / [DEFER-TO-S4-OR-
+  CROSS-ORG]. SGNN is speech-act classification trained on the SwDA
+  corpus, NOT pattern mining. Recent commit activity (92d8e3a 2025-11-05
+  "Fix nokogiri vulnerabilities") is Ruby/Jekyll dependency
+  maintenance, not algorithm work.
+  V3-X ref: locked V3-6 — see §3.
+
+§2.Q10 — Cross-cluster wiki alignment
+  Reconciled: consensus.
+    - Implementation Families+Neural Pattern Mining (ID 7442) owns
+      the implementation-level neural-mining detail. Already aligned
+      with Perception Source 4 reconciliation.
+    - Hyperon AI Algorithms+Pattern Mining (ID 4087) should be the
+      concept-level HAA card. Must point to ID 7442, ID 7439
+      (Sensory), ID 3090 (FISHGRAM Pubs), and the Perception archive
+      rather than duplicating implementation detail.
+    - Reference+GitHub Repositories (ID 7268) currently lists
+      trueagi-io/hyperon-miner and rejuve-bio/neural-subgraph-matcher-
+      miner. It does NOT list opencog/miner as the legacy symbolic
+      baseline, iCog-Labs-Dev/hyperon-miner / zariuq/hyperon-miner as
+      forks, or pattern-index as adjacent legacy indexing
+      infrastructure. Optional C4 update; do not enumerate every
+      stale miner fork — only the high-signal items
+      (opencog/miner + pattern-index adjacency note).
+
+§2.Q11 — V3-X carry-forwards
+  Reconciled (Codex's 7 candidates locked + Gemini's 4 absorbed/adjusted):
+  See §3 below.
+
+§2.Q12 — Cluster-close edit batch precis
+  Reconciled (Codex's 5-item proposal adopted; Gemini's stale C3 about
+  S1 AIRIS corrections REJECTED — already shipped 2026-05-06 per CLAUDE.md
+  audit table line):
+  See §5 below.
+
+================================================================================
+
+§3. V3-X CARRY-FORWARDS (LOCKED)
+---------------------------------
+
+V3-1 [HAA-PATTERN-MINING-CARD-STALE] — load-bearing for HAA cluster
+  Card 4087 (Hyperon AI Algorithms+Pattern Mining) last updated
+  2026-04-10, predates Perception cluster pilot close 2026-05-01.
+  Needs: Perception citation coverage; trilateral framing; explicit
+  [PARTIAL-FRAGMENTED-REVIVAL] verdict for 2013 DeSTIN-FISHGRAM-PLN;
+  qualification of MORK/TransWeave/WILLIAM/Symbolic-Heads claims as
+  roadmap/whitepaper-only; "What It Is Not" disambiguation block.
+  Action at S3 close: C1 in §5.
+
+V3-2 [LEUNGMANHIN-MINER-STRICT-FORK-STALE]
+  CF5.6-verified 0/44. No fork-only commits; substantively stale.
+  Reference+GitHub Repositories (ID 7268) treatment: do NOT enumerate
+  as separate entry; if mentioned, mention as part of an "OpenCog
+  miner family stale-fork ecosystem" note.
+
+V3-3 [SINGNET-MINER-STRICT-FORK-STALE-MERGED-UPSTREAM]
+  CF5.6-verified 5/58 with all 5 ahead-commits being merge/sync
+  metadata (PRs #30/#31/#32 from ngeiswei/merge-opencog-to-singnet
+  plus 2 master-branch merges). Substantively stale despite formal
+  divergence.
+
+V3-4 [NGEISWEI-MINER-MAINTAINER-FORK-MERGED-BEHIND] — load-bearing
+  CF5.6-verified 0/8. Snapshot-state correction: ngeiswei/miner is
+  NOT an active maintainer-scratch fork at this 2026-05-06 snapshot;
+  the historically-staged work has been merged upstream and the fork
+  has not advanced since. Wiki narrative MUST avoid the
+  [ACTIVE-MAINTAINER-SCRATCH] characterization Gemini proposed; the
+  correct framing is "ngeiswei (the opencog/miner upstream maintainer)
+  uses this fork as historical pre-merge staging; current state is
+  merged behind upstream by 8 commits."
+
+V3-5 [PATTERN-INDEX-SEPARATE-PARADIGM-ADJACENT]
+  pattern-index is real OpenCog C++/Scheme disk-oriented pattern-
+  indexing/mining infrastructure (verified PatternIndexAPI.h
+  minePatterns at L182-208, mining routine in TypeFrameIndex.cc
+  L581-745). Adjacent to Pattern Mining but NOT a fourth Hyperon-era
+  tradition. Disk-based indexing (vs RAM-only AtomSpace) is the
+  defining architectural distinction. CF5.6-verified fork: 1/3
+  against opencog/pattern-index.
+  Wiki treatment: mention in card 4087 or in Reference+GitHub
+  Repositories card 7268 as adjacent legacy. Optional curated card
+  Knowledge Representations+Pattern Index if user wants durable
+  documentation.
+
+V3-6 [SGNN-NOT-PATTERN-MINING] — narrative-guard
+  Speech-act classification trained on SwDA corpus, NOT pattern
+  mining. Boundary guard for S4 (Concept Blending + Semantic Parsing)
+  and/or cross-org sweeps. NOT an S3 carry-forward for HAA Pattern
+  Mining card content.
+
+V3-7 [REFERENCE-REPO-CARD-PATTERN-MINING-GAPS]
+  Reference+GitHub Repositories (ID 7268) lists trueagi-io/hyperon-
+  miner and rejuve-bio/neural-subgraph-matcher-miner. Does NOT list:
+  opencog/miner (legacy symbolic baseline, the canonical reference
+  per Perception S2); pattern-index (adjacent legacy). Optional
+  edit at S3 close: C4 in §5. Do NOT enumerate stale miner forks
+  (V3-2 + V3-3 + V3-4) as individual entries.
+
+REJECTED candidates (or-adjusted from Gemini's set):
+  Gemini V3-1 [HAA-PATTERN-MINING-ALIGNMENT] — adopted as Codex's V3-1
+    [HAA-PATTERN-MINING-CARD-STALE] (Codex's framing is more specific:
+    "stale relative to Perception close-out" rather than just
+    "alignment").
+  Gemini V3-2 [MINER-FORK-STALENESS] — split into V3-2 + V3-3 + V3-4
+    by repo; the umbrella tag is too coarse since ngeiswei is a
+    different verdict from leungmanhin and singnet.
+  Gemini V3-3 [PATTERN-INDEX-DISJOINT] — adjusted to Codex's V3-5
+    [PATTERN-INDEX-SEPARATE-PARADIGM-ADJACENT] (Codex's framing is
+    more accurate: pattern-index is adjacent, not disjoint, since
+    it does have mining algorithms; the architectural difference is
+    disk-based vs RAM-based).
+  Gemini V3-4 [SGNN-BOUNDARY-LOCKED] — adopted as Codex's V3-6
+    [SGNN-NOT-PATTERN-MINING].
+  Gemini's "[ACTIVE-MAINTAINER-SCRATCH]" tag for ngeiswei
+    REJECTED via CF5.6 D3 (direction-reversed numerical claim).
+  Gemini's S3.Q12 C3 ("Add missing S1 AIRIS corrections (URL fix +
+    singnet/AIRIS-general)") REJECTED — already shipped in S1 close
+    edit batch 2026-05-06 (Reference+GitHub Repositories ID 7268
+    edited per CLAUDE.md "Non-clustered Hyperon AI Algorithms cluster
+    pilot — Source 1 (AIRIS) close (2026-05-06)" audit table line:
+    `"Reference+GitHub Repositories | 7268 | URL correction:
+    singnet/AIRIS_Public → berickcook/AIRIS_Public (paper-cited
+    canonical; singnet/AIRIS_Public returns HTTP 404). New entry
+    added: singnet/AIRIS-general (active Cook-side rewrite, MIT)."`).
+    Including in S3 batch would either create a duplicate edit or
+    accidentally revert existing work.
+
+================================================================================
+
+§4. CROSS-CLUSTER PRECIS (FOR FUTURE PILOTS)
+---------------------------------------------
+
+Cumulative Gemini drift count entering S4:
+  - Pre-HAA (5 prior pilots): 8/25 = 32%.
+  - HAA Source 1 (AIRIS): +3 = 11/28 ≈ 39%.
+  - HAA Source 2 (MetaMo): +6 (D1..D6) = 17/34 ≈ 50%.
+  - HAA Source 3 (Pattern Mining residual): +5 (D1..D5 incl. one
+    direction-reversed) = 22/39 ≈ 56%.
+
+Drift escalation thresholds:
+  - 50% midpoint crossed at S2 close (logged in S2 reconciliation
+    §4).
+  - 60% escalation threshold approaching. If S4 or S5 reconciliation
+    pushes cumulative ≥ 60%, escalate per the protocol noted in S2
+    reconciliation: "claim-only, do not adopt Gemini line/numerical
+    cites without orchestrator filesystem verification."
+  - This S3 review observed a load-bearing direction-reversed claim
+    (D3) for the first time — different in kind from off-by-N line
+    citations seen before. Recommend at S4 dispatch: explicitly
+    ask Gemini to copy-paste the exact `git rev-list --left-right
+    --count` output rather than re-stating the count, to remove
+    the most recent confabulation channel.
+
+Cross-cluster handoffs from S3 to subsequent sources:
+  - S4 (Concept Blending + Semantic Parsing): SGNN may show up
+    in NLP/semantic-parsing scope. Pre-emptive handoff: SGNN already
+    boundary-locked per V3-6; S4 brief should note "[SGNN-NOT-
+    PATTERN-MINING] confirmed at S3; S4's job is to confirm SGNN's
+    placement WITHIN the speech-act/semantic-parsing scope."
+  - S5 (NACE + AI-DSL + MOSES + MeTTa-NARS): MOSES uses pattern
+    discovery primitives that may appear adjacent to pattern mining
+    but are NOT the same paradigm. S5 brief should call out
+    [MOSES-PROGRAM-LEARNING-NOT-PATTERN-MINING] as an analog of
+    V3-6.
+
+CF5.6 protocol unchanged for S4..S5; if cumulative breaches 60%,
+escalate.
+
+================================================================================
+
+§5. CLUSTER-CLOSE EDIT BATCH PRECIS (S3 → wiki state)
+------------------------------------------------------
+
+Per cluster-pilot pattern, at S3 close the wiki-edit batch will
+execute (subject to user explicit authorization for wiki writes —
+batch composition signed off by reviewers; user owner-of-record
+confirmation pending):
+
+  C1 — REFINE Hyperon AI Algorithms+Pattern Mining (ID 4087, Draft)
+       via update_card. Add Perception cluster pilot archive pointer;
+       replace single-line "current implementation" framing with
+       symbolic/neural/perception trilateral table; add
+       [PARTIAL-FRAGMENTED-REVIVAL] for 2013 DeSTIN-FISHGRAM-PLN;
+       qualify MORK/TransWeave/WILLIAM/Symbolic-Heads claims as
+       roadmap/whitepaper-only unless separately extracted in future
+       pilots; add "What It Is Not" disambiguation block; add cross-
+       links to ID 7442 (Implementation Families+Neural Pattern
+       Mining), ID 7439 (Knowledge Representations+Sensory), ID 3090
+       (Publications+FISHGRAM Pattern Mining).
+       Pre-write WebFetch verification for any external URLs added
+       (per feedback_webfetch_verify_external_urls.md).
+
+  C2 — REFINE Publications+FISHGRAM Pattern Mining (ID 3090,
+       Markdown) via update_card. Minor wording pass: change
+       "rejuve-bio successor lineage" framing in Related Cards to
+       "related current neural mining lineage" so it cannot be read
+       as direct FISHGRAM succession. Optional, non-blocking.
+
+  C3 — OPTIONAL: CREATE Knowledge Representations+Pattern Index
+       (Draft) via create_card if user wants pattern-index documented
+       as adjacent legacy infrastructure. Alternative: add one
+       concise paragraph to ID 4087 (covered under C1) and one repo
+       entry to Reference+GitHub Repositories (covered under C4).
+       Choose ONE of these paths, not both; default to the
+       lighter-touch in-paragraph mention unless durable
+       documentation is explicitly wanted.
+
+  C4 — OPTIONAL: REFINE Reference+GitHub Repositories (ID 7268,
+       Markdown) via update_card. Add opencog/miner as legacy
+       symbolic baseline; add pattern-index as adjacent/archival.
+       Leave stale forks (leungmanhin, singnet, ngeiswei) out of
+       individual enumeration; if mentioned at all, group as
+       "OpenCog miner family stale-fork ecosystem" with one-line
+       note. WebFetch every URL immediately before write.
+
+  C5 — NO AIRIS CLEANUP IN S3. The S1 close batch (commit 65783e2,
+       2026-05-06) already shipped: Reference+GitHub Repositories
+       URL fix `singnet/AIRIS_Public` → `berickcook/AIRIS_Public`
+       and the new `singnet/AIRIS-general` entry. Gemini's S3.Q12
+       C3 was a redundancy error; ignore.
+
+Pre-write protocol (per memory + standing protocols):
+  - WebFetch all external URLs before any C1/C4 edit that
+    references GitHub repos (per feedback_webfetch_verify_external_urls.md).
+  - Verify card existence with get_card before any C3 create_card
+    (per feedback_query_all_cardtypes_in_audits.md and the
+    "already-exists" Wiki MCP Bug #4 pattern).
+  - Verify after every write with get_card.
+  - One-writer-only protocol; sequential not parallel.
+
+================================================================================
+
+§6. SOURCE-TEXT GAPS / OPEN ITEMS FROM S3
+------------------------------------------
+
+  - No S3-specific source-text gaps. S3 is residual scope; the
+    underlying Pattern Mining sources are all covered by the
+    Perception cluster pilot reconciliations.
+  - Gemini's "2026-05-01 snapshot" attribution for the rejected
+    fork-divergence numbers (D1..D3) suggests Gemini may be
+    pulling from a stale internal state rather than re-running git
+    against current local clones. Recommendation: at S4 dispatch,
+    explicitly require Gemini to copy-paste `git rev-list
+    --left-right --count` output in findings, not re-state.
+  - Card 7442 was last updated 2026-05-06T18:24:28Z — that is
+    AFTER both Codex and Gemini extracted (Codex extraction noted
+    7442 already aligned). The 18:24 timestamp may reflect the
+    parallel session activity; no conflict for S3 since 7442 is
+    not an S3 edit target. Track for orchestrator awareness.
+  - The HAA card 4087's last update 2026-04-10 is unambiguous:
+    the card has been stable since the original AGI-paper-sprint
+    work (project_agi_paper_2026_04_20.md) and predates all five
+    closed cluster pilots. C1 will be the first cluster-pilot-
+    driven revision.
+
+================================================================================
+
+§7. THREE-WAY SIGN-OFF
+----------------------
+
+Codex sign-off: PENDING (this reconciliation document is being
+                relayed for review).
+Gemini sign-off: PENDING (this reconciliation document is being
+                 relayed for review). Note: Gemini's S3 findings
+                 contain three CF5.6-rejected fork-divergence
+                 numerical claims (D1..D3) including one direction-
+                 reversed verdict tag (D3). Sign-off should
+                 explicitly acknowledge the rejection of the
+                 [ACTIVE-MAINTAINER-SCRATCH] tag for ngeiswei and
+                 the rejected stale C3 (S1 AIRIS corrections
+                 already shipped).
+Orchestrator (Claude) sign-off: 2026-05-06. Reconciliation locked
+                                pending three-way confirmation.
+                                CF5.6 verification log in §1.
+                                V3-1..V3-7 locked in §3. C1..C5
+                                locked in §5 (subject to user
+                                authorization for wiki writes).
+
+After three-way sign-off, S3 cluster-close edit batch (C1..C4 in §5,
+with C5 explicitly NOOP) proceeds with:
+  - One-writer-only protocol;
+  - Sequential-not-parallel writes;
+  - Pre-write WebFetch verification of all external URLs;
+  - Pre-write get_card existence check before any create_card;
+  - Verify-after-write get_card on every write.
+
+The S2 C1-C6 batch and the S3 C1-C4 batch can be sequenced as a
+single user-authorized wiki-write window since both are gated on the
+same project-owner authorization. Sequencing recommendation: S2
+C1-C6 first (existing reviewer sign-off), then S3 C1-C4 (this
+reconciliation pending sign-off).
+
+================================================================================
+END OF SOURCE 3 RECONCILED FINDINGS
+================================================================================

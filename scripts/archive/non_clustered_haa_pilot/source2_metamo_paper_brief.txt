@@ -1,0 +1,697 @@
+================================================================================
+NON-CLUSTERED HYPERON AI ALGORITHMS CLUSTER PILOT
+SOURCE 2 BRIEF — MetaMo (Goertzel & Lian 2025) + reference implementations
+================================================================================
+
+§0. SOURCE IDENTITY
+-------------------
+Cluster pilot:    Non-clustered Hyperon AI Algorithms
+Source number:    2 of ~5 (S1 AIRIS closed 2026-05-06; S3..S5 still pending)
+Source name:      MetaMo (Goertzel & Lian 2025) — both AGI 2025 papers +
+                   MetaMo-Python + MetaMo-Prototype + hyperon-openpsi impl
+Pilot brief date: 2026-05-06
+Orchestrator:     Claude Opus 4.7 (1M)
+Reviewers:        Codex + Gemini (cross-model triangulation)
+
+S1 reconciliation locked the cluster vocabulary
+([IMPLEMENTATION-BACKED-CORE], [PAPER-EXTENSION], [IMPLEMENTATION-BACKED],
+[IMPLEMENTATION-DIVERGENT], [PAPER-LEANING-HYBRID], [PAPER-ONLY], [ABSENT])
++ V1-1..V1-5 carry-forwards. S2 inherits this vocabulary.
+
+**S2 cluster-pilot framing (per audit_addendum_2026_05_06_published.md):**
+The Non-clustered HAA cluster's wiki cards follow the Published-parent +
++content-shell + +Foo Full Draft pattern. MetaMo state on the wiki
+(verified 2026-05-06):
+  - `Hyperon AI Algorithms+MetaMo` — Published parent (canonical anchor).
+  - `Hyperon AI Algorithms+MetaMo+content` — RichText (ID 7334) with
+    description by Goertzel & Lian-attributed text. Updated 2026-05-06.
+  - `Hyperon AI Algorithms+MetaMo+MetaMo Full` — Draft (ID 4278) with 3
+    sectioning subcards: Core Mechanisms and Formalism (7135), Historical
+    Lineage (7137), Status and Resources (7139). ALREADY-AUTHORED state
+    pre-dates this cluster pilot.
+  - `Publications+MetaMo Robust Motivational Framework` — Draft (ID 7364)
+    Markdown stub for the AGI 2025 abstract paper.
+  - `Publications+MetaMo to Open-Ended OpenPsi` — Draft (ID 7367)
+    Markdown stub for the AGI 2025 companion paper.
+
+S2 cluster-pilot scope = **AUDIT + REFINE + PROPOSE**, NOT
+create-from-scratch. Specifically:
+  (a) Audit existing `+content` (ID 7334) and 3 +MetaMo Full sectioning
+      subcards against retrieved paper findings + impl audits.
+  (b) Refine the +MetaMo Full Draft sectioning subcards if cluster-pilot
+      findings supersede their current content.
+  (c) Create a `+AI` Draft proposal child for the Published parent's
+      `+content` if corrections to the description are recommended.
+  (d) Update both Pubs Markdown stubs (3 sentence-level refinements
+      typically) with curated excerpts from extracted papers.
+  (e) Refine `Reference+GitHub Repositories` if MetaMo-Python +
+      MetaMo-Prototype + hyperon-openpsi entries need clarification
+      (note: hyperon-openpsi is in card 7268 already; MetaMo-Prototype
+      and MetaMo-Python may need entries added).
+
+Provisional cluster source plan (unchanged from S1; S3..S5 NOT YET
+LOCKED — reviewers may propose adjustments after S2 reconciliation):
+  S1 — AIRIS (Cook & Hammer 2024)                            [CLOSED]
+  S2 — MetaMo (Goertzel & Lian 2025)                         [THIS BRIEF]
+  S3 — Pattern Mining (cross-cluster verification + residual scope only;
+       per S1 reconciliation §4 narrowing decision)
+  S4 — Concept Blending + Semantic Parsing
+  S5 — NACE + AI-DSL + MOSES + MeTTa-NARS + MeTTa-Motto sweep
+       (per audit-addendum 2026-05-06: all 4 + MeTTa-Motto are existing
+        Published parents; cluster-pilot work is audit-refine-propose)
+
+
+§1. SCOPE AND DELIVERABLE
+-------------------------
+S2 is a paper read + reference-codebase audit with a specific orientation:
+establish whether the formal MetaMo theory in Goertzel & Lian 2025 has
+implementation-backing in MetaMo-Python / MetaMo-Prototype / hyperon-openpsi,
+or whether the AGI 2025 papers are PAPER-LEANING-HYBRID with
+partial-implementation, or PAPER-ONLY where the formalism predates working
+code.
+
+A SECONDARY focus is the boundary with the closed OpenPsi cluster pilot
+2026-04-28: that pilot's V4-1 finding documented the OpenPsi default-selector
+STI 2016-05/2016-11 9-event lifecycle as engineering-surrogate-not-strict-
+literal. MetaMo papers position MetaMo-as-OpenPsi-extension; reviewers must
+verify whether MetaMo refines, extends, or supersedes the OpenPsi findings.
+
+Single-deliverable: findings_codex.txt / findings_gemini.txt addressing the
+S2.Q* questions in §5 below. Plain text. Use page/section citations for
+paper claims, file:line for code claims, full-or-unambiguous SHA refs for
+git claims. Same discipline as S1.
+
+
+§2. ARTIFACTS TO READ
+---------------------
+
+PRIMARY (must read in full):
+  publication_texts/mattermost_papers/AGI_25_METAMO_One.json
+    Lian, R., Goertzel, B. (2025). "MetaMo: A Robust Motivational
+    Framework for Open-Ended AGI." AGI 2025.
+    Paper-1 of 2; the abstract theory paper (pseudo-bimonad formalism).
+  publication_texts/mattermost_papers/MetaMo_Two.json
+    Lian, R., Goertzel, B. (2025). "Embodying Abstract Motivational
+    Principles in Concrete AGI Systems: From MetaMo to Open-Ended OpenPsi."
+    AGI 2025.
+    Paper-2 of 2; the concrete companion paper (MetaMo→OpenPsi+MAGUS bridge).
+    NOTE: MetaMo_Two.json and MetaMo_Two__1_.json may be duplicates. Use
+    MetaMo_Two.json as canonical; reviewers verify they are identical.
+
+CROSS-REFERENCE (read targeted sections only when answering specific S2.Q*):
+  E:\GitHub\hyperon reference\MetaMo-Python                  (12 commits)
+    HEAD 3ec409bd4a8b0732b8aeae5f07828cf81c165557
+    Last commit: Nahom Senay <70108056+Nahom32@users.noreply.github.com>
+                 2026-03-18T12:32:07+03:00 "Update README to clarify virtual
+                 environment usage"
+    Origin: https://github.com/iCog-Labs-Dev/MetaMo-Python.git
+    Per Reference+GitHub Repositories: "Category theory motivational
+    framework reference implementation."
+
+  E:\GitHub\hyperon reference\MetaMo-Prototype               (24 commits)
+    HEAD 3b6b25c3c6d898c33bb79df7a05f80bc7d85bf14
+    Last commit: dagemawinegash <dagemawibekele04@gmail.com>
+                 2026-03-06T16:06:58+03:00 "split long file into 3 small
+                 files for better code orgainzation and readability — split
+                 engine to engine_routing, engine_scoring and engine_state"
+    Origin: https://github.com/glicerico/MetaMo-Prototype.git
+    Upstream: https://github.com/dagemawinegash/MetaMo-Prototype.git
+    Note: NOT currently in Reference+GitHub Repositories card; cluster-
+    close action item is to add it.
+
+  E:\GitHub\hyperon reference\hyperon-openpsi                (575 commits)
+    HEAD 3b356c5e51d4490b587351721a8cd4187da5817a
+    Last commit: Nahom Senay 2026-02-28T12:03:48+03:00
+                 "Merge pull request #115 from Mahider-n/ts-ucb-action-selection"
+    Origin: https://github.com/iCog-Labs-Dev/hyperon-openpsi.git
+    Per +content card 7334: this is the GitHub link the existing wiki
+    description points to as the MetaMo-impl repo. NOTE: this is the
+    OpenPsi+MetaMo COMBINED codebase, not MetaMo-only.
+
+  E:\GitHub\hyperon reference\hyperon-openpsi-glicerico      (forked branch)
+  E:\GitHub\hyperon reference\hyperon-openpsi-zariuq         (Zar's fork)
+    Boundary repos. Read targeted only if MetaMo-related branches found.
+
+ADJACENT (boundary checks; read as needed):
+  publication_texts/mattermost_papers/Architectural_Synthesis_Roadmap_MetaMo_0_5__5_.json
+    "Architectural Synthesis Roadmap MetaMo 0.5 (5)" — internal Goertzel
+    roadmap doc. Treat as design-intent / planning material, not authority
+    on MetaMo theory. Use only for understanding integration roadmap.
+
+  publication_texts/mattermost_papers/SubRep_Minecraft_AIRIS_v2.json
+    Goertzel 2025-09 SubRep+AIRIS+MetaMo Minecraft paper. Already used as
+    boundary source in S1. §4 of that paper attributes a categorial
+    formalism to MetaMo. Per S1 V1-2: this is a Hyperon-side reframing,
+    not necessarily faithful to Goertzel & Lian 2025. S2 reviewers must
+    verify whether SubRep paper §4 MetaMo description matches the Lian &
+    Goertzel 2025 formalism.
+
+  Closed cluster-pilot artifacts:
+    scripts/archive/openpsi_pilot/source3_*/findings_reconciled_crossmodel.txt
+    scripts/archive/openpsi_pilot/source4_*/findings_reconciled_crossmodel.txt
+    Use V4-1 (9-event lifecycle) + V4-2 (bidirectional fork-divergence) +
+    V2-1 (codebase-staleness corollary) to bound MetaMo-extends-OpenPsi
+    claims.
+
+WIKI CARDS (read at orchestrator's request only; cluster-close edit
+targets):
+  - Hyperon AI Algorithms+MetaMo (Published parent)
+  - Hyperon AI Algorithms+MetaMo+content (RichText shell, ID 7334)
+  - Hyperon AI Algorithms+MetaMo+MetaMo Full (Draft, ID 4278)
+  - Hyperon AI Algorithms+MetaMo+MetaMo Full+Core Mechanisms and Formalism
+    (RichText, ID 7135)
+  - Hyperon AI Algorithms+MetaMo+MetaMo Full+Historical Lineage (RichText,
+    ID 7137)
+  - Hyperon AI Algorithms+MetaMo+MetaMo Full+Status and Resources (RichText,
+    ID 7139)
+  - Publications+MetaMo Robust Motivational Framework (Draft, ID 7364)
+  - Publications+MetaMo to Open-Ended OpenPsi (Draft, ID 7367)
+  - Reference+GitHub Repositories (ID 7268)
+
+
+§3. ORCHESTRATOR-PRE-POPULATED CODEBASE FACTS
+----------------------------------------------
+Per `feedback_git_history_in_brief.md`: orchestrator pre-populates commits +
+remotes + branches + last-update + author hints. Reviewers should not
+re-derive routine history unless load-bearing; per CF5.6 + the standing
+attribution-verification protocol, reviewers MUST re-run git/WebFetch
+verification for any disputed identity claim.
+
+§3.A — Repository inventory and ownership
+
+  iCog-Labs-Dev/MetaMo-Python:
+    Origin: https://github.com/iCog-Labs-Dev/MetaMo-Python.git
+    HEAD (full SHA): 3ec409bd4a8b0732b8aeae5f07828cf81c165557
+    HEAD author:     Nahom Senay (iCog-Labs-Dev contributor; not Lian
+                     directly; not Goertzel directly)
+    HEAD date:       2026-03-18T12:32:07+03:00
+    HEAD message:    "Update README to clarify virtual environment usage"
+    Total commits:   12.
+    Reference+GitHub Repositories (ID 7268) listing: "Category theory
+    motivational framework reference implementation." Active.
+
+  glicerico/MetaMo-Prototype:
+    Origin: https://github.com/glicerico/MetaMo-Prototype.git
+    Upstream: https://github.com/dagemawinegash/MetaMo-Prototype.git
+    HEAD (full SHA): 3b6b25c3c6d898c33bb79df7a05f80bc7d85bf14
+    HEAD author:     dagemawinegash (Dagemawi Bekele)
+    HEAD date:       2026-03-06T16:06:58+03:00
+    HEAD message:    "split long file into 3 small files for better code
+                     orgainzation and readability — split engine to
+                     engine_routing, engine_scoring and engine_state"
+    Total commits:   24.
+    NOT currently in Reference+GitHub Repositories. Reviewer assessment
+    required: is this a duplicate of MetaMo-Python, an earlier prototype,
+    or a parallel-development branch? glicerico fork suggests Andres
+    Suarez Madrigal (glicerico) involvement.
+
+  iCog-Labs-Dev/hyperon-openpsi:
+    Origin: https://github.com/iCog-Labs-Dev/hyperon-openpsi.git
+    HEAD (full SHA): 3b356c5e51d4490b587351721a8cd4187da5817a
+    HEAD author:     Nahom Senay (iCog-Labs-Dev contributor)
+    HEAD date:       2026-02-28T12:03:48+03:00
+    HEAD message:    "Merge pull request #115 from Mahider-n/ts-ucb-
+                     action-selection"
+    Total commits:   575 (substantial; OpenPsi+MetaMo combined codebase).
+    Reference+GitHub Repositories (ID 7268) listing: "MetaMo/OpenPsi
+    motivational framework. Active."
+    Per +content card 7334: this is the wiki-cited GitHub link for MetaMo
+    impl. Reviewers must clarify the relationship: is hyperon-openpsi the
+    primary MetaMo impl (MetaMo-Python being a smaller reference), or are
+    they parallel?
+
+  hyperon-openpsi-glicerico, hyperon-openpsi-zariuq:
+    Branches/forks of hyperon-openpsi. Boundary repos. Read targeted only
+    if MetaMo-related branches found.
+
+§3.B — File-existence assertions (per CF5.6 verification protocol from
+Perception cluster pilot 2026-05-01):
+  All three primary repos verified to exist on disk; full SHAs above match
+  `git rev-parse HEAD` output 2026-05-06.
+
+§3.C — KEY OPEN QUESTION FOR REVIEWERS
+
+The wiki +content card 7334 currently says: *"GitHub: hyperon-openpsi"* —
+positioning hyperon-openpsi as THE MetaMo impl. But the +MetaMo Full Draft
+(ID 4278) Status section says: *"A Python reference implementation exists
+(MetaMo-Python). The predecessor OpenPsi framework is operational in
+hyperon-openpsi."* — positioning MetaMo-Python as primary and hyperon-
+openpsi as the predecessor OpenPsi framework.
+
+These two existing wiki claims appear to CONTRADICT each other. Reviewers
+must verify against the actual code:
+  - What does MetaMo-Python implement vs hyperon-openpsi?
+  - Is MetaMo-Python a stub / partial / full reference / experimental
+    prototype?
+  - What's the role of MetaMo-Prototype (24 commits, glicerico)?
+
+Verdict at S2 close should pick a coherent framing across +content + Full
+Draft Status subcard.
+
+
+§4. ORCHESTRATOR-PRE-POPULATED PAPER FINDINGS (verify, do not relitigate)
+-------------------------------------------------------------------------
+The orchestrator has read both AGI 2025 papers in full (paper-1
+AGI_25_METAMO_One.json, ~4989 words; paper-2 MetaMo_Two.json, ~3992
+words). The following paper-internal facts are documented for reviewers
+to use as reference; reviewers may challenge any if they disagree, but
+should not need to re-extract the JSON text for these claims.
+
+Page references are to paper structure (§/p.) since both archives are
+JSON-extracted; verbatim quotes preserved.
+
+P1. Paper-1 title: "MetaMo: A Robust Motivational Framework for
+    Open-Ended AGI."
+
+P2. Paper-2 title: "Embodying Abstract Motivational Principles in
+    Concrete AGI Systems: From MetaMo to Open-Ended OpenPsi."
+
+P3. Authorship — RESOLVED:
+    Paper-1 author block: "Ben Goertzel¹,² and Ruiting Lian¹"
+       ¹ SingularityNET Foundation
+       ² TrueAGI Inc.   ben@singularitynet.io
+    Paper-2 author block: "Ben Goertzel¹,² and Ruiting Lian¹" (identical)
+    **Goertzel is FIRST AUTHOR on both papers.**
+    Wiki conflict resolution: Pubs 7364 + 7367 are CORRECT (Goertzel,
+    Lian); +content shell ID 7334 is WRONG ("Ruiting Lian, Ben Goertzel"
+    is reversed). This is the V2-X carry-forward correction needed for
+    +AI proposal child.
+
+P4. Year: 2025; Venue: AGI-25 (25th International Conference on
+    Artificial General Intelligence). Paper-2 ref [3] cites paper-1 as
+    "submitted to AGI-25" — confirmed pre-publication state at the time
+    paper-2 was finalized.
+
+P5. PSEUDONYM PLACEHOLDERS (NORMAL DOUBLE-BLIND-REVIEW STATE):
+    - Paper-1 ref [6] cites paper-2 as: "Peeps, T.S.: From metamo to
+      openpsi: Embodying abstract motivational principles in concrete
+      agi systems. TBD (2025)" — "T.S. Peeps" is a placeholder.
+    - Paper-2 ref [3] cites paper-1 as: "Body, N.: Metamo: A robust
+      motivational framework for open-ended agi. AGI-25 (2025),
+      submitted" — "N. Body" is a placeholder.
+    Both papers are pre-publication double-blind-review submissions; the
+    placeholder authorship reflects review anonymization. Paper bodies
+    show real authors (P3). Reviewers should NOT take "Peeps" or "Body"
+    as actual names; flag if the wiki ever propagates these.
+
+P6. Paper-1 abstract: "We present MetaMo, a unified formal framework
+    for AGI motivational systems, combining category theory, functional
+    analysis and topology to support open-ended agents that self-modify
+    and evolve their own goals and drives. A sequel paper shows how
+    MetaMo maps onto concrete architectures like OpenPsi and MAGUS.
+    MetaMo centers on a composite appraisal-then-decision operator F
+    that carries both comonad (appraisal) and monad (decision)
+    structure – a pseudo-bimonad."
+
+P7. Categorial state model (paper-1 §2):
+    - Motivational state X = G × M in category C.
+    - G = (g₁, ..., g_P) — vector of goal intensities.
+    - M = (μ₁, ..., μ_K) — vector of modulator parameter values
+      (valence, arousal, ethical vigilance, social drive, energy level,
+      safety margin, etc.).
+    - Comonad (Ψ, ε, δ) for appraisal: updates affect/modulators via
+      Ψ(X) → X.
+    - Monad (D, η, μ) for decision: scores/selects goals via X → D(X).
+    - Lax distributive law λ_X : Ψ(D(X)) ⇒ D(Ψ(X)) — "feel then choose"
+      vs "choose then feel" differ slightly but in controlled way.
+    - F = D ∘ Ψ inherits both structures (pseudo-bimonad).
+    - Motivational coalgebra α : X → F(X) governs one full cycle.
+
+P8. Five design principles — VERIFIED IN PAPER-1, ALL FIVE PRESENT.
+    Paper-1 abstract enumeration:
+    (1) Modular Appraisal-Decision Interface (lax distributive law
+        making "feel-then-choose" ≈ "choose-then-feel"). §3.1.
+    (2) Reciprocal State Simulation (functor T mapping A's state to B's,
+        natural transformation φ_X). §3.2.
+    (3) Parallel Motivational Compositionality (lax-monoidal structure
+        F(X₁) ⊗ F(X₂) → F(X₁ ⊗ X₂)). §3.3.
+    (4) Homeostatic Drive Stability (boundary-driven contractivity:
+        d(F(x), F(y)) ≤ c·d(x,y) + ϵ on boundary band B_η of region R).
+        §4.1.
+    (5) Incremental Objective Embodiment (gradual update F_α(x) =
+        (1-α)x + α σ(τ(x))). §4.2 + §5.
+    Note paper-1 introduction enumeration uses different ordering (1
+    Modular A-D Interface; 2 Homeostatic Stability; 3 Reciprocal State
+    Simulation; 4 Motivational Compositionality; 5 Incremental Objective
+    Embodiment) — abstract list is canonical.
+    Resolves S1.V1-2 concern: principles ARE paper-text from Lian &
+    Goertzel 2025, NOT only a Goertzel 2025-09 SubRep paper reframing.
+    The Goertzel 2025-09 SubRep §4 attribution is FAITHFUL to paper-1
+    on this point (no V2-X drift required for principles).
+
+P9. References from paper-1:
+    [1] Bach, J. (2009). Principles of Synthetic Intelligence.
+    [2] Cai, Z., Goertzel, B., Zhou, C., Zhang, Y., Jiang, M., Yu, G.
+        (2011). Dynamics of a computational affective model inspired
+        by dorner's psi theory. Cognitive Systems Research.
+    [3] Goertzel, B. (2012). When should two minds be considered versions
+        of one another? IJMC 4(1), 177-185. (Self-continuity reference.)
+    [4] Goertzel, B. (2024). Metagoals endowing self-modifying AGI
+        systems with goal stability or moderated goal evolution.
+        arxiv:2412.16559. (Boundary source, also local at
+        publication_texts/ingest/Metagoals_Endowing_Self-Modifying_*.)
+    [5] Goertzel, B. et al. (2023). OpenCog Hyperon framework.
+        arxiv:2310.18318.
+    [6] Peeps, T.S. (2025) [placeholder for Goertzel & Lian 2025
+        companion paper, paper-2 of this S2 brief].
+
+P10. Paper-1 OpenPsi positioning (§1.1, "Brief Comparison to Alternatives"):
+     "Compared to OpenPsi [1][2] which was leveraged in previous versions
+     of OpenCog, MetaMo also sits one level higher as an abstract design
+     language. OpenPsi offers a detailed set of dynamic variables and
+     appraisal algorithms... we show in the sequel [6] that OpenPsi's
+     procedures and parameters can be slotted into the MetaMo framework
+     in a coherent and orderly way. This shows MetaMo both subsumes
+     (certain) concrete approaches to AGI motivation and provides a
+     roadmap for extending them with formally verified stability,
+     scalability, and social cooperation properties."
+     **VERDICT: MetaMo SUBSUMES + EXTENDS OpenPsi; does NOT replace it.**
+
+P11. Paper-2 abstract: "We introduce MetaMo, a category-theory-based
+     framework... MetaMo integrates a comonadic appraisal process with
+     a decision monad, forming a pseudo-bimonad structure that guides
+     multi-objective reasoning and context-sensitive modulation of
+     goals... We demonstrate the specialization of MetaMo in the
+     Hyperon AGI system, where the agent's goals are organized into a
+     hierarchical structure in line with the MAGUS motivational theory,
+     with top-level meta-goals focused on the two principle drives of
+     Open-Ended Intelligence theory, individuation (self-preservation)
+     and transcendence (self-expansion)."
+
+P12. Paper-2 §2 OpenPsi formalization:
+     - "OpenPsi is a comonadic implementation of Bach's MicroPsi theory
+       [2], inspired by Dorner's PSI theory [5]" — explicitly framing
+       OpenPsi as the comonad Ψ.
+     - **Six OpenPsi modulators**: M = (valence, arousal, approach,
+       resolution, threshold, securing). Verbatim from paper-2 §2.
+     - Six "parallel mind agents" over AtomSpace: PerceptionUpdater,
+       DemandUpdater, ModulatorUpdater, FeelingUpdater, ActionSelector,
+       Monitor.
+     - **CROSS-CLUSTER BOUNDARY CHECK (S2.Q4):** the V4-1 9-event
+       OpenPsi default-selector lifecycle from closed OpenPsi cluster
+       pilot is consistent with this paper-2 framing (default-selector ≈
+       ActionSelector mind-agent). Paper-2 does NOT supersede V4-1; it
+       elevates the operational OpenPsi to the categorial Ψ comonad
+       slot. V4-1 lifecycle is preserved as the implementation-side
+       reality.
+
+P13. Paper-2 §2 MAGUS attribution:
+     - "MAGUS (Modular Adaptive Goal and Utility System) is a
+       conceptual motivational theory proposed for the next phases of
+       Hyperon development [8]"
+     - Reference [8]: "Mikeda, A. Modular adaptive goal and utility
+       system (magus). https://deepfunding.ai/proposal/modular-
+       adaptive-goal-and-utility-system-magus/ (2024). Accessed:
+       2025-05-14."
+     **VERDICT: MAGUS is Mikeda 2024 (SingularityNET deepfunding
+     proposal), NOT a Goertzel/Lian invention.** Load-bearing for
+     §S2.Q11 cluster-boundary check. Wiki +content shell roadmap
+     mentions "Implement OpenPsi (appraisal comonad) and MAGUS
+     (decision monad) with dual overgoals" — accurate. The wiki should
+     NOT mistakenly attribute MAGUS to Goertzel/Lian on the MetaMo
+     card.
+
+P14. Paper-2 §2 Weaver Open-Ended Intelligence theory:
+     - Weinbaum & Veitas (2015) "Open ended intelligence: The
+       individuation of intelligent agents" — paper-2 ref [13].
+     - Provides the dual-overgoals structure: individuation (g_over^Ind,
+       self-preservation) + self-transcendence (g_over^Trans,
+       self-expansion).
+     - Paper-2 §2 explicitly: "we synthesize MAGUS and OEI via splitting
+       MAGUS's overgoal into two overgoals focused on individuation and
+       self-transcendence."
+
+P15. Paper-2 §3 operational equations for Hyperon embedding:
+     - G = (g_over^Ind, g_over^Trans, g_1, ..., g_P, a_1, ..., a_Q)
+     - M = (valence, arousal, approach, resolution, threshold,
+       securing) — same six OpenPsi modulators.
+     - Appraisal as comonad: Ψ((G,M), s) = (G, M') where M'_k depends
+       on stimulus novelty, conduciveness, risk; g_over^Ind scales up
+       M'.securing + M'.threshold; g_over^Trans scales up M'.arousal +
+       M'.approach.
+     - Decision as monad: D produces (G + ΔG, M) by scoring each g_i:
+       ΔG_i = f(g_i, M_k, MIC) - λ_Ind g_over^Ind + λ_Trans g_over^Trans.
+     - Safe region R = {(G,M) | g_over^Ind ≥ θ_safe ∧ ‖G‖ ≤ G_max}.
+     - Incremental update: x_{t+1} = (1-α)x_t + α x*, α = α_0(1 -
+       g_over^Ind) + β_0 g_over^Trans.
+     - Implementation reference: NOT cited explicitly in paper-2 text.
+       No file:line, no repo URL. The paper presents equations but does
+       not point to implementation code. **Reviewers must verify
+       implementation backing in MetaMo-Python / hyperon-openpsi
+       independently per §S2.Q1.**
+
+P16. Paper-2 §4 (Curious Research Assistant application) +
+     §5 (PLN Inference Control application):
+     Both are equation-walkthrough demonstrations of the Hyperon
+     embedding. They use Hyperon-specific goal vectors:
+     §4: G = (g_over^Ind, g_over^Trans, g_help, g_curio, g_novel,
+              g_self, g_ethic, g_soc).
+     §5: r = inference rule, treated as stimulus to OpenPsi appraisal;
+         g_over^Ind raises threshold/securing for self-preservation;
+         g_over^Trans raises arousal/approach for adaptive growth;
+         "Top-k inferences are executed; others are pruned or deferred."
+     Neither §4 nor §5 cites code; both are paper-only walkthroughs.
+
+P17. Paper-2 references with "[?]" placeholders:
+     Paper-2 has multiple "[?]" placeholders (e.g. "AtomSpace, a
+     hypergraph database where both nodes and links may contain
+     embedded subgraphs [?]") — these are bibliography-rendering errors
+     in the source PDF, NOT missing citations in the literature. The
+     missing references likely point to OpenCog Hyperon (paper-2 ref
+     [6]) or related Hyperon docs. Reviewers should NOT propagate "[?]"
+     into wiki-facing text.
+
+P18. Paper-1 references the Goertzel 2024 Metagoals paper [4]:
+     "arxiv.org/abs/2412.16559" — Metagoals_Endowing_Self-Modifying_*
+     local file confirmed. This is a boundary source for §S2.Q10
+     (relationship between MetaMo's Homeostatic Drive Stability and
+     Goertzel 2024 Metagoals approach). Read targeted only if
+     reviewers' answers to S2.Q10 require it.
+
+P19. Boundary with Goertzel 2025-09 SubRep paper (S1 V1-2 cross-check):
+     S1 reconciliation flagged Goertzel 2025-09 SubRep paper §4's MetaMo
+     description as candidate-extension/reframing. Verification result:
+     - SubRep §4 6-tuple AIRIS rule structure ⟨pre, act, post, p_r,
+       c_r, g_r⟩ is NOT in either MetaMo paper — it's an AIRIS-side
+       reframing introduced by SubRep paper, not MetaMo source spec.
+       (S1 V1-2 verdict reaffirmed.)
+     - SubRep §4 MetaMo description (X = G × M, F = D ∘ Ψ pseudo-
+       bimonad, lax distributive law, five principles) IS faithful to
+       paper-1 + paper-2. NO V2-X drift required for these claims.
+     - SubRep §4 MetaMo "tripartite state ⟨facts(x), reals(x),
+       focus(x)⟩" — this is described in SubRep §2.1 as an AIRIS
+       state representation, NOT a MetaMo claim. S1 V1-2 already
+       captures this.
+
+The orchestrator's pre-populated findings are starting points, not final
+reviewer verdicts. Reviewers should produce their own S2.Q* extractions
+and may challenge any P-level claim with paper evidence.
+
+
+§5. PER-QUESTION TASKS (S2.Q1 .. S2.Q12)
+-----------------------------------------
+Reviewers address each question with the cluster-pilot vocabulary from S1:
+PAPER-ONLY / IMPLEMENTATION-BACKED / IMPLEMENTATION-BACKED-CORE / PAPER-
+LEANING-HYBRID / PAPER-EXTENSION / IMPLEMENTATION-DIVERGENT / ABSENT.
+
+S2.Q1: PSEUDO-BIMONAD FORMALISM PAPER-VS-IMPLEMENTATION ALIGNMENT.
+  Per P8 + P9: the MetaMo papers are claimed to formalize motivational
+  state as X = G × M with composite F = D ∘ Ψ pseudo-bimonad structure
+  and lax distributive law. Verify against Goertzel & Lian 2025 paper-1
+  text (AGI_25_METAMO_One.json). Then verify against MetaMo-Python +
+  hyperon-openpsi: does the code implement this categorial structure
+  (e.g., explicit Ψ, D, λ_X functions/classes)? PAPER-ONLY / IMPL-BACKED /
+  PAPER-LEANING-HYBRID / PAPER-EXTENSION / ABSENT.
+
+S2.Q2: AUTHORSHIP ORDER + LIAN/GOERTZEL ROLE.
+  Existing wiki cards conflict on Lian-vs-Goertzel-first ordering (Pubs
+  cards: Goertzel, Lian; +content shell: Lian, Goertzel). Verify against
+  actual paper text. Cite paper p.1 verbatim. Cluster-close action: align
+  wiki wording.
+
+S2.Q3: META-MO-PYTHON vs META-MO-PROTOTYPE vs HYPERON-OPENPSI roles.
+  Per §3.C open question. Each reviewer reads the README + top-level
+  source files in MetaMo-Python (12 commits) + MetaMo-Prototype (24
+  commits) + hyperon-openpsi (575 commits) and produces a one-paragraph
+  characterization of each repo's role + relationship to the other two.
+  Cluster-close action: refine the +content shell to coherently describe
+  the impl landscape.
+
+S2.Q4: METAMO-EXTENDS-OPENPSI BOUNDARY (LOAD-BEARING for cross-cluster
+  consistency with closed OpenPsi cluster pilot 2026-04-28).
+  The OpenPsi cluster pilot V4-1 finding documented OpenPsi default-
+  selector STI 2016-05/2016-11 9-event lifecycle as engineering-surrogate-
+  not-strict-literal port of the OpenPsi paper math. Does Goertzel & Lian
+  2025 paper-2 (MetaMo_Two.json — "From MetaMo to Open-Ended OpenPsi")
+  explicitly extend the existing OpenPsi findings? Or does it propose a
+  REPLACEMENT that supersedes the OpenPsi V4-1 lifecycle? Verify in paper
+  text; cite verbatim. Then verify in hyperon-openpsi code: does the
+  current HEAD (3b356c5...) reflect MetaMo-derived changes, or is it
+  still the V4-1 lifecycle code?
+
+S2.Q5: SUBREP 2025-09 BOUNDARY (analog of S1.Q4 V1-2).
+  Per S1.V1-2: Goertzel 2025-09 SubRep paper §4 describes MetaMo with
+  bimonadic + 5-design-principles structure. Reviewers must compare
+  Goertzel 2025-09 §4 against Goertzel & Lian 2025 paper-1 text. Are
+  they consistent? Or is Goertzel 2025-09 §4 a Goertzel-side reframing
+  that extends/distorts Goertzel & Lian 2025? Lock V2-X carry-forward
+  if mismatch found. Recall the S1 V1-2 finding: SubRep's claims about
+  AIRIS were extension/reframing not source spec — same caveat may
+  apply for MetaMo.
+
+S2.Q6: FIVE DESIGN PRINCIPLES VERIFICATION.
+  Per P9: five principles claimed in Goertzel 2025-09 §4. Verify each is
+  paper-text in Goertzel & Lian 2025 paper-1 (NOT just Goertzel 2025-09
+  §4 attribution):
+  (1) Modular Appraisal-Decision Interface (lax distributive law guarantees
+      "feel-then-choose" ≈ "choose-then-feel")
+  (2) Reciprocal State Simulation (T : X_A → X_B commuting with motivational
+      updates)
+  (3) Parallel Motivational Compositionality (lax-monoidal structure
+      F(X_1) ⊗ F(X_2) → F(X_1 ⊗ X_2))
+  (4) Homeostatic Drive Stability (contractive bound near desirable region
+      ∂R)
+  (5) Incremental Objective Embodiment (gradual updates x_{t+1} =
+      (1-α)x_t + α σ_τ(x_t))
+  For each, mark PAPER-ONLY / IMPLEMENTATION-BACKED / ABSENT.
+
+S2.Q7: WIKI +CONTENT (ID 7334) AUDIT.
+  Read existing +content. Identify any claims that conflict with retrieved
+  paper findings. List as P_n-corrections. Output is the +AI proposal child
+  draft content.
+
+S2.Q8: WIKI +METAMO FULL DRAFT SUBCARDS AUDIT.
+  Read the 3 sectioning subcards:
+  - Core Mechanisms and Formalism (ID 7135, last updated 2026-04-09)
+  - Historical Lineage (ID 7137)
+  - Status and Resources (ID 7139)
+  Identify which content needs refinement vs which can stand. Per S2.Q3
+  the Status and Resources subcard's Python-impl claim must reconcile
+  with §3.C open question.
+
+S2.Q9: VERDICT FOR METAMO AS A WHOLE.
+  Pick one: PAPER-ONLY / IMPLEMENTATION-BACKED / IMPLEMENTATION-BACKED-CORE /
+  PAPER-LEANING-HYBRID / PAPER-EXTENSION-PARTIAL-IMPL / IMPLEMENTATION-
+  DIVERGENT. Justify with the strongest single piece of evidence per
+  direction.
+
+S2.Q10: CROSS-CLUSTER BOUNDARY FINDINGS.
+  Any V2-X protocols or cluster-bridge findings that should be recorded
+  as cluster-pilot carry-forwards? In particular:
+    - Does MetaMo's bimonad relate to AIRIS State Confidence (S1) — are
+      they orthogonal mechanisms or do they share substrate?
+    - Does MetaMo's contractive Homeostatic Drive Stability relate to
+      ECAN's STI/LTI dynamics — are they competing or complementary?
+    - Does MetaMo's Reciprocal State Simulation relate to PLN truth
+      values?
+    - Does MetaMo embed in AtomSpace as the +content roadmap claims?
+      Verify against MetaMo-Python + hyperon-openpsi — is there
+      atomspace-runtime binding code, or is it still a roadmap item?
+  Lock anything load-bearing as V2-X.
+
+S2.Q11: METAMO ↔ MAGUS BOUNDARY.
+  Per +content 7334 roadmap and Pubs 7367: MetaMo decomposes into
+  "OpenPsi (appraisal comonad) and MAGUS (decision monad)." MAGUS is a
+  user-owned framework (Ecosystem+Magi+Magi Full+MAGUS Framework).
+  Reviewers verify: does Goertzel & Lian 2025 paper-2 explicitly identify
+  MAGUS as the decision-monad component? Or is this a wiki-side
+  extrapolation? Cluster-close action: clarify the boundary.
+
+S2.Q12: VOCABULARY USE FOR S3..S5.
+  Confirm or refine the S1-locked vocabulary for use in S3..S5. Propose
+  any additions if MetaMo's hybrid paper-formal/code-partial state requires
+  a new label not yet covered.
+
+
+§6. STANDING PROTOCOLS (CARRY-FORWARD FROM PRIOR PILOTS)
+---------------------------------------------------------
+Same as S1 §6 plus AIRIS S1 V1-1..V1-5 carry-forwards:
+
+  CF5.6 (Perception 2026-05-01): Verify file-existence claims via direct
+        filesystem check before adoption.
+
+  feedback_pickaxe_for_dead_code: For any "never implemented" claim, use
+        `git log --all -S '<token>'`; current-HEAD grep is not sufficient.
+        hyperon-openpsi has 575 commits — substantial history; do NOT
+        assert "never" from HEAD-only inspection.
+
+  feedback_attribution_verify_against_git: Cross-check author + identity-
+        between-artifacts claims against source/git.
+
+  feedback_bidirectional_fork_divergence: For hyperon-openpsi vs
+        hyperon-openpsi-glicerico vs hyperon-openpsi-zariuq comparison,
+        run git log A..B AND B..A AND grep both directions.
+
+  feedback_webfetch_verify_external_urls (NEW, locked 2026-05-06):
+        Any new external URLs added to wiki must be WebFetch-verified
+        before edit. Citation in S2 cluster-close commit notes.
+
+  feedback_query_all_cardtypes_in_audits (NEW, locked 2026-05-06):
+        Already applied at audit-addendum stage. S2's cluster-close
+        editing pattern follows the Audit + Refine + Propose model not
+        the create-from-scratch model.
+
+  V1-1..V1-5 (AIRIS S1 carry-forwards):
+        - V1-1 [AIRIS-REPO-MISATTRIBUTION]: not directly applicable to
+          MetaMo, but exemplar for V2-X repo-misattribution checks if
+          discrepancies surface.
+        - V1-2 [SUBREP-AIRIS-EXTENSION-NOT-SOURCE-SPEC]: directly
+          applicable. Goertzel 2025-09 §4's MetaMo description may be
+          extension/reframing relative to Goertzel & Lian 2025; lock V2-X
+          if so.
+        - V1-3..V1-5: AIRIS-specific boundary claims, not directly
+          applicable.
+
+  Vocabulary: PAPER-ONLY / IMPLEMENTATION-BACKED / IMPLEMENTATION-BACKED-
+        CORE / PAPER-LEANING-HYBRID / PAPER-EXTENSION / IMPLEMENTATION-
+        DIVERGENT / ABSENT.
+
+
+§7. NON-GOALS (DO NOT EXTRACT)
+------------------------------
+- Do NOT re-audit the closed OpenPsi cluster pilot 2026-04-28. V4-1 9-event
+  lifecycle is locked. S2 may CITE V4-1 to bound MetaMo-extends-OpenPsi
+  claims, but does NOT re-extract OpenPsi sources.
+- Do NOT extract from Architectural_Synthesis_Roadmap_MetaMo_0_5_5.json
+  exhaustively. Use only as design-intent context for §S2.Q11 MAGUS
+  boundary.
+- Do NOT pre-empt S3 (Pattern Mining) extraction. MetaMo's relationship
+  to pattern mining (none expected) is bounded as a §S2.Q10 cross-cluster
+  note, not a separate extraction.
+- Do NOT propose wiki edits beyond what S2.Q7 + S2.Q8 ask for. The
+  cluster-close edit batch is the orchestrator's role per CLAUDE.md
+  wiki-edit protocol (one writer only).
+
+
+§8. ORCHESTRATOR PRE-EXTRACTION CHECKLIST
+-----------------------------------------
+Before reviewers begin extraction, orchestrator must complete:
+  [✓] §3 git history populated with full HEAD SHAs.
+  [✓] All 3 papers (METAMO One + Two + Roadmap) confirmed local at
+       publication_texts/mattermost_papers/. No external retrieval needed.
+  [✓] Read AGI_25_METAMO_One.json + MetaMo_Two.json in full and pre-
+       populate §4 with verbatim P-claims (P1..P19, 2026-05-06).
+  [✓] Resolve P3 authorship-ordering ambiguity against paper text
+       (RESOLVED: Goertzel first, Lian second; existing wiki +content
+       7334 has it reversed and will need correction at S2 close).
+  [✓] §3.C open question (MetaMo-Python vs hyperon-openpsi roles)
+       framed and left for reviewers per S2.Q3 (existing wiki cards
+       contradict each other; reviewers verify against actual code).
+  [✓] Sign off on §3 git history (populated; reviewers may verify by
+       re-running the documented git commands).
+
+Once orchestrator signals "§4 ready, extraction may begin," reviewers
+may begin per-question extraction in parallel (Codex + Gemini
+independently, no shared draft).
+
+Findings files target paths:
+  scripts/archive/non_clustered_haa_pilot/source2_metamo_paper/
+    findings_codex.txt
+    findings_gemini.txt
+After both received, orchestrator produces:
+    findings_reconciled_crossmodel.txt
+
+
+================================================================================
+END OF SOURCE 2 BRIEF (READY FOR REVIEWER EXTRACTION — §4 populated 2026-05-06)
+================================================================================

@@ -1,0 +1,62 @@
+Source 2 Extraction Findings — MetaMo (Lian & Goertzel 2025) + reference implementations
+
+S2.Q1 — Pseudo-bimonad formalism alignment
+- Verdict: [IMPLEMENTATION-BACKED-CORE]
+- MetaMo-Python is a high-fidelity category-theory-based reference implementation.
+- Evidence: category/bimonad.py (L12) defines class MetaMoPseudoBimonad implementing the composite operator F = D ∘ Ψ. core/state.py (L8) defines MotivationalState as X = G × M with goal vector G and modulator vector M.
+- Formalism: check_lax_distributive_law (L43) explicitly validates the λ_X : Ψ(D(X)) ⇒ D(Ψ(X)) law. parallel_merge (L68) witnesses the lax-monoidal structure ϕ_{X,Y}.
+- Contrast: hyperon-openpsi lacks these abstract categorial classes, implementing OpenPsi through traditional MindAgent and Demand/Modulator patterns.
+
+S2.Q2 — Authorship order + role
+- Verdict: [GOERTZEL-FIRST]
+- Evidence: AGI_25_METAMO_One.json and MetaMo_Two.json both list "Ben Goertzel and Ruiting Lian" on p.1.
+- Correction: Wiki +content card 7334 lists "Ruiting Lian, Ben Goertzel" (reversed) and must be corrected.
+
+S2.Q3 — Repository roles & relationship
+- iCog-Labs-Dev/MetaMo-Python (12 commits): [CATEGORY-THEORY-REFERENCE]. Focuses on the formal F = D ∘ Ψ structure and stability guarantees.
+- glicerico/MetaMo-Prototype (24 commits): [REFINED-ENGINE-PROTOTYPE]. An active Python rewrite (last commit 2026-03-06) by Dagemawi Bekele; implements rich goal/modulator dynamics (engine_state.py) for the "research assistant" application.
+- iCog-Labs-Dev/hyperon-openpsi (575 commits): [OPERATIONAL-PREDECESSOR]. A mature MeTTa implementation of the CogPrime-era OpenPsi logic.
+- Reconciliation: hyperon-openpsi is the operational substrate, while MetaMo-Python is the formal reference. The wiki's contradictary framing should be resolved by labeling MetaMo-Python as the formal reference and hyperon-openpsi as the operational predecessor.
+
+S2.Q4 — MetaMo-extends-OpenPsi boundary
+- Verdict: [IMPLEMENTATION-BACKED-CORE]
+- Paper-2: §3.1 "OpenPsi as the Appraisal Comonad" explicitly maps OpenPsi's affective modulators to the Ψ operator.
+- Code: MetaMo-Python/openpsi/appraisal.py implements class OpenPsiAppraisal(AppraisalComonad) (L18), directly grounding the 2011 OpenPsi logic in the 2025 MetaMo formalism.
+- Significance: This preserves the V4-1 lifecycle from the OpenPsi pilot as the "appraisal" part of the bimonad.
+
+S2.Q5 — SubRep 2025-09 boundary (S1.V1-2 analog)
+- Verdict: [PAPER-LEANING-HYBRID]
+- Goertzel 2025-09 SubRep §4's attribution of the pseudo-bimonad and 5-design-principles to MetaMo is VERIFIED against AGI_25_METAMO_One.json (L7).
+- Unlike AIRIS (where SubRep added new reframings), the MetaMo description in SubRep is a faithful summary of the Lian & Goertzel 2025 theory.
+
+S2.Q6 — Five design principles verification
+- (1) Modular Appraisal-Decision Interface: [IMPL-BACKED-CORE] (bimonad.py:43).
+- (2) Reciprocal State Simulation: [PAPER-ONLY]. Mentioned in AGI_25_METAMO_One.json but not found in MetaMo-Python or MetaMo-Prototype.
+- (3) Parallel Motivational Compositionality: [IMPL-BACKED-CORE] (bimonad.py:68 parallel_merge).
+- (4) Homeostatic Drive Stability: [IMPL-BACKED-CORE] (dynamics/stability.py:65 apply_homeostatic_damping).
+- (5) Incremental Objective Embodiment: [IMPL-BACKED] (dynamics/stability.py:100 implied by contractive update check).
+
+S2.Q7 — Wiki +content (ID 7334) audit
+- Correction P3-1: Change "Responsible: Ruiting Lian, Ben Goertzel" → "Ben Goertzel, Ruiting Lian" per paper ordering.
+- Correction P3-2: Clarify that hyperon-openpsi is the operational predecessor, while MetaMo-Python is the formal reference implementation.
+
+S2.Q8 — Wiki +MetaMo Full Draft subcards audit
+- ID 7135 (Core Mechanisms): [STANDS]. Accurately describes the X=G x M and F = D ∘ Ψ structure.
+- ID 7139 (Status): [REFINE]. Add glicerico/MetaMo-Prototype as a refined Python prototype. Correct the "operational predecessor" framing for hyperon-openpsi.
+
+S2.Q9 — Overall MetaMo Verdict
+- Verdict: [IMPLEMENTATION-BACKED-CORE]
+- MetaMo is a high-fidelity synthesis where the abstract category theory of the AGI 2025 papers is directly mapped to a functional Python implementation in MetaMo-Python.
+
+S2.Q10 — Cross-cluster boundary findings
+- V2-1: MetaMo bimonad is orthogonal to AIRIS; it defines the "feeling then choosing" pipeline for any reasoner, including AIRIS.
+- V2-2: MetaMo's contractive stability is a meta-level dampener that complements ECAN's STI/LTI dynamics by preventing goal-collapse.
+- V2-3: No evidence of direct AtomSpace binding in MetaMo-Python or MetaMo-Prototype; they operate on independent NumPy state vectors.
+
+S2.Q11 — MetaMo ↔ MAGUS boundary
+- Verdict: [PAPER-LEANING-HYBRID]
+- Evidence: MetaMo_Two.json p.1 explicitly identifies MAGUS as the "decision monad" component of the framework.
+- Code: MetaMo-Python/magus/decision.py implements class MagusDecision(DecisionMonad), confirming that MAGUS is the decision-making monad in the MetaMo bimonad.
+
+S2.Q12 — Vocabulary for S3..S5
+- I confirm the §5 vocabulary ([PAPER-ONLY] / [IMPLEMENTATION-BACKED-CORE] / [PAPER-LEANING-HYBRID] / [IMPLEMENTATION-DIVERGENT] / [ABSENT]). No new labels proposed.

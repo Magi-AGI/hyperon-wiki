@@ -1,0 +1,170 @@
+Codex findings - Source 3 Pattern Mining residual
+==================================================
+
+Scope
+-----
+
+Brief reviewed: scripts/archive/non_clustered_haa_pilot/source3_pattern_mining_residual_brief.txt
+
+Perception pilot reconciliations were treated as frozen prior art, not re-extracted:
+- scripts/archive/perception_pilot/source2_classic_fishgram_miner/findings_reconciled_crossmodel.txt
+- scripts/archive/perception_pilot/source3_hyperon_symbolic_miner/findings_reconciled_crossmodel.txt
+- scripts/archive/perception_pilot/source4_hyperon_neural_perception/findings_reconciled_crossmodel.txt
+
+Residual repos checked:
+- leungmanhin/miner @ 9b3e7cfd9bf0553d0973d40682e932af7ba14449
+- singnet/miner @ 67971716a09a9b03a86e0134416b9f29d6565fb3
+- ngeiswei/miner @ 339cc494ebd2fb29c3537176fa446f21b39c5d83
+- singnet/pattern-index @ a72459eb11f3cccd7c3f93e427115d400e31a9d9
+- SGNN boundary only @ 92d8e3a5b6d20527e8ebab20528d3348a29a3dfb
+
+Overall
+-------
+
+S3 does not add a new pattern-mining tradition. The current HAA Pattern Mining card is stale relative to the Perception pilot close-out: it covers symbolic mining and legacy FISHGRAM, but lacks the Perception-locked trilateral framing, lacks the [PARTIAL-FRAGMENTED-REVIVAL] warning, omits rejuve-bio neural mining and Vepstas perception/embodiment as separate traditions, and treats roadmap material such as MORK/TransWeave as if it were implementation status.
+
+S3.Q1 - wiki card inventory
+---------------------------
+
+Hyperon Wiki name searches over all cardtypes found the relevant concept cards:
+- Hyperon AI Algorithms+Pattern Mining, Draft, ID 4087.
+- Pattern Mining, RichText virtual parent, ID 4086.
+- Publications+FISHGRAM Pattern Mining, Markdown, ID 3090.
+- FISHGRAM Pattern Mining, RichText virtual parent, ID 3089.
+- Neural Pattern Mining, RichText virtual parent, ID 7441.
+- Implementation Families+Neural Pattern Mining, Draft, ID 7442.
+
+The broader "Pattern Mining" name search also returns raw discussion/import cards: Pattern Mining and memory issues (4332/4333), Pattern-mining-and-NLP-parsing-and-MOSES-with-the-URE (4611/4612), Pattern mining from PLN inference histories (4807/4808), Unsupervised_Learning_with_Pattern_Mining_Demo (5123/5124), Results of Frequent pattern mining from subsets of ConceptNet corpus (6256/6257), and First results of interesting pattern mining (6311/6312). These are evidence/raw-data surfaces, not the S3 close-edit target.
+
+Searches for "pattern-index" found only RawData+opencog-ml+AGI Discussion Forum 2021, not a curated Pattern Index concept card.
+
+S3.Q2 - Perception-pilot citation coverage
+------------------------------------------
+
+Hyperon AI Algorithms+Pattern Mining (ID 4087) is stale. It names hyperon-miner and opencog/miner, and cites the whitepaper plus O'Neill/Goertzel FISHGRAM, but it does not cite the Perception S2/S3/S4 reconciliations or the Perception close-out cards. It also lacks rejuve-bio/neural-subgraph-matcher-miner, Knowledge Representations+Sensory, and the exact [PARTIAL-FRAGMENTED-REVIVAL] verdict.
+
+Publications+FISHGRAM Pattern Mining (ID 3090) is broadly aligned after the 2026-05-06 edit: it distinguishes wiki/editorial "FISHGRAM" terminology, says Hyperon-era pattern mining is a separate paradigm change, and links Implementation Families+Neural Pattern Mining. Minor wording note: "rejuve-bio successor lineage" in Related Cards could be read as direct FISHGRAM succession; "related current neural mining lineage" would be safer.
+
+Implementation Families+Neural Pattern Mining (ID 7442) is aligned with Perception Source 4. It explicitly carries [SPMiner-LINEAGE], [GNN-NEURAL-MINING], [PARADIGM-DISTINCT-NEURAL], [STRICTLY-EMPIRICAL], and the trilateral tradition map.
+
+Knowledge Representations+Sensory (ID 7439) is aligned with the Perception Source 5 close-out: it has the AtomSpace-Scheme stack distinction and exact [PARTIAL-FRAGMENTED-REVIVAL] text.
+
+S3.Q3 - trilateral framing
+--------------------------
+
+The HAA Pattern Mining card does not reflect the Perception-locked trilateral framing. ID 4087 still presents pattern mining mostly as one symbolic/roadmap concept: hyperon-miner, opencog/miner, MORK-native mining, TransWeave, and downstream PRIMUS roles. It should be revised to state:
+
+1. Symbolic mining: opencog/miner plus hyperon-miner trio, with hyperon-miner as [METTA-PORT-OF-MINER].
+2. Neural mining: rejuve-bio/neural-subgraph-matcher-miner, [SPMiner-LINEAGE] / [GNN-NEURAL-MINING] / [PARADIGM-DISTINCT-NEURAL].
+3. Perception/embodiment portfolio: opencog/sensory and sibling repos, [ATOMSPACE-SCHEME-STACK], not wired to miners.
+
+The card should also add a "What It Is Not" block: not FISHGRAM continuation by name, not current DeSTIN-FISHGRAM-PLN wiring, not ECAN attention, not a single integrated Hyperon runtime path.
+
+S3.Q4 - [PARTIAL-FRAGMENTED-REVIVAL]
+------------------------------------
+
+ID 4087 does not include [PARTIAL-FRAGMENTED-REVIVAL] and should. Current wording says pattern mining feeds PLN/WILLIAM/Symbolic Heads/SubRep and describes MORK-native/TransWeave directions. That may be valid as roadmap language, but it can currently be read as an implementation claim. The card must explicitly say the 2013 DeSTIN-FISHGRAM-PLN coupling is not wired in current Hyperon code; the pieces exist as fragmented parallel tracks.
+
+S3.Q5 - leungmanhin/miner fork status
+-------------------------------------
+
+Repo state verified:
+- HEAD 9b3e7cfd9bf0553d0973d40682e932af7ba14449.
+- origin https://github.com/leungmanhin/miner.git; upstream https://github.com/opencog/miner.git.
+- merge-base origin/master vs upstream/master = 9b3e7cfd9bf0553d0973d40682e932af7ba14449.
+- git rev-list --left-right --count origin/master...upstream/master = 0 / 44.
+- upstream-only examples include opencog/miner 444eb6474, 2643f54ab, 18113ca73, and the 2025 merge of ngeiswei #68.
+
+Verdict: [STRICT-FORK-STALE]. leungmanhin/miner has no fork-only commits against current opencog/miner and is 44 commits behind in the local remote graph.
+
+S3.Q6 - singnet/miner fork status
+---------------------------------
+
+Repo state verified:
+- HEAD 67971716a09a9b03a86e0134416b9f29d6565fb3.
+- origin https://github.com/singnet/miner.git; upstream https://github.com/opencog/miner.git.
+- merge-base origin/master vs upstream/master = 4c0c5a9fc4389519ef47c9e9e1a9c1e8f49ed42d.
+- git rev-list --left-right --count origin/master...upstream/master = 5 / 58.
+- The five origin-only commits are merge/sync commits: 67971716a, 1f3ae9dcf, 0e4556709, dcb32d071, 051509827.
+
+Verdict: [STRICT-FORK-STALE-MERGED-UPSTREAM]. It is technically divergent by merge metadata, but substantively stale; I found no evidence of novel active algorithm work beyond sync merges.
+
+S3.Q7 - ngeiswei/miner fork status
+----------------------------------
+
+Repo state verified:
+- ngeiswei/miner local HEAD 339cc494ebd2fb29c3537176fa446f21b39c5d83.
+- The opencog/miner local clone has a remote pointing to miner2 as ngeiswei.
+- merge-base opencog origin/master vs ngeiswei/master = 339cc494ebd2fb29c3537176fa446f21b39c5d83.
+- git rev-list --left-right --count origin/master...ngeiswei/master in the opencog/miner clone = 8 / 0.
+- opencog-only commits include 444eb6474, 2643f54ab, 18113ca73, f283b86d5, 55b6de428, 3f0bc163e, caf6199a4, 7d667b43c.
+- The ngeiswei changes named in the brief (#68 proof comment and #67 misc-fix) are already in opencog/miner history; opencog/master advanced after them.
+
+Verdict: [MAINTAINER-FORK-MERGED-BEHIND], not [ACTIVE-MAINTAINER-SCRATCH] at this snapshot. It is maintainer-authored and historically important, but current local fork topology shows zero unmerged ngeiswei commits and eight opencog commits ahead.
+
+S3.Q8 - pattern-index paradigm
+------------------------------
+
+pattern-index is real and adjacent, but not a fourth Hyperon-era pattern-mining tradition.
+
+Evidence:
+- HEAD a72459eb11f3cccd7c3f93e427115d400e31a9d9.
+- README.md:1 names it "Pattern Index - an index for fast lookup of patterns in the AtomSpace".
+- README.md:7 says it is not a wrapper around PatternMatcher.
+- README.md:28-35 says it has additional pattern-mining algorithms, follows the OpenCog wiki Pattern_miner methodology, and is not a wrapper around PatternMiner.
+- README.md:39-44 frames disk-based index structure and huge SCM-file lookup without an AtomSpace in memory.
+- README.md:54-55 lists C++ and Scheme query/mining examples.
+- README.md:272-307 documents mining requests, including patternindex().minePatterns and pi-mine-patterns.
+- PatternIndexAPI.h:55-61 describes creating/customizing/querying/mining indexes; PatternIndexAPI.h:182-208 exposes minePatterns; PatternIndexAPI.cc:507-525 implements minePatterns wrappers; TypeFrameIndex.cc:581-745 contains the mining routine.
+- tests/pattern-index/PatternIndexAPIUTest.cxxtest:170-179 tests mining.
+
+Fork state: singnet/pattern-index is 1 ahead / 3 behind opencog/pattern-index in local remotes; the origin-only commit is a singnet merge PR. It is stale legacy OpenCog C++/Scheme infrastructure.
+
+Verdict: [PATTERN-INDEX-SEPARATE-PARADIGM-ADJACENT]. It should be mentioned in HAA Pattern Mining or Reference+GitHub Repositories as adjacent legacy AtomSpace indexing/mining infrastructure, but it should not be collapsed into the symbolic hyperon-miner tradition or the neural GNN tradition. A future curated card such as Knowledge Representations+Pattern Index would be reasonable if the user wants durable documentation.
+
+S3.Q9 - SGNN boundary
+---------------------
+
+SGNN is out of S3. glicerico/SGNN @ 92d8e3a5b6d20527e8ebab20528d3348a29a3dfb has README.md:2 "Implementation of Self-Governing Neural Networks for speech act classification"; README.md:5 repeats it is an SGNN paper implementation for speech-act classification; README.md:9 says it trains on the SwDA corpus utterances. Recent commits are dependency/security maintenance, e.g. 92d8e3a on 2025-11-05 "Fix nokogiri vulnerabilities".
+
+Verdict: [SGNN-NOT-PATTERN-MINING]. Defer to S4 Concept Blending + Semantic Parsing only if speech-act/semantic-parsing boundaries need it; otherwise leave for cross-org/glicerico sweep.
+
+S3.Q10 - cross-cluster wiki alignment
+-------------------------------------
+
+Implementation Families+Neural Pattern Mining (ID 7442) should own the implementation-level neural-mining detail. It is already aligned. Hyperon AI Algorithms+Pattern Mining (ID 4087) should be the concept-level HAA card and should point to ID 7442, Knowledge Representations+Sensory (ID 7439), Publications+FISHGRAM Pattern Mining (ID 3090), and the Perception archive rather than duplicating all implementation detail.
+
+Reference+GitHub Repositories (ID 7268) already lists trueagi-io/hyperon-miner and rejuve-bio/neural-subgraph-matcher-miner. It does not appear to list opencog/miner as the legacy symbolic baseline, iCog-Labs-Dev/hyperon-miner / zariuq/hyperon-miner as forks, or pattern-index as adjacent legacy indexing infrastructure. If C6-style repo-card edits are authorized, add only the high-signal missing items; do not enumerate every stale miner fork.
+
+S3.Q11 - V3-X carry-forwards
+----------------------------
+
+V3-1 [HAA-PATTERN-MINING-CARD-STALE]: ID 4087 predates Perception close-out and needs Perception citation coverage, trilateral framing, and [PARTIAL-FRAGMENTED-REVIVAL].
+
+V3-2 [LEUNGMANHIN-MINER-STRICT-FORK-STALE]: 0 ahead / 44 behind opencog/miner.
+
+V3-3 [SINGNET-MINER-STRICT-FORK-STALE-MERGED-UPSTREAM]: 5 ahead / 58 behind, with ahead commits being merge/sync metadata.
+
+V3-4 [NGEISWEI-MINER-MAINTAINER-FORK-MERGED-BEHIND]: 0 fork-ahead / 8 opencog-ahead; not an active pre-merge scratch fork at this snapshot.
+
+V3-5 [PATTERN-INDEX-SEPARATE-PARADIGM-ADJACENT]: real OpenCog C++/Scheme disk-oriented pattern-indexing/mining infrastructure, adjacent to Pattern Mining but not a new Hyperon-era tradition.
+
+V3-6 [SGNN-NOT-PATTERN-MINING]: boundary guard for S4/cross-org, not S3.
+
+V3-7 [REFERENCE-REPO-CARD-PATTERN-MINING-GAPS]: Reference+GitHub Repositories lists trueagi-io/hyperon-miner and rejuve-bio neural miner, but not the full symbolic baseline/adjacent pattern-index story.
+
+S3.Q12 - cluster-close edit precis
+----------------------------------
+
+Recommended S3 close batch, if authorized:
+
+C1. Update Hyperon AI Algorithms+Pattern Mining (ID 4087). Add Perception pilot archive pointer; replace the single-line "current" implementation framing with a symbolic/neural/perception trilateral table; add [PARTIAL-FRAGMENTED-REVIVAL]; qualify MORK/TransWeave/WILLIAM/Symbolic-Heads claims as roadmap/whitepaper claims unless separately extracted in future pilots.
+
+C2. Minor safe wording pass on Publications+FISHGRAM Pattern Mining (ID 3090): preserve the identity note, but change "rejuve-bio successor lineage" to wording that cannot imply direct FISHGRAM succession. Optional, non-blocking.
+
+C3. Optional create/update a curated Pattern Index card, preferably Knowledge Representations+Pattern Index or an +AI proposal child under Pattern Mining, if the user wants pattern-index documented as adjacent legacy infrastructure. Otherwise add one concise paragraph to ID 4087 and one repo entry to ID 7268.
+
+C4. Optional Reference+GitHub Repositories (ID 7268) update: add opencog/miner as the legacy symbolic baseline and pattern-index as adjacent/archival; leave stale forks out or mention them only in a note. WebFetch every URL immediately before writing.
+
+C5. No AIRIS cleanup is needed here; AIRIS URL fixes were already handled in S1 close. Do not carry stale S1 correction tasks into S3.
+

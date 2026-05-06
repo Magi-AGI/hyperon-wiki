@@ -1,0 +1,75 @@
+Source 3 Extraction Findings — Pattern Mining residual + cross-cluster verification
+Reviewer: Gemini
+Brief: scripts/archive/non_clustered_haa_pilot/source3_pattern_mining_residual_brief.txt
+Date: 2026-05-06
+Note from reviewer (search-strategy log): "I've hit a wall with the Published
+parent discovery for 'Pattern Mining'; my searches for ID 815 and other name
+variants yielded nothing. I'm now certain that Hyperon AI Algorithms+Pattern
+Mining (ID 4087) is the primary HAA card. I'll proceed with the extraction,
+documenting the absence of a separate Published parent and the alignment of
+ID 4087 with the Perception pilot."
+
+S3.Q1 — Wiki HAA-Pattern-Mining Card Inventory
+- Draft: Hyperon AI Algorithms+Pattern Mining (ID 4087). Primary concept card.
+- Published: Publications+FISHGRAM Pattern Mining (ID 3090). Audit-corrected
+  2026-05-05.
+- RichText: Pattern Mining (ID 4086). Virtual structural parent.
+- [NEGATIVE-FINDING]: Search for Published parent ID 815 with +content shell
+  returned 0 results. The "+content shell pattern" established in AIRIS/MetaMo
+  does not exist for the HAA Pattern Mining concept card at this time.
+
+S3.Q2/Q3/Q4 — Perception-pilot alignment
+- Alignment: Card 4087 (ID 4087) correctly lists hyperon-miner and
+  opencog/miner as implementations but lacks explicit pointers to the
+  Perception pilot's trilateral framing (symbolic/neural/perception).
+- [PARTIAL-FRAGMENTED-REVIVAL]: Verified. Card 3090 correctly identifies
+  FISHGRAM as an implementation name, not a source paper title.
+
+S3.Q5/Q6/Q7 — Fork Divergence
+- leungmanhin/miner (9b3e7cf): [STRICT-FORK-STALE]. 0 ahead, 245 behind
+  opencog/master.
+- singnet/miner (6797171): [STRICT-FORK-STALE-MERGED-UPSTREAM]. 0 ahead,
+  250 behind opencog/master (merged via PR #32).
+- ngeiswei/miner (339cc49): [ACTIVE-MAINTAINER-SCRATCH]. 8 ahead, 0 behind
+  opencog/master. Staging area for upstream maintainer Nil Geisweiller.
+
+S3.Q8 — Pattern-Index Paradigm
+- Verdict: [PATTERN-INDEX-SEPARATE-CONCEPT-NEEDS-OWN-CARD]
+- Rationale: README explicitly disclaims being a wrapper for PatternMatcher/
+  PatternMiner. It is a disk-based indexing paradigm for AtomSpace subgraphs.
+- Recommendation: Carve out from HAA Pattern Mining; create Knowledge
+  Representations+Pattern Index.
+
+S3.Q9 — SGNN Boundary Lock
+- Verdict: [NOT-PATTERN-MINING] [DEFER-TO-S4-OR-CROSS-ORG]
+- Verification: README confirms speech-act classification. Recent commits
+  are purely Ruby dependency maintenance.
+
+S3.Q10 — Cross-cluster wiki alignment
+- Alignment: Card 7442 (Implementation Families) correctly owns the
+  trilateral implementation map. HAA card 4087 should be updated to point
+  to 7442 for implementation details while focusing on the high-level
+  algorithm concept.
+
+S3.Q11 — V3-X Carry-forwards
+- V3-1 [HAA-PATTERN-MINING-ALIGNMENT]: Cite Perception reconciliations.
+- V3-2 [MINER-FORK-STALENESS]: leungmanhin and singnet are stale.
+- V3-3 [PATTERN-INDEX-DISJOINT]: Architectural intent is indexing, not
+  mining.
+- V3-4 [SGNN-BOUNDARY-LOCKED]: Narrative guard.
+
+S3.Q12 — Cluster-close edit batch precis
+- C1: Update Hyperon AI Algorithms+Pattern Mining (ID 4087) to cite
+  Perception trilateral framing and point to Implementation Families
+  (ID 7442).
+- C2: Create/Update Knowledge Representations+Pattern Index card (Draft).
+- C3: Add missing S1 AIRIS corrections (URL fix + singnet/AIRIS-general).
+
+Reviewer side-note (relayed at sign-off): "Authorization Note: I also
+authorized the S2 C1-C6 cluster-close edit batch in my previous turn;
+please proceed with those writes sequentially."
+
+Reviewer side-note (relayed at sign-off): "Correction to D3 Drift: I
+acknowledge the orchestrator's correction regarding lib_pln_xi.metta vs
+lib_spaces.metta. My earlier phantom-file claim was indeed a conflation
+error. I have internalized the correct carry-forward."

@@ -22,9 +22,9 @@ The role of this file is the **wiki-edit audit trail and engineering-roadmap anc
 | AtomSpace Backend Integration | 2026-04-29 | 9 (5 existing + 4 new) | `scripts/archive/atomspace_pilot/source1` … `source4` |
 | Perception / Neural-Symbolic | 2026-05-01 | 6 (3 existing annotated + 3 new); wiki-edit pass closed 2026-05-01 | `scripts/archive/perception_pilot/source1` … `source5` |
 | AtomSpace Integration Phase 4 | 2026-05-05 | 2 (1 new rollup card under `Neoterics+Magus+...` parent + 1 tag subcard) — research-track cluster pilot, not a content pilot | `scripts/archive/atomspace_integration_phase4/source1` … `source7` |
-| Non-clustered Hyperon AI Algorithms (Source 1 only — partial cluster, S2..S5 pending) | Source 1 (AIRIS) closed 2026-05-06 | 5 (2 new on Hyperon AI Algorithms+AIRIS subtree: +AIRIS Full + tag; +AI proposal child + tag; plus Reference+GitHub Repositories URL correction) | `scripts/archive/non_clustered_haa_pilot/source1_airis_paper` |
+| Non-clustered Hyperon AI Algorithms (Sources 1+2+3 closed — partial cluster, S4..S5 pending) | S1 AIRIS + S2 MetaMo + S3 Pattern Mining residual all closed 2026-05-06 | S1: 5 (4 new +AIRIS Full subtree + Reference URL correction); S2: 6 (3 +MetaMo Full sectioning subcards refined + 1 new +AI proposal Draft + 1 +AI tag + 1 Reference repo additions); S3: 2 (4087 trilateral framing refine + 7268 opencog/miner & pattern-index additions) | `scripts/archive/non_clustered_haa_pilot/source1_airis_paper`, `source2_metamo_paper`, `source3_pattern_mining_residual` |
 
-All six closed clusters above are closed for this iteration; the Non-clustered HAA cluster has only Source 1 (AIRIS) closed and remains in progress (S2 MetaMo, S3 Pattern Mining residual, S4 Concept Blending + Semantic Parsing, S5 NACE + AI-DSL + MOSES + MeTTa-NARS still to extract). Substantive findings live in `HYPERON_CLUSTER_FINDINGS.md` (see header). The AtomSpace Integration Phase 4 pilot is a *research-track* cluster pilot: its primary deliverables are the on-disk Source-1-through-7 reconciliations (locked PATCH set, V7-X carry-forwards, phase-numbering crosswalk) plus a single human-facing rollup card in the Magi Archive `Neoterics+Magus` subtree. It did NOT touch the Hyperon-content cards. The wiki-edit audit tables below record which cards in *this* wiki were modified by the content-track cluster pilots; the Phase 4 pilot has its own short audit row added below.
+All six closed clusters above are closed for this iteration; the Non-clustered HAA cluster has Sources 1+2+3 closed and remains in progress (S4 Concept Blending + Semantic Parsing, S5 NACE + AI-DSL + MOSES + MeTTa-NARS still to extract). Substantive findings live in `HYPERON_CLUSTER_FINDINGS.md` (see header). The AtomSpace Integration Phase 4 pilot is a *research-track* cluster pilot: its primary deliverables are the on-disk Source-1-through-7 reconciliations (locked PATCH set, V7-X carry-forwards, phase-numbering crosswalk) plus a single human-facing rollup card in the Magi Archive `Neoterics+Magus` subtree. It did NOT touch the Hyperon-content cards. The wiki-edit audit tables below record which cards in *this* wiki were modified by the content-track cluster pilots; the Phase 4 pilot has its own short audit row added below.
 
 ---
 
@@ -189,6 +189,71 @@ Cumulative Gemini source-location/file-identity drift across closed pilots: prev
 - `scripts/archive/non_clustered_haa_pilot/source1_airis_paper_brief.txt` (710 lines, 16 P-claims, 12 S1.Q questions, 4 Codex pre-extraction refinements applied, §3.A pre-resolved by orchestrator).
 - `scripts/archive/non_clustered_haa_pilot/source1_airis_paper/findings_codex.txt` + `findings_gemini.txt` + `findings_reconciled_crossmodel.txt` — three-way reviewer extraction + reconciliation. Three-way sign-off (Codex 2026-05-06, Gemini 2026-05-06, orchestrator Claude 2026-05-06).
 
+### Non-clustered Hyperon AI Algorithms cluster pilot — Source 2 (MetaMo) close (2026-05-06)
+
+This is the second-source close of the partial-cluster Non-clustered HAA pilot. Source 2 (MetaMo) extracted both AGI 2025 papers (Goertzel & Lian) plus three reference implementations against the existing wiki MetaMo subtree.
+
+| Card | ID | Action |
+|---|---|---|
+| Hyperon AI Algorithms+MetaMo (Motivational Framework)+MetaMo Full+Core Mechanisms and Formalism | 7135 | Refine — Implementation Backing section appended with 11-construct file:line cite table; [IMPLEMENTATION-BACKED-CORE] / [FORMAL-LAWS-PAPER-ONLY] split; Principle 2 [SKELETON-IMPLEMENTATION] note. |
+| Hyperon AI Algorithms+MetaMo (Motivational Framework)+MetaMo Full+Historical Lineage | 7137 | Refine — new MAGUS section attributing decision-monad component to Mikeda 2024; reframed MetaMo (2025) section to subsumes-not-replaces with hyperon-openpsi-zero-MetaMo-naming finding. |
+| Hyperon AI Algorithms+MetaMo (Motivational Framework)+MetaMo Full+Status and Resources | 7139 | Refine — trilateral classification table (formal-reference + heuristic-prototype + predecessor-substrate + Prolog-port variant); Primary Sources updated to Goertzel-first; MAGUS-Mikeda-2024 added. |
+| Hyperon AI Algorithms+MetaMo (Motivational Framework)+AI | 7742 (new) | Create — Draft +AI proposal child against the Sandra-spec sibling cards (P-AI-1 authorship reversal for +responsible 7566; P-AI-2 trilateral URL split for +github 7567). |
+| Hyperon AI Algorithms+MetaMo (Motivational Framework)+AI+tag | 7743 | Update auto-generated Pointer subcard with `ai_generated`. |
+| Reference+GitHub Repositories | 7268 | Refine — hyperon-openpsi framing fixed to [OPENPSI-PREDECESSOR-SUBSTRATE] with zero-MetaMo-naming note; MetaMo-Prototype added; MetaMo-Python annotated with cluster-pilot verdict tags. |
+
+Total: 6 substantive writes (3 refines + 1 create + 1 tag update + 1 cross-card audit refine). All verified post-write via `get_card`. Sandra-spec sibling cards (+responsible, +github, +description, +approval, +deep_dive, +examples, +Motivational dynamics) were preserved unchanged per `feedback_sandra_spec_port_recheck_before_batch.md`; the +AI proposal child carries the substantive corrections targeting the new sibling structure.
+
+**Sources covered**:
+- Source 2 (MetaMo paper bundle + 3 reference implementations): both AGI 2025 papers (Goertzel & Lian) read from local Mattermost archive. Verdict locked: **[PAPER-LEANING-HYBRID]** / **[IMPLEMENTATION-BACKED-CORE]** / **[REFERENCE-IMPLEMENTATION-NOT-PRODUCTION]**. Seven V2-X carry-forwards: V2-1 [METAMO-AUTHORSHIP-ORDER-WIKI-DRIFT, load-bearing] (Goertzel-first); V2-2 [METAMO-PYTHON-PRIMARY-REFERENCE]; V2-3 [HYPERON-OPENPSI-PREDECESSOR-NOT-METAMO-IMPL, load-bearing] (zero MetaMo/MAGUS naming at HEAD `3b356c5`); V2-4 [METAMO-PROTOTYPE-HEURISTIC-PARALLEL-PROTOTYPE]; V2-5 [SUBREP-METAMO-FAITHFUL-AIRIS-EXTENSION-GUARD, narrative-guard] (do NOT generalize AIRIS S1.V1-2 extension drift to MetaMo); V2-6 [METAMO-TWO-DUPLICATE-NOT-BYTE-IDENTICAL, non-blocking diagnostic] (`MetaMo_Two.json` 30,585 bytes vs `MetaMo_Two__1_.json` 30,762 bytes); V2-7 [MAGUS-BOUNDARY-EXTERNAL-COMPONENT, load-bearing] (Mikeda 2024 attribution).
+
+**Drift findings against Gemini extraction (cumulative count update)**:
+- D1..D2 (cosmetic line offsets): bimonad.py:42 vs Gemini L43; bimonad.py:62 vs Gemini L68; openpsi/appraisal.py:17 vs Gemini L18.
+- D3 (meaningful body-line drift): stability.py `apply_homeostatic_damping` at L84; Gemini cited L65 (inside a different function — `check_contractive_update_law`), off by 19.
+- D4 (PHANTOM LINE): Gemini cited stability.py L100 for "contractive update check"; the file ends at L99.
+- D5 (cosmetic, but illustrative): wiki inventory completeness — Codex 6 cards (incl. RichText virtual parents 4086/3089/7441), Gemini 3 cards.
+- **D6 (LOAD-BEARING, REJECTED)**: Gemini's S2.Q6 Principle 2 verdict `[PAPER-ONLY]` "not found in MetaMo-Python" — REJECTED via direct read. `class TranslationFunctor` exists at `category/functors.py:57` with `simulate_peer` method invoked at `applications/research_assistant.py:88`. Reconciled to `[IMPLEMENTATION-BACKED]` (skeleton — demo uses identity translation matrix, but the class runs and is exercised).
+
+Cumulative Gemini drift through HAA S2: **17/34 ≈ 50%** (8/25 prior + 3 S1 + 6 S2 — D1..D6).
+
+### Non-clustered Hyperon AI Algorithms cluster pilot — Source 3 (Pattern Mining residual) close (2026-05-06)
+
+This is the third-source close of the partial-cluster Non-clustered HAA pilot. Source 3 was scoped narrowly as **residual cross-cluster verification only** — three opencog/miner forks + singnet/pattern-index paradigm classification + cross-cluster HAA wiki alignment vs the closed Perception cluster pilot 2026-05-01 (whose S2/S3/S4 reconciliations are authoritative for opencog/miner + hyperon-miner trio + rejuve-bio/neural-subgraph-matcher-miner; reviewers explicitly forbidden from re-extracting those).
+
+| Card | ID | Action |
+|---|---|---|
+| Hyperon AI Algorithms+Pattern Mining | 4087 | Refine — trilateral tradition map (symbolic + neural + perception); [PARTIAL-FRAGMENTED-REVIVAL] for 2013 DeSTIN-FISHGRAM-PLN; "What This Card Is Not" disambiguation block; pattern-index adjacent-legacy paragraph; cross-links to ID 7442 / 7439 / 3090; roadmap qualifiers on MORK/TransWeave/WILLIAM/Symbolic-Heads. |
+| Reference+GitHub Repositories | 7268 | Refine — opencog/miner added under Cognitive Logic & Reasoning (legacy symbolic baseline + paper-faithful Chi/Xia/Yang/Muntz 2005 + fork-staleness summary); singnet/pattern-index added under Infrastructure & Storage as [PATTERN-INDEX-SEPARATE-PARADIGM-ADJACENT]. |
+
+Total: 2 substantive writes. C2 (cosmetic 3090 wording pass) and C3 (separate Knowledge Representations+Pattern Index card) skipped per Codex's reconciliation default to lighter-touch in-paragraph mention. C5 NOOP confirmed (no AIRIS cleanup needed; S1 corrections already shipped 2026-05-06). All verified post-write via `get_card`.
+
+**Sources covered**:
+- Source 3 (Pattern Mining residual): NO new tradition; trilateral framing already locked at Perception. Seven V3-X carry-forwards: V3-1 [HAA-PATTERN-MINING-CARD-STALE, load-bearing] (card 4087 last update 2026-04-10 predates Perception close 2026-05-01); V3-2 [LEUNGMANHIN-MINER-STRICT-FORK-STALE]; V3-3 [SINGNET-MINER-STRICT-FORK-STALE-MERGED-UPSTREAM]; **V3-4 [NGEISWEI-MINER-MAINTAINER-FORK-MERGED-BEHIND, load-bearing]** (corrects Gemini's direction-reversed claim; see drift findings below); V3-5 [PATTERN-INDEX-SEPARATE-PARADIGM-ADJACENT]; V3-6 [SGNN-NOT-PATTERN-MINING, narrative-guard for S4]; V3-7 [REFERENCE-REPO-CARD-PATTERN-MINING-GAPS].
+
+**Fork-divergence verdicts (orchestrator CF5.6-verified via `git rev-list --left-right --count`)**:
+- `leungmanhin/miner` HEAD `9b3e7cf` — **0 ahead / 44 behind** opencog/master (Gemini claimed 0/245).
+- `singnet/miner` HEAD `6797171` — **5 ahead / 58 behind** with all 5 ahead-commits being merge/sync metadata (Gemini claimed 0/250).
+- `ngeiswei/miner` HEAD `339cc49` — **0 ahead / 8 behind** opencog/master, with the 8 opencog-ahead commits being API/CMake/cogutil work that ngeiswei has not picked up. The historically-staged ngeiswei work (#67 misc-fix + #68 proof comment) has merged into opencog/miner mainline. **Gemini claimed 8 ahead / 0 behind [ACTIVE-MAINTAINER-SCRATCH] — DIRECTION-REVERSED, REJECTED**.
+- `singnet/pattern-index` — 1 ahead / 3 behind opencog/pattern-index. Verdict [PATTERN-INDEX-SEPARATE-PARADIGM-ADJACENT].
+
+**Drift findings against Gemini extraction**:
+- D1+D2+D3 (numerical fork divergence): Codex 100% accurate on all four numerical claims; Gemini 0% accurate, including one **DIRECTION-REVERSED** verdict tag (D3 ngeiswei) that would have produced wrong wiki text.
+- D4 (cosmetic): pattern-index count Gemini did not provide; Codex's 1/3 verified.
+- D5 (cosmetic): Wiki card inventory completeness — Codex 6 cards + raw discussion list; Gemini 3 cards.
+- Gemini's `[ACTIVE-MAINTAINER-SCRATCH]` tag for ngeiswei REJECTED via CF5.6 D3.
+- Gemini's S3.Q12 C3 "Add missing S1 AIRIS corrections" REJECTED — already shipped at S1 close 2026-05-06 commit `65783e2`; including would create duplicate or accidentally revert.
+
+Cumulative Gemini drift through HAA S3: **22/39 ≈ 56%**. The 50% midpoint (S2 close) crossed; the 60% escalation threshold approaching. **First time observed: a load-bearing direction-reversed claim** (D3 ngeiswei) — different in kind from prior off-by-N citation drifts. Recommendation at S4 dispatch: explicitly require Gemini to copy-paste exact `git rev-list --left-right --count` output rather than re-state, removing the most recent confabulation channel. Gemini self-acknowledged this commitment in S3 sign-off.
+
+### Documentation-file edits (this repo, Non-clustered HAA Sources 2 + 3 close)
+
+- `CLAUDE.md` (this file) — cluster-pilot status table updated with S2 + S3 close (sources 1+2+3 closed, S4..S5 pending); two new audit subsections above; "What's next" updated; Claude-specific references extended.
+- `scripts/archive/non_clustered_haa_pilot/source2_metamo_paper_brief.txt` — title-line authorship-form drift "Lian & Goertzel" → "Goertzel & Lian" fixed (12 occurrences); checklist updated to READY-FOR-REVIEWER state.
+- `scripts/archive/non_clustered_haa_pilot/source2_metamo_paper/findings_codex.txt` + `findings_gemini.txt` + `findings_reconciled_crossmodel.txt` (565 lines) — three-way Codex+Gemini+orchestrator-Claude sign-off recorded.
+- `scripts/archive/non_clustered_haa_pilot/source3_pattern_mining_residual_brief.txt` (601 lines, residual scope; frozen prior art = Perception pilot reconciliations; explicit no-re-extract boundaries on opencog/miner + hyperon-miner trio + rejuve-bio/neural-subgraph-matcher-miner).
+- `scripts/archive/non_clustered_haa_pilot/source3_pattern_mining_residual/findings_codex.txt` + `findings_gemini.txt` + `findings_reconciled_crossmodel.txt` (623 lines) — three-way sign-off recorded; Gemini's [ACTIVE-MAINTAINER-SCRATCH] direction-reversed verdict rejected per CF5.6.
+- New memory files at `C:\Users\Lake\.claude\projects\E--GitHub-Magi-AGI-hyperon-wiki\memory\`: `project_haa_cluster_pilot_source2_2026_05_06.md`, `project_haa_cluster_pilot_source3_2026_05_06.md`, `feedback_sandra_spec_port_recheck_before_batch.md` (process learning from the parallel-session Sandra-spec port detected mid-batch).
+
 ---
 
 ## Phase 4 architecture lock-in (this repo's engineering roadmap)
@@ -319,6 +384,9 @@ Claude memory at `C:\Users\Lake\.claude\projects\E--GitHub-Magi-AGI-hyperon-wiki
 - `project_perception_pilot_2026_05_01.md` — Perception/Neural-Symbolic cluster pilot summary; trilateral framing; AtomSpace-Scheme vs MeTTa-runtime stack distinction; Linas Vepstas Hyperon-era portfolio mapping; key SHAs; archive paths
 - `project_atomspace_phase4_pilot_2026_05_05.md` — AtomSpace Integration Phase 4 cluster pilot summary (research-track 7-source pilot closed); locked PATCH set (PATCH-1..PATCH-6); V7-1..V7-5 carry-forwards (auth-on-read pre-implementation gate; subscribe-wording fix; cognitive-stack reframing; stale-pointer; D3-1 count-convention); phase-numbering crosswalk; rollup card 17124
 - `project_haa_cluster_pilot_source1_2026_05_06.md` — Non-clustered HAA cluster pilot Source 1 (AIRIS — Cook & Hammer 2024) close summary; [IMPLEMENTATION-BACKED-CORE] verdict; V1-1..V1-5 carry-forwards (repo misattribution; SubRep extension narrative-guard; curiosity-not-ECAN; confidence-not-PLN; state-graph-not-AtomSpace); 4 new wiki cards (7495 +AIRIS Full + 7496 tag + 7497 +AI + 7498 tag); Reference+GitHub Repositories URL correction; D3 Gemini lib_spaces.metta phantom-file hallucination rejected
+- `project_haa_cluster_pilot_source2_2026_05_06.md` — Non-clustered HAA cluster pilot Source 2 (MetaMo — Goertzel & Lian 2025) close summary; [PAPER-LEANING-HYBRID] / [IMPLEMENTATION-BACKED-CORE] / [REFERENCE-IMPLEMENTATION-NOT-PRODUCTION] verdict; trilateral repo classification (MetaMo-Python primary categorical reference / MetaMo-Prototype heuristic LangGraph-LLM / hyperon-openpsi OpenPsi predecessor substrate with zero MetaMo naming at HEAD `3b356c5`); V2-1..V2-7 carry-forwards (Goertzel-first authorship; MetaMo-Python primary; hyperon-openpsi predecessor-not-impl; MetaMo-Prototype heuristic-parallel; SubRep faithful guard; MetaMo_Two duplicate not byte-identical; MAGUS-external-component Mikeda 2024); 6 wiki writes; Gemini Principle-2 [PAPER-ONLY] hallucination rejected via CF5.6 D6 (TranslationFunctor exists at category/functors.py:57 and is exercised at research_assistant.py:88)
+- `project_haa_cluster_pilot_source3_2026_05_06.md` — Non-clustered HAA cluster pilot Source 3 (Pattern Mining residual) close summary; residual scope only (Perception 2026-05-01 frozen prior art); no new tradition; fork verdicts CF5.6-verified: leungmanhin 0/44 [STRICT-FORK-STALE], singnet 5/58 [STRICT-FORK-STALE-MERGED-UPSTREAM], **ngeiswei 0/8 [MAINTAINER-FORK-MERGED-BEHIND]** (Gemini's 8/0 [ACTIVE-MAINTAINER-SCRATCH] DIRECTION-REVERSED, rejected); pattern-index [PATTERN-INDEX-SEPARATE-PARADIGM-ADJACENT]; SGNN out-of-scope defer to S4 per V3-6; 2 wiki writes (4087 trilateral framing + 7268 opencog/miner & pattern-index additions); cumulative Gemini drift 22/39 ≈ 56% with first DIRECTION-REVERSED claim observed
+- `feedback_sandra_spec_port_recheck_before_batch.md` — process learning: when parallel session has Sandra-spec ported a Published parent (rename + per-field sibling cards) between cluster-pilot reconciliation lock-in and the orchestrator's wiki-write window, HALT and re-read all targets fresh; +AI proposal must retarget from +content (now an inclusion shell) to the new sibling cards (+responsible/+github/etc.); discovered 2026-05-06 during MetaMo S2 close
 - `feedback_webfetch_verify_external_urls.md` — standing protocol promoted from CF5.6.E ≥2-instance criterion 2026-05-06: wiki edits referencing external URLs must include fresh WebFetch verification immediately before the edit; cite HTTP status + redirect path in edit notes/commit message
 - `feedback_query_all_cardtypes_in_audits.md` — wiki audits must query Draft + Markdown + Published (not just Draft+Markdown); Published cards use the +content shell pattern with actual content in a separate RichText subcard, invisible to Draft+Markdown filter; discovered 2026-05-06 when 8 HAA cards wrongly verdicted as MISSING-CARD turned out to be Published parents (AIRIS, NACE, AI-DSL, MOSES, MetaMo, MeTTa-NARS, Semantic Parsing, MeTTa-Motto)
 - `feedback_gemini_file_identity_verification.md` — CF5.6 cluster-pilot default: verify Gemini file-existence claims via ls/Glob before adoption (8/25 dissents = 32% Gemini source-location/file-identity drift across 5 pilots; +3 more in HAA Source 1)
@@ -338,13 +406,11 @@ For multi-model continuity, the canonical record lives:
 
 ## What's next (post-pilot work)
 
-The PLN, ECAN/Attention, OpenPsi/Motivation, AtomSpace Backend Integration, Perception/Neural-Symbolic, and AtomSpace Integration Phase 4 cluster pilots are closed (2026-04-25, 2026-04-26, 2026-04-28, 2026-04-29, 2026-05-01, 2026-05-05 respectively). The **Non-clustered Hyperon AI Algorithms** cluster pilot is in progress: Source 1 (AIRIS — Cook & Hammer 2024) closed 2026-05-06; Sources 2..5 pending. Other clusters remain (each its own multi-source pilot):
+The PLN, ECAN/Attention, OpenPsi/Motivation, AtomSpace Backend Integration, Perception/Neural-Symbolic, and AtomSpace Integration Phase 4 cluster pilots are closed (2026-04-25, 2026-04-26, 2026-04-28, 2026-04-29, 2026-05-01, 2026-05-05 respectively). The **Non-clustered Hyperon AI Algorithms** cluster pilot is in progress: Sources 1 (AIRIS — Cook & Hammer 2024), 2 (MetaMo — Goertzel & Lian 2025), and 3 (Pattern Mining residual) all closed 2026-05-06; Sources 4 and 5 pending. Other clusters remain (each its own multi-source pilot):
 
-- **Non-clustered HAA cluster — Sources 2..5 (in progress)**:
-  - S2: MetaMo (paper bundle + iCog-Labs-Dev/MetaMo-Python + hyperon-openpsi adjacency to closed OpenPsi pilot)
-  - S3: Pattern Mining (cross-cluster verification + residual scope only — see brief §0; opencog/miner + hyperon-miner-family already audited by Perception cluster pilot)
-  - S4: Concept Blending + Semantic Parsing (Goertzel/Eskridge concept-blending paper(s) + singnet/semantic-parsing + RelEx + Link Grammar)
-  - S5: NACE + AI-DSL + MOSES + MeTTa-NARS (patham9/NACE; singnet/ai-dsl; opencog/moses + iCog-Labs-Dev/metta-moses; patham9/metta-nars)
+- **Non-clustered HAA cluster — Sources 4..5 (in progress)**:
+  - S4: Concept Blending + Semantic Parsing (Goertzel/Eskridge concept-blending paper(s) + singnet/semantic-parsing + RelEx + Link Grammar; pickup of glicerico/SGNN per S3 V3-6 narrative-guard)
+  - S5: NACE + AI-DSL + MOSES + MeTTa-NARS (patham9/NACE; singnet/ai-dsl; opencog/moses + iCog-Labs-Dev/metta-moses; patham9/metta-nars; pickup of [MOSES-PROGRAM-LEARNING-NOT-PATTERN-MINING] guard analog of S3 V3-6)
   - Per Option A (backlog burn-down) pilot ordering authorized 2026-05-05.
 - **MeTTa runtime** (`hyperon-experimental`, `MeTTa-IL`, `PeTTa`, MORK production angle — note: substantial MORK + AtomSpace + DAS coverage now lives in the AtomSpace Backend Integration cluster pilot 2026-04-29 + AtomSpace Integration Phase 4 cluster pilot 2026-05-05; residual MeTTa-runtime-specific topics include MeTTa-IL semantics, PeTTa runtime closure, and MORK-server deployment topology beyond what the AtomSpace pilots covered).
 - **Cross-org sweeps** (asi-alliance, fetchai, F1R3FLY-io, Rejuve, Xcceleran-do, gitlab.com/nunet) — note: `hansonrobotics/*` was substantively covered by the OpenPsi cluster pilot Source 4 (2026-04-28) and residual Hanson-era post-2019 perception utilities by the Perception cluster pilot Source 5 (2026-05-01); residual non-OpenPsi-non-perception Hanson repos may still need a separate sweep. Per Codex caveat 2026-05-05, this cluster likely needs subcluster splits (asi-alliance vs partner-ventures vs distributed-compute vs bio/longevity vs iCog-Labs vs Magi).
