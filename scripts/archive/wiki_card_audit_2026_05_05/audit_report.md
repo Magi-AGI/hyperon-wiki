@@ -1,5 +1,7 @@
 # Hyperon Wiki Card Audit — 2026-05-05
 
+> ⚠ **2026-05-06 ADDENDUM SUPERSEDES PARTS OF THIS REPORT.** A query-coverage bug was discovered during the AIRIS S1 cluster-close on 2026-05-06: this audit's CQL query filtered on `type: Draft` and `type: Markdown` only, missing 43 Published cards entirely. Of the 4 cards listed in §4.3 as missing-card cluster outputs (AIRIS / NACE / AI-DSL / MOSES), **all 4 exist as Published parents with `+content` shells**. See [audit_addendum_2026_05_06_published.md](audit_addendum_2026_05_06_published.md) for the corrected verdicts and the 30+ newly-discovered Published cards across HAA / PRIMUS / About Hyperon / MeTTa runtime / ASI Chain namespaces. The methodology fix (always query Published in addition to Draft+Markdown) is documented in §3 of the addendum.
+
 **Scope:** Forward audit of every substantive Draft and Published card on `wiki.hyperon.dev` against the cluster-pilot framework. Two questions:
 
 1. Are the cards technically correct according to our sources?
