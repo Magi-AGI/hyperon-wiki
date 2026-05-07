@@ -1,0 +1,798 @@
+SOURCE 4 RECONCILED FINDINGS — CROSS-MODEL
+================================================================================
+Source name:      Concept Blending + Semantic Parsing
+                  (Non-clustered HAA cluster pilot, Source 4 of 5)
+Reconciliation:   Codex (findings_codex.txt, 499 lines via wc -l, 2026-05-06)
+                  Gemini (findings_gemini.txt, ~75 lines, 2026-05-07,
+                          partial coverage — see §0)
+                  Orchestrator: Claude (this session, 2026-05-07)
+Brief reference:  scripts/archive/non_clustered_haa_pilot/
+                  source4_concept_blending_semantic_parsing_brief.txt (765 lines).
+
+Scope check:
+  Codex covered S4.A.Q1..Q5 + S4.B.Q6..Q10 + S4.C.Q11 + Q12 with
+  comprehensive evidence: paper-stack identity + Eskridge attribution,
+  conceptBlending repo-branch surface mapping, semantic-parsing canonical
+  resolution, full stale-fork verbatim audit per P12 (8 forks audited),
+  classical-stack characterization, SGNN boundary, wiki audits for both
+  HAA Concept Blending (4092) + Semantic Parsing (655 + Sandra-spec
+  siblings + Full 4419), V4-1..V4-10 carry-forwards, C1..C5 close-batch
+  recommendations.
+
+  Gemini covered S4.A.Q1..Q4 + S4.B.Q7..Q10 + S4.C.Q11 + partial Q12 with
+  4 verbatim fork audits per P12. Coverage gaps: did NOT cover S4.A.Q5
+  HAA Concept Blending wiki audit; S4.B.Q6 per-repo verdict matrix;
+  S4.B.Q9 HAA Semantic Parsing wiki audit; full V4-X locking. Gemini's
+  Q12 close-batch precis includes 3 C-N items (vs Codex's 5).
+
+================================================================================
+
+§0. HEADLINE VERDICTS (CROSS-MODEL TABLE)
+-----------------------------------------
+
+  Question                                          Codex                                Gemini                                  Reconciled
+  S4.A.Q1 (Blending paper verdicts)                 IBC info+GA+cat-theoretic; PO-FE     IBC Blending+Paraconsistent;            See §1.D1 — Codex correct;
+                                                    quantale/paraconsistent/HoTT         PO quantale                             paraconsistent REJECTED via CF5.6
+  S4.A.Q2 (conceptBlending repo branches)           4-branch tree + commit cites         3-branch mapping (info/cat/peTTa)        Codex 4-branch adopted
+  S4.A.Q3 (Eskridge attribution)                    [ATTRIBUTION-DRIFT]                  [ESKRIDGE-NOT-IN-LOCAL-ARCHIVE]         consensus — adopt
+  S4.A.Q4 (HoTT scope)                              [HOTT-BOUNDARY-DEFER]                [CROSS-CLUSTER-BOUNDARY-DEFER] +        consensus — adopt; future-pilot
+                                                                                         future PRIMUS/HoTT-Semantics pilot       pointer adopted
+  S4.A.Q5 (HAA Concept Blending wiki audit)         Card 4092 stale; 2026-04-10 last     not covered                              Codex sole — adopt
+  S4.B.Q6 (per-repo verdict matrix)                 detailed 5+ repos                    partial via Q10                          Codex sole — adopt
+  S4.B.Q7 (semantic-parsing canonical)              singnet/sp 404; rTreutlein/          singnet/sp 404; leungmanhin/             consensus — adopt
+                                                    leungmanhin canonical                semantic_parsing primary
+  S4.B.Q8 (stale fork verbatim audit)               8 forks verbatim; all stale          4 forks verbatim                         Codex 8-fork superset adopted;
+                                                                                                                                  Gemini 4 verified ✓; one
+                                                                                                                                  per-repo verdict tag drift
+                                                                                                                                  on singnet/relex — see §1.D2
+  S4.B.Q9 (HAA Semantic Parsing wiki audit)         Sandra-spec structure mapped;        not covered                              Codex sole — adopt
+                                                    +github 7617 has 404 URL
+  S4.B.Q10 (pipeline integration)                   [LLM-TO-PLN-METTA] +                 [SEMANTIC-PARSING-SPLIT-STACK]; LLM      consensus — adopt
+                                                    [NOT-LINK-GRAMMAR-RELEX-WRAPPER]     path; classical & Hyperon-era
+                                                                                         remain parallel
+  S4.C.Q11 (SGNN boundary)                          [SGNN-BOUNDARY-OUT]                  [SGNN-OUT-OF-S4-DEFER-TO-CROSS-ORG]      consensus — adopt
+  Q12 (V4-X + close-batch precis)                   10 V4-X + 5 C-N                      partial 3 C-N                            Codex 10 V4-X + 5 C-N adopted
+
+  Reconciled overall: S4 separates into three distinct cluster-narrative
+  outcomes:
+    (a) **Concept Blending** [CONCEPT-BLENDING-PARTIAL-IMPLEMENTATION]:
+        info-theoretic + GA-CMA-ES + category-theoretic colimit branches
+        are implementation-backed in conceptBlending @ HEAD `9675e5e`.
+        Quantale weakness, paraconsistent interference, and HoTT-adjacent
+        material are paper/formal-only at this snapshot.
+    (b) **Semantic Parsing** [SEMANTIC-PARSING-SPLIT-STACK]: the classical
+        Link Grammar / RelEx / opencog/learn / opencog/generate stack
+        remains AtomSpace/Scheme/C++ oriented and active-legacy. The
+        Hyperon-era semantic_parsing / semantic-parser / nl2pln_demo line
+        is LLM-to-PLN/MeTTa, NOT a wrapper around Link Grammar or RelEx.
+        Two adjacent generations, not one direct pipeline.
+    (c) **SGNN** stays boundary-out: speech-act classification on SwDA;
+        no Hyperon/Atomese/PLN integration. Defer to cross-org sweeps.
+
+================================================================================
+
+§1. CF5.6 FILE-EXISTENCE / NUMERICAL VERIFICATION
+--------------------------------------------------
+
+CF5.6 cumulative Gemini drift count entering S4: 22/39 ≈ 56%.
+
+This S4 review surfaces THREE drift findings (D1..D3) including ONE
+LOAD-BEARING REJECTED claim (D1 Paraconsistent verdict). The new P12
+protocol (verbatim numerical claims) is validated as effective for the
+4 fork-divergence counts Gemini provided — all 4 verbatim outputs
+matched Codex's audit and orchestrator's direct verification. The drift
+is now in INTERPRETATION (verdict tag selection) rather than in the
+numbers themselves.
+
+Cumulative drift after S4: **25/42 ≈ 59.5%** — at the 60% escalation
+threshold flagged in S2/S3 reconciliations. Recommendation: at S5
+dispatch, escalate Gemini interpretation claims (verdict tag selection,
+sub-implementation mappings, and "implemented via" assertions) to
+required CF5.6 verification before adoption — same protocol as
+file-existence claims. P12 verbatim numerical protocol is retained.
+
+D1 — Paraconsistent_Interference_Blending implementation status
+  *** LOAD-BEARING ***
+  Codex: [PAPER-ONLY-FORMAL-EXTENSION] — paraconsistent interference
+    is paper/formal boundary material in the local evidence set (committed
+    HEAD `9675e5e`).
+  Gemini: [IMPLEMENTATION-BACKED-CORE] — "Implemented via the interference
+    logic in a_categorytheoretic_approach/."
+  Direct verification (orchestrator, 2026-05-07):
+    cd 'E:\GitHub\hyperon reference\conceptBlending'
+    git ls-tree HEAD a_categorytheoretic_approach/
+    → README.md, algspec_builder.metta, alternateversion/,
+       benchmark_runner.py, extensions.py, generalization_builder.metta,
+       kb/, libs/, master_pipeline.metta, morphism_finder.metta,
+       output/, requirements.txt, tests/, utils/
+       (all category-theoretic: colimit / morphism / algspec /
+        generalization; NO paraconsistent or interference filenames)
+    git grep -i 'paraconsistent\|interference' HEAD --
+    → (empty — zero hits)
+  Verdict: Codex correct. Gemini's claim REJECTED.
+  Reconciled verdict for Paraconsistent_Interference_Blending paper:
+  [PAPER-ONLY-FORMAL-EXTENSION]. The paraconsistent-interference
+  formalism is paper-only at this snapshot; no implementation evidence
+  in conceptBlending HEAD.
+  V4-X ref: see §3.
+
+D2 — singnet/relex 7-ahead interpretation
+  Numerical claim (both reviewers, P12 verbatim): 7	12 — VERIFIED.
+  Codex interpretation: [STALE-FORKS-NO-NOVEL-TRADITION] with note
+    "fork-only diffs reduce to .circleci/config.yml against upstream,
+    so the nonzero fork-ahead counts do not represent new
+    semantic-parsing traditions."
+  Gemini interpretation: [FORK-DIVERGED-NOVEL-CONTRIBUTIONS] "(7 ahead:
+    2021-era Java setup tweaks)."
+  Direct verification (orchestrator, 2026-05-07):
+    cd 'E:\GitHub\hyperon reference\relex-singnet'
+    git rev-list --left-right --count origin/master...upstream/master
+    → 7	12
+    git log --oneline origin/master --not upstream/master
+    → 28b760e Merge pull request #4 from ngeiswei/merge-opencog-to-singnet
+      22a3595 Merge branch 'master' of github.com:opencog/relex into merge-opencog-to-singnet
+      e4f2c0c Merge pull request #3 from ngeiswei/merge-opencog-to-singnet
+      0c31e39 Merge branch 'master' of github.com:opencog/relex into merge-opencog-to-singnet
+      7aa1843 Merge pull request #2 from ngeiswei/merge-opencog-to-singnet
+      40efbfe Merge branch 'master' of github.com:opencog/relex into merge-opencog-to-singnet
+      c9084c4 Merge pull request #1 from vsbogd/merge-opencog-to-singnet
+  Verdict: All 7 origin-only commits are merge/sync metadata (PRs from
+  ngeiswei/merge-opencog-to-singnet + master-branch merges from
+  opencog/relex). IDENTICAL pattern to HAA S3 V3-3 singnet/miner case.
+  Codex correct. Gemini's "novel contributions" framing is incorrect —
+  there are no Java setup tweaks; the commits are merge metadata.
+  Reconciled per-repo verdict: [STRICT-FORK-STALE-MERGED-UPSTREAM]
+  (same template as S3 V3-3).
+  Non-blocking but illustrative interpretation drift; informs S5
+  dispatch protocol upgrade (see cumulative count above).
+
+D3 — learn-singnet 43-ahead interpretation
+  Numerical claim (both reviewers, P12 verbatim): 43	2223 — VERIFIED.
+  Codex interpretation: stale forks no novel tradition; 43-ahead reduces
+    to .circleci/config.yml diffs.
+  Gemini interpretation: [FORK-DIVERGED-STALE] (43 ahead, but 2223 behind).
+  Direct verification (orchestrator, 2026-05-07):
+    cd 'E:\GitHub\hyperon reference\learn-singnet'
+    git diff --stat origin/master $(git merge-base origin/master upstream/master)
+    → .circleci/config.yml | 24 +++++-------------------
+       1 file changed, 5 insertions(+), 19 deletions(-)
+  Verdict: 43 origin-only commits aggregate to a single .circleci file
+  changed, 5 insertions / 19 deletions. CI configuration only, NOT
+  novel algorithm work. Codex correct. Gemini's [FORK-DIVERGED-STALE]
+  tag is approximately correct (the fork IS stale and IS diverged),
+  but [STRICT-FORK-STALE-MERGED-UPSTREAM] is the more precise
+  cluster-pilot-vocabulary tag.
+
+CF5.6 outcome for S4:
+  - P12 verbatim numerical protocol effective: all 4 Gemini-provided
+    fork-divergence numbers verified against direct git output.
+  - New drift surface: INTERPRETATION layer (verdict tag selection,
+    sub-implementation "implemented via" claims). D1 LOAD-BEARING
+    rejection observed in Paraconsistent claim. Gemini interpretation
+    drift requires an S5 dispatch protocol upgrade — see §4.
+  - Codex 100% accurate on all checked items including the Paraconsistent
+    boundary, the wiki Semantic Parsing Sandra-spec structure (verified
+    by grep below), and 8-fork audit superset.
+
+Wiki card structure spot-check (Codex's S4.B.Q9 claims):
+  Codex cited: Hyperon AI Algorithms+Semantic Parsing Published ID 655
+    with +content shell (ID 7340), +github (ID 7617, currently
+    https://github.com/singnet/semantic-parsing — HTTP 404 verified by
+    Codex), +responsible (ID 7616, "Leung Man Hin and Roman Treutlein"),
+    +description (ID 7618, SENF/canonical-graph claim), +Semantic Parsing
+    Full (ID 4419, last update 2026-05-06).
+  Codex cited: Hyperon AI Algorithms+Concept Blending Draft ID 4092
+    (last update 2026-04-10, no Sandra-spec port yet, framed around
+    Hyperon whitepaper PRIMUS/TransWeave/MORK).
+  Orchestrator did NOT independently spot-check these card IDs in this
+  reconciliation pass to minimize wiki MCP traffic during reconciliation
+  (Codex's track record on wiki inventory verification through HAA
+  S2/S3 has been 100% accurate). Will be verified at S4 cluster-close
+  edit batch via fresh `get_card` reads — same Sandra-spec re-check
+  protocol as MetaMo S2 close per
+  feedback_sandra_spec_port_recheck_before_batch.md.
+
+================================================================================
+
+§2. PER-QUESTION RECONCILED ANSWERS
+------------------------------------
+
+§2.A.Q1 — Concept Blending paper verdict
+  Reconciled (per CF5.6 D1 above):
+    - Blending.json (information-theoretic, Goertzel 2025-02-25):
+      [IMPLEMENTATION-BACKED-CORE]. Backed by an_infotheoretic_approach/
+      (info-theoretic.metta + GA-imp.metta + cma-es-imp.metta).
+    - Blending_Quantale_Theorems.json (Goertzel 2026-01-20, "Compositional
+      Theorems for Quantale-Based Blending: How Weakness Interoperates
+      with Categorical Structure"): [PAPER-ONLY-FORMAL-EXTENSION]. No
+      direct quantale-class implementation in conceptBlending HEAD.
+    - Quantale_Blending_Paper.json (Goertzel 2026-01-20, "Quantale Weakness
+      Based Conceptual Blending: Integrating Information-Theoretic and
+      Category-Theoretic Approaches"): [PAPER-ONLY-FORMAL-EXTENSION].
+      Companion to Blending_Quantale_Theorems; integrates the two sub-
+      paradigms at the formal layer; no quantale-specific code.
+    - Paraconsistent_Interference_Blending.json (Goertzel 2026-01-20,
+      "Paraconsistent Interference in Conceptual Blending: When Properties
+      Resonate or Cancel"): [PAPER-ONLY-FORMAL-EXTENSION]. Per CF5.6 D1,
+      Gemini's [IMPLEMENTATION-BACKED-CORE] verdict REJECTED — no
+      paraconsistent or interference code exists at conceptBlending HEAD;
+      a_categorytheoretic_approach/ contents are colimit/morphism/algspec,
+      not paraconsistent.
+
+§2.A.Q2 — conceptBlending repo branch surface
+  Reconciled (Codex's 4-branch mapping adopted, with Gemini's 3-branch
+  partially folded):
+    - **a_categorytheoretic_approach/** [CATEGORY-THEORETIC-COLIMIT].
+      LLM + concept-AtomSpace, colimit/pushout framing (compute_colimit
+      at libs/colimit.py:266). Maps to category-theoretic paper material
+      (whitepaper PRIMUS framing + colimit-based blending generalization).
+      MOST RECENT activity (PR #91 from felekekinfe; PR #92 advance to
+      df8d4b7 since brief draft).
+    - **a_naive_approach/** [NAIVE-PROTOTYPE]. Graph matching + GPT;
+      simpler prototype using mirror/simplex/single-scope/double-scope
+      blending network LLM prompts.
+    - **an_infotheoretic_approach/** [INFO-THEORETIC-IBC]. Information-
+      theoretic blending with GA + CMA-ES search (info-theoretic.metta:111
+      defines mu-hqblend; GA-imp.metta:166+:190 defines GA iteration;
+      cma-es-imp.metta:249+:272 defines CMA-ES iteration). Maps to
+      Blending.json (P1).
+    - **peTTa_version/** [PETTA-PORT-EXPERIMENTAL]. PeTTa version
+      retains the information-theoretic implementation except GA, adds
+      multi-objective CMA-ES support (peTTa_version/info-theoretic.metta:116
+      defines mu-hqblend).
+  Gemini's Q2 mapping had three of the four branches but was missing
+  a_naive_approach/ and conflated a_categorytheoretic_approach/ with the
+  Pseudo-bimonad/Quantale framing. Reconciled mapping rejects Gemini's
+  category↔quantale conflation — a_categorytheoretic_approach/ is
+  category-theoretic colimit, not quantale.
+
+§2.A.Q3 — Eskridge attribution
+  Reconciled: [ESKRIDGE-NOT-IN-LOCAL-ARCHIVE] (consensus). Both reviewers
+  performed independent grep verification on the four blending paper JSONs
+  for "Eskridge"/"eskridge" and found zero hits. The CLAUDE.md
+  "Goertzel/Eskridge concept-blending paper(s)" framing is
+  [ATTRIBUTION-DRIFT] for the local archive: the four 2025-2026 Hyperon-era
+  blending papers in `publication_texts/mattermost_papers/` are
+  Ben-Goertzel-only.
+  Open: whether older OpenCog-era Goertzel/Eskridge concept-blending papers
+  exist outside the local archive. Reviewers should flag for later
+  retrieval. Not blocking S4 close.
+  V4-X ref: locked V4-1 — see §3.
+
+§2.A.Q4 — HoTT scope
+  Reconciled: [HOTT-BOUNDARY-DEFER] / [CROSS-CLUSTER-BOUNDARY-DEFER]
+  (consensus). HoTT_semantics_v3.json + HoTT_semantics_examples.json are
+  identity/commonsense-reasoning material (PGM-HoTT — Paraconsistent
+  Geodesic Modal Homotopy Type Theory) sufficiently distinct from
+  integration-network blending to warrant separate treatment. Adopted:
+  defer to a future pilot. Gemini's "future PRIMUS / HoTT-Semantics
+  cluster" framing adopted as the concrete deferral target.
+  Cluster-close treatment: brief mention in HAA Concept Blending wiki
+  card's "What This Card Is Not" disambiguation block, with pointer
+  to a future HoTT-semantics pilot.
+
+§2.A.Q5 — HAA Concept Blending wiki audit
+  Reconciled (Codex sole coverage; Gemini coverage gap):
+  Hyperon AI Algorithms+Concept Blending (Draft, ID 4092, last update
+  2026-04-10) is **stale** relative to S4 extraction:
+    - Predates the S4 paper stack (2025-02 → 2026-01 papers).
+    - Predates the conceptBlending repo's PR #91 / #92 surface.
+    - Frames blending around Hyperon whitepaper PRIMUS/TransWeave/MORK
+      (roadmap claims) without distinguishing implementation-backed
+      info+cat-theoretic branches from paper-only quantale/paraconsistent/
+      HoTT material.
+    - No Sandra-spec port yet (single Draft card, no per-field sibling
+      structure as of 2026-04-10).
+    - Sister virtual RichText parent: Concept Blending ID 4091.
+  Edit target: C1 in §5. Refine, not replace.
+
+§2.B.Q6 — Semantic parsing per-repo verdict matrix
+  Reconciled (Codex sole coverage; Gemini partial via Q10):
+    - **opencog/link-grammar** @ HEAD `c6ff88dd4` (v5.13.1):
+      [CLASSIC-NLP-STACK-ACTIVE-LEGACY] / primary syntactic parser.
+      Type-theoretic / category-theoretic equivalences with CCG/pregroup
+      grammar documented at README:1132-1151.
+    - **opencog/relex** @ HEAD `4c85a9aa` (2026-01-22):
+      [CLASSIC-NLP-STACK-ACTIVE-LEGACY] / dependency relation extractor.
+      Version 1.6.3 circa 2016; current top commits are dependabot
+      maven dependency maintenance (logback bumps), NOT algorithmic
+      modernization.
+    - **opencog/learn** @ HEAD `5c44af3ee` (post-pull state; Codex
+      observed brief-time HEAD `416e9a1d` had advanced — see V4-6):
+      [LEARN-ACTIVE-ATOMSPACE-SCHEME-LANGUAGE-RESEARCH]. Active
+      neuro-symbolic Link Grammar work via lg-pipe-parser.scm + bond-
+      links.scm; recent neuro-LG.lyx diary.
+    - **opencog/generate** @ HEAD `8366ab4`: [GENERATE-ATOMSPACE-SHEAF-
+      GENERATION]. Network generation from syntax; AtomSpace-based
+      lexical entries.
+    - **leungmanhin/semantic_parsing** @ HEAD `e2325316` (upstream
+      rTreutlein/semantic_parsing): [LLM-TO-PLN-METTA] / [HYPERON-ERA-
+      ACTIVE]. Hyperon-dependent (requirements.txt:58); MeTTaHandler
+      via NL2PLN/metta/metta_handler.py; LLM-driven NL→PLN/MeTTa
+      pipeline. NOT a Link Grammar / RelEx wrapper.
+    - **leungmanhin/semantic-parser** @ HEAD `d00331de` (no upstream
+      remote): [SEPARATE-PETTA-CHAINER-LINE]. hyperon==0.2.10 +
+      PeTTaChainer; chaining.py + checker_functions + prompts.py
+      contain PLN expression guidance and Premises/Conclusions syntax.
+      Distinct from semantic_parsing (with underscore) despite naming
+      similarity.
+    - **rTreutlein/nl2pln_demo** @ HEAD `095db2b` (2 commits):
+      [DEMO-NOT-PIPELINE]. Small NL2PLN demo with MeTTaHandler;
+      thin wrapper around the rTreutlein semantic_parsing line.
+
+§2.B.Q7 — Semantic-parsing canonical-repo resolution
+  Reconciled (consensus):
+    - **`singnet/semantic-parsing` returns HTTP 404** (Codex WebFetch +
+      Gemini Invoke-WebRequest both verified). The wiki Reference+GitHub
+      Repositories card (ID 7268) and the Semantic Parsing +github sibling
+      card (ID 7617) both currently cite this 404 URL; this is a
+      load-bearing wiki correction.
+    - **`rTreutlein/semantic_parsing`** is the canonical upstream
+      (HTTP 200; semantic_parsing local clone has it as `upstream`
+      remote).
+    - **`leungmanhin/semantic_parsing`** is the active fork-derived
+      primary (HTTP 200; `origin` of local clone). Sandra-spec-recorded
+      authorship "Leung Man Hin and Roman Treutlein" matches.
+    - **`leungmanhin/semantic-parser`** (DASHED) is a separate,
+      dashed-name repo (no upstream remote configured locally; PeTTaChainer
+      line). Should be listed alongside but not collapsed into the
+      underscore-named semantic_parsing.
+  V4-X ref: locked V4-4 — see §3.
+
+§2.B.Q8 — Stale fork verbatim audit
+  Reconciled (Codex's 8-fork superset adopted; Gemini's 4-fork subset
+  cross-verified by orchestrator):
+
+  ```
+  ### link-grammar-glicerico
+  $ git rev-list --left-right --count origin/master...upstream/master
+  0	3593
+  Verdict: [STRICT-FORK-STALE]
+
+  ### link-grammar-leungmanhin
+  $ git rev-list --left-right --count origin/master...upstream/master
+  0	1424
+  Verdict: [STRICT-FORK-STALE]
+
+  ### relex-singnet
+  $ git rev-list --left-right --count origin/master...upstream/master
+  7	12
+  Origin-only commits: all 7 are merge-sync metadata
+  (Merge pull request from ngeiswei/merge-opencog-to-singnet × 4
+   + Merge branch 'master' of github.com:opencog/relex × 3)
+  Verdict: [STRICT-FORK-STALE-MERGED-UPSTREAM]
+  (per S3 V3-3 template; CF5.6 D2 rejected Gemini's
+  [FORK-DIVERGED-NOVEL-CONTRIBUTIONS] interpretation)
+
+  ### relex-leungmanhin
+  $ git rev-list --left-right --count origin/master...upstream/master
+  0	10
+  Verdict: [STRICT-FORK-STALE]
+
+  ### relex-hansonrobotics
+  $ git rev-list --left-right --count origin/master...upstream/master
+  0	224
+  Verdict: [STRICT-FORK-STALE]
+
+  ### learn-singnet
+  $ git rev-list --left-right --count origin/master...upstream/master
+  43	2223
+  Origin-only diff reduces to .circleci/config.yml
+  (1 file, 5 insertions, 19 deletions)
+  Verdict: [STRICT-FORK-STALE-MERGED-UPSTREAM]
+  (CI metadata only; no novel algorithm work; CF5.6 D3 refines
+   Gemini's [FORK-DIVERGED-STALE] tag)
+
+  ### learn-glicerico
+  $ git rev-list --left-right --count origin/master...upstream/master
+  0	1163
+  Verdict: [STRICT-FORK-STALE]
+
+  ### nl2pln_demo-leungmanhin
+  $ git rev-list --left-right --count origin/main...upstream/main
+  0	0
+  Verdict: [FORK-IDENTICAL-TO-UPSTREAM]
+  (no divergence; identical to rTreutlein upstream at this snapshot)
+  ```
+
+  Gemini's 4-fork subset (link-grammar-leungmanhin, singnet/relex,
+  leungmanhin/relex, learn-singnet) verbatim numerical claims all
+  match — P12 protocol effective.
+
+  V4-X ref: locked V4-7 — see §3.
+
+§2.B.Q9 — HAA Semantic Parsing wiki audit
+  Reconciled (Codex sole coverage; Gemini coverage gap):
+  Hyperon AI Algorithms+Semantic Parsing (Published, ID 655) is
+  Sandra-spec ported with the following sibling structure:
+    - +content (RichText, ID 7340) — inclusion shell over per-field
+      siblings.
+    - +responsible (PlainText, ID 7616) — "Leung Man Hin and Roman
+      Treutlein". MATCHES the canonical semantic_parsing identity per
+      §2.B.Q7. **No correction needed for this sibling** (different
+      from MetaMo S2 case where +responsible needed authorship
+      reversal).
+    - +github (RichText, ID 7617) — currently contains
+      `https://github.com/singnet/semantic-parsing` only. **HTTP 404
+      LOAD-BEARING CORRECTION REQUIRED**: replace with
+      rTreutlein/semantic_parsing + leungmanhin/semantic_parsing +
+      leungmanhin/semantic-parser.
+    - +description (RichText, ID 7618) — claims SENF / canonical-graph
+      structures. SENF (Semantic Embedding Normal Form?) is a
+      proposal-level direction, not what semantic_parsing HEAD directly
+      implements. Edit recommendation: clarify SENF as proposed/
+      canonical-normal-form direction, not the direct behavior of
+      semantic_parsing HEAD.
+    - +Semantic Parsing Full (Draft, ID 4419, last update 2026-05-06)
+      — broadly aligned with extracted reality. Correctly separates
+      legacy Link Grammar/RelEx/learn/generate from Hyperon-era
+      LLM-to-MeTTa approaches. Minor drift: lists Link Grammar as
+      v5.13.0 while local HEAD is v5.13.1.
+  Edit targets: C2 (+github URL fix), C3 (+description SENF clarification),
+  C2-bis (Full v5.13.x version sync, optional).
+
+§2.B.Q10 — Pipeline integration
+  Reconciled: [SEMANTIC-PARSING-SPLIT-STACK] / [LLM-TO-PLN-METTA] /
+  [NOT-LINK-GRAMMAR-RELEX-WRAPPER] (Codex three-tag adopted; Gemini's
+  single-tag [SEMANTIC-PARSING-SPLIT-STACK] folded in as umbrella).
+  - Targeted greps for `semantic_parsing` / `semantic-parser` / `nl2pln`
+    / `Link Grammar` / `RelEx` / `relex` over conceptBlending HEAD: NO
+    HITS. Concept blending and semantic parsing are independent HAA
+    sources at this snapshot; no current Hyperon code path couples them.
+  - The classical Link Grammar / RelEx / learn / generate stack is
+    AtomSpace/Scheme/C++ oriented; the Hyperon-era semantic_parsing /
+    semantic-parser / nl2pln_demo line is LLM-to-PLN/MeTTa.
+  - Two adjacent generations with the same goal (NL → formal
+    representation), NOT one direct pipeline.
+  V4-X ref: locked V4-5 — see §3.
+
+§2.C.Q11 — SGNN final placement
+  Reconciled: [SGNN-OUT-OF-S4-DEFER-TO-CROSS-ORG] (consensus).
+  Both reviewers verified at HEAD `92d8e3a`: SGNN README:2,5,9,11 confirms
+  speech-act classification on SwDA corpus; targeted greps for Atomese /
+  MeTTa / OpenCog / Hyperon / PLN / RelEx / Link Grammar return zero
+  hits. Recent commit activity is Ruby/Jekyll dependency maintenance
+  (nokogiri vulnerability fix), NOT algorithm work.
+  Final placement: cross-org sweeps cluster (or future ML-paper
+  boundary source). Do NOT include in S4 cluster-close edits except
+  as an explicit "not included" footnote if needed.
+  V4-X ref: locked V4-8 — see §3.
+
+§2.Q12 — V4-X carry-forwards + cluster-close edit batch precis
+  Reconciled (Codex's 10 V4-X + 5 C-N adopted; Gemini's 3 C-N folded in
+  where they don't conflict):
+  See §3 (V4-X) and §5 (C-N) below.
+
+================================================================================
+
+§3. V4-X CARRY-FORWARDS (LOCKED)
+---------------------------------
+
+V4-1 [CONCEPT-BLENDING-ATTRIBUTION-DRIFT] — load-bearing for documentation
+  CLAUDE.md "Goertzel/Eskridge concept-blending paper(s)" framing is
+  drift relative to the local Mattermost archive. Both reviewers'
+  independent grep verified zero Eskridge hits across the four
+  Hyperon-era (2025-2026) blending paper JSONs. CLAUDE.md S4 What's-Next
+  / status table reference should be corrected to "Goertzel concept-
+  blending paper(s) (2025-2026 Hyperon-era; possible older OpenCog-era
+  Goertzel/Eskridge papers may exist outside local archive — flag for
+  future retrieval)".
+
+V4-2 [CONCEPTBLENDING-WORKTREE-DELETED-BUT-HEAD-VALID] — methodology
+  The conceptBlending local working tree at `E:\GitHub\hyperon
+  reference\conceptBlending` is dirty (~hundreds of staged file deletions
+  + 3 untracked AGENTS/CLAUDE/GEMINI.md) and is NOT a valid filesystem
+  source surface. Extract against committed HEAD `9675e5e` only. Per
+  feedback_parallel_claude_handoff.md, the in-progress local state may
+  represent the user's or another session's reorganization that
+  hasn't yet merged; do not modify the working copy. Upstream has
+  advanced 3 commits to `df8d4b7` that S4 reviewers correctly did NOT
+  pull. Future cluster pilots should record this methodology rule for
+  any repo encountered in this state.
+
+V4-3 [CONCEPT-BLENDING-PARTIAL-IMPLEMENTATION]
+  Information-theoretic + GA-CMA-ES + category-theoretic colimit/pushout
+  + PeTTa-port branches are [IMPLEMENTATION-BACKED-CORE] in
+  conceptBlending @ `9675e5e`. Quantale weakness, paraconsistent
+  interference, and HoTT-adjacent material are
+  [PAPER-ONLY-FORMAL-EXTENSION] in the checked repo. Per CF5.6 D1,
+  Gemini's [IMPLEMENTATION-BACKED-CORE] for paraconsistent REJECTED.
+
+V4-4 [SINGNET-SEMANTIC-PARSING-404] — load-bearing for wiki edits
+  `https://github.com/singnet/semantic-parsing` returns HTTP 404.
+  Wiki citations in two places must be corrected:
+    - `Reference+GitHub Repositories` (ID 7268, Cognitive Logic &
+      Reasoning section) — currently lists singnet/semantic-parsing as
+      "Neural-symbolic bridge for NL-to-Atomese. Active." Replace with
+      rTreutlein/semantic_parsing canonical + leungmanhin/semantic_parsing
+      active fork-derived primary + leungmanhin/semantic-parser separate
+      dashed-name PeTTaChainer line.
+    - `Hyperon AI Algorithms+Semantic Parsing+github` (ID 7617,
+      Sandra-spec sibling) — currently the only URL listed. Replace
+      with the trilateral repo set above.
+  This is the third [HTTP-404-CITED-IN-WIKI] case in the HAA cluster
+  (S1 had `singnet/AIRIS_Public` + `singnet/AIRIS-scripts`); the
+  feedback_webfetch_verify_external_urls.md standing protocol applies
+  symmetrically here.
+
+V4-5 [SEMANTIC-PARSING-SPLIT-STACK] — narrative framing
+  Do not collapse Hyperon-era LLM-to-PLN/MeTTa repos into the classical
+  Link Grammar / RelEx / opencog/learn / opencog/generate stack. They
+  are adjacent generations with the same goal, not one direct pipeline.
+  conceptBlending HEAD has zero references to Link Grammar / RelEx /
+  semantic_parsing / semantic-parser / nl2pln (cross-grep verified at
+  HEAD), so concept blending is also independent of the NL parser
+  pipeline at this snapshot.
+
+V4-6 [LEARN-SHA-DRIFT] — non-blocking diagnostic
+  Brief cited `opencog/learn` HEAD `416e9a1d` (2026-04-01); after the
+  2026-05-06 git pull during S4 brief drafting, learn HEAD advanced to
+  `5c44af3ee4bb9b712653b7891a60192c92280f9a` (post-2026-05-06; commit
+  message "Typos"). Reviewer findings cited the post-pull HEAD; this
+  reconciliation adopts the post-pull HEAD as the documented S4
+  snapshot. Substantive verdict ([LEARN-ACTIVE-ATOMSPACE-SCHEME-
+  LANGUAGE-RESEARCH]) is unchanged. Future cluster pilots: pin
+  brief-time SHA explicitly OR document the pull-during-extraction
+  drift.
+
+V4-7 [STALE-FORKS-NO-NOVEL-TRADITION]
+  Eight forks audited (per §2.B.Q8 verbatim block). All eight are
+  stale or merge-sync-only. NONE represent active independent
+  semantic-parsing or NL-to-Atomese traditions. Per-repo tags:
+  [STRICT-FORK-STALE] (×6), [STRICT-FORK-STALE-MERGED-UPSTREAM] (×2 —
+  singnet/relex + learn-singnet, both with merge/CI metadata only),
+  [FORK-IDENTICAL-TO-UPSTREAM] (×1 — nl2pln_demo-leungmanhin at 0/0).
+
+V4-8 [SGNN-BOUNDARY-OUT] — final placement
+  SGNN remains a speech-act classifier over SwDA. Not S3 pattern mining;
+  not S4 semantic parsing pipeline. Defer to cross-org sweeps cluster
+  (or future ML-paper boundary source). Do not include in S4 cluster-
+  close edits except as an explicit "not included" footnote if needed.
+
+V4-9 [WIKI-CONCEPT-BLENDING-STUB] — load-bearing for wiki edits
+  Hyperon AI Algorithms+Concept Blending (Draft, ID 4092) is stale
+  relative to S4 extraction. Last update 2026-04-10 predates the S4
+  paper stack (2025-02 to 2026-01) and conceptBlending repo recent
+  surface. Refine, not replace. Add S4 cluster-pilot status block, paper
+  stack table, conceptBlending repo branch table, [IMPLEMENTATION-BACKED-
+  CORE] vs [PAPER-ONLY-FORMAL-EXTENSION] split, HoTT boundary note,
+  Eskridge-not-in-local-archive note.
+
+V4-10 [WIKI-SEMANTIC-PARSING-URL-DRIFT] — load-bearing for wiki edits
+  Semantic Parsing Full (ID 4419) is broadly aligned with extracted
+  reality. The Sandra-spec +github child (ID 7617) and Reference+GitHub
+  Repositories (ID 7268) both retain the singnet/semantic-parsing 404
+  URL. Both must be corrected at S4 close. The +description sibling
+  (ID 7618) SENF claim should be clarified as proposal-level rather
+  than direct semantic_parsing HEAD behavior.
+
+V4-11 [GEMINI-INTERPRETATION-DRIFT-S5-DISPATCH-PROTOCOL] (NEW, S5
+  dispatch protocol upgrade)
+  P12 verbatim numerical protocol effective for the 4 Gemini-provided
+  fork-divergence numbers (all matched orchestrator's direct verification),
+  but S4 surfaced TWO interpretation-layer drifts: D1 paraconsistent
+  verdict (LOAD-BEARING REJECTED — fabricated "implemented via
+  a_categorytheoretic_approach/" claim) + D2 singnet/relex
+  [FORK-DIVERGED-NOVEL-CONTRIBUTIONS] tag (numerically correct verbatim
+  but interpretation wrong). Cumulative drift now 25/42 ≈ 59.5%, at
+  the 60% escalation threshold flagged in S2/S3 reconciliations. New
+  S5 dispatch protocol (V4-11 [GEMINI-INTERPRETATION-VERIFICATION]):
+  Gemini "implemented via X" / "verified via Y" / "X reduces to Z"
+  interpretation claims must be spot-checked by orchestrator before
+  adoption. P12 verbatim numerical protocol RETAINED (effective).
+  Gemini self-acknowledged P12 in S3 sign-off; S5 dispatch will request
+  Gemini self-commit to V4-11 interpretation-verification protocol
+  similarly.
+
+REJECTED candidates:
+  Gemini's S4.A.Q1 [IMPLEMENTATION-BACKED-CORE] for
+  Paraconsistent_Interference_Blending — REJECTED via CF5.6 D1.
+  Reconciled to [PAPER-ONLY-FORMAL-EXTENSION].
+
+  Gemini's S4.B.Q8 [FORK-DIVERGED-NOVEL-CONTRIBUTIONS] for singnet/relex
+  with "2021-era Java setup tweaks" framing — REJECTED via CF5.6 D2.
+  Reconciled to [STRICT-FORK-STALE-MERGED-UPSTREAM] (per S3 V3-3
+  template).
+
+  Gemini's S4.A.Q2 conflation of a_categorytheoretic_approach/ with
+  Pseudo-bimonad/Quantale framing — REJECTED via CF5.6 grep verification
+  (filename evidence is colimit/morphism/algspec, not quantale; quantale
+  has zero implementation in conceptBlending HEAD). Reconciled to
+  Codex's 4-branch mapping with a_categorytheoretic_approach/ as
+  category-theoretic colimit.
+
+================================================================================
+
+§4. CROSS-CLUSTER PRECIS + CUMULATIVE DRIFT
+--------------------------------------------
+
+Cumulative Gemini drift count entering S5:
+  - Pre-HAA (5 prior pilots): 8/25 = 32%.
+  - HAA Source 1: +3 = 11/28 ≈ 39%.
+  - HAA Source 2: +6 = 17/34 ≈ 50%.
+  - HAA Source 3: +5 = 22/39 ≈ 56%.
+  - HAA Source 4: +3 (D1..D3, including 1 LOAD-BEARING REJECTED
+    interpretation-layer claim) = **25/42 ≈ 59.5%**.
+
+The 60% escalation threshold is essentially reached. S5 dispatch
+protocol upgrades:
+  - **P12 (verbatim numerical claims) RETAINED** — effective for the
+    4 Gemini-provided fork-divergence numbers in S4.
+  - **NEW V4-11 [GEMINI-INTERPRETATION-VERIFICATION]** — Gemini
+    "implemented via X" / "X reduces to Y" / sub-implementation
+    mapping claims must be CF5.6-verified by orchestrator before
+    adoption. Effective at S5 dispatch.
+  - Gemini coverage scope: S4 surfaced multi-question coverage gaps
+    (S4.A.Q5, S4.B.Q6, S4.B.Q9, full V4-X locking missed). S5 dispatch
+    should explicitly require Gemini findings to address ALL Q1..Q12
+    questions, not skip those that overlap with prior cluster work.
+
+Cross-cluster handoffs from S4 to S5:
+  - S5 (NACE + AI-DSL + MOSES + MeTTa-NARS): MOSES uses pattern-
+    discovery primitives that may appear adjacent to pattern mining
+    (S3) but are NOT the same paradigm (per S3 V3-6 narrative-guard
+    template). S5 brief should call out [MOSES-PROGRAM-LEARNING-NOT-
+    PATTERN-MINING] as analog of S3 V3-6 [SGNN-NOT-PATTERN-MINING]
+    and S4 V4-8 [SGNN-BOUNDARY-OUT].
+  - S5 may also need to handle a future PRIMUS / HoTT-Semantics pilot
+    boundary per S4 V4-X HoTT deferral (HoTT_semantics_v3 +
+    HoTT_semantics_examples), though that is properly a future cluster
+    not S5 in-scope.
+
+Cross-cluster handoffs from S4 to closed cluster pilots (re-anchor
+notes, no edit needed):
+  - PLN (closed 2026-04-25): S4 paper stack cites PLN as downstream
+    user; concept blending feeds PLN at the formal layer. Closed PLN
+    cluster pilot stands.
+  - Perception/Neural-Symbolic (closed 2026-05-01): semantic_parsing
+    LLM-to-PLN line is paradigm-distinct from the symbolic pattern
+    mining trilateral framing locked at Perception close.
+
+================================================================================
+
+§5. CLUSTER-CLOSE EDIT BATCH PRECIS (S4 → wiki state)
+------------------------------------------------------
+
+Per cluster-pilot pattern, at S4 close the wiki-edit batch will execute
+(subject to user explicit authorization for wiki writes). All targets
+must pass the Sandra-spec re-check protocol per
+feedback_sandra_spec_port_recheck_before_batch.md before write —
+i.e., fresh `get_card` reads on every target before composing the C-N
+content (the parallel session may have ported additional cards since
+the audit timestamps Codex captured).
+
+  C1 — REFINE Hyperon AI Algorithms+Concept Blending (ID 4092, Draft)
+       via update_card. Add S4 cluster-pilot status block; paper-stack
+       table (4 Hyperon-era Goertzel papers); conceptBlending repo
+       branch table (4-branch with [IMPLEMENTATION-BACKED-CORE] vs
+       [PAPER-ONLY-FORMAL-EXTENSION] split per V4-3); HoTT-boundary
+       note pointing to future PRIMUS/HoTT-Semantics pilot; Eskridge-
+       not-in-local-archive note per V4-1; "What This Card Is Not"
+       disambiguation block (analog of HAA Pattern Mining card 4087's
+       new What-It-Is-Not block per S3 close); cluster-pilot extraction
+       archive pointer.
+
+  C2 — REFINE Hyperon AI Algorithms+Semantic Parsing+github (ID 7617,
+       Sandra-spec sibling RichText) via update_card. Replace
+       singnet/semantic-parsing 404 URL with trilateral repo set:
+       rTreutlein/semantic_parsing canonical + leungmanhin/semantic_parsing
+       active fork-derived primary + leungmanhin/semantic-parser separate
+       dashed-name PeTTaChainer line. Pre-write WebFetch verification
+       on all three URLs.
+
+  C3 — REFINE Hyperon AI Algorithms+Semantic Parsing+description
+       (ID 7618, Sandra-spec sibling RichText) via update_card. Clarify
+       SENF as proposal-level / canonical-normal-form direction, NOT
+       the direct behavior of semantic_parsing HEAD. Add concise pointer
+       to {{Hyperon AI Algorithms+Semantic Parsing+Semantic Parsing
+       Full|view:link;title:Semantic Parsing Full}} for full-stack
+       implementation surface.
+
+  C4 — REFINE Reference+GitHub Repositories (ID 7268) via update_card.
+       Fix singnet/semantic-parsing 404 entry under Cognitive Logic &
+       Reasoning (replace with the trilateral repo set per V4-4); add
+       iCog-Labs-Dev/conceptBlending under Cognitive Logic & Reasoning
+       (with [CONCEPT-BLENDING-PARTIAL-IMPLEMENTATION] tag); optionally
+       add leungmanhin/semantic-parser as separate dashed-name entry.
+       DO NOT enumerate stale forks (per V4-7). Pre-write WebFetch
+       verification on all new URLs.
+
+  C5 — OPTIONAL: REFINE Semantic Parsing Full (ID 4419) via update_card.
+       Bump Link Grammar version reference from v5.13.0 to v5.13.1
+       (cosmetic; non-blocking). Add S4 cluster-pilot extraction
+       archive pointer footer.
+
+  C6 — NOOP: NO HAA Concept Blending +AI proposal child needed at S4
+       close. Card 4092 is a Draft (not Published parent), so direct
+       refinement via C1 is the right channel. The Sandra-spec port
+       has not been applied to Concept Blending yet (single Draft card
+       structure). Future pilots may revisit if the parallel session
+       Sandra-spec ports this Published parent.
+
+Pre-write protocol (per memory + standing protocols):
+  - Fresh `get_card` on every target before composing content (Sandra-
+    spec re-check protocol).
+  - WebFetch all external URLs before C2/C4 writes (all 3 trilateral
+    repo URLs already verified during S4 extraction; re-verify
+    immediately before write per
+    feedback_webfetch_verify_external_urls.md).
+  - Verify after every write with `get_card`.
+  - One-writer-only protocol; sequential not parallel.
+  - C5 is optional (cosmetic version bump); orchestrator may skip if
+    minimizing write churn.
+
+================================================================================
+
+§6. SOURCE-TEXT GAPS / OPEN ITEMS FROM S4
+------------------------------------------
+
+  - **Older Goertzel/Eskridge concept-blending papers**: the CLAUDE.md
+    "Goertzel/Eskridge" framing may reference older OpenCog-era papers
+    not in the local Mattermost archive. Reviewers flagged for future
+    retrieval. Not blocking S4 close.
+
+  - **HoTT_semantics_v3.json + HoTT_semantics_examples.json**: deferred
+    to future PRIMUS / HoTT-Semantics cluster pilot per V4-A.Q4
+    consensus. Not extracted in S4 beyond boundary note.
+
+  - **conceptBlending working-tree state**: the local clone has hundreds
+    of staged file deletions + 3 untracked AGENTS/CLAUDE/GEMINI.md
+    files. Per V4-2, this is methodology-only (extract against committed
+    HEAD); no resolution needed for S4 close. The user or parallel
+    session that introduced these deletions should resolve at their
+    discretion.
+
+  - **conceptBlending upstream advance**: HEAD `9675e5e` → upstream
+    `df8d4b7` (3 commits: PR #92 + "Remove unnecessary print lines" +
+    "Fix typo Error in py_generate_spec when passing context names to
+    algebraic specification"). Substantively non-blocking for S4 verdicts
+    but should be noted for future re-extraction or pilot continuation.
+
+  - **opencog/learn HEAD drift during pull**: brief cited `416e9a1d`,
+    post-pull is `5c44af3ee`. Per V4-6, post-pull SHA adopted as S4
+    snapshot. Verdict unchanged.
+
+  - **Gemini coverage gaps (S4.A.Q5, S4.B.Q6, S4.B.Q9, full V4-X
+    locking)**: Codex covered the gap. S5 dispatch protocol upgrade
+    requires explicit Q1..Q12 coverage from Gemini.
+
+================================================================================
+
+§7. THREE-WAY SIGN-OFF
+----------------------
+
+Codex sign-off: PENDING (this reconciliation document is being relayed
+                for review).
+Gemini sign-off: PENDING (this reconciliation document is being relayed
+                 for review). Note: Gemini's S4 findings contain ONE
+                 LOAD-BEARING REJECTED interpretation claim
+                 (Paraconsistent [IMPLEMENTATION-BACKED-CORE]) +
+                 ONE non-blocking interpretation drift (singnet/relex
+                 [FORK-DIVERGED-NOVEL-CONTRIBUTIONS]) + multi-question
+                 coverage gaps. Sign-off should explicitly acknowledge
+                 (a) the rejection of [IMPLEMENTATION-BACKED-CORE] for
+                 Paraconsistent (no implementation evidence in
+                 conceptBlending HEAD); (b) reconciled
+                 [STRICT-FORK-STALE-MERGED-UPSTREAM] tag for
+                 singnet/relex; (c) coverage gap acknowledgment + S5
+                 commitment to full Q-coverage.
+Orchestrator (Claude) sign-off: 2026-05-07. Reconciliation locked
+                                pending three-way confirmation. CF5.6
+                                verification log in §1. V4-1..V4-11
+                                locked in §3. C1..C5+C6-NOOP locked
+                                in §5 (subject to user authorization
+                                for wiki writes + Sandra-spec re-check
+                                pre-batch).
+
+After three-way sign-off, S4 cluster-close edit batch (C1..C5 in §5,
+with C6 explicitly NOOP) proceeds with:
+  - Sandra-spec re-check via fresh `get_card` on every target before
+    composing content (per feedback_sandra_spec_port_recheck_before_batch.md);
+  - One-writer-only protocol;
+  - Sequential-not-parallel writes;
+  - Pre-write WebFetch verification of all external URLs;
+  - Verify-after-write `get_card` on every write.
+
+================================================================================
+END OF SOURCE 4 RECONCILED FINDINGS
+================================================================================

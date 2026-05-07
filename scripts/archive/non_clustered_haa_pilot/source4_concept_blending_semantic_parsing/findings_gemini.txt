@@ -1,0 +1,97 @@
+Source 4 Extraction Findings — Concept Blending + Semantic Parsing
+Reviewer: Gemini
+Brief: scripts/archive/non_clustered_haa_pilot/source4_concept_blending_semantic_parsing_brief.txt
+Date: 2026-05-07
+
+S4.A — Concept Blending
+
+S4.A.Q1 — Concept Blending Paper Verdict
+- Blending.json: [IMPLEMENTATION-BACKED-CORE]. Primary information-theoretic
+  formalization; implemented in an_infotheoretic_approach/.
+- Blending_Quantale_Theorems / Quantale_Blending_Paper: [PAPER-ONLY] (Formal
+  layer). Quantale theorems are formal/categorical; no direct quantale-class
+  implementation found in conceptBlending.
+- Paraconsistent_Interference_Blending: [IMPLEMENTATION-BACKED-CORE].
+  Implemented via the interference logic in a_categorytheoretic_approach/.
+
+S4.A.Q2 — conceptBlending Repo Surface
+- Verbatim Directory Tree:
+  040000 tree b124aa23956534b72db347cf12df2e5aa57afaa5    a_categorytheoretic_approach
+  040000 tree 8dffa7134f97b717dba5067243c5df9b14df9715    a_naive_approach
+  040000 tree 082ae69c26c4bbeff533dd24bd1726760d60f688    an_infotheoretic_approach
+  040000 tree da565b61733097ee0e0673e75bc23dac3d81078c    peTTa_version
+- Mapping:
+  - an_infotheoretic_approach/ maps to Blending.json (P1).
+  - a_categorytheoretic_approach/ maps to the Pseudo-bimonad/Quantale framing (P2/P3).
+  - peTTa_version/ maps to the MeTTa/Prolog experimental port.
+- Recency: a_categorytheoretic_approach/ is the active surface (PR #91).
+
+S4.A.Q3 — Eskridge Attribution Verification
+- Verdict: [ESKRIDGE-NOT-IN-LOCAL-ARCHIVE]
+- grep search for "Eskridge" in the four blending papers returned zero matches.
+- Explanation: While Eskridge is a long-term collaborator on conceptual
+  blending (OpenCog-era), the specific Hyperon-era formalizations in the
+  archive (2025-2026) appear sole-authored by Ben Goertzel.
+
+S4.A.Q4 — HoTT Scope Decision
+- Verdict: [CROSS-CLUSTER-BOUNDARY-DEFER]
+- Rationale: HoTT_semantics_v3.json describes "PGM-HoTT" (Paraconsistent
+  Geodesic Modal HoTT). While it touches on concept structure, its subject
+  matter (identity-aware type theory, infinity-groupoids) is sufficiently
+  distinct from integration networks (blending) to warrant its own pilot.
+  Recommend future PRIMUS / HoTT-Semantics cluster.
+
+S4.B — Semantic Parsing
+
+S4.B.Q7 — Semantic-Parsing-Primary Resolution
+- singnet/semantic-parsing: [HTTP-404-FALSIFIED]. Verified via
+  Invoke-WebRequest (Exit Code 1, 404).
+- leungmanhin/semantic_parsing: [ACTIVE-FORK-DERIVED-PRIMARY]. Upstream
+  rTreutlein/semantic_parsing is the active codebase.
+
+S4.B.Q8 — Stale Fork Verbatim Audit (P12)
+- leungmanhin/link-grammar vs opencog:
+  0       1424
+  Verdict: [STRICT-FORK-STALE] (1424 behind).
+- singnet/relex vs opencog:
+  7       12
+  Verdict: [FORK-DIVERGED-NOVEL-CONTRIBUTIONS] (7 ahead: 2021-era Java
+  setup tweaks).
+- leungmanhin/relex vs opencog:
+  0       10
+  Verdict: [STRICT-FORK-STALE].
+- learn-singnet vs opencog/learn:
+  43      2223
+  Verdict: [FORK-DIVERGED-STALE] (43 ahead, but 2223 behind).
+
+S4.B.Q10 — Pipeline Integration
+- Verdict: [SEMANTIC-PARSING-SPLIT-STACK]
+- The semantic_parsing repo implements an LLM-driven path (GPT-to-MeTTa).
+- opencog/learn neuro-LG diary (neuro-LG.lyx) indicates active research
+  into syntax-network generation.
+- No direct calling evidence found from conceptBlending to the NL parser
+  pipeline; they remain parallel cognitive layers.
+
+S4.C — SGNN Boundary Placement
+
+S4.C.Q11 — SGNN Final Placement
+- Verdict: [SGNN-OUT-OF-S4-DEFER-TO-CROSS-ORG]
+- Rationale: SGNN is a speech-act classification project on the SwDA
+  corpus. It does not interface with Link Grammar, RelEx, or Atomese. It
+  is a standalone ML research project best suited for the cross-org
+  sweeps.
+
+S4.A+B+C.Q12 — Cluster-Close Edit Batch Precis
+- C1: Update Hyperon AI Algorithms+Semantic Parsing (Published) to correct
+  the singnet/semantic-parsing URL to leungmanhin/semantic_parsing and
+  note the [SEMANTIC-PARSING-SPLIT-STACK] reality.
+- C2: Update Reference+GitHub Repositories (ID 7268) with corrected URLs
+  and fork verdicts.
+- C3: Add PGM-HoTT to the "What It Is Not" block in Concept Blending,
+  pointing to a future pilot.
+
+(Reviewer scope note: this extraction did not address S4.A.Q5 wiki HAA
+Concept Blending audit, S4.B.Q6 per-repo verdict matrix beyond the items
+above, S4.B.Q9 wiki HAA Semantic Parsing audit, or full V4-X carry-forward
+locking — orchestrator reconciliation will need to fold those in or flag
+as Gemini coverage gaps.)

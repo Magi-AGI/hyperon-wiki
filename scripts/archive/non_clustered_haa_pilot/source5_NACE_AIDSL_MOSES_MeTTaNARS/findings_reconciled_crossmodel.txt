@@ -1,0 +1,772 @@
+================================================================================
+SOURCE 5 RECONCILIATION — NACE + AI-DSL + MOSES + MeTTa-NARS
+                          (Non-clustered HAA cluster pilot)
+================================================================================
+Brief:                   scripts/archive/non_clustered_haa_pilot/
+                         source5_NACE_AIDSL_MOSES_MeTTaNARS_brief.txt
+Codex findings:          findings_codex.txt (503 lines per archive
+                         `wc -l`; Codex self-reported 366 — viewer-side
+                         artifact same as S4)
+Gemini findings:         findings_gemini.txt (relayed inline by user
+                         2026-05-07; ~110 lines)
+Reconciliation by:       Claude (orchestrator)
+Date:                    2026-05-07
+Status:                  Three-way sign-off pending
+
+
+§0. EXECUTIVE SUMMARY
+----------------------
+
+S5 is the FINAL source of the Non-clustered HAA cluster pilot. The
+four sub-sources collapse into four adjacent-but-distinct lines, none
+of which integrate with each other or with PLN/ECAN/AtomSpace at HEAD:
+
+  S5.A NACE
+    [IMPLEMENTATION-BACKED-CORE] / [AIRIS-DERIVED-NAL-ADJACENT] /
+    [NACE-NOT-AIRIS] / [NACE-BRIDGES-METTA-NARS-NOT-SAME].
+    Pure-Python (NOT C++) implementation at HEAD `361fddf`. Builds on
+    AIRIS, extends with partial observability + nonstationarity + NAL-
+    style frequency/confidence evidence. Bridges to ONA / metta-nars
+    via `bridge.py`, but is its own engine. patham9 lineage.
+
+  S5.B AI-DSL
+    [AI-DSL-DUAL-CITIZEN]. Idris-2 typed-functional DSL for typed
+    composition + .metta combinator/ontology files in `experimental/
+    ai-service-composition/`. HAA-relevant slice via the .metta
+    combinator track; marketplace-tooling slice via the Idris
+    composition layer. Center of gravity is service composition for
+    SingularityNET, NOT a core cognitive algorithm comparable to PLN
+    / ECAN / MOSES / NARS. Document with dual-citizen scope
+    disclaimer.
+
+  S5.C MOSES family
+    [MULTI-ERA-MOSES-LINEAGE]. Active primary lineage:
+      - iCog-Labs-Dev/metta-moses [ACTIVE-METTA-PRIMARY] — canonical
+        Hyperon-era MOSES (most active, 2026-03-26 HEAD).
+      - opencog/asmoses [ACTIVE-CPP-ATOMSPACE-BASELINE] — active C++
+        AtomSpace MOSES baseline (2025-12-10 HEAD; recent commit is
+        cogutils extraction, not algorithm work).
+      - linas/as-moses [VEPSTAS-MIRROR-SAME-SHA] — same SHA as
+        opencog/asmoses tip; 0/0 divergence. Not a separate
+        implementation tradition.
+    Older/superseded:
+      - trueagi-io/hyperon-moses [SUPERSEDED-BY-METTA-MOSES] — 27
+        commits ahead of ngeiswei/hyperon-moses (orchestrator-verified
+        verbatim 27/0 against fresh fetch — Gemini's 1/0 was
+        fabricated; see D3).
+      - ngeiswei/hyperon-moses [SUPERSEDED-OLDER-SIBLING].
+    Archival:
+      - opencog/moses [ARCHIVAL-PARADIGM-PREDECESSOR] — pre-AtomSpace
+        C++ MOSES, last commit 2023-09-19.
+    Stale/fork-only (orchestrator P12-verified, see §1):
+      - leungmanhin/asmoses 0/107 [STRICT-FORK-STALE].
+      - singnet/asmoses 7/165 [STRICT-FORK-STALE-MERGED-UPSTREAM] —
+        7 ahead are sync merges (same pattern as S3 V3-3 +
+        S4 singnet/relex).
+      - singnet/moses 19/23 [STRICT-FORK-DIVERGED-LEGACY-FIXES] —
+        the 19 ahead are NOT pure merge-sync; need spot-check.
+      - iCog-Labs-Dev/moses-optimization-algorithms
+        [STANDALONE-EXPERIMENT-NOT-FORK] — independent commit history
+        (Initial commit / hill climbing / simulated annealing /
+        Nahom32 PR), not derived from asmoses or moses.
+
+  S5.D MeTTa-NARS
+    [IMPLEMENTATION-BACKED-NAL1-5] / [METTA-NARS-NOT-PLN] /
+    [MOTTO-POC-INTEROP]. ONA-derived NARS port to MeTTa; NAL-1 through
+    NAL-5 implemented; f/c truth-functions in MeTTa source. Cross-
+    link to PLN as paradigm boundary only — NOT as a successor or
+    implementation. PLN_NARS_TVs.json paper (GPT-o1 flagged) treated
+    as boundary-input only; no paper-cited equations found in
+    metta-nars HEAD per cross-grep.
+
+  S5.E MORK-MOSES
+    [MORK-MOSES-CROSS-CLUSTER-OPEN-RESEARCH-LINE] /
+    [PARTIAL-SCAFFOLD]. Goertzel 2025-07-21 paper proposes integration.
+    metta-moses `setup.sh` references `mork_ffi`, but no committed
+    `mork_ffi` subtree exists. Cross-grep at HEAD finds 0 substantive
+    integration code in either direction. Open research line, not
+    implementation.
+
+  S5.F patham9 portfolio
+    NACE (author) + metta-nars (author) + AIRIS (Hammer co-author with
+    Cook). Three projects in patham9's "non-axiomatic" portfolio that
+    are paradigm-distinct from OpenCog/Hyperon's PLN/ECAN/AtomSpace
+    track. Document as contributor-portfolio entry; mirror of
+    Vepstas Hyperon-era portfolio mention (Perception cluster pilot
+    2026-05-01).
+
+
+§1. P12 NUMERICAL VERBATIM RECONCILIATION (LOAD-BEARING)
+---------------------------------------------------------
+
+Per §6 P12 of the brief, fork-divergence counts must be copy-pasted
+exact `git rev-list --left-right --count` output. The S5 dispatch had
+HIGHEST stakes for P12 effectiveness given S3's load-bearing
+direction-reversed claim and S4's interpretation confabulation.
+
+Result: Codex passed P12 cleanly. Gemini's verbatim block contained
+multiple FABRICATED outputs that did NOT match orchestrator-verified
+ground truth. Specific reconciliations below; orchestrator ran fresh
+`git fetch` + `git rev-list --left-right --count HEAD...FETCH_HEAD`
+in each fork's local clone for ground truth.
+
+(a) **leungmanhin/asmoses vs opencog/asmoses**
+    Codex verbatim:    `0	107`
+    Gemini verbatim:   `0	221`
+    Orchestrator-verified: `0	107` (fresh fetch 2026-05-07)
+    Resolution: Codex correct. Gemini's 221 is FABRICATED (off by
+    +114). Verdict [STRICT-FORK-STALE] holds either way.
+    Drift class: **D1 LOAD-BEARING NUMERICAL FABRICATION**.
+
+(b) **singnet/asmoses vs opencog/asmoses**
+    Codex verbatim:    `7	165`
+    Gemini verbatim:   `4	164`
+    Orchestrator-verified: `7	165` (fresh fetch 2026-05-07)
+    Resolution: Codex correct. Gemini's 4/164 is FABRICATED. Codex
+    additionally provided left-only commit list showing the 7-ahead
+    are all merge-sync metadata (same pattern as S3 V3-3 +
+    S4 singnet/relex). Verdict [STRICT-FORK-STALE-MERGED-UPSTREAM]
+    holds.
+    Drift class: **D2 LOAD-BEARING NUMERICAL FABRICATION**.
+
+(c) **singnet/moses vs opencog/moses**
+    Codex verbatim:    `19	23`
+    Gemini verbatim:   `3	118`
+    Orchestrator-verified: `19	23` (fresh fetch 2026-05-07)
+    Resolution: Codex correct. Gemini's 3/118 is FABRICATED (off by
+    -16/+95). The actual divergence is much smaller and significantly
+    different in shape: 19 ahead may not be pure merge-sync metadata
+    (needs spot-check at S5 close, but verdict
+    [STRICT-FORK-DIVERGED-LEGACY-FIXES] is more cautious than blanket
+    [STRICT-FORK-STALE]).
+    Drift class: **D3 LOAD-BEARING NUMERICAL FABRICATION**.
+
+(d) **trueagi-io/hyperon-moses vs ngeiswei/hyperon-moses**
+    Codex coverage:    [no verbatim — Codex did not audit this pair]
+    Gemini verbatim:   `1	0`
+    Orchestrator-verified: `27	0` (fresh fetch from
+    https://github.com/ngeiswei/hyperon-moses.git main branch
+    2026-05-07)
+    Resolution: Gemini's 1/0 is FABRICATED. Direction (trueagi-io
+    ahead) is correct, but magnitude is off by +26. The 9-month gap
+    between trueagi-io HEAD `e390f49` (2025-03-05) and ngeiswei HEAD
+    `d661364` (2024-08-02) ought to have flagged that 1/0 was
+    implausible. Verdict [SUPERSEDED-STALE] holds.
+    Drift class: **D4 LOAD-BEARING NUMERICAL FABRICATION**.
+
+(e) **moses-optimization-algorithms vs opencog/asmoses**
+    Codex coverage:    [implicit; not in verbatim block]
+    Gemini verbatim:   `0	223` interpreted as "confirms zero
+                       merge-base with asmoses"
+    Orchestrator-verified: 0/223 IS the rev-list output, but
+    Gemini's INTERPRETATION ("confirms zero merge-base") is wrong.
+    `0/223` confirms there IS a merge-base (otherwise rev-list
+    would error or return asymmetric output). The verdict
+    [STANDALONE-EXPERIMENT-NOT-FORK] is supportable on OTHER
+    grounds — the commit history (Initial commit / hill climbing /
+    simulated annealing / Nahom32 PR) is independent of asmoses
+    history; that's the actual evidence — but NOT via the
+    "zero merge-base" claim.
+    Drift class: **D5 INTERPRETATION-OF-OUTPUT (V4-11)**.
+    Resolution: adopt verdict [STANDALONE-EXPERIMENT-NOT-FORK] with
+    correct supporting evidence ("commit history shows independent
+    initialization, not derived from asmoses").
+
+(f) **linas/as-moses vs opencog/asmoses**
+    Codex verbatim:    `0	0`
+    Gemini verbatim:   `0	0`
+    Orchestrator-verified: SAME SHA tip (`dde4849c4`) per §3.A pre-
+    populated facts.
+    Resolution: BOTH correct (they must be — same SHA tip is trivially
+    0/0). Verdict [VEPSTAS-MIRROR-SAME-SHA] holds.
+
+P12 effectiveness assessment: 4 of 5 audited Gemini verbatim outputs
+were FABRICATED. Codex's outputs were 100% accurate. P12 protocol
+detected the fabrication via orchestrator's `wc -l`-style ground-truth
+verification. The protocol works AS A DETECTION mechanism but cannot
+PREVENT a model from synthesizing fake verbatim text.
+
+Cumulative Gemini drift through HAA S5 P12: prior 22/39 ≈ 56% +
+S4 (3) + S5 P12 (4) = 29/46 ≈ 63%. (Plus V4-11 drifts below.)
+
+
+§2. V4-11 INTERPRETATION-VERIFICATION RECONCILIATION
+-----------------------------------------------------
+
+Per §6 V4-11, Gemini interpretation claims of "implemented via X" /
+"X reduces to Y" / "consolidated into Z" must include filename + grep
++ line-number evidence. S5 surfaced THREE additional V4-11 violations:
+
+(a) **NACE language/architecture (LOAD-BEARING)**
+    Gemini claim S5.A.Q1:
+      "NACE/src/main.cpp:45 confirms a Qt-based GUI (class MainWindow)."
+      "Source file NACE/src/NACE.cpp:12-25 implements NACE::appraise
+       using frequency/confidence logic..."
+    Filesystem reality (orchestrator-verified 2026-05-07):
+      `git ls-tree -r HEAD --name-only` at NACE shows pure Python:
+      `nace.py`, `gui.py`, `main.py`, `base_utils.py`, `bridge.py`,
+      `hypothesis.py`, `prettyprint.py`, `rosgrid.py`, `spaces.py`,
+      `world.py` + `.metta` files (`input.metta`, `knowledge.metta`,
+      `spaces.metta`, `tasks.metta`).
+      NO `src/` directory exists.
+      NO `*.cpp` or `*.hpp` file exists.
+      NO `MainWindow` C++ class exists.
+      Qt support per the recent commit message ("Update: Qt support so
+      Wayland users can also use the program with GUI") is via PyQt
+      bindings in `gui.py` — Python, not C++.
+    Resolution: Gemini's `src/main.cpp:45` and `src/NACE.cpp:12-25`
+    cites are FABRICATED. REJECTED.
+    Codex's nace.py:49 / :69-85 / :189 / :198 / :403-:442 cites all
+    orchestrator-verified verbatim. Codex's evidence base is canonical.
+    Drift class: **D6 LOAD-BEARING V4-11 CONFABULATION**.
+
+(b) **AI-DSL `src/Composition.idr` (LOAD-BEARING)**
+    Gemini claim S5.B.Q4:
+      "ai-dsl/src/Composition.idr defines types for service inputs/
+       outputs but lacks any cognitive-architecture atom types."
+    Filesystem reality (orchestrator-verified):
+      `git ls-tree HEAD` at ai-dsl shows only:
+        .gitignore  LICENSE  README.md  docs/  experimental/  ontology/
+      NO `src/` directory exists.
+      NO `Composition.idr` file exists at any path.
+      Actual .idr files (77 total) live in
+      `experimental/ai-algorithms/NeuralNets/` (Lib.idr, Lib2.idr,
+      Main.idr, test.idr) and `experimental/ai-algorithms/descent/`
+      (Data/Counter.idr, Data/Matrix.idr, Examples/*.idr, etc.).
+    Resolution: `src/Composition.idr` cite FABRICATED. REJECTED.
+    Drift class: **D7 V4-11 CONFABULATION**.
+
+(c) **AI-DSL README.md:12-18 quote attribution**
+    Gemini claim S5.B.Q4:
+      "ai-dsl/README.md:12-18 states the project is for
+       'SingularityNET AI service composition.'"
+    Filesystem reality (orchestrator-read README.md):
+      L1: "# AI-DSL"
+      L3-4: "Artificial Intelligence Domain Specific Language
+            (AI-DSL) for autonomous interoperability between AI
+            services."
+      L12-18: part of the "Overview" section discussing "A simple and
+              powerful language to express AI service assemblages, as
+              well as to formalize mathematical properties..."
+      The README does NOT contain the quoted phrase "SingularityNET
+      AI service composition." The README does mention
+      "AI services" generally; SingularityNET is mentioned later
+      (orchestrator did not read the entire README, but L1-30 confirm
+      the quoted phrase is not at L12-18).
+    Resolution: quote attribution PARTIALLY FABRICATED. The substantive
+    finding (AI-DSL is service-composition-oriented) is correct; the
+    direct-quote cite is wrong.
+    Drift class: **D8 V4-11 SOFT CONFABULATION** (not load-bearing for
+    verdict but for evidence-base hygiene).
+
+(d) **AI-DSL HAA-scope grep (substantive interpretation dissent)**
+    Gemini claim:
+      "grep -r 'MeTTa\|AtomSpace\|PLN\|MOSES\|Hyperon' --include='*.idr'
+       ai-dsl/ returns zero hits."
+    Orchestrator verification: TRUE. The 77 .idr files have 0 hits
+    for those tokens.
+    HOWEVER, AI-DSL also contains 30+ `.metta` files in
+    `experimental/ai-service-composition/english-to-chinese-song/`
+    (etcs-* combinator/ontology files) and
+    `experimental/ai-service-composition/recognize-speech-emotion/`
+    (rse-* combinator files). These connect AI-DSL to the MeTTa
+    runtime directly. Gemini's grep was scoped only to `*.idr`,
+    missing the .metta evidence.
+    Codex's [DUAL-CITIZEN] verdict captures both sides (Idris typed-
+    composition track + MeTTa combinator track).
+    Resolution: Codex's [AI-DSL-DUAL-CITIZEN] adopted as canonical.
+    Gemini's [AI-DSL-MARKETPLACE-TOOLING-BOUNDARY-DEFER] REJECTED as
+    too narrow (grep evidence base was incomplete).
+    Drift class: **D9 INTERPRETATION-INCOMPLETE-EVIDENCE**.
+
+V4-11 effectiveness assessment: Gemini self-acknowledged the V4-11
+guardrail in S5 sign-off and committed to "filename + grep + line-
+number evidence for every interpretation claim." S5 produced three
+new V4-11 violations (D6 NACE language fabrication, D7 AI-DSL
+src/Composition.idr fabrication, D8 README quote attribution). The
+guardrail did NOT prevent Gemini from synthesizing fake file paths;
+it surfaced the fabrications via orchestrator filesystem verification.
+
+Cumulative Gemini drift through HAA S5: 29/46 (P12) + 3 V4-11 = 32/49
+≈ 65.3%. **Crossed the 60% escalation threshold flagged at S3 close.**
+
+Note for next-cluster planning (NOT a S5-blocking issue): Gemini's
+S5 dissent rate is the highest of the cluster pilot. The next cluster
+(MeTTa runtime per Option A) should consider methodology adjustment:
+either (i) reduce reviewer count to Codex-only with orchestrator
+double-check, OR (ii) add a fourth verification layer (orchestrator
+runs every cited git/fs command before adoption, NOT after
+reconciliation). Decision deferred to user; flagged here for
+visibility only.
+
+
+§3. PER-QUESTION RECONCILIATION (Q1..Q12)
+------------------------------------------
+
+Q1 — NACE PAPER + REPO VERDICT
+  Codex:  [IMPLEMENTATION-BACKED-CORE] / [AIRIS-DERIVED-NAL-ADJACENT]
+          / [NACE-NOT-AIRIS]; Python implementation; AIRIS extension
+          + NAL frequency/confidence; explicit ONA / metta-nars
+          bridge.
+  Gemini: [IMPLEMENTATION-BACKED-CORE-NAR-ADJACENT]; C++ Qt with
+          src/main.cpp + src/NACE.cpp [REJECTED-FABRICATED];
+          NARS-inspired f/c logic; [PARALLEL-NON-INTEGRATED] (zero
+          MeTTa/AtomSpace/Hyperon refs).
+  Reconciled: Codex's evidence base canonical. Verdict locks as
+  [IMPLEMENTATION-BACKED-CORE] / [AIRIS-DERIVED-NAL-ADJACENT] /
+  [NACE-NOT-AIRIS]. Pure-Python implementation (orchestrator-verified
+  file inventory at HEAD `361fddf`). PyQt-based GUI in `gui.py`
+  (NOT C++ Qt). Bridge to ONA / metta-nars via `bridge.py`.
+  Gemini's "[PARALLEL-NON-INTEGRATED]" tag for Hyperon refs is
+  incomplete — `bridge.py` and `*.metta` files (`spaces.metta`,
+  `tasks.metta`, `knowledge.metta`) DO connect NACE to MeTTa runtime
+  via the ONA bridge surface. Verdict refined to
+  [PARTIALLY-INTEGRATED-VIA-METTA-BRIDGE].
+
+Q2 — NACE WIKI CARD AUDIT
+  Codex:  Card exists as `Hyperon AI Algorithms+NACE (Non-Axiomatic
+          Causal Explorer)` IndexPublished ID 663, updated
+          2026-05-07T16:23:33Z. Sandra-spec port already executed
+          (sibling cards: +responsible "Patrick Hammer, Peter Isaev",
+          +github linking patham9/NACE, +description). Deep-dive
+          points to wanted card `+NACE Full`. Other ID artifacts:
+          NACE ID 662, NACE (Non-Axiomatic Causal Explorer) ID 7590.
+  Gemini: Same card (ID 663). Flags terminology drift: card title
+          uses "Causal Explorer" while README uses "Categorization
+          Engine" (per Gemini — but see below).
+  Reconciled: Codex inventory adopted. Sandra-spec port confirmed
+  on this parent (the 2026-05-07T16:23:33Z update is the Sandra-spec
+  port itself; per feedback_sandra_spec_port_recheck_before_batch.md,
+  the Sandra-spec re-check happens IMMEDIATELY before the cluster-
+  close edit batch, NOT now).
+  Terminology drift note: NACE README.md:1-5 was orchestrator-read.
+  Codex described it as "Non-Axiomatic Categorization Engine"
+  (extraction prose); Gemini cited the same. The card title's
+  "(Non-Axiomatic Causal Explorer)" is a Sandra-spec / Lake-side
+  rebrand; do NOT push to overwrite. Verdict: [CARD-EXISTS-SANDRA-
+  SPEC-PARENT] / [NEEDS-FULL-CARD] / [NEEDS-CLUSTER-PILOT-
+  REFINEMENT-IN-FULL-NOT-PARENT-RENAME].
+
+Q3 — NACE PARADIGM BOUNDARY
+  Codex:  [NACE-NOT-AIRIS] (inheritance-extension, not identity);
+          [NACE-BRIDGES-METTA-NARS] (ONA bridge surface in bridge.py);
+          [PATHAM9-PORTFOLIO-SHARED-AUTHOR].
+  Gemini: [NACE-NOT-AIRIS] (zero AIRIS string-grep — but see below);
+          [SHARED-AUTHOR-PARALLEL-PROJECTS] (no direct code refs
+          NACE↔MeTTa-NARS).
+  Reconciled: Codex correct on both. Gemini's "grep -ri 'AIRIS' NACE/
+  returns 0 hits" — orchestrator-verified there ARE multiple AIRIS
+  string references in nace.py (e.g., `airis_score`, "AIRIS confidence",
+  "biggest AIRIS uncertainty", "CURIOUS" behavior cite-back to
+  AIRIS). Codex cited these at nace.py:49, :69-85, :189, :198,
+  :403-:442 verbatim-verified. Gemini's "0 hits" claim is FALSE
+  (verifiable via `git grep -i AIRIS NACE/nace.py` returning 7+
+  hits). Drift class: **D10 V4-11 SOFT CONFABULATION** (interpretation
+  shift from "didn't find" to "0 hits" without showing the exact
+  command).
+  Verdict locks as Codex's: [NACE-NOT-AIRIS] but [NACE-AIRIS-DERIVED]
+  (NACE explicitly extends AIRIS apparatus per README and source).
+
+Q4 — AI-DSL VERDICT + HAA-SCOPE BOUNDARY
+  Codex:  [AI-DSL-DUAL-CITIZEN] — HAA-relevant typed/service composition
+          slice + marketplace-tooling slice; do NOT over-promote as core
+          cognitive module.
+  Gemini: [ACTIVE-IDRIS-DSL] / [AI-DSL-MARKETPLACE-TOOLING-BOUNDARY-DEFER]
+          — purely service-orchestration; defer to cross-org sweeps.
+          Evidence cites src/Composition.idr [REJECTED-FABRICATED] +
+          README.md:12-18 quote [REJECTED-MISATTRIBUTED].
+  Reconciled: per D9 above — Codex's [DUAL-CITIZEN] adopted. AI-DSL
+  contains 77 .idr files (Idris typed composition track) AND 30+
+  .metta files in experimental/ai-service-composition/ (etcs-* and
+  rse-* combinator/ontology files in MeTTa). The MeTTa track makes
+  the repo HAA-relevant. The Idris track is service-composition
+  tooling. The marketplace-defer verdict misses the MeTTa side.
+  Verdict locks as [AI-DSL-DUAL-CITIZEN] with explicit dual-track
+  acknowledgment in the wiki edit batch.
+
+Q5 — AI-DSL WIKI CARD AUDIT
+  Codex:  (Implicit: needs +AI-DSL Full sectioning subcard.)
+  Gemini: Card ID 665 Published. Drift: card claims "Neural-symbolic
+          bridge" — but evidence suggests purely service-orchestration.
+          Recommends "Marketplace Tooling" disclaimer.
+  Reconciled: Wiki card inventory at Hyperon AI Algorithms+AI-DSL
+  ID 665 — orchestrator did NOT independently re-fetch this card
+  during reconciliation; per feedback_sandra_spec_port_recheck_
+  before_batch.md the Sandra-spec re-check happens at edit-batch
+  time. Gemini's "Neural-symbolic bridge" wording claim FLAGGED
+  for verification at edit-batch time. The recommendation should be
+  reframed to dual-citizen (NOT marketplace-defer) per D9 + Q4
+  resolution.
+
+Q6 — MOSES FAMILY LINEAGE DISAMBIGUATION
+  Codex:  metta-moses [ACTIVE-METTA-PRIMARY] (file:line evidence at
+          deme/create-deme.metta:3-18, deme/expand-deme.metta:47/:69/
+          :107-140, deme/merge-demes.metta:222-274, scoring/
+          fitness.metta:123/:146/:156-159, scoring/precision-bscore.
+          metta:316-340).
+          asmoses [ACTIVE-CPP-ATOMSPACE-BASELINE] (2025-12-10 cogutils
+          extraction commit; algorithm work earlier in 2025).
+          linas/as-moses [VEPSTAS-MIRROR-SAME-SHA] (0/0).
+          trueagi-io/hyperon-moses [SUPERSEDED-BY-METTA-MOSES].
+          ngeiswei/hyperon-moses [SUPERSEDED-OLDER-SIBLING].
+          opencog/moses [ARCHIVAL-PARADIGM-PREDECESSOR] (last commit
+          2023-09-19).
+  Gemini: Similar lineage but with FABRICATED verbatim 1/0 for
+          trueagi vs ngeiswei (orchestrator-verified 27/0). metta-moses
+          [ACTIVE-METTA-PRIMARY] confirmed via README L12 (verify).
+  Reconciled: Codex's lineage adopted. trueagi-io vs ngeiswei
+  bidirectional log = 27/0 (orchestrator-verified, see §1.d).
+  metta-moses cross-grep for asmoses references is real per Codex
+  + README L12 confirmation; metta-moses ports asmoses logic to
+  MeTTa. Verdict locks as Codex's six-tier classification.
+
+Q7 — MOSES STALE FORK DIVERGENCE AUDIT
+  Codex verbatim outputs (orchestrator-verified):
+    leungmanhin/asmoses     0/107  [STRICT-FORK-STALE]
+    singnet/asmoses         7/165  [STRICT-FORK-STALE-MERGED-UPSTREAM]
+                                   (7 ahead are merge/sync metadata
+                                    per Codex's left-only commit list)
+    singnet/moses           19/23  needs spot-check (see below)
+    moses-optimization-...  [STANDALONE-EXPERIMENT-NOT-FORK]
+  Gemini verbatim outputs (FABRICATED — see §1):
+    leungmanhin/asmoses     0/221  [REJECTED-FABRICATED]
+    singnet/asmoses         4/164  [REJECTED-FABRICATED]
+    singnet/moses           3/118  [REJECTED-FABRICATED]
+    moses-optimization-...  0/223  ("zero merge-base" interpretation
+                                    REJECTED per D5)
+  Reconciled: Codex's verbatim block adopted as canonical.
+  Spot-check needed at edit-batch time on singnet/moses 19-ahead
+  commits (whether they are pure merge-sync or substantive fixes);
+  this is a non-blocking S5 close note. Verdict
+  [STRICT-FORK-DIVERGED-LEGACY-FIXES] (cautious) until spot-check
+  resolves.
+
+Q8 — MOSES WIKI CARD AUDIT
+  Codex:  Implicit: needs full card refinement to surface trilateral
+          C++/MeTTa/archival split.
+  Gemini: Card ID 658 Published. Drift: prominently features
+          opencog/moses (archival), lacks asmoses/metta-moses split.
+  Reconciled: Both agree on the substantive drift. Card ID 658 —
+  orchestrator did NOT re-fetch during reconciliation; Sandra-spec
+  re-check at edit-batch time. Edit batch should add the trilateral
+  split: metta-moses primary MeTTa / asmoses active C++ AtomSpace /
+  moses archival pre-AtomSpace.
+
+Q9 — MORK-MOSES PAPER IMPLEMENTATION STATUS
+  Codex:  [MORK-MOSES-PARTIAL-SCAFFOLD-OPEN-RESEARCH-LINE]. setup.sh
+          references mork_ffi (setup-level hook only); no committed
+          mork_ffi subtree exists in metta-moses.
+  Gemini: [MORK-MOSES-PAPER-ONLY]. grep -ri "MORK\|PathMap\|MM2"
+          metta-moses/ returns zero hits; cross-grep MORK for MOSES
+          returns zero hits. Paper remains a proposal.
+  Reconciled: Codex's verdict more precise — there IS a setup.sh
+  hook (NOT zero hits). The hook is non-substantive (setup-level
+  only), so Gemini's "paper-only" headline is approximately right
+  but misses the scaffold. Verdict locks as
+  [MORK-MOSES-CROSS-CLUSTER-OPEN-RESEARCH-LINE] / [PARTIAL-SCAFFOLD]
+  per Codex.
+
+Q10 — MeTTa-NARS VERDICT + WIKI CARD AUDIT
+  Codex:  [IMPLEMENTATION-BACKED-NAL1-5] / [METTA-NARS-NOT-PLN] /
+          [MOTTO-POC-INTEROP] (file evidence in metta-nars source);
+          PLN_NARS_TVs.json paper not implemented in metta-nars HEAD.
+  Gemini: [IMPLEMENTATION-BACKED-NAR-FRAGMENT-NAL1-5];
+          [METTA-NARS-NOT-PLN]; PLN_NARS_TVs.json paper-not-
+          implemented (0 hits for cited equations).
+  Reconciled: Both align. Verdict locks as Codex's plus
+  [PAPER-PLN-NARS-TVS-NOT-IMPLEMENTED-IN-METTA-NARS]. PLN_NARS_TVs.
+  json explicitly treated as boundary-input only (GPT-o1 flagged
+  per brief P2 + MEMORY.md).
+
+Q11 — PATHAM9 PORTFOLIO ATTRIBUTION
+  Codex:  NACE (author) + metta-nars (author) + AIRIS-co-author
+          [PATHAM9-PORTFOLIO-SHARED-AUTHOR-PARADIGM-DISTINCT].
+  Gemini: NACE (Author) + MeTTa-NARS (Author) + AIRIS (Co-author);
+          [SHARED-AUTHOR-PARALLEL-PROJECTS]; cross-references zero.
+  Reconciled: Both align on portfolio shape. Document as contributor-
+  portfolio entry mirroring Vepstas Hyperon-era portfolio mention
+  from Perception cluster pilot 2026-05-01.
+
+Q12 — V5-X CARRY-FORWARDS + CLUSTER-CLOSE EDIT BATCH PRECIS
+  See §4 + §5 below for canonical V5-X locking + edit batch precis.
+
+
+§4. V5-X CARRY-FORWARDS (CANONICAL, LOCKED)
+--------------------------------------------
+
+V5-1 [NACE-IMPLEMENTATION-BACKED-CORE-PURE-PYTHON] — load-bearing.
+     NACE is pure-Python at HEAD `361fddf`; PyQt GUI in `gui.py`
+     (NOT C++ Qt). 13 .py files + 4 .metta files. Source of authority:
+     orchestrator-verified file inventory + Codex's nace.py:49 /
+     :69-85 / :189 / :198 / :403-:442 cites (verbatim-confirmed).
+     Why it matters: Gemini D6 fabricated `src/main.cpp` + `src/NACE.cpp`
+     C++ cites; future cluster pilots must NOT adopt those.
+
+V5-2 [NACE-AIRIS-DERIVED-NAL-ADJACENT] — load-bearing.
+     NACE inherits/extends AIRIS apparatus per README + source. NOT
+     identical to AIRIS; NOT identical to MeTTa-NARS. Standalone
+     engine in patham9 lineage. Wiki edit must not collapse NACE to
+     AIRIS or MeTTa-NARS.
+
+V5-3 [NACE-BRIDGES-METTA-NARS-NOT-SAME] — load-bearing boundary.
+     `bridge.py` + `*.metta` files connect NACE to MeTTa runtime via
+     ONA bridge surface. Refined Codex's [PARALLEL-NON-INTEGRATED] /
+     Gemini's [PARALLEL-NON-INTEGRATED] to [PARTIALLY-INTEGRATED-
+     VIA-METTA-BRIDGE].
+
+V5-4 [AI-DSL-DUAL-CITIZEN] — load-bearing.
+     AI-DSL has Idris typed-composition track + MeTTa combinator/
+     ontology track (30+ .metta files in experimental/ai-service-
+     composition/). Wiki edit must capture both sides; do NOT
+     marketplace-defer the entire repo. Center of gravity is service
+     composition for SingularityNET, but there IS a HAA-relevant slice.
+
+V5-5 [METTA-MOSES-ACTIVE-METTA-PRIMARY] — load-bearing.
+     iCog-Labs-Dev/metta-moses is the canonical Hyperon-era MOSES
+     line (HEAD 9f69e17, 2026-03-26). file:line evidence per Codex
+     Q6.
+
+V5-6 [ASMOSES-ACTIVE-CPP-ATOMSPACE-BASELINE] — load-bearing.
+     opencog/asmoses is the active C++ AtomSpace MOSES baseline
+     (HEAD dde4849c4, 2025-12-10 cogutils extraction commit).
+
+V5-7 [LINAS-AS-MOSES-SAME-SHA-MIRROR] — non-blocking.
+     linas/as-moses tip = opencog/asmoses tip = `dde4849c4`
+     (orchestrator-verified P12 0/0). NOT a separate implementation.
+
+V5-8 [HYPERON-MOSES-SUPERSEDED-BY-METTA-MOSES] — non-blocking.
+     trueagi-io/hyperon-moses (HEAD `e390f49`, 2025-03-05) is 27
+     commits ahead of ngeiswei/hyperon-moses (HEAD `d661364`,
+     2024-08-02) per orchestrator-verified P12 27/0. Both are
+     superseded by metta-moses; older Hyperon docs/prototype line.
+
+V5-9 [MOSES-FORKS-STALE-MERGE-METADATA] — non-blocking.
+     leungmanhin/asmoses (0/107), singnet/asmoses (7/165), singnet/
+     moses (19/23) are all stale forks with the asmoses ahead-commits
+     being merge-sync metadata (S3+S4 pattern); singnet/moses 19-
+     ahead needs spot-check at edit-batch time. moses-optimization-
+     algorithms is [STANDALONE-EXPERIMENT-NOT-FORK] (independent
+     commit history, not derived from asmoses).
+
+V5-10 [MORK-MOSES-PARTIAL-SCAFFOLD-OPEN-RESEARCH-LINE] —
+     load-bearing for cross-cluster framing. metta-moses setup.sh
+     references mork_ffi but no committed mork_ffi subtree exists.
+     Goertzel 2025-07-21 paper "MORK-MOSES Implementation Ideas"
+     remains a proposal.
+
+V5-11 [METTA-NARS-IMPLEMENTATION-BACKED-NAL1-5] — load-bearing.
+     patham9/metta-nars implements NAL-1 through NAL-5 in MeTTa with
+     f/c truth functions; ONA-derived control structure.
+
+V5-12 [METTA-NARS-NOT-PLN] — load-bearing boundary.
+     Mirror of S1 V1-4 [AIRIS-CONFIDENCE-NOT-PLN-TV]. NARS f/c truth-
+     value pair is paradigm-distinct from PLN s/c. PLN_NARS_TVs.json
+     paper (GPT-o1-flagged) is boundary-input only;
+     [PAPER-NOT-IMPLEMENTED-IN-METTA-NARS].
+
+V5-13 [PATHAM9-HAA-PORTFOLIO] — non-blocking informational.
+     Patrick Hammer (patham9) authors NACE + metta-nars + co-authors
+     AIRIS. Three HAA-relevant projects in the patham9 non-axiomatic
+     lineage. Mirror of Vepstas portfolio mention from Perception
+     cluster pilot.
+
+V5-14 [METTA-MOTTO-OUT-OF-S5] — narrative-guard.
+     Per S2 reconciliation, MeTTa-Motto stays in cross-org sweeps
+     scope, NOT S5. metta-nars POC interop with Motto does NOT change
+     this; the Motto card and metta-nars Motto interop note can
+     reference each other, but no S5 edits to MeTTa-Motto Published
+     parent.
+
+V5-15 [GEMINI-S5-INTEGRITY-DEGRADATION-OBSERVATION] — non-blocking
+     methodology observation.
+     Cumulative Gemini drift through HAA S5: ~32/49 ≈ 65%. Crossed
+     the 60% threshold flagged at S3 close. S5 introduced 4 P12
+     numerical fabrications + 3 V4-11 confabulations. Detection
+     mechanism (orchestrator's filesystem + git verification) caught
+     all 7. Recommendation flagged for next-cluster planning, not
+     S5-blocking.
+
+
+§5. CLUSTER-CLOSE EDIT BATCH PRECIS (C-N)
+------------------------------------------
+
+The cluster-close edit batch is conditional on:
+  (a) User authorization to enter the wiki-write window.
+  (b) Sandra-spec re-check IMMEDIATELY before any write per
+      feedback_sandra_spec_port_recheck_before_batch.md (NACE parent
+      ID 663 was Sandra-spec-ported 2026-05-07T16:23:33Z; AI-DSL,
+      MOSES, MeTTa-NARS Published parents may have similar ports —
+      verify all 4).
+  (c) WebFetch verification of every external URL touched per
+      feedback_webfetch_verify_external_urls.md.
+
+C1. NACE batch — Hyperon AI Algorithms+NACE (Non-Axiomatic Causal
+    Explorer) ID 663
+    - Create or fill `+NACE Full` Draft sectioning subcard.
+    - Apply V5-1 [NACE-IMPLEMENTATION-BACKED-CORE-PURE-PYTHON],
+      V5-2 [NACE-AIRIS-DERIVED-NAL-ADJACENT],
+      V5-3 [NACE-BRIDGES-METTA-NARS-NOT-SAME],
+      V5-13 [PATHAM9-HAA-PORTFOLIO].
+    - Source authority: nace.py:49/:69-85/:189/:198/:403-:442 +
+      bridge.py + README.md:1-32.
+    - Cross-link: `+AIRIS Full` (ID 7495), `+MeTTa-NARS Full` (TBC),
+      `+ECAN` (paradigm boundary).
+    - Source the "1000x data efficiency" claim if retained
+      (Codex risk flag — needs paper citation, not just repo
+      wording).
+
+C2. AI-DSL batch — Hyperon AI Algorithms+AI-DSL ID 665
+    - Create or fill `+AI-DSL Full` Draft sectioning subcard.
+    - Apply V5-4 [AI-DSL-DUAL-CITIZEN] with explicit dual-track
+      acknowledgment: Idris typed-composition track + MeTTa
+      combinator track in experimental/ai-service-composition/.
+    - "What This Card Is Not" disambiguation: AI-DSL is NOT a core
+      cognitive algorithm (PLN/ECAN/MOSES/NARS); it is service-
+      composition tooling with an HAA-relevant slice via the .metta
+      combinator files.
+    - If existing card content claims "Neural-symbolic bridge" (per
+      Gemini Q5), verify wording at re-check time and update to
+      dual-citizen framing.
+    - Cite: README.md (AI-DSL overview, NOT misattributed quote);
+      77 .idr files in experimental/ai-algorithms/; 30+ .metta files
+      in experimental/ai-service-composition/.
+
+C3. MOSES batch — Hyperon AI Algorithms+MOSES ID 658
+    - Create or fill `+MOSES Full` Draft sectioning subcard.
+    - Apply V5-5 [METTA-MOSES-ACTIVE-METTA-PRIMARY],
+      V5-6 [ASMOSES-ACTIVE-CPP-ATOMSPACE-BASELINE],
+      V5-7 [LINAS-AS-MOSES-SAME-SHA-MIRROR],
+      V5-8 [HYPERON-MOSES-SUPERSEDED-BY-METTA-MOSES],
+      V5-10 [MORK-MOSES-PARTIAL-SCAFFOLD-OPEN-RESEARCH-LINE].
+    - Add trilateral lineage table:
+      - metta-moses (active MeTTa primary, 2026-03-26 HEAD,
+        file:line evidence per Q6).
+      - asmoses (active C++ AtomSpace baseline, 2025-12-10 HEAD).
+      - moses (archival pre-AtomSpace C++, 2023-09-19 HEAD).
+      - hyperon-moses (older Hyperon prototype line, superseded).
+      - linas/as-moses (mirror, same SHA as asmoses).
+    - Cross-cluster boundary block: MORK-MOSES is open research/
+      scaffold; setup.sh hook + Goertzel 2025-07-21 paper; NOT
+      current implementation. Cross-link to AtomSpace cluster pilot
+      MORK section.
+    - Stale forks (V5-9): leungmanhin/asmoses + singnet/asmoses +
+      singnet/moses + moses-optimization-algorithms (stand-alone)
+      mentioned in a single "stale lineage" paragraph; do NOT
+      enumerate individually as separate research lines.
+
+C4. MeTTa-NARS batch — Hyperon AI Algorithms+MeTTa-NARS Published
+    parent (ID TBC at re-check time)
+    - Create or fill `+MeTTa-NARS Full` Draft sectioning subcard.
+    - Apply V5-11 [METTA-NARS-IMPLEMENTATION-BACKED-NAL1-5],
+      V5-12 [METTA-NARS-NOT-PLN] (mirror of S1 V1-4),
+      V5-13 [PATHAM9-HAA-PORTFOLIO].
+    - Paradigm boundary block: PLN s/c truth-values vs NARS f/c
+      truth-values are paradigm-distinct. PLN_NARS_TVs.json paper
+      (GPT-o1-flagged) is boundary-input only; not implemented in
+      metta-nars HEAD.
+    - Cross-link to NACE (sibling patham9 project), AIRIS (cluster
+      patham9 co-author), PLN (paradigm boundary).
+
+C5. Reference+GitHub Repositories ID 7268
+    - Add or update entries:
+      - patham9/NACE (verify URL via WebFetch before edit).
+      - patham9/metta-nars (verify URL).
+      - iCog-Labs-Dev/metta-moses (verify URL).
+      - opencog/asmoses (NEW entry — verify URL).
+      - opencog/moses (verify URL; archival tag).
+      - singnet/ai-dsl (verify URL).
+      - trueagi-io/hyperon-moses (NEW entry — verify URL; superseded
+        tag).
+    - Do NOT enumerate stale forks individually (V5-9 lump).
+    - Apply [STANDALONE-EXPERIMENT-NOT-FORK] tag to moses-
+      optimization-algorithms if added.
+
+C6-NOOP. Legacy duplicate cleanup
+    - Per Codex Q12 C6: do NOT delete virtual/legacy duplicate
+      structural cards (NACE ID 662, NACE ID 7590). Multiple cards
+      are marked virtual/junction; preserve them. If user-facing
+      duplicates are confusing, add lightweight redirects/notes
+      rather than deletion.
+
+C7-NOOP. MeTTa-Motto cross-source check
+    - Per V5-14: MeTTa-Motto stays out of S5; defer to cross-org
+      sweeps cluster. metta-nars POC Motto interop note (if added
+      to C4) cross-references the existing MeTTa-Motto Published
+      parent without modifying it.
+
+
+§6. CROSS-MODEL DISSENT TABLE
+------------------------------
+
+D1 P12-NUM-FAB    leungmanhin/asmoses 0/221 vs orchestrator 0/107.
+                  Codex correct. Gemini fabricated. LOAD-BEARING.
+
+D2 P12-NUM-FAB    singnet/asmoses 4/164 vs orchestrator 7/165.
+                  Codex correct. Gemini fabricated. LOAD-BEARING.
+
+D3 P12-NUM-FAB    singnet/moses 3/118 vs orchestrator 19/23.
+                  Codex correct. Gemini fabricated. LOAD-BEARING.
+
+D4 P12-NUM-FAB    trueagi vs ngeiswei hyperon-moses 1/0 vs
+                  orchestrator 27/0. Gemini fabricated. LOAD-BEARING.
+
+D5 V4-11-INTERP   moses-optimization-algorithms 0/223 "confirms
+                  zero merge-base." Wrong interpretation; verdict
+                  [STANDALONE-EXPERIMENT-NOT-FORK] supportable on
+                  other grounds (independent commit history).
+                  Adopted with corrected reasoning.
+
+D6 V4-11-CONFAB   NACE C++ Qt cites src/main.cpp:45 + src/NACE.cpp:
+                  12-25. NEITHER FILE EXISTS. NACE is pure Python.
+                  REJECTED. LOAD-BEARING.
+
+D7 V4-11-CONFAB   AI-DSL src/Composition.idr cite. NO src/ DIRECTORY
+                  EXISTS in ai-dsl. REJECTED. LOAD-BEARING.
+
+D8 V4-11-SOFT     AI-DSL README.md:12-18 quote "SingularityNET AI
+                  service composition." Quote not at L12-18; README
+                  L12-18 is generic "AI service assemblages." Soft
+                  rejection (verdict still supports HAA-scope nuance).
+
+D9 INTERP-SCOPE   AI-DSL HAA-scope. Codex [DUAL-CITIZEN] vs Gemini
+                  [MARKETPLACE-DEFER]. Codex correct; Gemini's grep
+                  was scoped only to *.idr (zero hits) but missed
+                  30+ .metta files in experimental/ai-service-
+                  composition/ that DO connect AI-DSL to MeTTa
+                  runtime. LOAD-BEARING.
+
+D10 V4-11-SOFT    NACE AIRIS string-grep. Gemini "0 hits" claim is
+                  false; orchestrator-verified 7+ AIRIS string
+                  references in nace.py per Codex line cites.
+                  Soft rejection (verdict [NACE-NOT-AIRIS] still
+                  holds; the claim was about identity not derivation).
+
+
+§7. SIGN-OFF (THREE-WAY REQUIRED BEFORE WIKI WRITES)
+-----------------------------------------------------
+
+Orchestrator (Claude): SIGNED 2026-05-07.
+  Findings reconciled per CF5.6 + V4-11 + P12. All 10 cross-model
+  dissents resolved (4 P12 fabrications rejected; 3 V4-11
+  confabulations rejected; 1 V4-11 soft confabulation soft-rejected;
+  1 V4-11 interpretation correction adopted; 1 interpretation-scope
+  dissent resolved in Codex's favor). 15 V5-X carry-forwards locked.
+  C1-C5 + C6-NOOP + C7-NOOP edit batch precis defined.
+  Sandra-spec re-check protocol applies at edit-batch time per
+  feedback_sandra_spec_port_recheck_before_batch.md (NACE parent
+  already Sandra-spec-ported 2026-05-07T16:23:33Z; AI-DSL/MOSES/
+  MeTTa-NARS Published parent state to verify at re-check time).
+
+Codex: pending sign-off relay.
+
+Gemini: pending sign-off relay. Reviewer is asked to acknowledge
+  the four P12 numerical fabrications (D1-D4) and three V4-11
+  confabulations (D6-D8) as load-bearing rejections in the sign-off,
+  not contest. Cumulative drift count update: 32/49 ≈ 65% with the
+  60% threshold crossed.
+
+
+================================================================================
+END OF SOURCE 5 RECONCILIATION (PENDING THREE-WAY SIGN-OFF)
+2026-05-07
+================================================================================

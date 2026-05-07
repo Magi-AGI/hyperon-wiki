@@ -1,0 +1,765 @@
+================================================================================
+SOURCE 4 BRIEF — Concept Blending + Semantic Parsing
+                 (Non-clustered Hyperon AI Algorithms cluster pilot)
+================================================================================
+Source name:      Concept Blending + Semantic Parsing
+Cluster:          Non-clustered Hyperon AI Algorithms (HAA), Source 4 of 5
+Source-1 closed:  AIRIS, 2026-05-06 (commit 65783e2)
+Source-2 closed:  MetaMo, 2026-05-06 (commit 8c32404)
+Source-3 closed:  Pattern Mining residual, 2026-05-06 (commit 8c32404)
+Pilot order:      Option A (backlog burn-down) authorized 2026-05-05.
+Brief drafted:    2026-05-06 (this session)
+Brief author:     Claude (orchestrator)
+
+
+§0. SOURCE IDENTITY
+-------------------
+
+This is a multi-topic source spanning two related-but-distinct research lines
+that both touch the HAA cluster's "non-clustered residual" scope:
+
+  S4.A — CONCEPT BLENDING. Goertzel's Hyperon-era formalizations of
+         conceptual blending (Fauconnier & Turner-style integration
+         networks) including information-theoretic, quantale-based, and
+         paraconsistent-interference variants. Plus the iCog-Labs-Dev
+         conceptBlending implementation repo with multiple methodological
+         sub-projects.
+
+  S4.B — SEMANTIC PARSING. The NL-to-Atomese / NL-to-MeTTa / NL-to-PLN
+         pipeline lineage: Link Grammar (CMU; current maintained version),
+         RelEx (Java; archival but recently maintained), opencog/learn
+         (active neuro-symbolic language learning), opencog/generate
+         (active syntax-network generation), and the rTreutlein/leungmanhin
+         semantic_parsing + semantic-parser + nl2pln_demo pipeline. NOT
+         including the bio-data-* / mindplex-* / mm-semantic-search
+         enterprise variants which are application-specific and out of
+         scope.
+
+  S4.C — SGNN BOUNDARY PLACEMENT. Per HAA Source 3 V3-6 narrative-guard
+         (closed 2026-05-06), glicerico/SGNN (Self-Governing Neural
+         Networks for speech act classification on the SwDA corpus) was
+         out-of-scope for Pattern Mining and deferred to S4 OR cross-org
+         sweeps. S4 must finalize the placement decision.
+
+These three sub-sources are bundled into a single brief because:
+  - Both A and B are "non-clustered" residuals from the HAA cluster
+    that don't deserve their own multi-source pilot.
+  - Concept blending and semantic parsing share NL/cognitive-semantics
+    infrastructure (Link Grammar in particular sits at the seam).
+  - Reviewer extraction efficiency: a single brief reduces orchestrator
+    + reviewer overhead vs two separate dispatches.
+
+Reviewers should produce findings files with explicit per-sub-source
+sections (S4.A / S4.B / S4.C) for clean reconciliation. Estimated
+findings size ~250-400 lines per reviewer (between S2 and S3 in scale).
+
+
+§1. SCOPE AND DELIVERABLE
+-------------------------
+
+Deliverable per reviewer (Codex + Gemini, parallel and independent):
+
+  scripts/archive/non_clustered_haa_pilot/source4_concept_blending_semantic_parsing/
+      findings_codex.txt
+      findings_gemini.txt
+
+Per-question structure following the closed S1 + S2 + S3 pattern.
+Twelve S4.Q questions in §5; explicit per-sub-source sections (S4.A.QN,
+S4.B.QN, S4.C.QN) where the question is sub-source-specific.
+
+After both findings files arrive, the orchestrator (Claude this session)
+produces:
+
+  scripts/archive/non_clustered_haa_pilot/source4_concept_blending_semantic_parsing/
+      findings_reconciled_crossmodel.txt
+
+Three-way sign-off (Codex + Gemini + orchestrator) before any cluster-
+close edit batch on the wiki.
+
+Cluster pilot ordering for S4..S5 (Option A):
+  S4 (this brief): Concept Blending + Semantic Parsing — current
+  S5:              NACE + AI-DSL + MOSES + MeTTa-NARS — last
+
+After S5 closes, the Non-clustered HAA cluster pilot is complete.
+
+
+§2. ARTIFACTS TO READ
+---------------------
+
+§2.A — Concept Blending publications (in scope for S4.A):
+
+  publication_texts/mattermost_papers/Blending.json
+    Title: "A Formalization of Concept Blending: An Information-Theoretic
+            Approach to Quantifying and Creating Emergent and Coherent
+            Concept Blends"
+    Author(s): Ben Goertzel (verify additional co-authors against paper text)
+    Date: February (year TBD by reviewers)
+
+  publication_texts/mattermost_papers/Blending_Quantale_Theorems.json
+    Title: "Compositional Theorems for Quantale-Based Blending: How
+            Weakness Interoperates with C[...]" (full title to verify)
+
+  publication_texts/mattermost_papers/Quantale_Blending_Paper.json
+    Companion or earlier draft to Blending_Quantale_Theorems.json
+    (verify relationship at extraction; may be different paper)
+
+  publication_texts/mattermost_papers/Paraconsistent_Interference_Blending.json
+    Title: "Paraconsistent Interference in Conceptual Blen[ding]"
+    (verify full title)
+
+  publication_texts/mattermost_papers/HoTT_semantics_v3.json
+    Title: "Identity-Aware Commonsense Reasoning via Paraconsistent
+            Geodesic Modal Homotopy Type Theory"
+    Author: Ben Goertzel, October 14, 20XX (verify year)
+    NOTE: Adjacent to but not strictly concept-blending; Goertzel-authored
+    cognitive-semantics paper. Reviewer judgment on whether to fold into
+    S4.A or treat as cross-cluster boundary.
+
+  publication_texts/mattermost_papers/HoTT_semantics_examples.json
+    Title: "Transweaving Temporal and Counterfactual Identities (Practical
+            Examples with Branching Contexts)"
+    Companion to HoTT_semantics_v3.json. Treat as cross-cluster boundary
+    or fold into S4.A per reviewer judgment.
+
+ATTRIBUTION CAVEAT: The CLAUDE.md framing for this source named
+"Goertzel/Eskridge concept-blending paper(s)" but the local Mattermost
+archive shows Goertzel-only authorship on the four blending papers.
+Reviewers must verify Eskridge co-authorship by reading the paper texts
+(NOT just the Mattermost JSON metadata) and report on whether Eskridge
+appears as a co-author or on related historical concept-blending work
+not in the local archive.
+
+§2.B — Semantic Parsing repos (in scope for S4.B):
+
+  PRIMARY REPOS (recently active or maintained):
+    iCog-Labs-Dev/conceptBlending @ HEAD 9675e5eXXXXXXXXXXXXX (2026-03-28
+                                  per local clone; see §3 for caveat —
+                                  upstream has advanced 3 commits to
+                                  df8d4b7 and the local clone has
+                                  uncommitted deletions of the
+                                  4-subdirectory implementation tree)
+    leungmanhin/semantic_parsing @ HEAD e232531XXXXXXXXXXXX (2025-02-01;
+                                  upstream rTreutlein/semantic_parsing)
+    leungmanhin/semantic-parser  @ HEAD d00331dXXXXXXXXXXXX (2026-04-05;
+                                  no upstream remote configured locally)
+    opencog/relex                @ HEAD 4c85a9aaXXXXXXXXXXX (2026-01-22;
+                                  recent dependabot maven bumps)
+    opencog/link-grammar         @ HEAD c6ff88dd4XXXXXXXXXX (2025-10-28;
+                                  v5.13.1 changelog bump)
+    opencog/learn                @ HEAD 416e9a1dXXXXXXXXXX (2026-04-01;
+                                  active "Squeezed pion states" research)
+    opencog/generate             @ HEAD 8366ab4XXXXXXXXXXXX (2025-12-09;
+                                  "Switch to modern API")
+    rTreutlein/nl2pln_demo       @ HEAD 095db2bXXXXXXXXXXXX (2024-12-10;
+                                  2 commits, demo only)
+
+  STALE FORKS (verify [STRICT-FORK-STALE] vs [FORK-DIVERGED] per
+  feedback_bidirectional_fork_divergence.md):
+    glicerico/link-grammar       @ HEAD 0ec4698eeXXXXXXXXXX (2019-06-26)
+    leungmanhin/link-grammar     @ HEAD 74e847775XXXXXXXXXX (2022-05-19)
+    singnet/relex                @ HEAD 28b760eXXXXXXXXXXXX (2021-07-14)
+    leungmanhin/relex            @ HEAD 7d3df07dXXXXXXXXXX (2021-11-23)
+    hansonrobotics/relex         @ HEAD 1d322330XXXXXXXXXX (2016-06-10)
+    glicerico/learn              @ HEAD 784195bbXXXXXXXXX (2019-09-02)
+    singnet/learn                @ HEAD 85b5a3b1XXXXXXXXX (2021-10-14)
+    singnet/language-learning    @ HEAD f3355cdXXXXXXXXXXX (2019-09-26)
+    glicerico/language-learning  @ HEAD f3355cdXXXXXXXXXXX (2019-09-26;
+                                  same SHA as singnet — verify)
+    leungmanhin/nl2pln_demo      @ HEAD 095db2bXXXXXXXXXXX (2024-12-10;
+                                  same SHA as upstream — verify behind/
+                                  ahead via bidirectional log)
+
+  Local clone paths (E:\GitHub\hyperon reference\):
+    conceptBlending/             (iCog-Labs-Dev/conceptBlending)
+    semantic_parsing/            (leungmanhin/semantic_parsing — fork of
+                                  rTreutlein/semantic_parsing)
+    semantic-parser/             (leungmanhin/semantic-parser, separate
+                                  repo from semantic_parsing despite
+                                  similar name; 56 commits, no upstream)
+    relex/                       (opencog/relex)
+    relex-singnet/               (singnet/relex fork)
+    relex-leungmanhin/           (leungmanhin/relex fork)
+    relex-hansonrobotics/        (hansonrobotics/relex fork)
+    link-grammar/                (opencog/link-grammar)
+    link-grammar-glicerico/      (glicerico/link-grammar fork)
+    link-grammar-leungmanhin/    (leungmanhin/link-grammar fork)
+    learn/                       (opencog/learn)
+    learn-glicerico/             (glicerico/learn fork)
+    learn-singnet/               (singnet/learn fork)
+    generate/                    (opencog/generate)
+    language-learning/           (singnet/language-learning)
+    language-learning-glicerico/ (glicerico/language-learning)
+    nl2pln_demo/                 (rTreutlein/nl2pln_demo)
+    nl2pln_demo-leungmanhin/     (leungmanhin/nl2pln_demo)
+
+  WIKI CARDS IN SCOPE (S4.B alignment):
+    The wiki has Hyperon AI Algorithms+Semantic Parsing as a Published
+    parent (one of the 8 HAA Published cards rediscovered in the
+    2026-05-06 audit re-run). Apply the all-cardtypes audit rule per
+    feedback_query_all_cardtypes_in_audits.md: query Draft + Markdown +
+    Published (NOT just Draft+Markdown). The Published parent uses the
+    +content shell pattern with actual content in a +content RichText
+    subcard. Reviewers must inventory:
+      - Hyperon AI Algorithms+Semantic Parsing (Published parent)
+        and its +content subcard
+      - Any +Foo Full sectioning Draft + RichText subcards
+      - Any +AI proposal child(ren) (probably none yet)
+      - Adjacent: Hyperon AI Algorithms+Concept Blending? (verify
+        whether this exists; the original audit_report listed it as
+        in-scope)
+
+  WIKI MISSING SCAN:
+    Not in the local clones list above:
+      singnet/semantic-parsing — listed in the wiki
+      Reference+GitHub Repositories card as "Neural-symbolic bridge
+      for NL-to-Atomese. Active." but NOT cloned locally. Reviewers
+      should either WebFetch this URL to confirm it exists, OR verify
+      that leungmanhin/semantic_parsing (with rTreutlein upstream) is
+      the actual canonical repo and the wiki entry is mislabeled. This
+      is an S4.B.Q open question.
+
+§2.C — SGNN cross-cluster handoff (in scope for S4.C):
+
+  glicerico/SGNN @ HEAD 92d8e3aXXXXXXXXXXX (2025-11-05 "Fix nokogiri
+                  vulnerabilities" — Ruby/Jekyll dep maintenance, not
+                  algorithm work). README: "Implementation of Self-
+                  Governing Neural Networks for speech act classification"
+                  on the SwDA corpus.
+  Local: E:\GitHub\hyperon reference\SGNN\
+  Sister: E:\GitHub\hyperon reference\SGNN-Self-Governing-Neural-Networks-Projection-Layer\
+          @ HEAD 79ccf33 (2018-12-31; older variant)
+
+  Per HAA S3 V3-6 [SGNN-NOT-PATTERN-MINING] narrative-guard
+  (scripts/archive/non_clustered_haa_pilot/source3_pattern_mining_residual/
+  findings_reconciled_crossmodel.txt §3): SGNN was deferred to S4 OR
+  cross-org sweeps. S4 must FINALIZE this placement.
+
+  Two reasonable verdicts:
+    (a) [SGNN-IN-S4-SEMANTIC-PARSING-SCOPE]: SGNN's speech-act
+        classification fits NLP/semantic-parsing scope; bring into S4.B
+        analysis.
+    (b) [SGNN-OUT-OF-S4-DEFER-TO-CROSS-ORG]: SGNN is a glicerico-side
+        machine-learning project unrelated to the OpenCog/Hyperon NL
+        pipeline; defer to cross-org sweeps cluster.
+
+  Decision criterion: does SGNN cite or interface with Link Grammar /
+  RelEx / opencog/learn / Atomese? If yes, S4 scope. If no (standalone
+  ML project on a public corpus), cross-org scope.
+
+
+§3. ORCHESTRATOR-PRE-POPULATED CODEBASE FACTS
+----------------------------------------------
+
+§3.A — Repository inventory and git-history snapshot (verified
+2026-05-06 by orchestrator)
+
+This section is pre-populated to remove redundant git work for
+reviewers. Reviewers should verify HEAD SHAs match their local clones
+and use the SHAs in their findings.
+
+ACTIVE/MAINTAINED (in scope, full HEAD SHAs verified):
+
+  REPO                                  HEAD SHA                                    DATE         COMMITS
+  ---                                   ---                                         ---          ---
+  iCog-Labs-Dev/conceptBlending         9675e5eXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2026-03-28   ~602
+                                        (upstream advanced to df8d4b7 since;
+                                         see §3.C caveat)
+  leungmanhin/semantic_parsing          e232531XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2025-02-01   ~338
+                                        (upstream: rTreutlein/semantic_parsing)
+  leungmanhin/semantic-parser           d00331dXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2026-04-05   ~56
+                                        (NO upstream remote configured locally)
+  opencog/relex                         4c85a9aaXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2026-01-22   ~2,739
+  opencog/link-grammar                  c6ff88dd4XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2025-10-28   ~13,723
+  opencog/learn                         416e9a1dXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2026-04-01   ~6,115
+                                        (just gained learn-lang-diary/neuro-LG.lyx
+                                         per 2026-05-06 pull, signaling neuro-
+                                         symbolic LG work; reviewers may use
+                                         this as adjunct text)
+  opencog/generate                      8366ab4XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2025-12-09   ~423
+  rTreutlein/nl2pln_demo                095db2bXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2024-12-10   2
+
+STALE FORKS (verify divergence direction via bidirectional `git rev-list
+--left-right --count`):
+
+  REPO                                  HEAD SHA                                    DATE
+  ---                                   ---                                         ---
+  glicerico/link-grammar                0ec4698eeXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2019-06-26
+  leungmanhin/link-grammar              74e847775XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2022-05-19
+  singnet/relex                         28b760eXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2021-07-14
+  leungmanhin/relex                     7d3df07dXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2021-11-23
+  hansonrobotics/relex                  1d322330XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2016-06-10
+  glicerico/learn                       784195bbXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2019-09-02
+  singnet/learn                         85b5a3b1XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2021-10-14
+  singnet/language-learning             f3355cdXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2019-09-26
+  glicerico/language-learning           f3355cdXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2019-09-26
+                                        (SAME SHA as singnet — verify;
+                                         likely glicerico forked AFTER
+                                         singnet last commit and made no
+                                         changes, OR they share a merge-base)
+  leungmanhin/nl2pln_demo               095db2bXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2024-12-10
+                                        (SAME SHA as upstream rTreutlein —
+                                         verify via bidirectional log)
+
+OUT-OF-SCOPE-FOR-S4-PROPER (S4.C boundary lock only):
+  glicerico/SGNN                        92d8e3aXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2025-11-05
+  glicerico/SGNN-Self-Governing-...     79ccf33XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX    2018-12-31
+
+(Reviewers may resolve full SHAs locally if needed via
+ `cd <repo> && git rev-parse HEAD`. The brief uses short SHAs; reviewer
+ findings should record full 40-char SHAs for the active repos.)
+
+§3.B — File-existence assertions (per CF5.6 verification protocol from
+       feedback_gemini_file_identity_verification.md)
+
+The following file paths were verified to exist on this machine
+2026-05-06:
+
+  E:\GitHub\hyperon reference\conceptBlending\         (iCog-Labs-Dev)
+  E:\GitHub\hyperon reference\semantic_parsing\        (leungmanhin/rTreutlein)
+  E:\GitHub\hyperon reference\semantic-parser\         (leungmanhin)
+  E:\GitHub\hyperon reference\relex\                   (opencog)
+  E:\GitHub\hyperon reference\relex-singnet\           (singnet fork)
+  E:\GitHub\hyperon reference\relex-leungmanhin\       (leungmanhin fork)
+  E:\GitHub\hyperon reference\relex-hansonrobotics\    (hansonrobotics fork)
+  E:\GitHub\hyperon reference\link-grammar\            (opencog)
+  E:\GitHub\hyperon reference\link-grammar-glicerico\  (glicerico fork)
+  E:\GitHub\hyperon reference\link-grammar-leungmanhin\ (leungmanhin fork)
+  E:\GitHub\hyperon reference\learn\                   (opencog)
+  E:\GitHub\hyperon reference\learn-glicerico\         (glicerico fork)
+  E:\GitHub\hyperon reference\learn-singnet\           (singnet fork)
+  E:\GitHub\hyperon reference\generate\                (opencog)
+  E:\GitHub\hyperon reference\language-learning\       (singnet)
+  E:\GitHub\hyperon reference\language-learning-glicerico\ (glicerico fork)
+  E:\GitHub\hyperon reference\nl2pln_demo\             (rTreutlein)
+  E:\GitHub\hyperon reference\nl2pln_demo-leungmanhin\ (leungmanhin fork)
+  E:\GitHub\hyperon reference\SGNN\                    (S4.C boundary lock only)
+
+CF5.6 cumulative drift count entering S4: 22/39 ≈ 56% (8/25 prior + 3 S1
++ 6 S2 + 5 S3, including one LOAD-BEARING DIRECTION-REVERSED claim).
+S4 dispatch protocol upgrade: see §6.
+
+§3.C — KEY OPEN QUESTIONS FOR REVIEWERS
+
+(1) **conceptBlending repo state** — the local clone at HEAD `9675e5e`
+    (committed) has substantial uncommitted local deletions (hundreds
+    of files across `a_categorytheoretic_approach/`, `a_naive_approach/`,
+    `an_infotheoretic_approach/`, `peTTa_version/` subdirectories) plus
+    three untracked new files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`).
+    Upstream has advanced 3 commits to `df8d4b7` ("Merge pull request
+    #92 from iCog-Labs-Dev/PR-91" + "Remove unnecessary print lines" +
+    "Fix typo Error in py_generate_spec when passing context names to
+    algebraic specification"). Reviewers should EXTRACT against the
+    committed HEAD `9675e5e` (NOT the local working copy with deletions
+    AND not the upstream advance, since neither is the project's
+    canonical state). Note the upstream advance in findings as a
+    recency signal but do NOT pull — the local in-progress state may
+    represent the user's or another session's reorganization that
+    hasn't yet merged. Per `feedback_parallel_claude_handoff.md`,
+    do NOT modify the working copy.
+
+(2) **singnet/semantic-parsing vs leungmanhin/semantic_parsing** — the
+    wiki Reference+GitHub Repositories card lists `singnet/semantic-
+    parsing` as "Neural-symbolic bridge for NL-to-Atomese. Active." but
+    the local clones include only `leungmanhin/semantic_parsing` (an
+    underscore-named fork of `rTreutlein/semantic_parsing`) plus a
+    separate `leungmanhin/semantic-parser` (dashed, no upstream).
+    Reviewers should:
+    - WebFetch `https://github.com/singnet/semantic-parsing` to verify
+      whether it exists and is active, OR is a renamed/redirected/404
+      (per `feedback_webfetch_verify_external_urls.md`).
+    - If singnet/semantic-parsing exists, characterize the relationship
+      between it, leungmanhin/semantic_parsing (rTreutlein upstream),
+      and leungmanhin/semantic-parser. Are these forks of one another,
+      separate parallel projects, or fork-divergence cases?
+    - Identify the canonical "primary" semantic-parsing repo for
+      Hyperon-era NL-to-formal-representation.
+
+(3) **HoTT semantics scope inclusion** — papers
+    `HoTT_semantics_v3.json` and `HoTT_semantics_examples.json` are
+    Goertzel-authored cognitive-semantics papers. They are adjacent to
+    concept blending (paraconsistent geodesic modal HoTT framing) but
+    distinct subject matter. Reviewers must decide:
+    - Fold into S4.A as part of the concept-blending mathematical
+      apparatus extension; OR
+    - Treat as cross-cluster boundary (a distinct Goertzel HoTT-
+      semantics line that needs its own future pilot or sub-cluster);
+      OR
+    - Brief mention in S4.A with a "see also: future HoTT pilot"
+      pointer, deferring full extraction.
+    Pick one of these three paths and motivate the choice in S4.A.Q12.
+
+(4) **Eskridge attribution verification** — the original CLAUDE.md
+    framing of S4 scope named "Goertzel/Eskridge concept-blending
+    paper(s)". The local `mattermost_papers/Blending*.json` archive
+    shows Goertzel-authored papers; Eskridge does not appear as
+    co-author in the abstract/title metadata sampled by the
+    orchestrator. Reviewers should:
+    - Read each blending paper's full author list (NOT just metadata);
+      verify whether Eskridge appears as co-author on any of the four
+      blending papers in the archive.
+    - If Eskridge does NOT appear: characterize as
+      [ESKRIDGE-NOT-IN-LOCAL-ARCHIVE]. Open question: are there
+      additional concept-blending papers Goertzel co-authored with
+      Eskridge that aren't in the Mattermost archive (e.g., older
+      OpenCog-era publications)? Reviewers may flag for later
+      retrieval.
+    - If Eskridge DOES appear: confirm and record co-authorship.
+
+(5) **Wiki +Concept Blending vs +Semantic Parsing card scope** — the
+    HAA cluster's two relevant Published parents are `Hyperon AI
+    Algorithms+Concept Blending` and `Hyperon AI Algorithms+Semantic
+    Parsing`. Both should be inventoried per S4.B.Q1 (cardtype audit
+    rule). The audit's MISSING-CARD verdict on these in the
+    2026-05-05 baseline was wrong (caught by 2026-05-06 audit re-run);
+    they exist as Published parents. Reviewers must determine whether
+    each parent has a `+Foo Full` Draft sectioning subcard tree (like
+    AIRIS / MetaMo / PLN / ECAN do) or only a `+content` shell
+    (like simpler Published cards).
+
+
+§4. ORCHESTRATOR-PRE-POPULATED PAPER FINDINGS
+----------------------------------------------
+
+This source has substantial paper material; reviewers should extract
+from the source papers directly (NOT relitigate orchestrator pre-
+populated claims unless flagged for verification).
+
+P1. Concept blending paper-1 (`Blending.json`):
+    - Title: "A Formalization of Concept Blending: An Information-
+      Theoretic Approach to Quantifying and Creating Emergent and
+      Coherent Concept Blends"
+    - Author: Ben Goertzel (verify additional authors)
+    - The paper formalizes Fauconnier & Turner-style conceptual
+      integration networks via information-theoretic measures.
+    - This is the primary paper for S4.A; reviewers should extract
+      its formalism as the spine of the concept-blending verdict.
+
+P2. Concept blending paper-2 (`Blending_Quantale_Theorems.json`):
+    - Title (partial): "Compositional Theorems for Quantale-Based
+      Blending: How Weakness Interoperates with C[...]"
+    - Author: Ben Goertzel (verify)
+    - Quantale-based mathematical apparatus for blending.
+
+P3. Concept blending paper-3 (`Quantale_Blending_Paper.json`):
+    - Companion to or earlier draft of paper-2 (Blending_Quantale_
+      Theorems).
+    - Verify the actual relationship at extraction.
+
+P4. Concept blending paper-4 (`Paraconsistent_Interference_Blending.json`):
+    - Title (partial): "Paraconsistent Interference in Conceptual
+      Blen[...]"
+    - Author: Ben Goertzel (verify)
+    - Paraconsistent logic apparatus applied to concept blending.
+
+P5. Cognitive-semantics paper-1 (`HoTT_semantics_v3.json`):
+    - Title: "Identity-Aware Commonsense Reasoning via Paraconsistent
+      Geodesic Modal Homotopy Type Theory"
+    - Author: Ben Goertzel, October 14, 20XX (verify year)
+    - HoTT-based semantics; adjacent to concept blending, may extend
+      it via the modal/geodesic framing. Per §3.C(3), reviewers
+      decide scope inclusion.
+
+P6. Cognitive-semantics paper-2 (`HoTT_semantics_examples.json`):
+    - Title: "Transweaving Temporal and Counterfactual Identities
+      (Practical Examples with Branching Contexts)"
+    - Companion to P5.
+
+P7. conceptBlending repo structure (committed HEAD `9675e5e`):
+    - Four subdirectory implementations: `a_categorytheoretic_approach/`,
+      `a_naive_approach/`, `an_infotheoretic_approach/`, `peTTa_version/`.
+    - The repo is iCog-Labs-Dev-maintained (PR #91 from felekekinfe;
+      PRs from upstream advance via #92).
+    - Reviewers verify which sub-implementations correspond to which
+      paper apparatus (information-theoretic / category-theoretic /
+      paraconsistent / quantale).
+    - NOTE per §3.C(1): extract against committed HEAD, not the
+      working-copy deletions or upstream advance.
+
+P8. RelEx (`opencog/relex` HEAD `4c85a9aa`):
+    - English dependency relationship extractor (Java).
+    - Active maintenance (recent: dependabot maven bumps for logback).
+    - Historically used in OpenCog NL pipelines as the dependency
+      parser feeding into Atomese. Reviewers verify current Hyperon-
+      era role: is RelEx still in active use, archival-but-maintained,
+      or deprecated in favor of newer pipelines?
+
+P9. Link Grammar (`opencog/link-grammar` HEAD `c6ff88dd4`):
+    - CMU Link Grammar parser (C). v5.13.1 (2025-10-28 changelog bump).
+    - Active maintenance.
+    - Historically the primary syntactic parser feeding RelEx, then
+      Atomese.
+    - Reviewers verify Hyperon-era role: is Link Grammar still in
+      the NL-to-Atomese pipeline? Does it interface with semantic_
+      parsing / nl2pln_demo / opencog/learn?
+
+P10. opencog/learn (HEAD `416e9a1d`, 2026-04-01 just pulled):
+    - Active research repo: "Squeezed pion states" recent commit.
+    - Just gained `learn-lang-diary/neuro-LG.lyx` (1515-line LyX file)
+      in this 2026-05-06 pull, signaling neuro-symbolic Link Grammar
+      work in progress (consistent with Vepstas's Hyperon-era research
+      portfolio per Perception cluster pilot 2026-05-01; NOT a
+      cluster-pilot finding to extract here, just a recency signal).
+    - Reviewers verify scope: is opencog/learn in S4.B (active NL
+      pipeline) or adjacent (general language-learning research,
+      independent of the semantic-parsing pipeline)?
+
+P11. opencog/generate (HEAD `8366ab4`, 2025-12-09):
+    - "Switch to modern API" recent commit.
+    - Network generation from syntax (C++). Adjacent to Link Grammar.
+    - Reviewers verify Hyperon-era role.
+
+P12. rTreutlein/nl2pln_demo (HEAD `095db2b`, 2024-12-10, only 2 commits):
+    - Demo repo: NL to PLN conversion.
+    - rTreutlein-authored. Listed under "Natural Language Processing"
+      in the wiki Reference+GitHub Repositories card.
+    - Reviewers verify whether this is a substantive implementation
+      or a thin demo wrapper around semantic_parsing.
+
+P13. Cross-cluster boundary statements to lock at S4 close:
+    - Concept blending vs MetaMo (S2): NOT THE SAME. MetaMo is a
+      motivational framework with categorial state X = G × M; concept
+      blending is a cognitive-semantics formalism for conceptual
+      integration. They share Goertzel as author and category-theoretic
+      apparatus but are paradigm-distinct.
+    - Semantic parsing vs Pattern Mining (S3): adjacent but distinct.
+      Pattern mining surfaces structural patterns in AtomSpace;
+      semantic parsing converts NL to Atomese. They feed the same
+      reasoner (PLN) but the upstream pipelines are separate.
+    - Concept blending vs PLN (closed PLN cluster pilot): related —
+      blending operations compose conceptual/relational structures
+      that PLN can reason over. Concept-blending paper(s) may cite PLN
+      as downstream user. Reviewers verify exact relationship.
+
+
+§5. PER-QUESTION TASKS (S4.Q1 .. S4.Q12)
+-----------------------------------------
+
+Reviewers should answer per-sub-source where the question naturally
+splits (S4.A.QN, S4.B.QN, S4.C.QN). Evidence cites must include
+file:line for code claims; copy-paste exact `git rev-list --left-right
+--count` output for fork-divergence claims (NOT re-state) per the §6
+S4 dispatch protocol upgrade.
+
+S4.A.Q1: CONCEPT BLENDING PAPER VERDICT.
+  Read the four blending papers (Blending, Blending_Quantale_Theorems,
+  Quantale_Blending_Paper, Paraconsistent_Interference_Blending) and
+  one HoTT paper if scope-included per §3.C(3). Lock per-paper verdict:
+  paper-only / paper-leaning-hybrid / implementation-backed-core / etc.
+  Expected outcome: most papers are PAPER-ONLY at the formal layer with
+  partial implementation backing in conceptBlending repo.
+
+S4.A.Q2: CONCEPTBLENDING REPO IMPLEMENTATION SURFACE.
+  Map the four subdirectory implementations in conceptBlending @
+  HEAD 9675e5e to the four papers' formalisms:
+  - a_categorytheoretic_approach/ — which paper?
+  - a_naive_approach/ — which paper?
+  - an_infotheoretic_approach/ — which paper?
+  - peTTa_version/ — which paper?
+  Verify which sub-implementations are active (recently committed) vs
+  exploratory.
+  Note per §3.C(1): extract against the committed HEAD only.
+
+S4.A.Q3: ESKRIDGE ATTRIBUTION CHECK.
+  Per §3.C(4), verify whether Eskridge appears as co-author on any of
+  the four blending papers. Lock as
+  [ESKRIDGE-IN-LOCAL-ARCHIVE-PAPER-N] or [ESKRIDGE-NOT-IN-LOCAL-ARCHIVE].
+  Flag whether older Goertzel/Eskridge concept-blending publications may
+  exist outside the Mattermost archive.
+
+S4.A.Q4: HOTT SCOPE DECISION.
+  Per §3.C(3), pick: fold-into-S4.A / cross-cluster-boundary-defer /
+  brief-mention-in-S4.A-with-future-pilot-pointer. Motivate the choice.
+
+S4.A.Q5: WIKI HAA-CONCEPT-BLENDING CARD AUDIT.
+  Per the all-cardtypes audit rule. Inventory: Hyperon AI
+  Algorithms+Concept Blending (Published?) + +content + any sectioning
+  Draft subcards + +AI proposal (likely none yet). Identify drift
+  between current card content and the four papers' actual claims.
+
+S4.B.Q6: SEMANTIC PARSING PIPELINE VERDICT (cross-repo).
+  Lock per-repo verdicts. Expected:
+  - opencog/relex: [MAINTAINED-LEGACY-DEPENDENCY-PARSER] (recent
+    activity is dependabot bumps, not algorithm work).
+  - opencog/link-grammar: [ACTIVE-MAINTAINED-PRIMARY-PARSER] (v5.13.1,
+    not deprecated).
+  - opencog/learn: [ACTIVE-RESEARCH-NEURO-SYMBOLIC] (recent neuro-LG
+    diary additions).
+  - opencog/generate: [ACTIVE-SCAFFOLDING].
+  - leungmanhin/semantic_parsing (rTreutlein upstream):
+    [ACTIVE-FORK-DERIVED-PRIMARY] or similar.
+  - leungmanhin/semantic-parser: status TBD (no upstream remote, 56
+    commits).
+  - rTreutlein/nl2pln_demo: [DEMO-NOT-PIPELINE].
+
+S4.B.Q7: SEMANTIC-PARSING-PRIMARY-REPO RESOLUTION.
+  Per §3.C(2), resolve the singnet/semantic-parsing vs
+  leungmanhin/semantic_parsing vs leungmanhin/semantic-parser
+  question. WebFetch the wiki-cited URL. Lock the canonical "primary"
+  repo and record the rest as forks/variants/separate-projects.
+
+S4.B.Q8: STALE FORK DIVERGENCE AUDIT.
+  Bidirectional `git rev-list --left-right --count` for each stale
+  fork against its upstream. **COPY-PASTE THE EXACT OUTPUT** in
+  findings (per §6 S4 protocol upgrade). Verdicts from
+  {[STRICT-FORK-STALE], [STRICT-FORK-DIVERGED-NO-NOVEL-WORK],
+  [STRICT-FORK-DIVERGED-NOVEL-CONTRIBUTIONS]}.
+  Stale forks to audit:
+  - glicerico/link-grammar vs opencog/link-grammar
+  - leungmanhin/link-grammar vs opencog/link-grammar
+  - singnet/relex vs opencog/relex
+  - leungmanhin/relex vs opencog/relex
+  - hansonrobotics/relex vs opencog/relex
+  - glicerico/learn vs opencog/learn
+  - singnet/learn vs opencog/learn
+  - language-learning forks (singnet vs glicerico, same SHA case)
+  - leungmanhin/nl2pln_demo vs rTreutlein/nl2pln_demo
+
+S4.B.Q9: WIKI HAA-SEMANTIC-PARSING CARD AUDIT.
+  Per the all-cardtypes audit rule. Identify drift between current
+  card content and the actual repo state, especially any wiki claims
+  about which repo is "primary" that conflict with §3.C(2)/Q7
+  resolution.
+
+S4.B.Q10: PIPELINE INTEGRATION VERIFICATION.
+  Cross-grep the active repos for inter-repo references:
+  - Does semantic_parsing import or call into RelEx / Link Grammar?
+  - Does nl2pln_demo use semantic_parsing or semantic-parser?
+  - Does opencog/learn integrate with Link Grammar (the recent
+    neuro-LG diary suggests yes; verify in code)?
+  - Does conceptBlending interface with any of the NL pipeline?
+  Goal: lock the actual current pipeline architecture vs the
+  whitepaper-described one.
+
+S4.C.Q11: SGNN BOUNDARY PLACEMENT (FINAL).
+  Per §2.C, decide [SGNN-IN-S4-SEMANTIC-PARSING-SCOPE] vs
+  [SGNN-OUT-OF-S4-DEFER-TO-CROSS-ORG]. Decision criterion: does SGNN
+  reference Link Grammar / RelEx / opencog/learn / Atomese? Quick
+  grep at HEAD will determine. Lock and motivate.
+
+S4.A+B+C.Q12: V4-X CARRY-FORWARDS + CLUSTER-CLOSE EDIT BATCH PRECIS.
+  Lock V4-N tags for all corrections / re-framings emerging from
+  S4.A/B/C.Q1-Q11. Categorize each as load-bearing or non-blocking.
+  Propose the C-N writes the orchestrator should plan for S4 close
+  (mirror of S1's C1-C4, S2's C1-C6, S3's C1-C4 patterns). Pre-write
+  WebFetch on any GitHub URLs.
+
+
+§6. STANDING PROTOCOLS (CARRY-FORWARD FROM PRIOR PILOTS + S4 UPGRADE)
+----------------------------------------------------------------------
+
+All standing protocols from the closed pilots remain in force for S4.
+This brief carries them forward unchanged with ONE upgrade for S4:
+
+  P1. Cross-model triangulation.
+  P2. Wiki edit protocol: one-writer-only; sequential not parallel;
+      verify-after-every-write with get_card; treat "already exists"
+      as real until proven spurious.
+  P3. CF5.6 file-existence verification before adopting any reviewer's
+      file-location/line-number claim. Cumulative Gemini drift through
+      HAA S3 close: 22/39 ≈ 56%.
+  P4. Pickaxe before "never used" / "dead code" claims.
+  P5. Bidirectional fork-divergence verification.
+  P6. Attribution verify against git.
+  P7. WebFetch verify external URLs immediately before any wiki edit
+      that adds, modifies, or relays a URL.
+  P8. Wiki audits MUST query Draft + Markdown + Published.
+  P9. Research-vs-implementation workstream separation.
+  P10. Parallel-Claude handoff awareness.
+  P11. Re-read targets after Sandra-spec port detected before any
+       cluster-close edit batch (NEW protocol promoted from MetaMo
+       S2 close 2026-05-06; see
+       feedback_sandra_spec_port_recheck_before_batch.md).
+
+  *** S4 DISPATCH PROTOCOL UPGRADE ***
+
+  P12. **NUMERICAL-CLAIM VERBATIM PROTOCOL** (NEW for S4 dispatch,
+       informed by HAA S3 close 2026-05-06 cumulative drift analysis).
+       For any numerical claim — particularly fork-divergence counts,
+       commit counts, line counts, byte-counts of files — reviewers
+       MUST copy-paste the exact command output rather than re-state
+       the numbers in prose. Examples:
+
+       INCORRECT (re-stated):
+         "leungmanhin/miner is 0 ahead and 245 behind opencog/master."
+
+       CORRECT (verbatim output):
+         ```
+         $ cd 'E:\GitHub\hyperon reference\miner-leungmanhin'
+         $ git rev-list --left-right --count origin/master...upstream/master
+         0	44
+         ```
+
+       Rationale: HAA S3 reconciliation §1 surfaced one LOAD-BEARING
+       direction-reversed numerical claim (Gemini's ngeiswei/miner
+       8/0 [ACTIVE-MAINTAINER-SCRATCH] vs actual 0/8
+       [MAINTAINER-FORK-MERGED-BEHIND]) plus 4 other numerical drifts
+       totaling 5 D-N rejections. Gemini self-acknowledged this
+       commitment in the S3 sign-off relay. Verbatim copy-paste
+       removes the most recent confabulation channel.
+
+       This applies symmetrically to Codex too — even Codex's
+       numerical claims, when not verbatim-pasted, are subject to
+       transcription error. Verbatim is the discipline.
+
+
+§7. NON-GOALS (DO NOT EXTRACT)
+-------------------------------
+
+Reviewers MUST NOT:
+
+  - Re-extract findings from sources already covered by closed
+    cluster pilots (Perception 2026-05-01 for symbolic+neural+
+    perception miners; Pattern Mining via opencog/miner +
+    hyperon-miner trio + rejuve-bio/neural-subgraph-matcher-miner;
+    AtomSpace / DAS / MORK via AtomSpace cluster pilot 2026-04-29 +
+    Phase 4 pilot 2026-05-05; ECAN/Attention 2026-04-26;
+    OpenPsi/Motivation 2026-04-28; PLN 2026-04-25; AIRIS 2026-05-06;
+    MetaMo 2026-05-06).
+  - Touch the working-copy state of conceptBlending. Extract against
+    the committed HEAD only (per §3.C(1)).
+  - Generalize verdicts from one paper to another by analogy. Each
+    paper is checked individually.
+  - Touch wiki state. Reviewer extraction is read-only (get_card,
+    search, etc. are fine; create_card / update_card / delete_card
+    are not).
+  - Extract bio-data-* / mindplex-* / mm-semantic-search /
+    semantic-search-* / semantic-segmentation-* repos. Those are
+    application-specific NLP/search stacks not in S4 scope.
+  - Make scope inclusion calls without triangulation: §3.C(3) HoTT
+    decision and S4.C SGNN decision both require explicit motivation.
+
+
+§8. ORCHESTRATOR PRE-EXTRACTION CHECKLIST
+------------------------------------------
+
+Before reviewers begin extraction, orchestrator must complete:
+  [✓] §3 git history populated with HEAD SHAs for active and stale
+       repos.
+  [✓] §3.B file-existence assertions verified.
+  [✓] §3.C four open questions framed (conceptBlending state;
+       singnet/semantic-parsing vs leungmanhin/...; HoTT scope; Eskridge
+       attribution; HAA wiki card audit).
+  [✓] §4 P1..P13 framed: paper titles + repo identities + cross-
+       cluster boundaries to lock.
+  [✓] Active repos pulled (conceptBlending pull blocked due to local
+       in-progress state, intentional NOOP per §3.C(1); learn pulled
+       and gained learn-lang-diary/neuro-LG.lyx; others up-to-date).
+  [✓] Sign off on §3 git history (reviewers may verify).
+  [✓] §6 P12 verbatim-numerical protocol added for S4 dispatch.
+
+Once orchestrator signals "§4 ready, extraction may begin," reviewers
+may begin per-question extraction in parallel (Codex + Gemini
+independently, no shared draft).
+
+Findings files target paths:
+  scripts/archive/non_clustered_haa_pilot/source4_concept_blending_semantic_parsing/
+    findings_codex.txt
+    findings_gemini.txt
+After both received, orchestrator produces:
+    findings_reconciled_crossmodel.txt
+
+
+================================================================================
+END OF SOURCE 4 BRIEF (READY FOR REVIEWER EXTRACTION)
+2026-05-06
+================================================================================

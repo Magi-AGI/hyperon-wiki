@@ -1,0 +1,503 @@
+Codex findings - Source 5, Non-clustered HAA pilot
+===================================================
+
+Source: scripts/archive/non_clustered_haa_pilot/source5_NACE_AIDSL_MOSES_MeTTaNARS_brief.txt
+Reviewer: Codex
+Date: 2026-05-07
+Scope: S5.A NACE, S5.B AI-DSL, S5.C MOSES family, S5.D MeTTa-NARS
+
+Executive verdict
+-----------------
+
+S5 does not collapse into one tradition. It closes the remaining HAA backlog as four adjacent but distinct lines:
+
+1. NACE is [IMPLEMENTATION-BACKED-CORE] and [AIRIS-DERIVED-NAL-ADJACENT]. It builds on AIRIS, adds partial observability and NAL-style frequency/confidence evidence, and has an explicit bridge to ONA / MeTTa-NARS. It is not AIRIS and is not itself MeTTa-NARS.
+2. AI-DSL is [AI-DSL-DUAL-CITIZEN]. Its HAA-relevant slice is type-driven service/program composition in MeTTa and Idris-style dependent types, but its center of gravity is SingularityNET marketplace tooling rather than a cognitive algorithm comparable to PLN, ECAN, MOSES, or NARS.
+3. MOSES is [MULTI-ERA-MOSES-LINEAGE] with active primary Hyperon-era work in iCog-Labs-Dev/metta-moses, active maintained C++ AtomSpace work in opencog/asmoses, archival pre-AtomSpace C++ in opencog/moses, and older/superseded Hyperon documentation/prototype lines in hyperon-moses and hyperon-moses2.
+4. MORK-MOSES is [MORK-MOSES-CROSS-CLUSTER-OPEN-RESEARCH-LINE] with a setup-level mork_ffi hook in metta-moses but no committed mork_ffi subtree and no evidence of a working PathMap/MORK-backed MOSES implementation.
+5. MeTTa-NARS is [IMPLEMENTATION-BACKED-NAL1-5] and [METTA-NARS-NOT-PLN]. It implements ONA-style NARS control and NAL 1-5 rules in MeTTa, including f/c truth functions. It should be cross-linked to PLN only as a paradigm boundary.
+
+Q1. NACE paper + repo verdict
+-----------------------------
+
+Verdict: [IMPLEMENTATION-BACKED-CORE] / [AIRIS-DERIVED-NAL-ADJACENT] / [NACE-NOT-AIRIS].
+
+Local repo:
+
+```
+path: E:\GitHub\hyperon reference\NACE
+HEAD: 361fddf5f6885a60b6d5e0d179e0394da876df4c
+origin: https://github.com/patham9/NACE.git
+```
+
+The working tree has unrelated untracked AGENTS.md / CLAUDE.md / GEMINI.md and tmpclaude-* directories; extraction was against committed HEAD.
+
+NACE's README is decisive about identity and boundaries:
+
+- README.md:5 says the project builds on an implementation of Berick Cook's AIRIS, adds partial observability, targets nondeterministic/nonstationary environments, and initially incorporates Non-Axiomatic Logic components.
+- README.md:9 describes learned cognitive schematics as `(precondition, operation) => consequence` and says truth is represented with NAL frequency and confidence values.
+- README.md:28 links AIRIS, README.md:30 links OpenNARS for Applications, and README.md:32 links ROCCA.
+
+Implementation evidence:
+
+- `nace.py:49` returns `airis_score` from `_Plan`.
+- `nace.py:69-85` uses that score to choose exploration/exploitation behavior, including a printed `CURIOUS` behavior.
+- `nace.py:189` comments the score as "AIRIS confidence".
+- `nace.py:198` says planning searches for highest reward, or absent that, "biggest AIRIS uncertainty".
+- `nace.py:403`, `:408`, and `:442` explicitly compare the implementation to classical AIRIS behavior.
+
+The repo implements a real learning/control loop in Python, not just a paper stub. But it is best described as an AIRIS-derived NACE engine with NAL/NARS bridge support, not as a strict AIRIS implementation and not as a MeTTa-NARS implementation.
+
+Q2. NACE wiki card audit
+------------------------
+
+Verdict: [CARD-EXISTS-SANDRA-SPEC-PARENT] / [NEEDS-FULL-CARD] / [NEEDS-CLUSTER-PILOT-REFINEMENT].
+
+Wiki state verified with all-cardtypes search:
+
+- `Hyperon AI Algorithms+NACE (Non-Axiomatic Causal Explorer)` exists as IndexPublished ID 663, updated 2026-05-07T16:23:33Z.
+- Rendered parent includes +responsible "Patrick Hammer, Peter Isaev", +github `https://github.com/patham9/NACE`, and a +description claiming experiential learning and NAL evidence tracking.
+- The deep-dive points to a wanted card: `Hyperon AI Algorithms+NACE (Non-Axiomatic Causal Explorer)+NACE Full`.
+- Separate legacy/structural results also exist: `NACE` ID 662 and `NACE (Non-Axiomatic Causal Explorer)` ID 7590.
+
+The existing Sandra-spec parent is broadly aligned, but the cluster-close batch should add or create the full technical card with the S5-specific distinctions:
+
+- AIRIS-derived but not AIRIS.
+- NAL/NARS-adjacent with an actual bridge to ONA / MeTTa-NARS.
+- NACE's own planner remains Python-side; MeTTa bridge is a world=9 / interactive bridge surface, not the whole engine.
+- The "1000x data efficiency" phrase is present in wiki rendered text but was not independently verified in this extraction beyond the existing wiki wording. If retained, it should be sourced to the NACE paper, not just the repo.
+
+Q3. NACE paradigm boundary
+--------------------------
+
+Verdict: [NACE-NOT-AIRIS] / [NACE-BRIDGES-METTA-NARS] / [PATHAM9-PORTFOLIO-SHARED-AUTHOR].
+
+NACE vs AIRIS:
+
+- NACE README.md:5 explicitly says it builds on AIRIS and extends the setting with partial observability, nondeterminism, nonstationarity, external changes, and NAL components.
+- This is inheritance/extension, not identity. The closed AIRIS S1 verdicts still stand: AIRIS curiosity is not ECAN, AIRIS confidence is not PLN TV, and AIRIS state graph is not AtomSpace.
+
+NACE vs MeTTa-NARS:
+
+- `base_utils.py:28` says the `interactive` option enables a MeTTa-NARS bridge.
+- `base_utils.py:33` says `ona` uses ONA with MeTTa interface instead of MeTTa-NARS.
+- `base_utils.py:36` says `spaces` enables a MeTTa-NARS bridge.
+- `base_utils.py:39` says `narsese` allows Narsese input instead of MeTTa.
+- `bridge.py:25` says "BRIDGE HANDLES NACE-NARS connection with MeTTa".
+- `bridge.py:37-45` selects either `../OpenNARS-for-Applications/misc/Python` or `../metta-morph/metta-nars/`.
+- `spaces.metta:1` calls itself a fully MeTTa-controlled agent demo featuring NACE + NARS.
+
+The bridge is real, but the two projects remain separate: NACE is an experiential/causal exploration agent; MeTTa-NARS is the NARS inference engine surface.
+
+Q4. AI-DSL verdict + HAA-scope boundary
+---------------------------------------
+
+Verdict: [AI-DSL-DUAL-CITIZEN].
+
+Local repo:
+
+```
+path: E:\GitHub\hyperon reference\ai-dsl
+HEAD: aaa702e9eb6c95268b085ed1906bba6f728ea76f
+origin: https://github.com/singnet/ai-dsl.git
+```
+
+The local working tree is heavily dirty with tracked files shown as deleted plus untracked AGENTS/CLAUDE/GEMINI; extraction used committed HEAD through `git grep`.
+
+Evidence for AI-DSL as service composition:
+
+- README.md:3-4 defines AI-DSL as a domain-specific language for autonomous interoperability between AI services.
+- README.md:10-12 describes expressing AI service assemblages and requirements.
+- README.md:20-21 says the tool set should automatically fetch and combine the right AI services.
+- README.md:38-43 describes Idris/dependent-type formalization of service resources/properties.
+- README.md:66-72 describes scripts building an atomspace of the SingularityNET Marketplace and producing MeTTa and JSON dumps.
+- The 2021 report at `docs/technical-reports/2021/ai-dsl-techrep-2021-05_may.tex:31-37` frames AI-DSL as service interoperability over a decentralized blockchain marketplace.
+- The 2024 report at `docs/technical-reports/2024/ai-dsl-techrep-2024.tex:59-65` describes synthesizing AI service compositions from the SingularityNET marketplace, using a MeTTa chainer, crawler, protobuf specs, ontology, and DOT converter.
+- The 2024 report at `:79-100` says MeTTa replaces or complements Idris for program synthesis and service composition.
+- The 2024 report at `:891-958` covers representing the marketplace in MeTTa.
+- The 2024 report at `:1100-1105` covers protobuf specs converted via protobuf-metta.
+- The 2024 report at `:2218` says MeTTa backward chainer variations were implemented.
+
+Targeted grep outside `docs/` returns primarily `experimental/ai-service-composition`, `experimental/snet-marketplace-metta`, protobuf/checking, registry, and typed DSL artifacts. It does not reveal AI-DSL as a direct PLN/MOSES/OpenPsi/NARS cognitive module. Its HAA relevance is the Hyperon/MeTTa composition surface and typed synthesis machinery, while its product/domain center remains service-composition marketplace tooling.
+
+Q5. AI-DSL wiki card audit
+--------------------------
+
+Verdict: [CARD-EXISTS-SANDRA-SPEC-PARENT] / [HAA-SCOPE-NEEDS-QUALIFIER].
+
+Wiki state verified:
+
+- `Hyperon AI Algorithms+AI-DSL` exists as IndexPublished ID 665, updated 2026-05-07T16:23:34Z.
+- Rendered parent lists +responsible "Nil Geisweiller", +github `https://github.com/singnet/ai-dsl`, and a +description: "A type-driven program synthesizer that automatically assembles AI workflows. Uses backward chaining in MeTTa with dependent types and combinatory logic to compose services from the SingularityNET marketplace."
+- It points to a wanted `AI-DSL Full` deep dive.
+- `Reference+GitHub Repositories` ID 7268 already lists `singnet/ai-dsl` under Cognitive Logic & Reasoning.
+
+The current description is directionally accurate. Recommended cluster-close refinement is not a correction of the URL or identity, but a scope qualifier:
+
+- AI-DSL is not a cognitive reasoning engine like PLN/NARS or a learning algorithm like MOSES.
+- It belongs in the HAA cluster as a dual-citizen service-composition / typed-program-synthesis component.
+- If a full card is created, the full card should distinguish `experimental/ai-service-composition`, `experimental/snet-marketplace-metta`, `experimental/registry*`, and `experimental/protobuf` as concrete implementation surfaces.
+
+Q6. MOSES family lineage disambiguation
+---------------------------------------
+
+Verdict: [MULTI-ERA-MOSES-LINEAGE].
+
+Primary local repo facts:
+
+```
+iCog-Labs-Dev/metta-moses: 9f69e177a029f2d2034daa1fd815fe81a580d561
+opencog/asmoses:           dde4849c41001d24f81af9efe71005baa9779b08
+linas/as-moses:            dde4849c41001d24f81af9efe71005baa9779b08
+trueagi-io/hyperon-moses:  e390f4901aa5b2eeec91ef181acdb53a8b8bdf90
+ngeiswei/hyperon-moses2:   d661364ca78879b7a3aa7a2575230459c54027f4
+opencog/moses:             f88ccd3279f3dd853e8c23103be5376a0e7eafc1
+iCog-Labs-Dev/mosesDocs:   5e502f49...
+iCog-Labs-Dev/moses-optimization-algorithms: 0bd6f126...
+```
+
+Lineage verdicts:
+
+- `iCog-Labs-Dev/metta-moses` is the active Hyperon-era primary. README.md:3 says it reimplements the MOSES algorithm from asmoses in MeTTaLog. README.md:18-21 requires MeTTaLog and names `deme/tests/expand-demes-test.metta` as the entry point.
+- `opencog/asmoses` is the active maintained C++ AtomSpace port. README.md:85-87 requires AtomSpace; `doc/as-moses/README.md:3-19` says AS-MOSES is the AtomSpace port meant to facilitate synergies with OpenCog by using AtomSpace for input/output/search/knowledge.
+- `linas/as-moses` is a same-SHA mirror of opencog/asmoses at the audited state.
+- `opencog/moses` is the pre-AtomSpace standalone C++ line.
+- `trueagi-io/hyperon-moses` is a Hyperon/MeTTa port/documentation/prototype line; README.md:1-2 calls it "Hyperon port of asmoses" and docs say it is not trying to reproduce AS-MOSES verbatim. It is not the active primary compared with metta-moses.
+- `ngeiswei/hyperon-moses2` is an older fork merged into/superseded by trueagi-io/hyperon-moses at the audited state.
+- `mosesDocs` is documentation-only or near-documentation-only in this extraction.
+- `moses-optimization-algorithms` is a standalone C++ optimization experiment, not a MOSES/asmoses fork.
+
+metta-moses implementation-backed components:
+
+- `deme/create-deme.metta:3-18` defines deme construction.
+- `deme/expand-deme.metta:47`, `:69`, and `:107-140` define `expandDeme` and `runMoses` machinery.
+- `deme/merge-demes.metta:222-274` implements the merge path for optimized demes into a metapopulation.
+- `scoring/fitness.metta:123`, `:146`, and `:156-159` implement row, aggregate, and penalized fitness.
+- `scoring/precision-bscore.metta:316-340` implements a top-level pre-scorer for hill-climbing feature selection.
+- `feature-selection/tests/*.metta` show tests for simple, random, incremental, hill-climbing, and SMD feature selectors.
+
+Q7. MOSES stale fork divergence audit
+-------------------------------------
+
+P12 numerical protocol: exact command outputs copied below.
+
+linas/as-moses vs opencog/asmoses:
+
+```
+### as-moses vs upstream
+0	0
+```
+
+Verdict: [VEPSTAS-MIRROR-SAME-SHA].
+
+leungmanhin/asmoses vs opencog/asmoses:
+
+```
+### asmoses-leungmanhin
+0	107
+> dde4849c4 Move code out of cogutils to here.
+> c268b5fa3 More fallout from striped-down cogutil
+> 97b2bd518 More build breaks falling out of cogutils changes
+> a190818c9 Remove dependencies on packages that aren't required
+> c58f64483 Stub out test that sometimes fails.
+> fcd4757d1 Add the utils library to all the tests, too
+> 17f911ff6 Add missing library
+> f8922c25f Move tree.h to here from cogutil
+```
+
+Verdict: [STRICT-FORK-STALE].
+
+singnet/asmoses vs opencog/asmoses:
+
+```
+### asmoses-singnet
+7	165
+> dde4849c4 Move code out of cogutils to here.
+> c268b5fa3 More fallout from striped-down cogutil
+> 97b2bd518 More build breaks falling out of cogutils changes
+> a190818c9 Remove dependencies on packages that aren't required
+> c58f64483 Stub out test that sometimes fails.
+> fcd4757d1 Add the utils library to all the tests, too
+> 17f911ff6 Add missing library
+> f8922c25f Move tree.h to here from cogutil
+```
+
+Left-only commits:
+
+```
+### asmoses-singnet left-only
+3536f908a Merge pull request #153 from ngeiswei/merge-opencog-to-singnet
+02719e41b Merge branch 'master' of github.com:opencog/asmoses into merge-opencog-to-singnet
+dcd0c02d2 Merge pull request #152 from ngeiswei/merge-opencog-to-singnet
+8919a7c7e Merge branch 'master' of github.com:opencog/asmoses into merge-opencog-to-singnet
+e6429c355 Merge pull request #151 from ngeiswei/merge-opencog-to-singnet
+00142a87a Merge branch 'master' of github.com:opencog/asmoses into merge-opencog-to-singnet
+ca77227e0 Merge pull request #150 from ngeiswei/merge-opencog-to-singnet
+### diffstat
+```
+
+Verdict: [STRICT-FORK-STALE-MERGED-UPSTREAM]. Same pattern as HAA S3 singnet/miner and S4 singnet/relex: origin-only commits are merge/sync metadata, not a new implementation tradition.
+
+singnet/moses vs opencog/moses:
+
+```
+### moses-singnet
+19	23
+> f88ccd327 Merge pull request #107 from linas/unary-function
+> b6ed4e627 Remove more old boost crazy-making
+> 0c109b125 More unary_function crud
+> 80a9e6ac0 Cleanup old boost bind issues
+> ef9ea67da Get rid of std::unary_function in examples
+> cacba1ae3 Stub out dead tests
+> a535d33e2 Cleanup boost::bind
+> 1c6741b63 Fix declaration of is_sorted
+```
+
+Left-only commits and diffstat:
+
+```
+### moses-singnet left-only
+c17149266 Merge pull request #14 from ngeiswei/merge-opencog-to-singnet
+1a33391aa Merge branch 'master' of github.com:opencog/moses into merge-opencog-to-singnet
+5af6495ca Merge pull request #13 from ngeiswei/merge-opencog-to-singnet
+0c11ee7e8 Merge branch 'master' of github.com/opencog/moses into merge-opencog-to-singnet
+fee203169 Merge pull request #12 from vsbogd/merge-opencog-to-singnet
+27b7a9c0c Merge branch 'master' of github.com/opencog/moses into merge-opencog-to-singnet
+4638da3c5 Merge pull request #11 from ngeiswei/oc-to-sn
+3a5743a4d Merge branch 'master' into oc-to-sn
+92de72422 Merge pull request #10 from ngeiswei/oc-to-sn
+86bf43c08 Merge remote-tracking branch 'upstream/master' into oc-to-sn
+cd59a6491 Merge pull request #9 from vsbogd/merge-opencog-to-singnet
+9cbc79820 Merge branch 'master' of github.com/opencog/moses into merge-opencog-to-singnet
+82fb3200e Merge pull request #8 from vsbogd/merge-opencog-to-singnet
+3f27ebb44 Merge branch 'master' of github.com/opencog/moses into merge-opencog-to-singnet
+0fa209a19 Merge pull request #7 from vsbogd/merge-opencog-to-singnet
+a8e7a6b77 Merge branch 'master' of github.com/opencog/moses into merge-opencog-to-singnet
+33eb13203 Merge pull request #6 from vsbogd/use-circleci-dockers
+f48065512 Use docker images from SingularityNet dockerhub for CircleCI
+a965c2be3 Merge pull request #5 from AmeBel/opencog-master
+### diffstat
+ .circleci/config.yml | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+```
+
+Verdict: [STRICT-FORK-STALE-MERGED-UPSTREAM].
+
+hyperon-moses trueagi vs ngeiswei/hyperon-moses2:
+
+```
+### hyperon-moses trueagi contains ngeiswei?
+27	0
+< e390f49 Merge pull request #5 from ngeiswei/docs
+< 8010317 Render PDF
+< 966ad21 Complete the MeTTa port Highlevel Guide
+< 5d74f45 Apply corrections to Introduction
+< 82d676a Minimal update
+< e5f074e Misc updates
+< 6b20ba1 Change section title
+< 997477c Complete the last sections of the cognitive synergy chapter
+< 4147fe1 Minor improvement in Dependent Types Section
+< df2c775 Improve Program Evolution as a Form of Reasoning
+```
+
+Opposite direction failed because trueagi's commit object was not present in the ngeiswei clone:
+
+```
+### hyperon-moses2 contains trueagi?
+fatal: Invalid symmetric difference expression origin/main...e390f4901aa5b2eeec91ef181acdb53a8b8bdf90
+fatal: Invalid symmetric difference expression origin/main...e390f4901aa5b2eeec91ef181acdb53a8b8bdf90
+```
+
+The first command is still decisive for the audited local state: trueagi contains the ngeiswei head lineage and is 27 commits ahead. Verdict: [HYPERON-MOSES2-MERGED-BEHIND].
+
+Q8. MOSES wiki card audit
+-------------------------
+
+Verdict: [CARD-EXISTS-WITH-FULL-CARD] / [NEEDS-MORK-IMPLEMENTATION-QUALIFIER].
+
+Wiki state verified:
+
+- `Hyperon AI Algorithms+MOSES (Meta-Optimizing Semantic Evolutionary Search)` exists as IndexPublished ID 799, updated 2026-05-07T16:23:44Z.
+- `Hyperon AI Algorithms+MOSES (legacy duplicate)` also exists as RichText ID 667.
+- `Hyperon AI Algorithms+MOSES (Meta-Optimizing Semantic Evolutionary Search)+MOSES Full` exists as Published ID 4399, updated 2026-05-07T16:23:50Z.
+- The full card already has sectioning cards: `+Core Mechanisms and Scoring` ID 7128, `+Mathematical Foundations and MORK` ID 7130, `+Implementation Eras and Design History` ID 7132, and `+Status and Resources` ID 7133.
+- `Reference+GitHub Repositories` ID 7268 already lists `iCog-Labs-Dev/metta-moses` in the shortlist and Cognitive Logic, and `opencog/moses`; it does not list `opencog/asmoses`, `trueagi-io/hyperon-moses`, or `iCog-Labs-Dev/moses-optimization-algorithms`.
+
+Good current wiki claims:
+
+- The full card recognizes the three-era structure: legacy C++, MeTTa Boolean Reduction, and full MeTTa reimplementation.
+- It correctly identifies metta-moses as the most complete MeTTa version.
+- It correctly keeps older C++ MOSES and asmoses available rather than deleting the lineage.
+
+Needed refinement:
+
+- The `+Mathematical Foundations and MORK` and `+Status and Resources` cards should label MORK integration as paper/proposed/open-research/scaffold, not as an implemented current substrate. Phrases like "MORK embeds naturally" and "PathMap indexes parameter neighborhoods" are architecture proposals unless tied to an implementation source. The local code only verifies a setup-level mork_ffi reference, not a working MORK-MOSES implementation.
+- The full card should add the audited fork outcomes: linas/as-moses is same-SHA mirror; singnet/leungmanhin/asmoses and singnet/moses are stale/merge-sync forks.
+- Reference card should add `opencog/asmoses` as the active C++ AtomSpace baseline and probably `trueagi-io/hyperon-moses` as superseded/older Hyperon prototype, while avoiding stale fork enumeration.
+
+Q9. MORK-MOSES paper implementation status
+------------------------------------------
+
+Verdict: [MORK-MOSES-CROSS-CLUSTER-OPEN-RESEARCH-LINE] with [PARTIAL-SCAFFOLD] evidence.
+
+Paper/archive evidence:
+
+- `publication_texts/mattermost_papers/Moses_Mork.json` is Goertzel's July 21, 2025 "MORK-MOSES Implementation Ideas".
+- The JSON full text frames MORK-MOSES as an implementation-ideas paper: scalable MOSES within a MORK Atomspace, gCoDD, ENF/CENF, quantale variation, factor-graph EDA, local rewrites, and parallel/distributed execution across Atomspace shards.
+- It says a straightforward MeTTa implementation risks not scaling and proposes MORK as the lower-level substrate.
+
+Code evidence:
+
+- `metta-moses/setup.sh:16` sets `MORK_DIR="$(pwd)/mork_ffi/target/release/libmork_ffi.so"`.
+- `metta-moses/setup.sh:19` rewrites `run.sh` to that local mork_ffi shared-library path.
+- `git -C metta-moses ls-tree -r --name-only HEAD | rg -n "mork|MORK|ffi|PathMap|pathmap|MM2|mm2"` returned no output, so there is no committed `mork_ffi` subtree or MORK/PathMap file path in the audited tree.
+- `git -C metta-moses grep -n -i -E "mork|PathMap|pathmap|MM2|mork_ffi|MORK" HEAD -- .` found only `setup.sh:16`, `setup.sh:19`, and unrelated local variable names `mm2` in `utilities/ordered-multimap.metta:100-103`.
+- Cross-grep in asmoses/as-moses did not surface MORK/PathMap/MM2 integration.
+
+Therefore: not [MORK-MOSES-PAPER-ONLY], because metta-moses has a concrete setup hook; not [MORK-MOSES-PARTIAL-IMPLEMENTATION], because no committed implementation files exist. The best label is [MORK-MOSES-CROSS-CLUSTER-OPEN-RESEARCH-LINE] plus [PARTIAL-SCAFFOLD].
+
+Q10. MeTTa-NARS verdict + wiki card audit
+-----------------------------------------
+
+Verdict: [IMPLEMENTATION-BACKED-NAL1-5] / [METTA-NARS-NOT-PLN] / [MOTTO-POC-INTEROP].
+
+Local repo:
+
+```
+path: E:\GitHub\hyperon reference\metta-nars
+HEAD: 945e2f83711b143e3f6e2eb112cc40c4f531c6f2
+origin: https://github.com/patham9/metta-nars.git
+```
+
+Repo evidence:
+
+- README.md:2 calls the project an ONA-style NARS implementation in MeTTa.
+- README.md:14 says inference control follows ONA.
+- README.md:21 says `tests0.metta` covers NAL inference rule application examples.
+- README.md:59 says the MeTTa interpreter is possible but slow, with the before-metta-morph branch as the last trimmed-down MeTTa-interpreter-friendly version.
+- `src/logic/build.sh:1` concatenates truth functions and NAL1 through NAL5.
+- `src/logic/nal1.metta:1-6` implements NAL-1 inheritance rules.
+- `src/logic/nal2.metta:1-15` implements NAL-2 similarity/set rules.
+- `src/logic/nal3.metta:1-35` implements NAL-3 set/intersection/decomposition rules.
+- `src/logic/nal4.metta:1-38` implements NAL-4 product/relation rules.
+- `src/logic/nal5.metta:1-38` implements NAL-5 negation/conjunction/implication/equivalence rules.
+- `src/logic/truthfunctions.metta:1-29` implements f/c truth operations: deduction, abduction, induction, exemplification, revision, expectation, etc.
+- `motto/nars_reason_example.metta:5` and `motto/nars_reason_repl.metta:5` call the examples MeTTa-motto-MeTTa-NARS interop proof of concept.
+
+Wiki state verified:
+
+- `Hyperon AI Algorithms+MeTTa-NARS (Non-Axiomatic Reasoning System)` exists as IndexPublished ID 797, updated 2026-05-07T16:23:32Z.
+- The parent rendered card has +responsible "Peter Isaev, Patrick Hammer", +github `https://github.com/patham9/metta-nars`, and a description centered on frequency/confidence evidence values under limited resources.
+- It points to a wanted `MeTTa-NARS Full` deep dive.
+- Separate legacy/structural results exist: `MeTTa-NARS` ID 660, `MeTTa-NARS (Non-Axiomatic Reasoning System)` ID 796, and duplicate/legacy cards.
+
+Needed refinement:
+
+- The card is directionally good. The S5 close batch should create/fill the full card and explicitly state the PLN boundary: NARS f/c truth values and NAL rules are not PLN strength/confidence truth values or PLN rules.
+- The MeTTa-Motto evidence is POC interop only; keep MeTTa-Motto itself out of S5 cluster scope unless the cross-org sweep explicitly picks it up.
+
+Q11. Patham9 portfolio / MeTTa-Motto cross-source check
+-------------------------------------------------------
+
+Verdict: [PATHAM9-HAA-PORTFOLIO] / [METTA-MOTTO-OUT-OF-S5].
+
+Patham9 / Patrick Hammer portfolio shape in this source:
+
+- NACE: patham9-authored repo; AIRIS-derived causal exploration with NAL/NARS bridge support.
+- metta-nars: patham9-authored repo; ONA-style NARS in MeTTa, NAL1-5 plus truth functions.
+- AIRIS S1: Cook & Hammer paper/repo relationship stays separate; NACE builds on AIRIS but does not replace the AIRIS card or paper findings.
+
+NACE and metta-nars are connected through bridge code, not merely author adjacency:
+
+- NACE `bridge.py:25` says the bridge handles NACE-NARS with MeTTa.
+- NACE `bridge.py:37-45` switches between ONA and metta-morph/metta-nars pathing.
+- NACE `spaces.metta:1` declares a NACE + NARS demo.
+
+MeTTa-Motto:
+
+- metta-nars has POC motto files, but MeTTa-Motto as a repo/library is not one of S5.A/B/C/D.
+- S2's decision to leave MeTTa-Motto to cross-org sweeps should stand.
+- The wiki already has MeTTa-Motto as a Published parent per the audit addendum; it should not be folded into this S5 cluster-close batch except via a boundary note if needed.
+
+Q12. Cluster-close edit batch precis
+------------------------------------
+
+Recommended S5 close edits after reconciliation/sign-off:
+
+C1. NACE card batch
+
+- Create/fill `Hyperon AI Algorithms+NACE (Non-Axiomatic Causal Explorer)+NACE Full`.
+- Add repo/paper verdicts: [IMPLEMENTATION-BACKED-CORE], [AIRIS-DERIVED-NAL-ADJACENT], [NACE-NOT-AIRIS], [NACE-BRIDGES-METTA-NARS].
+- Update existing +description only if needed to source/qualify "1000x data efficiency".
+
+C2. AI-DSL card batch
+
+- Create/fill `Hyperon AI Algorithms+AI-DSL+AI-DSL Full`.
+- Keep the current parent but add [AI-DSL-DUAL-CITIZEN] scope wording: HAA-relevant typed composition, but marketplace/service-composition boundary.
+- Avoid presenting AI-DSL as a core cognitive architecture module.
+
+C3. MOSES card batch
+
+- Refine `+MOSES Full+Mathematical Foundations and MORK` and `+Status and Resources` to mark MORK-MOSES as open research/scaffold, not implemented current behavior.
+- Add audited lineage table to `+Implementation Eras and Design History`: metta-moses primary MeTTa, asmoses active C++ AtomSpace, moses archival C++, hyperon-moses older/superseded, hyperon-moses2 merged-behind, linas/as-moses same-SHA mirror.
+- Add MORK-MOSES verdict: [MORK-MOSES-CROSS-CLUSTER-OPEN-RESEARCH-LINE] with [PARTIAL-SCAFFOLD].
+
+C4. MeTTa-NARS card batch
+
+- Create/fill `Hyperon AI Algorithms+MeTTa-NARS (Non-Axiomatic Reasoning System)+MeTTa-NARS Full`.
+- Add [IMPLEMENTATION-BACKED-NAL1-5], [METTA-NARS-NOT-PLN], [MOTTO-POC-INTEROP].
+- Link to PLN as a boundary, not a successor/implementation.
+
+C5. Reference+GitHub Repositories
+
+- Keep existing entries for metta-moses, moses, NACE, metta-nars, ai-dsl.
+- Add `opencog/asmoses` as active C++ AtomSpace MOSES baseline.
+- Consider adding `trueagi-io/hyperon-moses` as older/superseded Hyperon MOSES prototype.
+- Do not enumerate stale forks individually.
+- If editing links, run fresh WebFetch for external URLs per standing protocol.
+
+C6. Legacy duplicate cleanup
+
+- Do not delete virtual/legacy duplicate structural cards. Multiple cards are marked virtual/junction; preserve them.
+- If user-facing duplicate cards are confusing, add lightweight redirects/notes rather than deletion.
+
+V5-X carry-forwards
+-------------------
+
+V5-1 [NACE-AIRIS-DERIVED-NAL-ADJACENT] - load-bearing for NACE wiki edits.
+
+V5-2 [NACE-BRIDGES-METTA-NARS-NOT-SAME] - load-bearing boundary between S5.A and S5.D.
+
+V5-3 [AI-DSL-DUAL-CITIZEN] - HAA-relevant type/service composition, but marketplace tooling boundary.
+
+V5-4 [AI-DSL-WORKTREE-DELETED-HEAD-VALID] - extraction used committed HEAD due local dirty/deleted working tree.
+
+V5-5 [METTA-MOSES-ACTIVE-METTA-PRIMARY] - canonical Hyperon-era MOSES line.
+
+V5-6 [ASMOSES-ACTIVE-CPP-ATOMSPACE-BASELINE] - active C++ AtomSpace baseline; add to Reference if absent.
+
+V5-7 [LINAS-AS-MOSES-SAME-SHA-MIRROR] - avoid treating linas/as-moses as a separate implementation at the audited state.
+
+V5-8 [HYPERON-MOSES-SUPERSEDED-BY-METTA-MOSES] - older Hyperon/MeTTa docs/prototype line, not current primary.
+
+V5-9 [MOSES-FORKS-STALE-MERGE-METADATA] - singnet/leungmanhin/asmoses and singnet/moses do not add new traditions.
+
+V5-10 [MORK-MOSES-PARTIAL-SCAFFOLD-OPEN-RESEARCH-LINE] - setup hook exists; implementation does not.
+
+V5-11 [METTA-NARS-IMPLEMENTATION-BACKED-NAL1-5] - create/fill full card with file evidence.
+
+V5-12 [METTA-NARS-NOT-PLN] - boundary with closed PLN pilot.
+
+V5-13 [PATHAM9-HAA-PORTFOLIO] - NACE + metta-nars + AIRIS co-authorship/cross-link context.
+
+V5-14 [METTA-MOTTO-OUT-OF-S5] - keep MeTTa-Motto for cross-org sweep despite metta-nars POC interop.
+
+CF5.6 / V4-11 risk flags for reconciliation
+--------------------------------------------
+
+1. MORK-MOSES interpretation risk: a reviewer may call `setup.sh:16-19` a partial implementation. It is safer to reconcile as partial scaffold unless they produce committed `mork_ffi` / PathMap / MORK call sites.
+2. MOSES fork counts are load-bearing. Use the exact command outputs above; do not accept restated ahead/behind counts without left-right output.
+3. Wiki cards were updated 2026-05-07 under Sandra-spec names. Reconciliation and write-batch planning must re-read before edits.
+4. AI-DSL should not be over-promoted into a core HAA cognitive module. The repo implements service composition and marketplace representation; its HAA role is dual-citizen.
+5. MeTTa-NARS should not be collapsed into PLN because both use two-dimensional truth values. The file evidence is NAL-specific.
+

@@ -1,0 +1,953 @@
+================================================================================
+SOURCE 5 BRIEF — NACE + AI-DSL + MOSES + MeTTa-NARS
+                 (Non-clustered Hyperon AI Algorithms cluster pilot)
+================================================================================
+Source name:      NACE + AI-DSL + MOSES + MeTTa-NARS
+Cluster:          Non-clustered Hyperon AI Algorithms (HAA), Source 5 of 5
+Source-1 closed:  AIRIS, 2026-05-06 (commit 65783e2)
+Source-2 closed:  MetaMo, 2026-05-06 (commit 8c32404)
+Source-3 closed:  Pattern Mining residual, 2026-05-06 (commit 8c32404)
+Source-4 closed:  Concept Blending + Semantic Parsing, 2026-05-07
+Pilot order:      Option A (backlog burn-down) authorized 2026-05-05.
+Brief drafted:    2026-05-07 (this session)
+Brief author:     Claude (orchestrator)
+
+
+§0. SOURCE IDENTITY
+-------------------
+
+This is the FINAL source of the Non-clustered Hyperon AI Algorithms
+cluster pilot. It is a multi-topic source spanning four research lines
+that share two common properties: each is one of the HAA Published
+parents in the wiki that has not yet been audited, and each represents
+a paradigm-distinct algorithmic family that is loosely coupled (or
+explicitly NOT coupled) to the other HAA components.
+
+  S5.A — NACE. patham9's "Non-Axiomatic Categorization Engine" — a
+         non-axiomatic-reasoning-style categorization/learning engine,
+         developer-led project with a Qt GUI. Closed-source-of-origin
+         in the patham9 personal lineage (NOT an opencog/trueagi-io
+         project). Cross-references with NARS but is its own engine.
+
+  S5.B — AI-DSL. singnet/ai-dsl — domain-specific language for
+         describing AI services on the SingularityNET marketplace.
+         Idris-2 typed-functional implementation. Distinct from
+         AGI-cognitive-architecture work; it is service-orchestration
+         tooling. May or may not be in genuine HAA scope (open
+         question: should this stay in HAA cluster or move to a future
+         "marketplace tooling" sub-cluster?).
+
+  S5.C — MOSES family (program-learning paradigm). The OpenCog/Hyperon
+         MOSES (Meta-Optimizing Semantic Evolutionary Search) lineage:
+         opencog/moses (archival pre-AtomSpace C++ MOSES);
+         opencog/asmoses (AtomSpace-MOSES, the active C++ port);
+         linas/as-moses (Linas Vepstas's mirror of asmoses);
+         trueagi-io/hyperon-moses (early Hyperon-era port, exploratory);
+         ngeiswei/hyperon-moses (Nil Geisweiller's experimental fork);
+         iCog-Labs-Dev/metta-moses (the active MeTTa MOSES port — most
+         active in 2026-03);
+         iCog-Labs-Dev/mosesDocs (docs); plus stale forks
+         (leungmanhin/asmoses, singnet/asmoses, singnet/moses,
+         iCog-Labs-Dev/moses-optimization-algorithms). Plus the
+         Goertzel 2025-07-21 mattermost paper "MORK-MOSES Implementation
+         Ideas" which proposes integrating MOSES with the closed
+         AtomSpace cluster's MORK substrate.
+
+  S5.D — MeTTa-NARS. patham9/metta-nars — patham9's MeTTa port of
+         Non-Axiomatic Reasoning System (NARS). NARS is Pei Wang's
+         non-axiomatic reasoning framework, paradigm-distinct from
+         PLN (closed PLN cluster pilot). MeTTa-NARS is the Hyperon-era
+         port. Same author as S5.A NACE.
+
+These four sub-sources are bundled into a single brief because:
+  - All are HAA Published parents from the 2026-05-06 audit re-run
+    (last 4 of the 8 HAA Published parents — AIRIS+MetaMo+Concept
+    Blending+Semantic Parsing+MeTTa-Motto were S1+S2+S4 inputs;
+    MeTTa-Motto is left for cross-org sweeps per S2 reconciliation).
+  - All are paradigm-distinct algorithmic families that are NOT
+    integrated with each other or with PLN/ECAN/AtomSpace. They sit
+    side-by-side in the wiki "Hyperon AI Algorithms" parent.
+  - Reviewer extraction efficiency: a single brief reduces orchestrator
+    + reviewer overhead vs four separate dispatches for what is
+    largely cross-paradigm boundary verification work.
+
+Reviewers should produce findings files with explicit per-sub-source
+sections (S5.A / S5.B / S5.C / S5.D) for clean reconciliation.
+Estimated findings size ~300-450 lines per reviewer (similar scale
+to S4; MOSES family is the biggest sub-source by repo count).
+
+
+§1. SCOPE AND DELIVERABLE
+-------------------------
+
+Deliverable per reviewer (Codex + Gemini, parallel and independent):
+
+  scripts/archive/non_clustered_haa_pilot/source5_NACE_AIDSL_MOSES_MeTTaNARS/
+      findings_codex.txt
+      findings_gemini.txt
+
+Per-question structure following the closed S1 + S2 + S3 + S4 pattern.
+Twelve S5.Q questions in §5; explicit per-sub-source sections (S5.A.QN,
+S5.B.QN, S5.C.QN, S5.D.QN) where the question is sub-source-specific.
+
+After both findings files arrive, the orchestrator (Claude this session)
+produces:
+
+  scripts/archive/non_clustered_haa_pilot/source5_NACE_AIDSL_MOSES_MeTTaNARS/
+      findings_reconciled_crossmodel.txt
+
+Three-way sign-off (Codex + Gemini + orchestrator) before any cluster-
+close edit batch on the wiki.
+
+After S5 closes, the Non-clustered HAA cluster pilot is COMPLETE. Next
+clusters per Option A backlog burn-down: MeTTa runtime → PRIMUS →
+Cross-org sweeps.
+
+
+§2. ARTIFACTS TO READ
+---------------------
+
+§2.A — NACE artifacts (in scope for S5.A):
+
+  Local clone: E:\GitHub\hyperon reference\NACE\
+  Origin:      https://github.com/patham9/NACE.git
+  HEAD:        361fddf5f6885a60b6d5e0d179e0394da876df4c
+  Date:        2025-05-06 03:35:53 +0200
+  Commit msg:  "Update: Qt support so Wayland users can also use the
+                program with GUI"
+
+  README inventory: reviewers extract README structure, claimed
+  features, dependencies. Cross-reference NARS bibliography (Pei Wang's
+  papers cited or framework references).
+
+  Author identity: patham9 = Patrick Hammer. (Same Patrick Hammer who
+  is co-author on the Cook & Hammer 2024 AIRIS paper, closed in S1.
+  Lock attribution at extraction.)
+
+§2.B — AI-DSL artifacts (in scope for S5.B):
+
+  Local clone: E:\GitHub\hyperon reference\ai-dsl\
+  Origin:      https://github.com/singnet/ai-dsl.git
+  HEAD:        aaa702e9eb6c95268b085ed1906bba6f728ea76f
+  Date:        2025-06-25 13:36:04 +0300
+  Commit msg:  "Merge pull request #105 from ngeiswei/combinatory-
+                logic-ai-services"
+  Implementation language: Idris 2 (typed functional / dependent types).
+  Maintainer: ngeiswei (Nil Geisweiller) — recent merge.
+
+  README inventory: extract claimed scope (DSL for SingularityNET AI
+  service composition, type-safe service composition, code generation
+  targets). Reviewers verify whether AI-DSL is genuinely Hyperon-era
+  AGI infrastructure or marketplace-tooling adjacent (open question
+  for §3.C).
+
+§2.C — MOSES family artifacts (in scope for S5.C):
+
+  PRIMARY (active or recently maintained):
+
+    iCog-Labs-Dev/metta-moses
+      Local: E:\GitHub\hyperon reference\metta-moses\
+      HEAD:  9f69e177a029f2d2034daa1fd815fe81a580d561
+      Date:  2026-03-26 14:03:22 +0300
+      Msg:   "Sync dev with main (#434)"
+      MOST ACTIVE in 2026; MeTTa-native MOSES port; the canonical
+      Hyperon-era MOSES. Reviewers verify which MOSES capabilities
+      this implements vs the C++ asmoses lineage.
+
+    opencog/asmoses
+      Local: E:\GitHub\hyperon reference\asmoses\
+      HEAD:  dde4849c41001d24f81af9efe71005baa9779b08
+      Date:  2025-12-10 14:01:25 -0600
+      Msg:   "Move code out of cogutils to here."
+      Active C++ AtomSpace-MOSES port. The 2025-12-10 commit is a
+      build/dependency reorganization, not algorithm work — verify
+      whether substantive algorithm work happened earlier in 2025.
+
+    linas/as-moses
+      Local: E:\GitHub\hyperon reference\as-moses\
+      HEAD:  dde4849c41001d24f81af9efe71005baa9779b08
+      Date:  2025-12-10 14:01:25 -0600
+      Msg:   "Move code out of cogutils to here."
+      SAME SHA as opencog/asmoses — Linas Vepstas's mirror at the
+      tip. Reviewers verify whether linas/as-moses is upstream
+      (linas pushes to opencog/asmoses), downstream mirror (linas
+      tracks opencog), or co-canonical. Bidirectional log on a
+      slightly older window may resolve.
+
+  TRANSITION/EXPLORATORY (Hyperon-era ports):
+
+    trueagi-io/hyperon-moses
+      Local: E:\GitHub\hyperon reference\hyperon-moses\
+      HEAD:  e390f4901aa5b2eeec91ef181acdb53a8b8bdf90
+      Date:  2025-03-05 08:21:57 +0200
+      Msg:   "Merge pull request #5 from ngeiswei/docs"
+      Early Hyperon-era port — likely superseded by metta-moses.
+      Verify status: pre-iCog-Labs-Dev metta-moses substrate,
+      abandoned, or active research line in parallel?
+
+    ngeiswei/hyperon-moses
+      Local: E:\GitHub\hyperon reference\hyperon-moses2\  (note: dir
+                                                            named "2"
+                                                            because
+                                                            second clone)
+      HEAD:  d661364ca78879b7a3aa7a2575230459c54027f4
+      Date:  2024-08-02 10:05:28 +0300
+      Msg:   "Merge pull request #4 from iCog-Labs-Dev/main"
+      Nil Geisweiller's experimental fork — older than trueagi-io
+      tip. Reviewers determine fork direction.
+
+    iCog-Labs-Dev/mosesDocs
+      Local: E:\GitHub\hyperon reference\mosesDocs\
+      HEAD:  5e502f49f51229cf1cfd6d12f8e3ed5f59b94c94
+      Date:  2024-09-05 17:15:38 +0300
+      Msg:   "feat: fixed folder structure and files"
+      Documentation repo. Reviewers extract whether docs are MOSES
+      (C++) or metta-moses (MeTTa) and which lineage they reflect.
+
+  ARCHIVAL (legacy, not Hyperon-era):
+
+    opencog/moses
+      Local: E:\GitHub\hyperon reference\moses\
+      HEAD:  f88ccd3279f3dd853e8c23103be5376a0e7eafc1
+      Date:  2023-09-19 21:58:02 -0500
+      Msg:   "Merge pull request #107 from linas/unary-function"
+      Pre-AtomSpace C++ MOSES (the original 2008-era project).
+      Status verdict expected: [ARCHIVAL-PARADIGM-PREDECESSOR].
+      It is the upstream-by-history of asmoses; verify whether
+      asmoses superseded it cleanly or both lineages remain
+      maintained in parallel.
+
+  STALE FORKS (verify [STRICT-FORK-STALE] vs [FORK-DIVERGED] per
+  feedback_bidirectional_fork_divergence.md + P12 verbatim numerical
+  protocol):
+
+    leungmanhin/asmoses
+      Local: E:\GitHub\hyperon reference\asmoses-leungmanhin\
+      HEAD:  183c02845670c150a863ff4368d3f144d9b02ba0
+      Date:  2022-05-11 14:13:33 -0500
+      Msg:   "AntUTest won't compile, so stub it out."
+
+    singnet/asmoses
+      Local: E:\GitHub\hyperon reference\asmoses-singnet\
+      HEAD:  3536f908a6033ca585575519245d78cedbfa217f
+      Date:  2021-08-12 17:57:09 +0300
+      Msg:   "Merge pull request #153 from ngeiswei/merge-opencog-to-
+              singnet"
+
+    singnet/moses
+      Local: E:\GitHub\hyperon reference\moses-singnet\
+      HEAD:  c1714926683cd547638d82f950ddc0d2b63390e3
+      Date:  2021-01-20 16:02:54 +0200
+      Msg:   "Merge pull request #14 from ngeiswei/merge-opencog-to-
+              singnet"
+
+    iCog-Labs-Dev/moses-optimization-algorithms
+      Local: E:\GitHub\hyperon reference\moses-optimization-algorithms\
+      HEAD:  0bd6f12623653b54e060c1c04f46d7823c425631
+      Date:  2024-10-22 09:45:59 +0300
+      Msg:   "Merge pull request #1 from iCog-Labs-Dev/Nahom32-
+              implementation"
+      Note: this is a smaller exploratory project, not necessarily
+      a fork of asmoses/moses. Verify origin lineage at extraction.
+
+§2.D — MeTTa-NARS artifacts (in scope for S5.D):
+
+  Local clone: E:\GitHub\hyperon reference\metta-nars\
+  Origin:      https://github.com/patham9/metta-nars.git
+  HEAD:        945e2f83711b143e3f6e2eb112cc40c4f531c6f2
+  Date:        2024-10-14 15:03:54 +0200
+  Commit msg:  "Update: filter timing indicators"
+
+  patham9 = Patrick Hammer. Same author as S5.A NACE; lock attribution
+  at extraction.
+
+  README inventory: extract NARS-faithfulness claims (does this
+  implement NAL-1..NAL-9 / which OpenNARS fragment?); MeTTa
+  integration surface (does it call into hyperon-experimental at HEAD
+  or an older runtime?); cross-references with S5.A NACE (same
+  author, possibly intersecting concepts).
+
+§2.E — S5 papers (Mattermost archive):
+
+  publication_texts/mattermost_papers/Moses_Mork.json
+    Title: "MORK-MOSES Implementation Ideas"
+    Author: Ben Goertzel
+    Date: 2025-07-21
+    Cross-cluster: integrates MOSES (S5.C) with closed AtomSpace
+    cluster's MORK substrate (closed AtomSpace cluster pilot
+    2026-04-29 + Phase 4 cluster pilot 2026-05-05). Reviewers extract
+    paper claims; verify whether iCog-Labs-Dev/metta-moses or
+    asmoses implements any of the proposed integration. Lock
+    cross-cluster boundary.
+
+  publication_texts/mattermost_papers/PLN_NARS_TVs.json
+    Title: "Comparing Truth Value Formulas in PLN and NARS Under
+            High Uncertainty of Node Probabilities"
+    Author: Ben Goertzel
+    *** WARNING ***: per user-flagged note in MEMORY.md, this paper
+    was GPT o1-produced and may contain hallucinations. Reviewers
+    treat content with skepticism; do NOT lock substantive verdicts
+    based on this paper's claims alone. Cross-validate any extracted
+    claim against the closed PLN cluster pilot (2026-04-25)
+    HYPERON_CLUSTER_FINDINGS.md PLN section + the metta-nars README
+    + Pei Wang's NARS canonical bibliography. Treat the paper as a
+    cross-cluster boundary input (PLN ↔ NARS comparison) rather than
+    a primary source.
+
+§2.F — Wiki cards in scope (S5 alignment):
+
+  Per the all-cardtypes audit rule (feedback_query_all_cardtypes_in_
+  audits.md), reviewers query Draft + Markdown + Published. The
+  following Published parents are expected based on the 2026-05-06
+  audit re-run; reviewers verify:
+
+    Hyperon AI Algorithms+NACE  (Published parent)
+      Sandra-spec port may have already happened (rename to
+      "Hyperon AI Algorithms+NACE (Non-Axiomatic Categorization
+      Engine)" or similar). Per
+      feedback_sandra_spec_port_recheck_before_batch.md, fresh
+      get_card on this parent is required IMMEDIATELY before any
+      cluster-close edit batch — NOT during the brief drafting
+      phase, NOT during reviewer extraction.
+
+    Hyperon AI Algorithms+AI-DSL  (Published parent)
+      Same Sandra-spec re-check protocol applies.
+
+    Hyperon AI Algorithms+MOSES  (Published parent)
+      Same Sandra-spec re-check protocol applies.
+
+    Hyperon AI Algorithms+MeTTa-NARS  (Published parent)
+      Same Sandra-spec re-check protocol applies.
+
+  Plus:
+    Reference+GitHub Repositories (ID 7268)
+      Likely contains entries for some or all of the S5 repos. URL
+      audit per feedback_webfetch_verify_external_urls.md required
+      immediately before any URL-touching edit.
+
+    Implementation Families+ ... ?
+      No known Implementation Families card for MOSES / NACE /
+      AI-DSL / NARS, but reviewers may identify cross-cutting
+      categorization candidates.
+
+
+§3. ORCHESTRATOR-PRE-POPULATED CODEBASE FACTS
+----------------------------------------------
+
+§3.A — Repository inventory and git-history snapshot (verified
+2026-05-07 by orchestrator)
+
+This section is pre-populated to remove redundant git work for
+reviewers. Reviewers should verify HEAD SHAs match their local clones
+and use the SHAs in their findings.
+
+ACTIVE/MAINTAINED (in scope, full HEAD SHAs verified):
+
+  REPO                                   HEAD SHA                                  DATE
+  ---                                    ---                                       ---
+  patham9/NACE                           361fddf5f6885a60b6d5e0d179e0394da876df4c  2025-05-06
+  patham9/metta-nars                     945e2f83711b143e3f6e2eb112cc40c4f531c6f2  2024-10-14
+  iCog-Labs-Dev/metta-moses              9f69e177a029f2d2034daa1fd815fe81a580d561  2026-03-26
+  singnet/ai-dsl                         aaa702e9eb6c95268b085ed1906bba6f728ea76f  2025-06-25
+  opencog/asmoses                        dde4849c41001d24f81af9efe71005baa9779b08  2025-12-10
+  linas/as-moses                         dde4849c41001d24f81af9efe71005baa9779b08  2025-12-10
+                                         (SAME SHA as opencog/asmoses — verify
+                                          fork direction at extraction)
+
+TRANSITION/EXPLORATORY (in scope, pending status verdict):
+
+  trueagi-io/hyperon-moses               e390f4901aa5b2eeec91ef181acdb53a8b8bdf90  2025-03-05
+  ngeiswei/hyperon-moses                 d661364ca78879b7a3aa7a2575230459c54027f4  2024-08-02
+  iCog-Labs-Dev/mosesDocs                5e502f49f51229cf1cfd6d12f8e3ed5f59b94c94  2024-09-05
+
+ARCHIVAL (in scope for boundary verdict only):
+
+  opencog/moses                          f88ccd3279f3dd853e8c23103be5376a0e7eafc1  2023-09-19
+                                         (legacy pre-AtomSpace C++ MOSES)
+
+STALE FORKS (verify divergence direction via bidirectional `git
+rev-list --left-right --count`; copy-paste exact output per §6 P12):
+
+  leungmanhin/asmoses                    183c02845670c150a863ff4368d3f144d9b02ba0  2022-05-11
+  singnet/asmoses                        3536f908a6033ca585575519245d78cedbfa217f  2021-08-12
+  singnet/moses                          c1714926683cd547638d82f950ddc0d2b63390e3  2021-01-20
+  iCog-Labs-Dev/moses-optimization-...   0bd6f12623653b54e060c1c04f46d7823c425631  2024-10-22
+
+§3.B — File-existence assertions (per CF5.6 verification protocol from
+       feedback_gemini_file_identity_verification.md)
+
+The following directory paths were verified to exist on this machine
+2026-05-07 via `ls "E:\GitHub\hyperon reference\"`:
+
+  E:\GitHub\hyperon reference\NACE\                               (patham9)
+  E:\GitHub\hyperon reference\metta-nars\                         (patham9)
+  E:\GitHub\hyperon reference\metta-moses\                        (iCog-Labs-Dev)
+  E:\GitHub\hyperon reference\ai-dsl\                             (singnet)
+  E:\GitHub\hyperon reference\asmoses\                            (opencog)
+  E:\GitHub\hyperon reference\as-moses\                           (linas)
+  E:\GitHub\hyperon reference\hyperon-moses\                      (trueagi-io)
+  E:\GitHub\hyperon reference\hyperon-moses2\                     (ngeiswei)
+  E:\GitHub\hyperon reference\mosesDocs\                          (iCog-Labs-Dev)
+  E:\GitHub\hyperon reference\moses\                              (opencog, archival)
+  E:\GitHub\hyperon reference\asmoses-leungmanhin\                (stale fork)
+  E:\GitHub\hyperon reference\asmoses-singnet\                    (stale fork)
+  E:\GitHub\hyperon reference\moses-singnet\                      (stale fork)
+  E:\GitHub\hyperon reference\moses-optimization-algorithms\      (iCog-Labs-Dev)
+
+CF5.6 cumulative drift count entering S5: 25/42 ≈ 59.5% (8/25 prior +
+3 S1 + 6 S2 + 5 S3 + 3 S4, including TWO LOAD-BEARING confabulations
+across the cluster pilot — S3 ngeiswei/miner direction-reversed
+8/0-vs-0/8 + S4 Paraconsistent_Interference_Blending [IBC]
+"interference logic in a_categorytheoretic_approach/" with zero
+filesystem evidence). Approaching 60% threshold. S5 dispatch protocol
+upgrade: see §6 V4-11 retention.
+
+§3.C — KEY OPEN QUESTIONS FOR REVIEWERS
+
+(1) **AI-DSL HAA-scope vs marketplace-tooling boundary** — singnet/
+    ai-dsl is an Idris-2 typed-functional DSL for SingularityNET AI
+    service composition. It is "AI" only in the marketplace sense
+    (services exposed on the SingularityNET marketplace are AI
+    services). It is NOT an AGI cognitive-architecture component in
+    the way PLN / ECAN / AtomSpace / MOSES are. Reviewers must
+    decide:
+    - [AI-DSL-IN-HAA-SCOPE]: AI-DSL is genuinely a HAA component
+      because it provides typed composition for cognitive services.
+    - [AI-DSL-MARKETPLACE-TOOLING-BOUNDARY-DEFER]: AI-DSL is
+      service-orchestration tooling, paradigm-distinct from cognitive
+      architecture; defer to a future "marketplace tooling" cluster
+      or cross-org sweeps.
+    - [AI-DSL-DUAL-CITIZEN]: it has a HAA-relevant slice (typed
+      service composition useful for cognitive-architecture stack
+      assembly) AND a marketplace-tooling slice; document both with
+      a scope disclaimer in the wiki card.
+    Decision criterion: does AI-DSL import from / interface with /
+    define types over PLN/MeTTa/AtomSpace/MOSES atoms or just
+    SingularityNET service contracts? Quick `grep -r "MeTTa\|
+    AtomSpace\|PLN\|MOSES\|Hyperon" --include="*.idr"` at HEAD will
+    determine.
+
+(2) **MOSES lineage canonical-primary disambiguation** — the MOSES
+    family has at least 6 active or transition repos:
+    opencog/asmoses, linas/as-moses, iCog-Labs-Dev/metta-moses,
+    trueagi-io/hyperon-moses, ngeiswei/hyperon-moses, plus archival
+    opencog/moses. Reviewers must:
+    - Verify the linas/as-moses vs opencog/asmoses relationship
+      (same SHA at tip; bidirectional log resolves direction).
+    - Determine the trueagi-io vs ngeiswei vs iCog-Labs-Dev MeTTa
+      port lineage: is metta-moses the canonical Hyperon-era MOSES
+      replacing the trueagi-io/hyperon-moses + ngeiswei variants, or
+      do all three remain in parallel?
+    - Lock per-repo verdicts:
+      - opencog/asmoses: [ACTIVE-CPP-PRIMARY] vs [MAINTENANCE-MODE]
+      - linas/as-moses: [VEPSTAS-MIRROR] vs [VEPSTAS-CO-CANONICAL]
+      - iCog-Labs-Dev/metta-moses: [ACTIVE-METTA-PRIMARY] vs
+        [EXPERIMENTAL-PORT]
+      - trueagi-io/hyperon-moses: [SUPERSEDED-BY-METTA-MOSES] vs
+        [PARALLEL-RESEARCH-LINE]
+      - ngeiswei/hyperon-moses: [STALE-FORK] vs [GEISWEILER-RESEARCH]
+      - opencog/moses: [ARCHIVAL-PARADIGM-PREDECESSOR]
+
+(3) **Patrick Hammer (patham9) cross-source lineage** — patham9 is
+    the author of S5.A NACE + S5.D MeTTa-NARS, AND co-author on the
+    closed S1 AIRIS paper (Cook & Hammer 2024). Reviewers must:
+    - Verify whether NACE and MeTTa-NARS share a common substrate or
+      cross-reference each other in the codebase.
+    - Verify whether either NACE or MeTTa-NARS cross-references AIRIS
+      or vice versa (S1 closed [AIRIS-CURIOSITY-NOT-ECAN] +
+      [AIRIS-CONFIDENCE-NOT-PLN-TV] + [AIRIS-STATE-GRAPH-NOT-ATOMSPACE]
+      narrative-guards lock AIRIS as paradigm-distinct from
+      OpenCog-style attention/PLN/AtomSpace; verify whether the
+      same applies to NACE and MeTTa-NARS — are they in patham9's
+      "non-axiomatic" family, separate from OpenCog-style PLN
+      reasoning?).
+    - Lock the patham9 portfolio shape: NACE + metta-nars (+ AIRIS
+      involvement); document this in the cluster-close edit batch as
+      a contributor-portfolio mention.
+
+(4) **MeTTa-NARS vs PLN paradigm boundary** — NARS is Pei Wang's
+    non-axiomatic reasoning framework with truth-value semantics
+    (frequency + confidence pair) that is DIFFERENT from PLN
+    (probability + count). The PLN_NARS_TVs.json paper (GPT-o1
+    flagged) compares the two under high uncertainty. Reviewers must:
+    - Read the metta-nars README + key MeTTa files to extract which
+      NARS fragment is implemented (NAL-1..NAL-9 layers).
+    - Lock the [METTA-NARS-NOT-PLN] paradigm-distinct verdict (mirror
+      of S1 V1-4 [AIRIS-CONFIDENCE-NOT-PLN-TV] for PLN-comparable
+      reasoning frameworks).
+    - Treat PLN_NARS_TVs.json as boundary-input only; verify any
+      claim from it against metta-nars HEAD before adopting.
+    - Cross-reference closed PLN cluster pilot 2026-04-25
+      HYPERON_CLUSTER_FINDINGS.md PLN section for PLN's truth-value
+      apparatus.
+
+(5) **MORK-MOSES paper implementation status** — Goertzel 2025-07-21
+    "MORK-MOSES Implementation Ideas" proposes integrating MOSES
+    program-learning with the closed AtomSpace cluster's MORK
+    substrate. Reviewers must:
+    - Extract paper-claimed integration architecture.
+    - Cross-grep iCog-Labs-Dev/metta-moses + opencog/asmoses + linas/
+      as-moses for MORK / pathmap / MM2 references at HEAD.
+    - Cross-grep MORK at HEAD (per closed AtomSpace pilot 2026-04-29
+      + Phase 4 pilot 2026-05-05; MORK is at hyperon reference\mork\
+      and adjacent repos) for MOSES references.
+    - Lock the verdict: [MORK-MOSES-PAPER-ONLY] (not implemented
+      anywhere yet) vs [MORK-MOSES-PARTIAL-IMPLEMENTATION] (some
+      integration code present) vs [MORK-MOSES-CROSS-CLUSTER-OPEN-
+      RESEARCH-LINE].
+
+(6) **Wiki HAA-NACE / HAA-AI-DSL / HAA-MOSES / HAA-MeTTa-NARS card
+    state** — per the all-cardtypes audit rule, reviewers query
+    Draft + Markdown + Published. Each Published parent uses the
+    +content shell pattern. Reviewers inventory:
+    - Whether a sectioning subcard tree (`+Foo Full+...`) exists
+      already for each HAA Published parent.
+    - Whether any +AI proposal child(ren) already exist.
+    - Whether a Sandra-spec port has already been performed (per
+      reference_wiki_content_subcard_convention.md). DO NOT re-check
+      Sandra-spec state during the brief drafting phase or reviewer
+      extraction phase — that re-check happens IMMEDIATELY before
+      the cluster-close edit batch per
+      feedback_sandra_spec_port_recheck_before_batch.md.
+    - Identify drift between current card content and the actual
+      repo+paper state.
+
+(7) **MeTTa-Motto cross-source check** — closed S2 MetaMo
+    reconciliation locked MeTTa-Motto as out-of-S2-scope and
+    pending-cross-org-sweeps placement. S5 must verify that
+    MeTTa-Motto is also out-of-S5 (it is NOT in §0's S5.A/B/C/D
+    sub-source identity), and that the wiki Hyperon AI Algorithms
+    +MeTTa-Motto Published parent has the same Sandra-spec re-check
+    rule applied at any future close. NO S5 edits to that card.
+
+
+§4. ORCHESTRATOR-PRE-POPULATED PAPER FINDINGS
+----------------------------------------------
+
+This source has lighter paper material than S4; the bulk of extraction
+is repo-based. Reviewers should extract from the source papers
+directly (NOT relitigate orchestrator pre-populated claims unless
+flagged for verification).
+
+P1. Moses_Mork.json paper (Goertzel 2025-07-21, primary S5.C cross-
+    cluster paper):
+    - Title: "MORK-MOSES Implementation Ideas"
+    - Author: Ben Goertzel
+    - Date: 2025-07-21 (Mattermost timestamp)
+    - Cross-cluster: integrates MOSES (S5.C) with closed AtomSpace
+      cluster's MORK substrate.
+    - Reviewers extract: proposed integration architecture, claimed
+      MORK primitives MOSES would call (PathMap / MM2 / RentChecker?),
+      proposed MeTTa or C++ surface, anticipated benefits (RAM?
+      query speed? typed atoms?), open issues.
+    - Per §3.C(5): verify implementation status by cross-grep at
+      HEAD across metta-moses + asmoses + as-moses + MORK.
+
+P2. PLN_NARS_TVs.json paper (Goertzel, GPT-o1-FLAGGED):
+    - Title: "Comparing Truth Value Formulas in PLN and NARS Under
+              High Uncertainty of Node Probabilities"
+    - Author: Ben Goertzel (paper attribution; paper itself was
+      GPT-o1-produced per MEMORY.md user note)
+    - WARNING: hallucination risk. Reviewers treat as boundary input,
+      NOT primary source. Cross-validate any extracted claim against
+      PLN cluster pilot HYPERON_CLUSTER_FINDINGS.md + Pei Wang NARS
+      bibliography + metta-nars README.
+    - Reviewers extract: paper-claimed comparison framework only;
+      flag any specific equations, theorems, or "Wang says X / PLN
+      says Y" pairings as needing independent verification.
+
+P3. NACE README (patham9/NACE @ 361fddf):
+    - Reviewers extract: claimed scope, NARS-relation claims,
+      categorization-engine apparatus, OpenCog/Hyperon integration
+      claims (likely none — patham9 lineage is its own non-axiomatic
+      track), Qt GUI architecture (recent commit theme).
+    - Cross-reference Pei Wang's NARS bibliography in any cited
+      papers.
+
+P4. MeTTa-NARS README (patham9/metta-nars @ 945e2f8):
+    - Reviewers extract: NAL-fragment claims (which NAL layers
+      implemented), MeTTa runtime version targeted, NARS-faithfulness
+      claims, cross-references with NACE if any.
+    - Cross-reference Pei Wang's NARS canonical reference for
+      truth-value semantics.
+
+P5. metta-moses README + structure (iCog-Labs-Dev/metta-moses
+    @ 9f69e17):
+    - Reviewers extract: MOSES capabilities implemented (program
+      generation, deme management, fitness functions, optimizer
+      apparatus); MeTTa runtime version targeted; cross-references
+      with asmoses (does metta-moses port from asmoses? share code?);
+      AtomSpace integration claims; MORK integration claims (per
+      P1 / §3.C(5)).
+
+P6. asmoses + as-moses (opencog/asmoses + linas/as-moses, same SHA
+    dde4849c4):
+    - Reviewers verify: linas/as-moses is a fork of opencog/asmoses
+      (or vice versa); whether linas pushes upstream to opencog or
+      tracks it; whether the 2025-12-10 cogutils-extraction commit
+      is the latest substantive work or a build-housekeeping commit
+      with older algorithm work above it.
+
+P7. ai-dsl README (singnet/ai-dsl @ aaa702e):
+    - Reviewers extract: claimed scope (typed DSL for AI service
+      composition), Idris-2 implementation status, code-generation
+      targets (does it generate MeTTa? Python? Ruby? Idris executors?),
+      SingularityNET marketplace integration claims, cross-references
+      with HAA components (PLN/MeTTa/AtomSpace).
+    - Per §3.C(1): determine HAA-scope vs marketplace-tooling
+      boundary.
+
+P8. hyperon-moses (trueagi-io/hyperon-moses @ e390f49,
+    ngeiswei/hyperon-moses @ d661364):
+    - Reviewers verify: whether trueagi-io/hyperon-moses is the
+      "official" Hyperon-era MOSES port or superseded by metta-moses;
+      whether ngeiswei/hyperon-moses is upstream or downstream of
+      trueagi-io; whether either is referenced by metta-moses.
+
+P9. mosesDocs (iCog-Labs-Dev/mosesDocs @ 5e502f49):
+    - Reviewers extract: which MOSES lineage the docs target (metta-
+      moses / asmoses / both / archival moses); whether the docs are
+      build/setup or algorithmic.
+
+P10. Stale forks (asmoses-leungmanhin / asmoses-singnet / moses-
+     singnet / moses-optimization-algorithms):
+     - Per §6 P12 verbatim numerical protocol: copy-paste exact
+       `git rev-list --left-right --count <fork>...<upstream>`
+       output. Lock per-fork verdicts.
+     - moses-optimization-algorithms is NOT necessarily a fork of
+       moses or asmoses; verify origin lineage. The commit message
+       "Merge pull request #1 from iCog-Labs-Dev/Nahom32-
+       implementation" suggests an iCog-Labs-Dev internal experiment.
+
+P11. Cross-cluster boundary statements to lock at S5 close:
+     - NACE vs AIRIS (closed S1): NOT THE SAME. Both involve patham9
+       (NACE = patham9-authored NACE engine; AIRIS = Cook & Hammer
+       paper with patham9 as Hammer co-author). Different paradigms.
+       Reviewers verify whether NACE references AIRIS or vice versa.
+     - MeTTa-NARS vs AIRIS: NOT THE SAME. AIRIS curiosity ≠ NARS;
+       AIRIS confidence ≠ NARS f/c truth-value pair. Locked in S1
+       V1-3 + V1-4. S5 D verifies symmetric: metta-nars does NOT
+       reference AIRIS or attempt to reduce one to the other.
+     - MeTTa-NARS vs PLN: paradigm-distinct. NARS f/c TV ≠ PLN s/c.
+       PLN_NARS_TVs.json paper attempts a comparison; treat as
+       speculative cross-cluster boundary input.
+     - MOSES vs Pattern Mining (closed S3): NOT THE SAME. Pattern
+       mining surfaces frequent-subgraph patterns from existing
+       AtomSpace state; MOSES generates programs by evolutionary
+       search. Both touch program-like atoms but the paradigms are
+       distinct. Mirror of S3 V3-6 / S4 V4-8.
+     - MOSES vs Concept Blending (closed S4): NOT THE SAME. Concept
+       blending integrates concepts; MOSES evolves programs.
+     - AI-DSL vs MeTTa-Motto: BOTH service-composition adjacent.
+       Reviewers may flag whether they overlap in scope (Idris-2
+       typed DSL vs MeTTa Motto — different languages, different
+       runtime; verify whether they target the same or different
+       composition goals).
+
+P12. patham9 portfolio cross-cluster:
+     patham9 = Patrick Hammer.
+     Closed cluster pilots reference Hammer:
+       - S1 AIRIS: Hammer is co-author on Cook & Hammer 2024.
+     S5 sources:
+       - S5.A NACE: patham9-authored.
+       - S5.D MeTTa-NARS: patham9-authored.
+     Reviewers lock: patham9 has at minimum 3 HAA-relevant projects
+     (NACE, metta-nars, AIRIS-co-author). Document as a contributor-
+     portfolio mention in the cluster-close edit batch.
+
+P13. ngeiswei portfolio cross-cluster:
+     ngeiswei = Nil Geisweiller. Active in:
+       - opencog/asmoses (recent merges)
+       - ngeiswei/hyperon-moses (own fork)
+       - singnet/ai-dsl (most recent merge: PR #105)
+       - opencog/relex (closed S4 dependabot maintainer, per S4
+         findings)
+       - opencog/asmoses upstream merges from ngeiswei across MOSES
+         family
+     Reviewers note: ngeiswei is a cross-cutting maintainer across
+     S5.B + S5.C plus other clusters. Lock as informational, NOT a
+     load-bearing carry-forward.
+
+
+§5. PER-QUESTION TASKS (S5.Q1 .. S5.Q12)
+-----------------------------------------
+
+Reviewers must answer per-sub-source where the question naturally
+splits (S5.A.QN, S5.B.QN, S5.C.QN, S5.D.QN). Each reviewer MUST
+explicitly cover ALL Q1-Q12 (no skipping; flag with [Q-N-PARTIAL] or
+[Q-N-NO-COVERAGE] if a question cannot be answered, but do NOT silently
+omit). This is the Q-coverage requirement carried forward from S4
+dispatch (Codex covered all 12; Gemini missed Q5 + Q6 + Q9 in S4).
+
+Evidence cites must include file:line for code claims. Per §6 P12,
+copy-paste exact `git rev-list --left-right --count` output for
+fork-divergence claims. Per §6 V4-11, "implemented via X" /
+"X reduces to Y" interpretation claims must be orchestrator-verifiable
+via specific filesystem evidence — Gemini interpretation claims are
+verified before adoption.
+
+S5.A.Q1: NACE PAPER + REPO VERDICT.
+  Read the NACE README + survey major source files at HEAD `361fddf`.
+  Lock per-repo verdict: paper-only / paper-leaning-hybrid /
+  implementation-backed-core / etc. Document: (a) what NACE actually
+  does (categorization-engine apparatus); (b) NARS-relation
+  (does NACE explicitly cite NARS / Pei Wang? does it implement
+  NAL fragments? is it adjacent to but distinct from NARS?); (c)
+  Hyperon integration claims (likely none — patham9 lineage is own
+  track).
+  Expected verdict: [IMPLEMENTATION-BACKED-CORE-NAR-ADJACENT] or
+  similar; verify.
+
+S5.A.Q2: NACE WIKI CARD AUDIT.
+  Per the all-cardtypes audit rule. Inventory: Hyperon AI
+  Algorithms+NACE Published parent + +content + any sectioning Draft
+  subcards + +AI proposal (likely none yet). Identify drift between
+  current card content and the actual NACE README + repo state.
+
+S5.A.Q3: NACE PARADIGM BOUNDARY (vs AIRIS, vs MeTTa-NARS).
+  - vs AIRIS (closed S1): NACE and AIRIS share patham9 as common
+    contributor. Verify NO claim that NACE = AIRIS or reduces to
+    AIRIS apparatus. Lock [NACE-NOT-AIRIS] paradigm-distinct.
+  - vs MeTTa-NARS (S5.D): same author, both non-axiomatic-adjacent.
+    Verify cross-references. Lock the relationship: parallel
+    projects vs shared substrate vs one is part of the other.
+
+S5.B.Q4: AI-DSL VERDICT + HAA-SCOPE BOUNDARY.
+  Read ai-dsl README + survey Idris-2 source at HEAD `aaa702e`. Lock
+  per-repo verdict and HAA-scope verdict per §3.C(1):
+  - verdict: [ACTIVE-IDRIS-DSL] or similar.
+  - scope: [AI-DSL-IN-HAA-SCOPE] / [AI-DSL-MARKETPLACE-TOOLING-
+    BOUNDARY-DEFER] / [AI-DSL-DUAL-CITIZEN]. Motivate via grep for
+    PLN/MeTTa/AtomSpace/MOSES/Hyperon imports or type definitions.
+
+S5.B.Q5: AI-DSL WIKI CARD AUDIT.
+  Per the all-cardtypes audit rule. Inventory and identify drift.
+
+S5.C.Q6: MOSES FAMILY LINEAGE DISAMBIGUATION.
+  Per §3.C(2): lock per-repo verdicts for opencog/asmoses, linas/
+  as-moses, iCog-Labs-Dev/metta-moses, trueagi-io/hyperon-moses,
+  ngeiswei/hyperon-moses, opencog/moses (archival).
+  - linas/as-moses vs opencog/asmoses bidirectional log (P12 verbatim
+    output).
+  - trueagi-io/hyperon-moses vs ngeiswei/hyperon-moses bidirectional
+    log (P12 verbatim output).
+  - metta-moses cross-grep for asmoses/hyperon-moses references (does
+    it port from C++ MOSES?).
+  - Lock the canonical "primary" Hyperon-era MOSES (expected: metta-
+    moses).
+
+S5.C.Q7: MOSES FAMILY STALE FORK DIVERGENCE AUDIT.
+  Bidirectional `git rev-list --left-right --count` for each stale
+  fork against its upstream. **COPY-PASTE THE EXACT OUTPUT** in
+  findings (per §6 P12). Verdicts from {[STRICT-FORK-STALE],
+  [STRICT-FORK-DIVERGED-NO-NOVEL-WORK], [STRICT-FORK-DIVERGED-NOVEL-
+  CONTRIBUTIONS], [STRICT-FORK-STALE-MERGED-UPSTREAM]}.
+  Stale forks to audit:
+  - leungmanhin/asmoses vs opencog/asmoses
+  - singnet/asmoses vs opencog/asmoses
+  - singnet/moses vs opencog/moses
+  - iCog-Labs-Dev/moses-optimization-algorithms vs ??? (verify origin
+    — may be standalone iCog-Labs-Dev experiment, not a fork; if a
+    fork, audit against parent; if standalone, verdict
+    [STANDALONE-EXPERIMENT-NOT-FORK]).
+
+S5.C.Q8: MOSES WIKI CARD AUDIT.
+  Per the all-cardtypes audit rule. Inventory and identify drift,
+  especially any wiki claims about which repo is "primary" that
+  conflict with §3.C(2)/Q6 resolution.
+
+S5.C.Q9: MORK-MOSES PAPER IMPLEMENTATION STATUS.
+  Per §3.C(5) + P1: extract Goertzel 2025-07-21 paper claims +
+  cross-grep at HEAD across metta-moses + asmoses + as-moses + MORK
+  for MORK / pathmap / MM2 references.
+  Lock verdict: [MORK-MOSES-PAPER-ONLY] / [MORK-MOSES-PARTIAL-
+  IMPLEMENTATION] / [MORK-MOSES-CROSS-CLUSTER-OPEN-RESEARCH-LINE].
+
+S5.D.Q10: MeTTa-NARS VERDICT + WIKI CARD AUDIT.
+  Read metta-nars README + survey MeTTa source at HEAD `945e2f8`.
+  Lock:
+  - per-repo verdict: [IMPLEMENTATION-BACKED-NAR-FRAGMENT-X] (which
+    NAL layers).
+  - paradigm boundary: [METTA-NARS-NOT-PLN] (mirror of S1 V1-4
+    [AIRIS-CONFIDENCE-NOT-PLN-TV]).
+  - PLN_NARS_TVs.json verification status: [PAPER-NOT-IMPLEMENTED-
+    IN-METTA-NARS] expected; cross-grep for paper-cited equations
+    or TV formulas.
+  - wiki HAA-MeTTa-NARS card audit per all-cardtypes rule.
+
+S5.D.Q11: PATHAM9 PORTFOLIO ATTRIBUTION (cross-source).
+  Per §3.C(3) + P12. Lock patham9 portfolio: NACE + metta-nars +
+  AIRIS-co-author. Verify cross-references between the three. Lock
+  contributor-portfolio entry for cluster-close edit batch.
+
+S5.A+B+C+D.Q12: V5-X CARRY-FORWARDS + CLUSTER-CLOSE EDIT BATCH PRECIS.
+  Lock V5-N tags for all corrections / re-framings emerging from
+  S5.A/B/C/D.Q1-Q11. Categorize each as load-bearing or non-blocking.
+  Propose the C-N writes the orchestrator should plan for S5 close
+  (mirror of S1's C1-C4, S2's C1-C6, S3's C1-C4, S4's C1-C5 patterns).
+  Pre-write WebFetch on any GitHub URLs in proposed edits per P7.
+  Note: per feedback_sandra_spec_port_recheck_before_batch.md, the
+  Sandra-spec re-check happens at orchestrator time IMMEDIATELY
+  before the cluster-close edit batch; reviewers do NOT re-check
+  Sandra-spec state during extraction.
+
+
+§6. STANDING PROTOCOLS (CARRY-FORWARD FROM PRIOR PILOTS + S5 RETENTION)
+------------------------------------------------------------------------
+
+All standing protocols from the closed pilots remain in force for S5.
+This brief carries them forward unchanged with explicit retention of
+the S4 dispatch upgrades (P12 + V4-11):
+
+  P1. Cross-model triangulation.
+  P2. Wiki edit protocol: one-writer-only; sequential not parallel;
+      verify-after-every-write with get_card; treat "already exists"
+      as real until proven spurious.
+  P3. CF5.6 file-existence verification before adopting any reviewer's
+      file-location/line-number claim. Cumulative Gemini drift
+      through HAA S4 close: 25/42 ≈ 59.5%, including 2 LOAD-BEARING
+      direction-reversed/confabulated claims.
+  P4. Pickaxe before "never used" / "dead code" claims.
+  P5. Bidirectional fork-divergence verification.
+  P6. Attribution verify against git.
+  P7. WebFetch verify external URLs immediately before any wiki edit
+      that adds, modifies, or relays a URL.
+  P8. Wiki audits MUST query Draft + Markdown + Published.
+  P9. Research-vs-implementation workstream separation.
+  P10. Parallel-Claude handoff awareness.
+  P11. Re-read targets after Sandra-spec port detected before any
+       cluster-close edit batch (MetaMo S2 close 2026-05-06 origin;
+       see feedback_sandra_spec_port_recheck_before_batch.md).
+  P12. NUMERICAL-CLAIM VERBATIM PROTOCOL (S4 dispatch origin 2026-05-
+       07; retained for S5). For any numerical claim — particularly
+       fork-divergence counts, commit counts, line counts, byte-counts
+       of files — reviewers MUST copy-paste the exact command output
+       rather than re-state the numbers in prose. Examples:
+
+       INCORRECT (re-stated):
+         "linas/as-moses is 0 ahead and 12 behind opencog/asmoses."
+
+       CORRECT (verbatim output):
+         ```
+         $ cd 'E:\GitHub\hyperon reference\as-moses'
+         $ git rev-list --left-right --count origin/master...upstream/master
+         0	0
+         ```
+       Rationale: HAA S3 reconciliation §1 surfaced one LOAD-BEARING
+       direction-reversed numerical claim (Gemini's ngeiswei/miner
+       8/0 [ACTIVE-MAINTAINER-SCRATCH] vs actual 0/8
+       [MAINTAINER-FORK-MERGED-BEHIND]). HAA S4 P12 effectiveness
+       check: Codex + Gemini both copy-pasted exact output for 8 fork
+       audits in S4 with 4/4 numerical correctness on the cited
+       claims. Verbatim is the discipline.
+
+  V4-11 (NEW protocol promoted at S4 close 2026-05-07; retained
+       for S5). **GEMINI INTERPRETATION VERIFICATION**. Beyond
+       numerical-claim verbatim, Gemini interpretation claims of the
+       form "implemented via X" / "X reduces to Y" / "consolidated
+       into Z" must be orchestrator-verified via specific filesystem
+       evidence (filename + grep + line number) BEFORE adoption.
+       Origin: HAA S4 D1 — Gemini claimed Paraconsistent_Interference_
+       Blending was "implemented via the interference logic in
+       a_categorytheoretic_approach/" with zero filesystem evidence
+       (CF5.6 grep returned 0 hits across the directory; the
+       directory contains colimit/morphism/algspec files, not
+       paraconsistent/interference logic). Gemini self-acknowledged
+       as "confabulation" in S4 sign-off relay.
+
+       INCORRECT (interpretation without evidence):
+         "Paraconsistent_Interference_Blending [IMPLEMENTATION-
+          BACKED-CORE]. Implemented via the interference logic in
+          a_categorytheoretic_approach/."
+
+       CORRECT (interpretation with specific evidence OR explicit
+                 absence acknowledgment):
+         "Paraconsistent_Interference_Blending [PAPER-ONLY]. No
+          implementation found in conceptBlending HEAD. `grep -i
+          'paraconsistent\|interference' a_categorytheoretic_
+          approach/` returns 0 hits across all subdirectories;
+          directory contains colimit.py / morphism.py / algspec.py
+          (category-theoretic blending apparatus, not paraconsistent
+          interference)."
+
+       Apply symmetrically to Codex (even Codex interpretation
+       claims, when not evidence-backed, are subject to drift).
+       This is not just a Gemini protocol; it is a reviewer
+       discipline.
+
+
+§7. NON-GOALS (DO NOT EXTRACT)
+-------------------------------
+
+Reviewers MUST NOT:
+
+  - Re-extract findings from sources already covered by closed
+    cluster pilots (Perception 2026-05-01 for symbolic+neural+
+    perception miners; Pattern Mining via opencog/miner +
+    hyperon-miner trio + rejuve-bio/neural-subgraph-matcher-miner;
+    AtomSpace / DAS / MORK via AtomSpace cluster pilot 2026-04-29 +
+    Phase 4 pilot 2026-05-05; ECAN/Attention 2026-04-26;
+    OpenPsi/Motivation 2026-04-28; PLN 2026-04-25; AIRIS 2026-05-06;
+    MetaMo 2026-05-06; Concept Blending + Semantic Parsing
+    2026-05-07).
+  - Touch wiki state. Reviewer extraction is read-only (get_card,
+    search, etc. are fine; create_card / update_card / delete_card
+    are not).
+  - Re-litigate the closed S1 V1-3 [AIRIS-CURIOSITY-NOT-ECAN] +
+    V1-4 [AIRIS-CONFIDENCE-NOT-PLN-TV] + V1-5 [AIRIS-STATE-GRAPH-
+    NOT-ATOMSPACE] paradigm-distinct verdicts. They are LOCKED.
+    S5.A NACE may VERIFY symmetric verdicts apply (e.g., [NACE-
+    CATEGORIZATION-NOT-PLN]) but NOT re-open the AIRIS verdicts.
+  - Treat PLN_NARS_TVs.json as a primary source. Per §2.E and P2,
+    the paper is GPT-o1-flagged; treat as boundary-input only.
+    Cross-validate any extracted claim against PLN cluster pilot +
+    metta-nars HEAD + Pei Wang NARS bibliography.
+  - Touch the working-copy state of any local clone. Extract against
+    committed HEAD only (per the methodology guard from S4 V4-2).
+  - Generalize verdicts from one MOSES variant to another by analogy.
+    Each repo is checked individually.
+  - Make scope inclusion calls without triangulation: §3.C(1)
+    AI-DSL HAA-scope decision and §3.C(2) MOSES-canonical-primary
+    decision both require explicit motivation.
+  - Re-check Sandra-spec port state during extraction. That re-check
+    happens IMMEDIATELY before the cluster-close edit batch at
+    orchestrator time, NOT during reviewer extraction. (Per
+    feedback_sandra_spec_port_recheck_before_batch.md.)
+
+
+§8. ORCHESTRATOR PRE-EXTRACTION CHECKLIST
+------------------------------------------
+
+Before reviewers begin extraction, orchestrator must complete:
+  [✓] §3 git history populated with HEAD SHAs for active, transition,
+       archival, and stale repos.
+  [✓] §3.B file-existence assertions verified.
+  [✓] §3.C seven open questions framed (AI-DSL HAA-scope; MOSES
+       canonical-primary; patham9 portfolio; MeTTa-NARS vs PLN
+       boundary; MORK-MOSES paper status; HAA wiki card audit;
+       MeTTa-Motto cross-source check).
+  [✓] §4 P1..P13 framed: paper claims + repo identities + cross-
+       cluster boundaries to lock + contributor-portfolio mentions.
+  [✓] Active repos pulled or HEADs verified (no working-copy
+       modification per §7).
+  [✓] §6 P12 verbatim-numerical protocol retained.
+  [✓] §6 V4-11 interpretation-verification protocol retained.
+  [✓] §5 Q-coverage requirement made explicit (no silent skipping
+       of Q1..Q12).
+
+Once orchestrator signals "§4 ready, extraction may begin," reviewers
+may begin per-question extraction in parallel (Codex + Gemini
+independently, no shared draft).
+
+Findings files target paths:
+  scripts/archive/non_clustered_haa_pilot/source5_NACE_AIDSL_MOSES_MeTTaNARS/
+    findings_codex.txt
+    findings_gemini.txt
+After both received, orchestrator produces:
+    findings_reconciled_crossmodel.txt
+
+
+================================================================================
+END OF SOURCE 5 BRIEF (READY FOR REVIEWER EXTRACTION)
+2026-05-07
+================================================================================

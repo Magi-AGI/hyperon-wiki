@@ -1,0 +1,499 @@
+Codex findings - Source 4, Non-clustered HAA pilot
+===================================================
+
+Source: Concept Blending + Semantic Parsing
+Brief: scripts/archive/non_clustered_haa_pilot/source4_concept_blending_semantic_parsing_brief.txt
+Date: 2026-05-06
+Reviewer: Codex
+
+Independence note: extracted against the S4 brief and local source tree. I did
+not use Gemini findings.
+
+0. Headline
+-----------
+
+Overall S4 verdict:
+
+  [CONCEPT-BLENDING-PARTIAL-IMPLEMENTATION]
+  [SEMANTIC-PARSING-SPLIT-STACK]
+  [SGNN-BOUNDARY-OUT]
+  [WIKI-REFINEMENT-NEEDED]
+
+S4 does not add a single new unified HAA implementation family. It separates
+into:
+
+1. Concept blending: Goertzel-only local paper stack plus a real but
+   working-tree-dirty conceptBlending repo. The information-theoretic and
+   category-theoretic branches are implementation-backed; quantale,
+   paraconsistent-interference, and HoTT material is paper/formal boundary
+   material unless later code is found outside this repo.
+2. Semantic parsing: two distinct generations. The classical Link Grammar /
+   RelEx / learn / generate stack remains AtomSpace/Scheme/C++ oriented. The
+   Hyperon-era semantic_parsing / semantic-parser / nl2pln_demo line is LLM to
+   PLN/MeTTa, not a wrapper around Link Grammar or RelEx.
+3. SGNN: speech-act classification over SwDA, with no Hyperon/Atomese/PLN
+   integration in the local repo. Keep as a boundary/defer item, not part of
+   S4 semantic parsing or pattern mining.
+
+1. S4.A - Concept Blending
+--------------------------
+
+Q.A1/Q.A2 - paper identity and Eskridge attribution
+
+The local publication archive supports Ben Goertzel as the author on the four
+core concept-blending papers named in the brief:
+
+- Blending.json: "A Formalization of Concept Blending: An
+  Information-Theoretic Approach to Quantifying and Creating Emergent and
+  Coherent Concept Blends", Ben Goertzel, 2025-02-25.
+- Blending_Quantale_Theorems.json: "Compositional Theorems for
+  Quantale-Based Blending: How Weakness Interoperates with Categorical
+  Structure", Ben Goertzel, 2026-01-20.
+- Quantale_Blending_Paper.json: "Quantale Weakness Based Conceptual
+  Blending: Integrating Information-Theoretic and Category-Theoretic
+  Approaches", Ben Goertzel, 2026-01-20.
+- Paraconsistent_Interference_Blending.json: "Paraconsistent Interference in
+  Conceptual Blending: When Properties Resonate or Cancel", Ben Goertzel,
+  2026-01-20.
+
+Targeted local search for "Eskridge" / "eskridge" over the four paper JSONs
+returned no hits. I therefore classify the brief's inherited
+"Goertzel/Eskridge" framing as [ATTRIBUTION-DRIFT] unless a non-local paper
+is introduced in a later source.
+
+HoTT_semantics_v3.json and HoTT_semantics_examples.json are real local papers,
+but they are identity/commonsense-reasoning adjacent. I would not fold them
+into S4.A except as a see-also boundary:
+
+  [HOTT-BOUNDARY-DEFER]
+
+Q.A3 - conceptBlending implementation status
+
+Extraction used committed HEAD only, per brief. The local working tree is not
+usable as a filesystem source because all implementation files appear deleted
+in the checkout and only untracked AGENTS/CLAUDE/GEMINI remain. Committed HEAD:
+
+  conceptBlending @ 9675e5e38062605e1f59f17bdedd9e733a226956
+
+Committed-tree evidence shows four implementation branches:
+
+- README.md:7, :10-11: information-theoretic approach using CMA-ES and GA.
+- README.md:17: naive prototype based on graph matching and GPT.
+- README.md:21-22: PeTTa version retains the information-theoretic
+  implementation except GA, adds multi-objective CMA-ES support.
+- README.md:28-29 and a_categorytheoretic_approach/README.md:2, :6, :33:
+  category-theoretic branch using LLM + concept-Atomspace and colimit/pushout
+  framing.
+- a_categorytheoretic_approach/libs/colimit.py:266 implements
+  compute_colimit.
+- an_infotheoretic_approach/info-theoretic.metta:111 and
+  peTTa_version/info-theoretic.metta:116 define mu-hqblend.
+- an_infotheoretic_approach/GA-imp.metta:166, :190 and
+  cma-es-imp.metta:249, :272 define GA/CMA-ES iteration loops.
+
+Verdict:
+
+  [IMPLEMENTATION-BACKED-CORE] for information-theoretic blending,
+  GA/CMA-ES search, category-theoretic colimit/pushout skeleton.
+
+  [PAPER-ONLY-FORMAL-EXTENSION] for quantale weakness, paraconsistent
+  interference, and HoTT-adjacent identity semantics in the local evidence
+  set.
+
+Q.A4 - interface with semantic parsing
+
+Committed-tree grep for semantic_parsing, semantic-parser, nl2pln, Link
+Grammar, RelEx/relex, quantale, paraconsistent, HoTT, and homotopy over
+conceptBlending HEAD returned no hits. Concept blending is an independent HAA
+source here, not coupled to the semantic parsing pipeline.
+
+2. S4.B - Semantic Parsing
+--------------------------
+
+Q.B1 - canonical semantic-parsing repository identity
+
+WebFetch/HEAD checks:
+
+  https://github.com/singnet/semantic-parsing -> HTTP/1.1 404 Not Found
+  https://github.com/leungmanhin/semantic_parsing -> HTTP/1.1 200 OK
+  https://github.com/rTreutlein/semantic_parsing -> HTTP/1.1 200 OK
+
+Local git remotes:
+
+- semantic_parsing origin =
+  https://github.com/leungmanhin/semantic_parsing.git
+- semantic_parsing upstream =
+  https://github.com/rTreutlein/semantic_parsing.git
+- semantic_parsing HEAD =
+  e2325316bb89027f6fe6d4c2cbcee615f502a4b3
+- semantic-parser origin =
+  https://github.com/leungmanhin/semantic-parser.git
+- semantic-parser HEAD =
+  d00331decb89e63756815b75e503e9d69499cc2b
+
+Verdict:
+
+  [SINGNET-SEMANTIC-PARSING-404]
+  [RTREUTLEIN-LEUNGMANHIN-SEMANTIC_PARSING-CANONICAL]
+  [LEUNGMANHIN-SEMANTIC-PARSER-SEPARATE-REPO]
+
+This is a load-bearing wiki correction: Reference+GitHub Repositories and the
+Semantic Parsing +github child currently point to the 404 singnet URL.
+
+Q.B2 - Hyperon-era semantic parsing code
+
+semantic_parsing is an LLM-to-PLN/MeTTa pipeline:
+
+- requirements.txt:58 depends on hyperon.
+- NL2PLN/convert_to_predicate_logic.py:6 imports MeTTaHandler.
+- NL2PLN/query.py:3-7 imports prompts/RAG/MeTTaHandler; query.py:19 creates
+  MeTTaHandler.
+- NL2PLN/metta/metta_handler.py:1 imports MeTTa from hyperon; :7 defines
+  MeTTaHandler; :9 constructs MeTTa().
+- NL2PLN/__main__.py:72 adds type definitions to the MeTTa knowledge base
+  before querying; :93 describes conversion to OpenCog PLN; :99 creates
+  MeTTaHandler.
+
+semantic-parser is a separate Hyperon/PeTTaChainer line:
+
+- requirements.txt:3 pins hyperon==0.2.10; :6 depends on PeTTaChainer.
+- chaining.py:6 imports PeTTaChainer; :81 and :105 use handler calls.
+- checker_functions.py:3 imports hyperon; :66 creates MeTTa().
+- prompts.py:73-188 contains detailed PLN expression guidance; :106 defines
+  Premises/Conclusions syntax; :197 asks conversion to PLN expressions.
+- pipelines.py:144 selects PLNQueryExprs vs PLNExprs output formats; :297
+  handles missing expressions.
+
+nl2pln_demo is a small rTreutlein demo:
+
+- NL2PLN/__main__.py:3-6 imports common/prompts/MeTTaHandler/RAG; :20 and
+  :24 create MeTTaHandler instances; :147 prints converted PLN data.
+- NL2PLN/metta/metta_handler.py:1 imports MeTTa from hyperon; :7 defines the
+  handler; :9 creates MeTTa().
+
+Targeted greps found no Link Grammar, RelEx, or conceptBlending integration in
+semantic_parsing, semantic-parser, or nl2pln_demo, except semantic-parser's
+batch_parse.py output filename containing the string semantic_parsing.
+
+Verdict:
+
+  [LLM-TO-PLN-METTA]
+  [NOT-LINK-GRAMMAR-RELEX-WRAPPER]
+  [SEMANTIC-PARSING-SPLIT-STACK]
+
+Q.B3 - classical Link Grammar / RelEx / learn / generate stack
+
+link-grammar:
+
+- git describe: link-grammar-5.13.0-1-gc6ff88dd4.
+- HEAD c6ff88dd4 has log message "Bump the changelog to 5.13.1".
+- README.md:1 identifies Link Grammar Parser.
+- README.md:8-14 describes typed linguistic structure and conversion to HPSG
+  / dependency-style output.
+- README.md:839 documents multi-thread safety.
+- README.md:1132-1151 discusses type-theoretic/category-theoretic
+  equivalences with CCG/pregroup grammar.
+
+relex:
+
+- README.md:2 identifies RelEx Semantic Relation Extractor.
+- README.md:3 says Version 1.6.3 circa 2016.
+- README.md:5-7 says it extracts dependency relations from Link Grammar,
+  shallow semantic analysis, and language-input front end.
+- README.md:131-144 requires Link Grammar.
+- Current top commits are dependency maintenance (dependabot/logback), not
+  algorithmic modernization.
+
+learn:
+
+- Local HEAD differs from the brief. The brief cited 416e9a1d..., but local
+  origin/master is now:
+
+```
+?? AGENTS.md
+?? CLAUDE.md
+?? GEMINI.md
+5c44af3ee4bb9b712653b7891a60192c92280f9a
+5c44af3e Typos
+4b470dd0 Not biblio
+2b692fca Dimensional embedding
+b1595fe0 upper and lower indexes
+6886b4c2 tensor product notation
+```
+
+- scm/CMakeLists.txt:12 includes parse/lg-pipe-parser.scm.
+- scm/learn.scm:25 includes opencog/learn/lg-pipe-parser.scm.
+- scm/parse/lg-pipe-parser.scm:2 identifies an Atomese LG-based parsing
+  framework; :69-74 sends windows to LG with dict-pair and creates MST/MPG
+  parses.
+- scm/parse/bond-links.scm:4, :12, :17-22, :83-95 map LG link names to
+  word-pairs and mirror link-grammar C++ link-names logic.
+
+generate:
+
+- CMakeLists.txt:42-50 requires AtomSpace.
+- README.md:4 frames NL parse trees as graphical networks.
+- README.md:89 references Link Grammar.
+- README.md:103-105 and :205-209 describe generating word sequences from
+  concepts/semantics.
+- opencog/generate/Dictionary.cc:87-88 stores lexical entries in AtomSpace as
+  EvaluationLinks with Predicate "lexis".
+
+Verdict:
+
+  [CLASSIC-NLP-STACK-ACTIVE-LEGACY]
+  [LEARN-ACTIVE-ATOMSPACE-SCHEME-LANGUAGE-RESEARCH]
+  [GENERATE-ATOMSPACE-SHEAF-GENERATION]
+
+Q.B4 - stale fork audit
+
+Exact command outputs, per S4 P12:
+
+```
+### link-grammar-glicerico
+$ git rev-list --left-right --count origin/master...upstream/master
+0	3593
+$ git log --oneline --left-right origin/master...upstream/master -n 6
+> c6ff88dd4 Bump the changelog to 5.13.1
+> 70ec19ec7 Location of the header file changed
+> 87ef8d33b The structure of lg-atomese has changed
+> 4aeaf0784 Dictionary fix
+> 8316d1c10 Bump changelog to version 5.12.10
+> ace5ce7e2 Bump version number to 5.12.9
+### link-grammar-leungmanhin
+$ git rev-list --left-right --count origin/master...upstream/master
+0	1424
+$ git log --oneline --left-right origin/master...upstream/master -n 6
+> c6ff88dd4 Bump the changelog to 5.13.1
+> 70ec19ec7 Location of the header file changed
+> 87ef8d33b The structure of lg-atomese has changed
+> 4aeaf0784 Dictionary fix
+> 8316d1c10 Bump changelog to version 5.12.10
+> ace5ce7e2 Bump version number to 5.12.9
+### relex-singnet
+$ git rev-list --left-right --count origin/master...upstream/master
+7	12
+$ git log --oneline --left-right origin/master...upstream/master -n 6
+> 4c85a9a Merge pull request #297 from opencog/dependabot/maven/ch.qos.logback-logback-core-1.5.25
+> 81a3533 Bump ch.qos.logback:logback-core from 1.5.19 to 1.5.25
+> 229fa3c Merge pull request #296 from opencog/dependabot/maven/ch.qos.logback-core-1.5.19
+> 4d0a5bd Bump ch.qos.logback:logback-core from 1.5.13 to 1.5.19
+> b177b33 Merge pull request #295 from opencog/dependabot/maven/ch.qos.logback-core-1.5.13
+> d5dcc95 Bump ch.qos.logback-core from 1.2.13 to 1.5.13
+### relex-leungmanhin
+$ git rev-list --left-right --count origin/master...upstream/master
+0	10
+$ git log --oneline --left-right origin/master...upstream/master -n 6
+> 4c85a9aa Merge pull request #297 from opencog/dependabot/maven/ch.qos.logback-core-1.5.25
+> 81a3533a Bump ch.qos.logback-core from 1.5.19 to 1.5.25
+> 229fa3ca Merge pull request #296 from opencog/dependabot/maven/ch.qos.logback-core-1.5.19
+> 4d0a5bdf Bump ch.qos.logback-core from 1.5.13 to 1.5.19
+> b177b336 Merge pull request #295 from opencog/dependabot/maven/ch.qos.logback-core-1.5.13
+> d5dcc951 Bump ch.qos.logback-core from 1.2.13 to 1.5.13
+### relex-hansonrobotics
+$ git rev-list --left-right --count origin/master...upstream/master
+0	224
+$ git log --oneline --left-right origin/master...upstream/master -n 6
+> 4c85a9aa Merge pull request #297 from opencog/dependabot/maven/ch.qos.logback-core-1.5.25
+> 81a3533a Bump ch.qos.logback-core from 1.5.19 to 1.5.25
+> 229fa3ca Merge pull request #296 from opencog/dependabot/maven/ch.qos.logback-core-1.5.19
+> 4d0a5bdf Bump ch.qos.logback-core from 1.5.13 to 1.5.19
+> b177b336 Merge pull request #295 from opencog/dependabot/maven/ch.qos.logback-core-1.5.13
+> d5dcc951 Bump ch.qos.logback-core from 1.2.13 to 1.5.13
+### learn-singnet
+$ git rev-list --left-right --count origin/master...upstream/master
+43	2223
+$ git log --oneline --left-right origin/master...upstream/master -n 6
+> c742ce54 Geo-political chess computers!
+> c26f34b4 Remove the line breaks. Copyedit.
+> 89c46784 Reply two
+> d4c03307 Email reply
+> 0ea267f0 Typos
+> fd8bf700 Copy of an email
+### learn-glicerico
+$ git rev-list --left-right --count origin/master...upstream/master
+0	1163
+$ git log --oneline --left-right origin/master...upstream/master -n 6
+> 85b5a3b1 Merge pull request #56 from ngeiswei/merge-opencog-to-singnet
+> eabf162d Merge branch 'master' of github.com:opencog/learn into merge-opencog-to-singnet
+> ee59806d Add PDF of talk
+> c7a3d47e Ugh. More debug notes
+> 58873cf4 Ongoing debugging
+> 11a0113e Late night typo
+### nl2pln_demo-leungmanhin
+$ git rev-list --left-right --count origin/main...upstream/main
+0	0
+$ git log --oneline --left-right origin/main...upstream/main -n 6
+```
+
+Additional check: relex-singnet and learn-singnet fork-only diffs reduce to
+.circleci/config.yml against upstream, so the nonzero fork-ahead counts do not
+represent new semantic-parsing traditions.
+
+Verdict:
+
+  [STALE-FORKS-NO-NOVEL-TRADITION]
+
+3. S4.C - SGNN boundary
+-----------------------
+
+SGNN local HEAD:
+
+```
+92d8e3a5b6d20527e8ebab20528d3348a29a3dfb
+92d8e3a Fix nokogiri vulnerabilities
+a1348ae Merge pull request #10 from glicerico/fix-nokogirl-vulnerability
+3bcad8b fix flow
+b9e9005 Codex suggestions
+5aef53a Update dependencies in Gemfile.lock
+```
+
+Evidence:
+
+- README.md:2: "Implementation of Self-Governing Neural Networks for speech
+  act classification".
+- README.md:5: implementation of the SGNN paper for speech act
+  classification.
+- README.md:9: trained on SwDA corpus utterances according to speech act.
+- README.md:11: original SGNN paper reports SwDA accuracy of 83.1.
+- Grep hits for semantic/dialogue are dataset prose or README context; no
+  Atomese, MeTTa, OpenCog, Hyperon, PLN, RelEx, or Link Grammar integration
+  was found in code.
+
+Verdict:
+
+  [SGNN-SPEECH-ACT-CLASSIFICATION]
+  [SGNN-NOT-PATTERN-MINING]
+  [SGNN-NOT-SEMANTIC-PARSING-PIPELINE]
+
+Defer to a later cross-org or ML-paper boundary source if the project wants to
+track SGNN as a standalone neural NLP classifier. Do not include it in S4
+cluster-close edits except as an explicit "not included" footnote if needed.
+
+4. Wiki fidelity checks
+-----------------------
+
+Concept Blending:
+
+- Search found only Hyperon AI Algorithms+Concept Blending, Draft ID 4092,
+  updated 2026-04-10, plus the virtual RichText parent Concept Blending ID
+  4091. There is no Published parent in the current search results.
+- Card 4092 still frames concept blending around Hyperon whitepaper PRIMUS,
+  TransWeave, and MORK implementation. It does not know about the 2025/2026
+  Goertzel paper stack or conceptBlending repo branches.
+- Card 4092 should be refined, not replaced. It needs a cluster-pilot status
+  block distinguishing implementation-backed info/category branches from
+  paper-only quantale/paraconsistent/HoTT-adjacent material.
+
+Semantic Parsing:
+
+- Published parent ID 655 exists and uses the Sandra-spec +content shell.
+- +content ID 7340 includes sibling cards.
+- +github ID 7617 currently contains only
+  https://github.com/singnet/semantic-parsing, which is HTTP 404.
+- +responsible ID 7616 names Leung Man Hin and Roman Treutlein, which matches
+  the semantic_parsing local/upstream identity, but omits the classic
+  Link Grammar/RelEx/learn/generate maintainers represented in the Full card.
+- +description ID 7618 claims SENF/canonical graph structures. That is a
+  proposal-level direction, not what semantic_parsing HEAD directly implements.
+- Semantic Parsing Full ID 4419 and children were updated 2026-05-06 and are
+  much closer to the extracted reality than the +github sibling. The Full card
+  correctly separates legacy Link Grammar/RelEx/learn/generate from Hyperon-era
+  LLM-to-MeTTa approaches, but it still lists Link Grammar as v5.13.0 while
+  local HEAD is changelog-bumped to v5.13.1.
+- Reference+GitHub Repositories ID 7268 still lists
+  singnet/semantic-parsing under Cognitive Logic & Reasoning. It should point
+  to rTreutlein/semantic_parsing and optionally leungmanhin/semantic_parsing,
+  and should add leungmanhin/semantic-parser as the separate PeTTaChainer line
+  if that repo is considered user-facing.
+
+5. V4-X carry-forwards
+----------------------
+
+V4-1 [CONCEPT-BLENDING-ATTRIBUTION-DRIFT, load-bearing]
+  The local S4 paper stack is Goertzel-only. I found no Eskridge hit in the
+  four local concept-blending paper JSONs. Cluster-close should correct
+  CLAUDE.md "Goertzel/Eskridge" wording unless an external Eskridge source is
+  introduced and cited.
+
+V4-2 [CONCEPTBLENDING-WORKTREE-DELETED-BUT-HEAD-VALID, methodology]
+  The conceptBlending local working tree is not a valid file-source surface;
+  extract against committed HEAD 9675e5e only. This should be recorded so a
+  later reviewer does not mistakenly conclude the repo has no implementation.
+
+V4-3 [CONCEPT-BLENDING-PARTIAL-IMPLEMENTATION]
+  Information-theoretic, GA/CMA-ES, PeTTa, and category-theoretic colimit
+  branches are implementation-backed. Quantale weakness, paraconsistent
+  interference, and HoTT-adjacent material remain paper/formal boundary
+  material in the checked repo.
+
+V4-4 [SINGNET-SEMANTIC-PARSING-404, load-bearing]
+  The wiki-cited GitHub URL is invalid. Correct to rTreutlein/semantic_parsing
+  and/or leungmanhin/semantic_parsing; add leungmanhin/semantic-parser only as
+  a separate dashed-name Hyperon/PeTTaChainer repo.
+
+V4-5 [SEMANTIC-PARSING-SPLIT-STACK]
+  Do not collapse Hyperon-era LLM-to-PLN/MeTTa repos into the classical Link
+  Grammar/RelEx/learn/generate stack. They are adjacent generations with the
+  same goal, not one direct pipeline.
+
+V4-6 [LEARN-SHA-DRIFT]
+  Brief cited learn @ 416e9a1d..., but local learn origin/master is now
+  5c44af3ee4bb9b712653b7891a60192c92280f9a. Reconciliation should decide
+  whether to pin brief-time SHA or adopt current HEAD. Substantive verdict is
+  unchanged.
+
+V4-7 [STALE-FORKS-NO-NOVEL-TRADITION]
+  The stale fork audit adds no active semantic-parsing tradition. Nonzero
+  fork-ahead counts on relex-singnet / learn-singnet are merge/config
+  metadata, not independent algorithmic work.
+
+V4-8 [SGNN-BOUNDARY-OUT]
+  SGNN remains a speech-act classifier over SwDA; not S3 pattern mining and
+  not S4 semantic parsing pipeline.
+
+V4-9 [WIKI-CONCEPT-BLENDING-STUB]
+  Hyperon AI Algorithms+Concept Blending ID 4092 is stale relative to this
+  extraction. It needs refinement with the S4 paper/repo split.
+
+V4-10 [WIKI-SEMANTIC-PARSING-URL-DRIFT]
+  Semantic Parsing Full is broadly aligned, but the Sandra-spec +github child
+  and Reference+GitHub Repositories retain the invalid singnet URL.
+
+6. Cluster-close edit recommendations
+-------------------------------------
+
+C1. Refine Hyperon AI Algorithms+Concept Blending (ID 4092):
+    add S4 cluster-pilot status, paper-stack table, conceptBlending repo
+    branch table, [IMPLEMENTATION-BACKED-CORE] vs
+    [PAPER-ONLY-FORMAL-EXTENSION], and HoTT boundary note.
+
+C2. Refine Semantic Parsing +github (ID 7617):
+    replace singnet/semantic-parsing with rTreutlein/semantic_parsing and
+    leungmanhin/semantic_parsing; optionally add leungmanhin/semantic-parser
+    as separate dashed-name PeTTaChainer/Hyperon line.
+
+C3. Refine Semantic Parsing +description (ID 7618) or Full card:
+    make SENF explicit as proposed/canonical-normal-form direction, not the
+    direct behavior of semantic_parsing HEAD.
+
+C4. Refine Reference+GitHub Repositories (ID 7268):
+    fix singnet/semantic-parsing 404; add conceptBlending; consider adding
+    semantic-parser dashed repo; do not enumerate stale forks.
+
+C5. Optional: add a short "SGNN boundary" note only if S4 close needs to
+    document why SGNN was not absorbed. No dedicated wiki card recommended
+    from this source alone.
+
+7. Reconciliation notes
+-----------------------
+
+I expect possible reviewer drift around:
+
+- fork-direction/counts: use the exact rev-list blocks above;
+- conceptBlending file presence: filesystem view is misleading because the
+  working tree is dirty/deleted; use git-show/git-grep at HEAD;
+- singnet/semantic-parsing: WebFetch says 404;
+- SGNN: the word "semantic" appears in dataset text, not in a symbolic parsing
+  implementation.
+
