@@ -4,12 +4,15 @@
 # becomes Published, because the card is no longer in the Draft set).
 
 DRAFT_TYPE_NAME = "Draft".freeze
-PUBLISHED_TYPE_NAME = "Published".freeze
+PUBLISHED_TYPE_NAMES = ["Published", "IndexPublished"].freeze
 
-# Event: when any card's type changes to Published, stamp approval metadata.
+# Event: when any card's type changes to a publication target, stamp approval
+# metadata. Both Published and IndexPublished count as publication; the
+# IndexPublished cardtype is the curated Hyperon Prime Index variant that
+# shares editorial behavior with Published via Abstract::EditoriallyReviewed.
 event :on_publish_card, :integrate, on: :update, changed: :type_id do
   new_type = Card.fetch(type_id)&.name
-  next unless new_type == PUBLISHED_TYPE_NAME
+  next unless PUBLISHED_TYPE_NAMES.include?(new_type)
 
   # Record who approved and when
   Card::Auth.as_bot do
