@@ -10,11 +10,19 @@ PUBLISHED_TYPE_NAMES = ["Published", "IndexPublished"].freeze
 # metadata. Both Published and IndexPublished count as publication; the
 # IndexPublished cardtype is the curated Hyperon Prime Index variant that
 # shares editorial behavior with Published via Abstract::EditoriallyReviewed.
+#
+# Idempotent: if the card already has +approved by content, skip the stamp
+# entirely. This protects approval metadata when a card moves between
+# publication-equivalent cardtypes (e.g., Published <-> IndexPublished); only
+# the first Draft -> publication transition records the approval.
 event :on_publish_card, :integrate, on: :update, changed: :type_id do
   new_type = Card.fetch(type_id)&.name
   next unless PUBLISHED_TYPE_NAMES.include?(new_type)
 
-  # Record who approved and when
+  existing_approver = Card.fetch("#{name}+approved by")&.content
+  next if existing_approver.present?
+
+  # First-time approval — record who approved and when
   Card::Auth.as_bot do
     approved_by = Card.fetch("#{name}+approved by", new: {})
     approved_by.type_id = Card::PhraseID
