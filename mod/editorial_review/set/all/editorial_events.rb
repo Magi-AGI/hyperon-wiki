@@ -4,12 +4,14 @@
 # becomes Published, because the card is no longer in the Draft set).
 
 DRAFT_TYPE_NAME = "Draft".freeze
-PUBLISHED_TYPE_NAMES = ["Published", "IndexPublished"].freeze
+PUBLISHED_TYPE_NAMES = ["Published", "IndexPublished", "IndexSection"].freeze
 
 # Event: when any card's type changes to a publication target, stamp approval
-# metadata. Both Published and IndexPublished count as publication; the
-# IndexPublished cardtype is the curated Hyperon Prime Index variant that
-# shares editorial behavior with Published via Abstract::EditoriallyReviewed.
+# metadata. Published, IndexPublished, and IndexSection all count as
+# publication. IndexPublished is the curated subtopic cardtype for the
+# Hyperon Prime Index; IndexSection is the corresponding section-landing
+# cardtype. All three share editorial behavior with each other via
+# Abstract::EditoriallyReviewed.
 #
 # Idempotent: if the card already has +approved by content, skip the stamp
 # entirely. This protects approval metadata when a card moves between
