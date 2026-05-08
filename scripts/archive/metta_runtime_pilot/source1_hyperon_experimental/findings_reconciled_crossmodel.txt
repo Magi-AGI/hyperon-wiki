@@ -1,0 +1,1063 @@
+================================================================================
+METTA RUNTIME CLUSTER PILOT — SOURCE 1
+hyperon-experimental — Cross-model reconciliation (Codex + Gemini + orchestrator-Claude)
+================================================================================
+
+Reconciler:   Claude (orchestrator)
+Date:         2026-05-08
+Repo:         E:\GitHub\hyperon reference\hyperon-experimental\
+HEAD:         3f76dc460da6961f57f69f6c3e550c59c74ada83 (v0.2.10, 2026-02-11)
+Brief:        scripts/archive/metta_runtime_pilot/
+              source1_hyperon_experimental_brief.txt
+
+Reviewer findings reconciled:
+  findings_codex.txt       (540 lines, 2026-05-08, Codex citation-grade)
+  findings_gemini.txt      (76 lines, 2026-05-08, Gemini terse-form)
+
+Methodology:
+  - Option (ii) cite pre-verification protocol applied to findings_gemini.txt.
+    Cite-verification log appended at §CF5.6.
+  - Codex findings treated as citation-grade per HAA close 2026-05-07
+    sign-off; substance cross-check only.
+  - Brief vocabulary (§7) compliance audited; non-conforming verdicts
+    re-tagged in this reconciliation per V4-2 lesson (AtomSpace S4).
+
+Tag legend:
+  [CONSENSUS]   substance agreed by both reviewers (drift-only differences
+                logged separately).
+  [V1-N-X]      cross-model dissent: N = question number, X = sub-issue.
+  [CF5.6]       Gemini cite drift; verified via the option (ii) protocol.
+  [HALLUCINATED-CITE]  cited file-path/identifier does not exist at HEAD.
+  [VOCAB-DRIFT] reviewer used a verdict tag outside the brief vocabulary.
+  [NEW-CODEX]   contributed only by Codex.
+  [NEW-GEMINI]  contributed only by Gemini.
+
+================================================================================
+EXECUTIVE SUMMARY
+================================================================================
+
+Source 1 closes with [CONSENSUS] on the headline framing. hyperon-experimental
+at HEAD `3f76dc46` (= v0.2.10) is the active Rust reference MeTTa runtime,
+implementing a stack-based small-step nondeterministic interpreter with a
+hybrid Rust + MeTTa stdlib, dynamic gradual type checking with %Undefined%
+permissive matching, an evolving module system, AtomIndex/AtomTrie in-memory
+indexing, broad Python+C bindings with the live Python observer-registration
+gap, and sandbox prototypes that should not be treated as packaged API.
+
+The 11 P-claims locked from AtomSpace Phase 4 Source 2 (write API, observer
+pattern, persistence, concurrency, taxonomy, DAS module, Python observer gap,
+MeTTa stdlib `replace-atom!` asymmetry, PR #852 EventAgent mainline,
+lib_spaces.metta phantom, sql_space precedent) all remain accurate at HEAD.
+None were re-litigated; both reviewers respected the lock-in.
+
+Three Source-1-NEW findings carry forward beyond AtomSpace Phase 4:
+
+  R1.NEW-1. **Hyperon 0.2.x quirk re-verification (S1.Q11)**: at v0.2.10:
+            - Q-1 bind!+new-space: [QUIRK-CONFIRMED-AT-HEAD] (still not
+              a reset primitive; BindOp registers a token, no atom-clearing).
+            - Q-2 cond: [QUIRK-FIXED-SINCE-V0-2-1-VIA-ABSENCE] (cond is
+              not a builtin operator at HEAD; substance: not implemented
+              rather than implemented incorrectly. Use `if`/`case`/`match`/
+              user-defined equations).
+            - Q-3 catchall multi-reduction: [QUIRK-CONFIRMED-AT-HEAD] (this
+              is documented nondeterministic semantics, not a stale bug
+              report; mutually exclusive patterns required).
+            Update target: `reference_hyperon_0210_quirks.md` at cluster close.
+
+  R1.NEW-2. **"Hyperon Experimental Full" deep_dive target is missing**.
+            Wiki card 630 (`MeTTa Programming Language+Hyperon Experimental`,
+            cardtype IndexSubtopic, Sandra-spec ported 2026-05-08T18:16:48Z)
+            has a `+deep_dive` sibling pointing to
+            `{{_left+Hyperon Experimental Full|view:link;title:Hyperon Experimental Full}}`
+            — but the target card does NOT exist. Wiki search for
+            "Hyperon Experimental Full" returns ZERO matches.
+            Cluster-close edit candidate: create the Full card with the
+            S1 reconciliation findings as content scaffold.
+
+  R1.NEW-3. **Stdlib operator inventory delivered for cross-runtime
+            comparison (S1.Q3)**. Hybrid split between Rust-side token
+            registration (arithmetics.rs / atom.rs / core.rs / debug.rs /
+            math.rs / module.rs / package.rs / space.rs) and MeTTa-side
+            definitions in stdlib.metta (return / function / eval / chain /
+            unify / collapse-bind / superpose-bind / metta / switch / if /
+            let / case / collapse / assertion helpers). S2-S6 must compare
+            against BOTH layers, per V1-3 carry-forward. Also confirms the
+            P8 [LOCKED] absence of `replace-atom!` MeTTa op.
+
+Cite-verification pass on Gemini findings: 5/5 numerical cites PASS verbatim
+(P12 protocol working); 8/8 line-number cites PASS exact match; 3/4 file-path
+cites PASS, 1 [HALLUCINATED-CITE] rejected (Gemini's `c/include/hyperon/
+hyperon.h` for Q8 — the c/ crate has NO `include/` directory at HEAD; C
+headers are auto-generated by cbindgen). Two soft drifts: (a) Gemini's
+trie.rs "L1-33632" line-range citation is the file's BYTE size (33632 bytes,
+actual 930 lines); (b) Gemini's commit `120c227 (2025-08-22)` is 4 days off
+from actual `120c2279 (2025-08-26)`. One vocabulary-conformance pattern:
+Gemini used non-brief-vocab verdict tags on Q5/Q6/Q7/Q9/Q10/Q11 — V4-2
+recurrence flagged. Cumulative Gemini drift through MeTTa runtime S1: ~36/53
+≈ 68% (up ~3% from 65% post-HAA; under the 75% gate but the V4-11 hallucinated-
+file-path pattern recurred).
+
+================================================================================
+PER-QUESTION CONSENSUS
+================================================================================
+
+--------------------------------------------------------------------------------
+S1.Q1. METTA INTERPRETER SEMANTICS
+--------------------------------------------------------------------------------
+
+[CONSENSUS] Verdict: [SMALL-STEP-INTERPRETER] [NONDETERMINISTIC-BRANCHING]
+                     [QUERY-DRIVEN-REWRITE-EVALUATOR]
+
+Both reviewers agree the interpreter is stack-based, plan/state-driven, and
+nondeterministic (multiple matches produce multiple results). Codex's
+expansion adds plan-semantics nuance and explicit boundary-statement that
+this is NOT a deterministic "first match wins" rewrite engine.
+
+Authoritative citations (verified at HEAD `3f76dc46`):
+  - `lib/src/metta/interpreter.rs:181` `max_stack_depth` field.
+  - `lib/src/metta/interpreter.rs:254` `interpret_init`.
+  - `lib/src/metta/interpreter.rs:269` `pub fn interpret_step(mut state:
+    InterpreterState) -> InterpreterState` [VERIFIED via sed:269 — both
+    reviewers cited this line].
+  - `lib/src/metta/interpreter.rs:285` `interpret`.
+  - `lib/src/metta/interpreter.rs:374` `fn interpret_stack(context:
+    &InterpreterContext, stack: Stack, mut bindings: Bindings,
+    max_stack_depth: usize) -> Vec<InterpretedAtom>` [VERIFIED via sed:374].
+  - `lib/src/metta/interpreter.rs:392` stack depth enforcement.
+  - `lib/src/metta/interpreter.rs:504` `eval_impl`.
+  - `lib/src/metta/interpreter.rs:559` `eval_result`.
+  - `lib/src/metta/interpreter.rs:604` `query`.
+  - `lib/src/metta/interpreter.rs:687,746,809,893` chain / collapse-bind /
+    unify / superpose-bind behavior.
+  - `lib/src/metta/interpreter.rs:922` native grounded-symbol calls.
+
+Nondeterminism evidence:
+  - `docs/minimal-metta.md` describes plan-branching semantics where the
+    interpreter does NOT select one branch.
+  - `python/tests/scripts/b4_nondeterm.metta` asserts multiple-result behavior
+    from multiple equality definitions and superpose.
+
+Boundary lock (Codex-NEW): the catchall + specific-equation multi-reduction
+behavior in S1.Q11 Q-3 IS THIS interpreter's documented nondeterministic
+semantics, not a stale bug. Programs requiring deterministic dispatch must
+use mutually exclusive patterns.
+
+--------------------------------------------------------------------------------
+S1.Q2. METTA TYPE SYSTEM
+--------------------------------------------------------------------------------
+
+[CONSENSUS] Verdict: [DYNAMIC-CHECKED]
+
+Both reviewers verdict [DYNAMIC-CHECKED]. Codex's adjacent tags
+[DEPENDENT-TYPE-EXPRESSIVE-BUT-NOT-PROVER] [UNDEFINED-TYPE-WILDCARD] are
+non-vocab descriptive nuance, recorded here verbatim:
+
+  - `lib/src/metta/types.rs:18-19` documents `%Undefined%` as the type
+    assigned to atoms without a user type and as matching any required type
+    (permissive wildcard semantics).
+  - `lib/src/metta/types.rs:65` `check_arg_types`.
+  - `lib/src/metta/types.rs:327` `get_atom_types` (returns undefined when
+    no specific type is found at :330).
+  - `lib/src/metta/types.rs:512` `get_application_types`.
+  - `lib/src/metta/types.rs:526` `UndefinedTypeMatch`.
+  - `lib/src/metta/types.rs:602` `pub fn check_type(space: &DynSpace,
+    atom: &Atom, typ: &Atom) -> bool` [VERIFIED via sed:602 — both reviewers
+    cited this line].
+  - `lib/src/metta/types.rs:637` `pub fn validate_atom(space: &DynSpace,
+    atom: &Atom) -> bool` [VERIFIED via sed:637].
+  - Dependent-type tests at `:817, :861, :1120, :1139` (Codex-NEW).
+  - Open TODOs at `:42, :379, :397, :494-499, :1177, :1225, :1298`
+    (Codex-NEW; cluster-pilot does NOT classify hyperon-experimental as a
+    fully settled categorical/dependent-type verifier).
+
+--------------------------------------------------------------------------------
+S1.Q3. STDLIB OPERATOR INVENTORY
+--------------------------------------------------------------------------------
+
+[CONSENSUS] Verdict: [HYBRID-RUST-PLUS-METTA-STDLIB]
+                     [RUST-TOKENIZED-CORE-WITH-METTA-LIBRARY]
+
+Authoritative consolidated inventory (Codex-thorough; Gemini-partial; merged):
+
+Rust-side token registrations under `lib/src/metta/runner/stdlib/`:
+  - `arithmetics.rs:162-198`: `+`, `-`, `*`, `/`, `%`, `<`, `>`, `<=`, `>=`,
+    `and`, `or`, `not`, `xor`, division (with appropriate variants).
+  - `atom.rs:449-474`: `unique-atom`, `union-atom`, `intersection-atom`,
+    `max-atom`, `min-atom`, `size-atom`, `index-atom`, `subtraction-atom`,
+    `get-type`, `get-metatype`, `get-type-space`.
+  - `core.rs:336-362`: `pragma!`, `nop`, `sealed`, `==`, `match`, `if-equal`,
+    `superpose`, `capture`, `_minimal-foldl-atom`. Both reviewers cite
+    SuperposeOp registration at :353 (`tref.register_token(regex(r"superpose"),
+    move |_| { superpose_op.clone() });`) [VERIFIED via sed:353].
+  - `debug.rs:155-177`: `trace!`, `print-alternatives!`, `=alpha`.
+  - `math.rs:408-443`: `pow-math`, `sqrt-math`, `abs-math`, `log-math`, etc.,
+    plus `PI` and `EXP` constants.
+  - `module.rs:280-298`: `import!`, `include`, `mod-space!`, `print-mods!`,
+    `bind!`, `module-space-no-deps`. Specifically `import!` registered at
+    :290 [VERIFIED via sed:290 — Gemini cite].
+  - `package.rs:113-117`: `register-module!`, `git-module!`.
+  - `space.rs:206-223`: `new-space`, `get-state`, `change-state!`,
+    `get-atoms`, `add-atom`, `remove-atom`. P8 [LOCKED] asymmetry: NO
+    `replace-atom!` token at HEAD.
+
+MeTTa-side definitions in `lib/src/metta/runner/stdlib/stdlib.metta`
+(1421 lines [VERIFIED via wc -l]):
+  - `return :47`, `function :54`, `eval :61`, `evalc :69`, `chain :78`,
+    `unify :88`, `cons-atom :96`, `decons-atom :103`, `collapse-bind :239`,
+    `superpose-bind :246`, `metta :255`, `switch :345-362`, `if :511-513`,
+    `let / let* :542-553`, assertion helpers `:1094-1186`, `collapse :1203`,
+    `case :1224-1233`.
+
+Cross-runtime comparison axis (forward to S2-S6):
+  - V1-3: stdlib-parity audits MUST cover BOTH layers; checking only one
+    will miss behavior. PeTTa, MeTTaTron, MeTTaIL, FormalMeTTa, MeTTaLog,
+    jetta must each be classified against this two-layer inventory.
+
+--------------------------------------------------------------------------------
+S1.Q4. BUILTIN_MODS COVERAGE
+--------------------------------------------------------------------------------
+
+[CONSENSUS] Verdict: [BUILTIN-FULLY-WIRED]
+            (with [DAS-BUILTIN-COMPILED-BY-DEFAULT] non-vocab adjacent
+            tag retained from Codex)
+
+`lib/src/metta/runner/builtin_mods/mod.rs` (28 lines [VERIFIED]; Gemini
+cited L16-25 — actual loader registration is at :26-31, off-by-10ish line
+drift, see CF5.6 §1) registers six builtin module loaders:
+
+  - `random` (:26)
+  - `skel` (:27)
+  - `fileio` (:28)
+  - `json` (:29)
+  - `catalog` (:30, gated by `#[cfg(feature = "pkg_mgmt")]`)
+  - `das` (:31, gated by `#[cfg(feature = "das")]`)
+
+P6 [LOCKED] from Phase 4 Source 2: `lib/Cargo.toml:46` confirms
+`default = ["pkg_mgmt", "das"]`. Both reviewers re-confirm.
+
+Per-builtin substantive evidence (Codex-thorough):
+  - `catalog.rs`: `:53` loads `CATALOG_METTA`; `:73-77` registers tokens;
+    `:85, :150, :210` define operational structs.
+  - `das.rs`: `:44` `include_str!("das.metta")`; `:70-121` registers
+    grounded-op functions; new-das! token at :66-70 [LOCKED via P6];
+    DistributedAtomSpace::new at :187-195 [LOCKED via P6]; ops at
+    :128, :205, :243, :323, :379, :414, :463, :516, :560.
+  - `fileio.rs`: `:17` loads `FILEIO_METTA`; `:86` defines `FileHandle`
+    grounded atom; `:124-149` registers tokens.
+  - `json.rs`: `:17` loads `JSON_METTA`; `:41, :46` register functions.
+  - `random.rs`: `:23` loads `RANDOM_METTA`; `:56` defines `RandomGenerator`;
+    `:97-122` registers functions; binds `&rng` at `:128`.
+  - `skel.rs`: `:8` loads `SKEL_METTA`; `:32` registers a function.
+
+Boundary (Codex-NEW): the DAS builtin is "available as a default feature and
+builtin module surface" — this does NOT mean a running distributed DAS
+service is embedded in the local runtime. DAS in-process == "talk to a remote
+DAS service via metta-bus-client".
+
+--------------------------------------------------------------------------------
+S1.Q5. MODULE SYSTEM ARCHITECTURE
+--------------------------------------------------------------------------------
+
+[CONSENSUS-with-vocab-correction] Verdict: [MODULE-SYSTEM-PARTIAL]
+            (corrected per brief §7 vocabulary)
+
+[V1-Q5-VOCAB-DRIFT]: Gemini's verdict `[ISOLATED-MODULE-LOADERS]` is NOT in
+brief §7 vocabulary {[MODULE-SYSTEM-COMPLETE], [MODULE-SYSTEM-PARTIAL],
+[MODULE-SYSTEM-PROTOTYPE]}. Substantively correct (imports create separate
+DynSpace instances per `import!` at stdlib/module.rs:290) but tag must
+conform. Codex's verdict `[MODULE-SYSTEM-ACTIVE-EVOLVING]` is also non-vocab
+but closer in spirit to [MODULE-SYSTEM-PARTIAL]. Reconciliation re-tags as
+[MODULE-SYSTEM-PARTIAL] — implemented and active per Codex evidence,
+evolving per docs/modules_internal_discussion.md.
+
+Authoritative module-system citations (Codex-thorough):
+  - `lib/src/metta/runner/modules/mod.rs:27` `ModId`.
+  - `modules/mod.rs:56` `MettaMod`; `:58, :62` resource and loader fields.
+  - `modules/mod.rs:107` `import_dependency_as`.
+  - `modules/mod.rs:131` `import_item_from_dependency_as`.
+  - `modules/mod.rs:181` `import_all_from_dependency`.
+  - `modules/mod.rs:251-278` accessors (path/name/package/space/tokenizer/
+    resource).
+  - `modules/mod.rs:314` descriptor state; `:439` initializes; `:563`
+    `ModuleLoader` trait; `:608` `Resource`.
+  - `modules/mod_names.rs:265, :276` name-resolution paths.
+  - `lib/src/metta/runner/stdlib/module.rs:290` import! token registration
+    [VERIFIED via sed:290].
+
+Boundary (Codex-NEW + docs-supported): `docs/modules_internal_discussion.md`
+records import/tokenizer edge cases and a "poor man's" public/private
+two-layer scope concept. Active design surface, not frozen final semantics.
+
+--------------------------------------------------------------------------------
+S1.Q6. ATOMINDEX / ATOMTRIE PERFORMANCE POSTURE
+--------------------------------------------------------------------------------
+
+[CONSENSUS-with-vocab-correction] Verdict: [IN-MEMORY-ATOMTRIE-INDEX]
+            [NO-BENCHMARK-CLAIMS-IN-S1]
+
+[V1-Q6-VOCAB-DRIFT]: Gemini's verdict `[EXPRESSION-SIZE-PREFIXED]` is a
+descriptive observation about a 2025-08 optimization, not a brief-vocab
+verdict tag. Substance partially correct (size-prefix optimization landed)
+but the tag does not characterize the index posture as a whole. Reconciliation
+adopts Codex's [IN-MEMORY-ATOMTRIE-INDEX] [ACTIVE-INDEX-BACKEND]
+[NO-BENCHMARK-CLAIMS-IN-S1].
+
+Authoritative citations:
+  - `hyperon-space/src/index/mod.rs:159` `AtomIndex`.
+  - `hyperon-space/src/index/mod.rs:177` insert; `:192` query; `:207` remove.
+  - `hyperon-space/src/index/trie.rs` (930 lines [VERIFIED via wc -l]).
+    Gemini's "L1-33632" citation is a [SOFT-CONFABULATION]: 33632 is the
+    file's BYTE size, not the line count. See CF5.6 §2.
+  - `hyperon-space/src/index/trie.rs:201` `AtomTrie`; `:232` insert; `:261`
+    query; `:395` remove.
+  - `lib/src/space/grounding/mod.rs:17` `GroundingSpace`; `:18` index field.
+  - `grounding/mod.rs:70, :92, :119` add/remove/replace + emit SpaceEvents
+    [LOCKED via Phase 4 P1].
+  - `grounding/mod.rs:147, :152` query paths; `:156` calls
+    `self.index.query(query)`.
+
+Pickaxe-verified concentrated implementation period (Codex-thorough; six
+2025-01 commits + one 2025-02-06 + one 2025-02-11):
+  - `d8bbf6f8 2025-01-31` Add atom index implementation
+  - `eb404e03 2025-01-31` Implement GroundingSpace using AtomIndex
+  - `9a91f158 2025-01-31` Duplicate atoms in AtomIndex (reproduce old behavior)
+  - `4ab34116 2025-01-31` Add duplication strategy parameter to GroundingSpace
+  - `a801a8dd 2025-02-03` Move AtomStorage/AtomTrieNode/AtomIndex to module
+  - `dc0b7556 2025-02-06` Make AtomTrie in-memory representation more compact
+  - `5fc75f84 2025-02-11` Represent custom/exact matching flags via single enum
+
+Plus the 2025-08 size-prefix commit Gemini surfaced (with a 4-day date drift):
+  - `120c2279 2025-08-26` "Prefix expressions with size in atomspace index
+    to recognize them faster" [VERIFIED orchestrator-side via
+    `git log --all -S 'AtomTrie'`]. Gemini's cite was `120c227 (2025-08-22)`
+    — SHA prefix correct, date 4 days off. See CF5.6 §3 [SOFT-DRIFT].
+
+Performance posture lock: NO quantitative ceiling claims from S1. Existing
+benches at `hyperon-space/benches/atom_index.rs` and `lib/benches/
+grounding_space.rs` operate at 100/x10/x100 atom scales [LOCKED via Phase 4
+Q6]. Phase 4 mirror-service work must include an empirical bench harness.
+
+--------------------------------------------------------------------------------
+S1.Q7. PYTHON BINDING PARITY
+--------------------------------------------------------------------------------
+
+[CONSENSUS-with-vocab-correction] Verdict: [PY-PARTIAL-WITH-GAPS]
+
+[V1-Q7-VOCAB-DRIFT]: Gemini `[PYBIND11-BINDINGS]` is a non-vocab descriptive
+tag (true: pybind11 IS the binding mechanism, but does not characterize
+parity). Codex `[PYTHON-PARITY-BROAD-BUT-OBSERVER-GAP]
+[PYTHON-SPACE-WRITE-API-EXPOSED]` is a non-vocab descriptive tag with the
+right semantic content. Reconciliation re-tags per brief §7 as
+[PY-PARTIAL-WITH-GAPS] — broad coverage, with the live Python observer-
+registration gap (PATCH-1 [LOCKED]) the singular known gap.
+
+Authoritative citations (LOCKED prior art per Phase 4 P7 + P9):
+  - `python/hyperon/base.py:168` `SpaceRef`.
+  - `base.py:205, :211, :217` `add_atom`, `remove_atom`, `replace_atom`
+    [LOCKED via P1 + P7].
+  - `python/hyperon/runner.py:24` `RunnerState`; `:88` module loading;
+    `:107` `MeTTa`; `:206` run; `:216` evaluate atom (Codex-NEW).
+  - `python/hyperonpy.cpp:1017-1026` interpreter stepping (Codex-NEW).
+  - `hyperonpy.cpp:1047-1053` type checking + lookup (Codex-NEW).
+  - `hyperonpy.cpp:1070-1122` run context, MeTTa construction, module
+    loading, run, atom evaluation (Codex-NEW).
+  - `python/hyperonpy.cpp:387` `PY_SPACE_NO_SUBST_API` [LOCKED via P7] — slot
+    inventory (add/remove/replace/query/count/iter/free) lacks observer slot.
+  - `python/hyperonpy.cpp:422-434, :437-448, :456-469` Python-space wrappers
+    that DO emit C-side SpaceEvents on Python custom-Space mutations [LOCKED
+    via P7]. **Important nuance (Codex-NEW)**: Python custom spaces fire
+    SpaceEvents that C-side observers can receive, but Python *itself* still
+    cannot register observers. PATCH-1 scope unchanged.
+  - EventAgent [LOCKED via P9] at `python/hyperon/exts/agents/agent_base.py:
+    202` (definition) / `:256` (subscriptions) / `:305-312` (publish).
+    BasicEventBus at `python/hyperon/exts/agents/events/basic_bus.py:6`.
+    PR #852 merge-commit `2fd826d4` [VERIFIED via `git show --stat`].
+
+--------------------------------------------------------------------------------
+S1.Q8. C BINDING PARITY
+--------------------------------------------------------------------------------
+
+[CONSENSUS-with-vocab-correction-and-rejection] Verdict: [C-CORE-ONLY]
+            with broad observer surface; Gemini Q8 file-cite REJECTED.
+
+[V1-Q8-CITE-REJECTED] [HALLUCINATED-CITE]: Gemini cited
+`c/include/hyperon/hyperon.h` as the source for `[C-STRUCT-OPAQUE-PTR]`
+verdict. Verification: `c/include/` directory does NOT exist at HEAD. The
+c/ crate has Cargo.toml + cbindgen.toml + src/ + tests/ + doc/, no `include/`
+directory. C headers are AUTO-GENERATED by cbindgen (per `c/cbindgen.toml`)
+at build time, not source-controlled. Gemini's verdict tag
+[C-STRUCT-OPAQUE-PTR] may be substantively correct (opaque-struct pattern is
+the typical cbindgen output for non-`#[repr(C)]` Rust types), but the cited
+evidence file does not exist. **CITE REJECTED** per option (ii) protocol.
+
+Reconciliation adopts Codex's authoritative C-API citations [LOCKED via
+Phase 4 P1, P2, P4]:
+  - `c/src/space.rs:69` `space_new`.
+  - `c/src/space.rs:140, :152, :170` `space_add`, `space_remove`,
+    `space_replace`.
+  - `c/src/space.rs:184, :203, :220, :237` query, subst, count, iteration.
+  - `c/src/space.rs:401, :419` `space_event_get_type`,
+    `space_event_get_field_atom`.
+  - `c/src/space.rs:464` `space_register_observer` [LOCKED via P7] — exists
+    on the C side; PATCH-1 is the missing pybind11 binding for it.
+  - `c/src/space.rs:632` observer notification through SpaceParams.
+  - `c/src/space.rs:646, :659, :673` add/remove/replace event constructors.
+
+C MeTTa/runner surface (Codex-NEW):
+  - `c/src/metta.rs:838, :854, :882` MeTTa instance construction.
+  - `metta.rs:957, :969` space + tokenizer accessors.
+  - `metta.rs:1005` parser-input run.
+  - `metta.rs:1035` atom evaluation.
+  - `metta.rs:1062, :1094` module loading.
+  - `metta.rs:1305-1407` runner-state stepping + results.
+
+Brief vocabulary {[C-FULL-PARITY], [C-CORE-ONLY], [C-PARTIAL-WITH-GAPS]}:
+[C-CORE-ONLY] best fits the evidence — broad runtime surface (atom + space
++ metta + observers + module loading + runner-state), but cluster pilot did
+not enumerate exhaustive Rust-vs-C parity gaps in S1; Codex did NOT explicitly
+identify functions whose Rust equivalents lack C bindings. Promotion to
+[C-FULL-PARITY] would require a comprehensive parity grep, which is deferred.
+
+--------------------------------------------------------------------------------
+S1.Q9. SANDBOX MODULES — STATUS AND SCOPE
+--------------------------------------------------------------------------------
+
+[CONSENSUS-with-vocab-correction] Verdict per sandbox module
+            (single-label per brief §7):
+
+[V1-Q9-VOCAB-DRIFT]: Gemini provided no per-sandbox verdict tags — only
+inventory text. Codex's overall block-tag `[SANDBOX-PROTOTYPES-NOT-PACKAGED]`
+[REFERENCE-PRECEDENTS-NOT-API] is a brief-spirit-conforming meta-verdict but
+not the brief's per-sandbox single-label requirement. Reconciliation
+attaches per-sandbox tags from {[SANDBOX-ACTIVE], [SANDBOX-PROTOTYPE],
+[SANDBOX-ABANDONED], [SANDBOX-EXAMPLE-ONLY]}:
+
+  - sql_space:    [SANDBOX-PROTOTYPE] (Codex Q9 + Phase 4 P11 [LOCKED]:
+                  130-line working pattern, naive SQL string concat, no
+                  observer wiring, no transactions, no Decko schema)
+  - mork:         [SANDBOX-PROTOTYPE] (Codex Q9: TODOs at :32, :47 keep
+                  it prototype-level)
+  - neurospace:   [SANDBOX-PROTOTYPE] (Codex Q9: NeuralSpace at :36,
+                  IntentSpace at :52)
+  - jetta:        [SANDBOX-EXAMPLE-ONLY] (Codex Q9: compile.py:9 says
+                  "Jetta should be installed by cloning trueagi-io/jetta";
+                  S6 cross-link target — see V1 forward C1-5)
+  - numpy:        [SANDBOX-PROTOTYPE] (Codex Q9: numme.py experimental)
+  - pytorch:      [SANDBOX-PROTOTYPE] (Gemini Q9: torchme.py / "Func-Signature
+                  JSON for type-aware tensor ops")
+  - bhv_binding:  [UNCLASSIFIED-S1-OPEN] — neither reviewer enumerated
+                  contents in detail. Defer to S2-S6 if relevant.
+  - repl:         [UNCLASSIFIED-S1-OPEN] — relationship to top-level repl/
+                  Rust crate not characterized.
+  - resolve:      [UNCLASSIFIED-S1-OPEN] — neither reviewer enumerated.
+
+Boundary (Codex-NEW): `python/pyproject.toml:38` packages only `hyperon`;
+the `sandbox/` directory is NOT listed as a package. None of the sandbox
+modules are stable release API. S2-S6 should treat them as precedent and
+adjacency, not as packaged interfaces.
+
+--------------------------------------------------------------------------------
+S1.Q10. INTEGRATION TEST COVERAGE
+--------------------------------------------------------------------------------
+
+[CONSENSUS-with-vocab-correction] Verdict: [TEST-COVERAGE-ADEQUATE]
+
+[V1-Q10-VOCAB-DRIFT]: Gemini `[HEAVY-RUNNER-TESTING]` is non-vocab; Codex
+`[MULTILAYER-TEST-COVERAGE] [STATIC-AUDIT-NOT-TEST-RUN]` is non-vocab but
+content-correct. Reconciliation re-tags per brief §7 as [TEST-COVERAGE-
+ADEQUATE]. The brief's third option [TEST-COVERAGE-MINIMAL-DAS-ONLY] is
+explicitly REFUTED — tests exist across multiple layers, not only
+integration_tests/das/.
+
+Authoritative test-corpus inventory (Codex-thorough):
+  - Rust library tests in `lib/tests/` and inline `#[test]` blocks in
+    source files. `lib/src/metta/interpreter.rs` has 52 `#[test]`
+    occurrences; `lib/src/metta/types.rs` has 38.
+  - C tests under `c/tests/`: `check_atom.c`, `check_runner.c`,
+    `check_space.c`, `check_types.c`.
+  - Python tests under `python/tests/`. `python/tests/test_run_metta.py:
+    84-104` enumerates many MeTTa script tests.
+  - DAS integration tests under `integration_tests/das/`.
+  - Test-corpus path-count via `(rg --files | rg "(^|/)(tests?|benches|
+    integration_tests)/|test|_test|tests\.rs|\.metta$" | Measure-Object).
+    Count = 101` [VERIFIED via Codex's verbatim shell output].
+
+NEITHER reviewer ran the test suite. This is a STATIC code-reading audit,
+not a build/runtime validation pass. Cluster-close: do NOT publish "tests
+pass" claims based on S1 evidence.
+
+--------------------------------------------------------------------------------
+S1.Q11. HYPERON 0.2.X RUNTIME QUIRKS — VERIFICATION AT HEAD
+--------------------------------------------------------------------------------
+
+[CONSENSUS-with-vocab-correction] Three sub-quirks verdicted independently:
+
+  Q-1 bind!+new-space:  [QUIRK-CONFIRMED-AT-HEAD]
+  Q-2 cond:             [QUIRK-FIXED-SINCE-V0-2-1] (via absence — see below)
+  Q-3 catchall:         [QUIRK-CONFIRMED-AT-HEAD] (semantic, not bug)
+
+[V1-Q11-VOCAB-DRIFT]: Gemini Q-3 used `[VERIFIED]` which is not in brief §7
+{[QUIRK-CONFIRMED-AT-HEAD], [QUIRK-FIXED-SINCE-V0-2-1], [QUIRK-PARTIAL]}.
+Codex Q-2 used `[V0210-QUIRKS-REFINED]` block-tag rather than per-quirk
+brief-vocab. Reconciliation re-tags all three per brief §7.
+
+Authoritative per-quirk evidence:
+
+Q-1 bind! + new-space — [QUIRK-CONFIRMED-AT-HEAD]
+  - `lib/src/metta/runner/stdlib/module.rs:246-279` `BindOp` registers a
+    token in the tokenizer. BindOp::execute body starts at :269 [VERIFIED
+    via sed:269 — Gemini's cite].
+  - `lib/src/metta/runner/stdlib/space.rs:13-30` `new-space` creates a new
+    `GroundingSpace`.
+  - **NO code path in BindOp clears or garbage-collects atoms in an
+    already-bound space**. Operational guidance: do NOT treat
+    `!(bind! &name (new-space))` as a reliable reset of an existing live
+    space. Memory `reference_hyperon_0210_quirks.md` Q-1 wording remains
+    accurate at v0.2.10. Use explicit `(match &name (pattern)
+    (remove-atom &name (pattern)))` workaround.
+
+Q-2 cond — [QUIRK-FIXED-SINCE-V0-2-1] (via absence)
+  - `rg -n "\bcond\b|\(cond\b|cond\(" lib/src/metta python/tests docs`
+    returns NO stdlib/builtin `cond` implementation (hits are local variable
+    names in docs/examples) [VERIFIED orchestrator-side: `git grep -i 'cond\b'
+    lib/src/metta/runner/stdlib/` returns substring matches in "second" only].
+  - `git log -S "(cond"` returns NO source history for a `cond` form.
+  - `stdlib.metta:511-513` provides `if`; `:1224-1233` provides `case`
+    (Codex-NEW alternative-mappings).
+
+  **Substance reconciliation**: the v0.2.1 quirk "cond is non-reducing" is
+  NO LONGER APPLICABLE at v0.2.10 because cond IS NOT IMPLEMENTED. This is
+  technically a [QUIRK-FIXED-SINCE-V0-2-1] outcome, but the form-of-fix is
+  "removal" not "correction". Memory `reference_hyperon_0210_quirks.md` Q-2
+  must be updated at cluster close from "cond is broken" to "cond does NOT
+  exist as a builtin at v0.2.10; use `if`, `case`, `match`, or user-defined
+  equations".
+
+Q-3 catchall multi-reduction — [QUIRK-CONFIRMED-AT-HEAD]
+  - `docs/minimal-metta.md` describes nondeterministic branching semantics.
+  - `lib/src/metta/interpreter.rs:604` `query` returns all matching equality
+    forms.
+  - `python/tests/scripts/b4_nondeterm.metta` explicitly tests multi-result
+    behavior.
+  - `lib/src/metta/interpreter.rs:1599` shows `$_` as catchall in test
+    `(chain (eval (bar)) $_` [VERIFIED via sed:1599 — Gemini's cite].
+
+  **Substance reconciliation (Codex-NEW)**: the catchall multi-reduction
+  behavior is THIS interpreter's documented nondeterministic semantics, not
+  a stale bug report. The v0.2.1 memory wording "Catchall equations cause
+  duplicate reductions" is half-right (it does cause multiple reductions
+  when patterns aren't mutually exclusive); but the fix is "use mutually
+  exclusive patterns", not "wait for a fix in the runtime". Memory
+  `reference_hyperon_0210_quirks.md` Q-3 wording should be updated at
+  cluster close to characterize this as language-design semantics rather
+  than a defect.
+
+--------------------------------------------------------------------------------
+S1.Q12. WIKI / ORIENTATION-DOC PRIOR-ART AUDIT
+--------------------------------------------------------------------------------
+
+[CONSENSUS] Verdict: [WIKI-SANDRA-SPEC-PORT-CONFIRMED]
+                     [HYPERON-EXPERIMENTAL-FULL-CARD-MISSING]
+                     [LIB-SPACES-PHANTOM-CONFIRMED]
+
+[CONSENSUS-finding R1.NEW-2 — see Executive Summary]:
+
+Wiki card 630 (`MeTTa Programming Language+Hyperon Experimental`):
+  - Cardtype: **IndexSubtopic** (orchestrator-verified via get_card)
+  - Updated: **2026-05-08T18:16:48Z** (today, this session date) —
+    Sandra-spec parallel agent touched this card during the orchestrator's
+    extraction-return window.
+  - Sibling structure: +responsible / +approval / +description / +github /
+    +docs / +examples / +roadmap / +deep_dive / +tags / +discussion (the
+    Sandra-spec port pattern with full sibling-card layout).
+  - +github → `https://github.com/trueagi-io/hyperon-experimental/`
+    (verified by Codex Q12).
+  - +description correctly frames hyperon-experimental as the original Rust
+    reference implementation with Python and C integration (Codex Q12).
+  - +deep_dive points to `{{_left+Hyperon Experimental Full|view:link;
+    title:Hyperon Experimental Full}}` — the target card NAME would be
+    `MeTTa Programming Language+Hyperon Experimental+Hyperon Experimental Full`.
+
+  - **DEEP_DIVE TARGET MISSING**: orchestrator-verified via search_cards
+    "Hyperon Experimental Full" — ZERO matches. The deep_dive sibling
+    contains a working inclusion link to a non-existent card. This is a
+    cluster-close edit candidate (per Codex V1-9): create the Full card
+    with the S1 reconciliation findings as content scaffold.
+
+P10 [LOCKED]: `lib_spaces.metta` phantom citation re-confirmed:
+  - `rg -n "lib_spaces" hyperon-experimental` returns ZERO hits (Codex Q12).
+  - Successor surfaces: `lib/src/metta/runner/stdlib/space.rs` (Rust ops);
+    `hyperon-space/` (Space crate); `lib/src/space/grounding/` (concrete
+    impl); `lib/src/metta/runner/builtin_mods/das.metta` (DAS docs);
+    `lib/src/metta/runner/stdlib/stdlib.metta` (stdlib docs).
+  - No NEW phantom citation discovered for hyperon-experimental in S1.
+
+Sandra-spec port awareness (per `feedback_sandra_spec_port_recheck_before_
+batch.md`): the MeTTa Programming Language+Hyperon Experimental parent's
+sibling structure was Sandra-spec ported 2026-05-08T18:16:48Z. Cluster-close
+edit batch on this card subtree must re-read all targets fresh per the
+re-check protocol; the edit batch must target the Sandra-spec sibling cards
+(+description / +github / +docs / +examples / +roadmap / +deep_dive) directly,
+NOT the +content shell (which under IndexSubtopic is a render-time inclusion
+of the siblings).
+
+================================================================================
+CROSS-MODEL DISSENTS (V1-N-X)
+================================================================================
+
+V1-Q5-VOCAB-DRIFT
+  Gemini verdict `[ISOLATED-MODULE-LOADERS]` not in brief §7 vocabulary.
+  Substance correct (imports create separate DynSpace instances per
+  stdlib/module.rs:290 [VERIFIED]) but tag does not conform.
+  Adjudication: re-tag as [MODULE-SYSTEM-PARTIAL] per brief §7.
+
+V1-Q6-VOCAB-DRIFT
+  Gemini verdict `[EXPRESSION-SIZE-PREFIXED]` describes a 2025-08
+  optimization, not the index posture as a whole. Codex verdict
+  `[IN-MEMORY-ATOMTRIE-INDEX] [ACTIVE-INDEX-BACKEND]
+  [NO-BENCHMARK-CLAIMS-IN-S1]` is non-vocab but characterizes correctly.
+  Adjudication: adopt [IN-MEMORY-ATOMTRIE-INDEX] [NO-BENCHMARK-CLAIMS-IN-S1].
+
+V1-Q7-VOCAB-DRIFT
+  Gemini `[PYBIND11-BINDINGS]` is the binding mechanism, not parity.
+  Codex `[PYTHON-PARITY-BROAD-BUT-OBSERVER-GAP] [PYTHON-SPACE-WRITE-API-
+  EXPOSED]` is non-vocab descriptive.
+  Adjudication: re-tag as [PY-PARTIAL-WITH-GAPS] per brief §7.
+
+V1-Q8-CITE-REJECTED  [HALLUCINATED-CITE]
+  Gemini cited `c/include/hyperon/hyperon.h` for `[C-STRUCT-OPAQUE-PTR]`
+  verdict. The path does NOT exist at HEAD. The `c/include/` directory
+  does not exist; C headers are auto-generated by cbindgen.
+  Adjudication: REJECT the cite. Re-tag verdict as [C-CORE-ONLY] per
+  brief §7 with Codex's authoritative C-API citations from c/src/.
+  Cumulative drift event count: +1 hard rejection (V4-11 pattern recurrence).
+
+V1-Q9-VOCAB-DRIFT
+  Gemini gave no per-sandbox verdict tags (only inventory). Codex's overall
+  block-tag is brief-spirit but not per-sandbox single-label.
+  Adjudication: assign per-sandbox tags from brief §7 vocabulary.
+
+V1-Q10-VOCAB-DRIFT
+  Both reviewers used non-vocab tags. Codex `[MULTILAYER-TEST-COVERAGE]
+  [STATIC-AUDIT-NOT-TEST-RUN]` — content-correct, non-vocab. Gemini
+  `[HEAVY-RUNNER-TESTING]` — narrow framing.
+  Adjudication: re-tag as [TEST-COVERAGE-ADEQUATE] per brief §7.
+
+V1-Q11-VOCAB-DRIFT
+  Gemini Q-3 used `[VERIFIED]` (non-vocab); Codex Q-2 used block-tag
+  `[V0210-QUIRKS-REFINED]` instead of per-quirk brief vocab.
+  Adjudication: re-tag per brief §7 — Q-1 [QUIRK-CONFIRMED-AT-HEAD],
+  Q-2 [QUIRK-FIXED-SINCE-V0-2-1], Q-3 [QUIRK-CONFIRMED-AT-HEAD].
+
+V1-Q3-INVENTORY-DEPTH-DELTA  [NEW-CODEX]
+  Codex's stdlib operator inventory enumerates ~50+ ops with file:line
+  citations across 9 .rs modules + ~20 .metta definitions. Gemini's
+  inventory is partial (~15 ops, no file:line for individual ops).
+  Adjudication: adopt Codex's inventory as authoritative; Gemini's
+  enumeration is a strict subset; no semantic dissent.
+
+V1-Q1-NUANCE-DELTA  [NEW-CODEX]
+  Codex contributes the boundary-statement that S1.Q1 interpreter
+  semantics is NOT a deterministic "first match wins" rewrite engine —
+  this directly informs S1.Q11 Q-3 catchall reconciliation. Gemini's
+  S1.Q1 framing is consistent but does not surface the boundary.
+  Adjudication: adopt Codex's boundary statement as cross-source forward
+  C1-1 (carry to S2-S6 per V1-1).
+
+V1-Q2-DEPENDENT-TYPE-NUANCE  [NEW-CODEX]
+  Codex surfaces dependent-type tests at types.rs:817/:861/:1120/:1139 +
+  open TODOs at multiple lines, leading to verdict
+  [DEPENDENT-TYPE-EXPRESSIVE-BUT-NOT-PROVER]. Gemini does not surface
+  dependent-type test evidence.
+  Adjudication: include nuance in reconciliation Q2 prose; verdict tag
+  remains [DYNAMIC-CHECKED] per brief §7.
+
+V1-Wiki-1  [NEW-ORCHESTRATOR]
+  Wiki card 630 was Sandra-spec ported during the orchestrator's
+  extraction-return window (updated 2026-05-08T18:16:48Z). Sibling
+  structure includes +deep_dive pointing to non-existent
+  `{{_left+Hyperon Experimental Full|view:link;title:Hyperon Experimental Full}}`.
+  Adjudication: cluster-close edit candidate to create Full card; targets
+  the Sandra-spec sibling subtree per re-check protocol.
+
+V1-Wiki-2  [NEW-ORCHESTRATOR + Codex Q12]
+  No NEW phantom citations discovered for hyperon-experimental beyond
+  P10's locked lib_spaces.metta.
+  Adjudication: P10 lock-in re-confirmed; no new phantom adopted.
+
+================================================================================
+GEMINI CITE-VERIFICATION LOG (OPTION (ii) PROTOCOL)
+================================================================================
+
+§1. NUMERICAL CITES (P12 verbatim protocol)
+
+  N1.  `git rev-list --left-right --count main...v0.2.1` = "1077    0"
+       Gemini reported: "1077    0"
+       Orchestrator-verified: "1077\t0" (verbatim match) — PASS.
+
+  N2.  `git ls-files | wc -l` = "296"
+       Gemini reported: "296"
+       Orchestrator-verified: "296" — PASS.
+
+  N3.  `wc -l lib/src/metta/interpreter.rs` = "2170"
+       Gemini reported: "2170"
+       Orchestrator-verified: "2170 lib/src/metta/interpreter.rs" — PASS.
+
+  N4.  `wc -l lib/src/metta/types.rs` = "1319"
+       Gemini reported: "1319"
+       Orchestrator-verified: "1319 lib/src/metta/types.rs" — PASS.
+
+  N5.  `wc -l lib/src/metta/runner/stdlib/stdlib.metta` = "1421"
+       Gemini reported: "1421"
+       Orchestrator-verified: "1421 ..." — PASS.
+
+  Numerical-class summary: 5/5 PASS verbatim. P12 protocol working as
+  designed for S1. No load-bearing rejections.
+
+§2. FILE-PATH CITES
+
+  F1.  `lib/src/metta/interpreter.rs` — exists at HEAD; 2170 lines (P12 N3).
+       PASS.
+
+  F2.  `lib/src/metta/types.rs` — exists; 1319 lines. PASS.
+
+  F3.  `lib/src/metta/runner/stdlib/stdlib.metta` — exists; 1421 lines. PASS.
+
+  F4.  `lib/src/metta/runner/stdlib/core.rs` (for SuperposeOp Q1) — exists.
+       PASS.
+
+  F5.  `lib/src/metta/runner/stdlib/module.rs` (for BindOp Q11/import! Q5) —
+       exists; 317 lines. PASS.
+
+  F6.  `lib/src/metta/runner/builtin_mods/mod.rs` (for Q4) — exists; 28
+       lines. PASS (note: line range L16-25 cited; actual loader registrations
+       at :26-31; off-by-10ish line drift, see §3-N1).
+
+  F7.  `hyperon-space/src/index/trie.rs` (for Q6) — exists; 930 lines.
+       PASS (note: Gemini's "L1-33632" citation is a SOFT-CONFABULATION —
+       33632 is the BYTE size of the file, not the line count, see §3-N2).
+
+  F8.  `python/hyperonpy.cpp` (for Q7) — exists. PASS.
+
+  F9.  `c/include/hyperon/hyperon.h` (for Q8) — **DOES NOT EXIST AT HEAD**.
+       The `c/include/` directory does NOT exist. The c/ crate has
+       Cargo.toml + cbindgen.toml + src/ + tests/ + doc/. C headers are
+       AUTO-GENERATED by cbindgen at build time, NOT source-controlled.
+       **HALLUCINATED-CITE — REJECTED**. (HARD rejection, V4-11 pattern.)
+
+  Path-class summary: 8/9 PASS, 1 [HALLUCINATED-CITE] REJECTED. The Q8
+  rejection is a V4-11 [GEMINI-INTERPRETATION-VERIFICATION] pattern
+  recurrence (HAA S5 had 3 V4-11 hallucinated paths: NACE/src/main.cpp,
+  NACE/src/NACE.cpp:12-25, AI-DSL/src/Composition.idr).
+
+§3. LINE-NUMBER CITES (sed -n verification)
+
+  L1.  interpret_step at interpreter.rs:269 → matches `pub fn
+       interpret_step(mut state: InterpreterState) -> InterpreterState`.
+       PASS.
+
+  L2.  interpret_stack at interpreter.rs:374 → matches `fn interpret_stack
+       (context: &InterpreterContext, stack: Stack, mut bindings: Bindings,
+       max_stack_depth: usize) -> Vec<InterpretedAtom>`. PASS.
+
+  L3.  SuperposeOp at core.rs:353 → matches `tref.register_token(regex(
+       r"superpose"), move |_| { superpose_op.clone() });`. SOFT NUANCE:
+       Gemini said "SuperposeOp in stdlib/core.rs (L353)" — :353 is the
+       REGISTRATION (token-binding) line, not the SuperposeOp struct
+       definition. Substance preserved (line content correctly identifies
+       superpose registration). Codex Q3 cited :336-362 as the registration
+       block. PASS.
+
+  L4.  check_type at types.rs:602 → matches `pub fn check_type(space:
+       &DynSpace, atom: &Atom, typ: &Atom) -> bool`. PASS.
+
+  L5.  validate_atom at types.rs:637 → matches `pub fn validate_atom
+       (space: &DynSpace, atom: &Atom) -> bool`. PASS.
+
+  L6.  import! at stdlib/module.rs:290 → matches `tref.register_token
+       (regex(r"import!"), move |_| { import_op.clone() });`. PASS.
+
+  L7.  BindOp::execute at stdlib/module.rs:269 → matches
+       `fn execute(&self, args: &[Atom]) -> Result<Vec<Atom>, ExecError> {`
+       (within `impl CustomExecute for BindOp` block). PASS.
+
+  L8.  catchall $_ at interpreter.rs:1599 → matches
+       `              (chain (eval (bar)) $_`. PASS.
+
+  Line-class summary: 8/8 PASS exact match. No drift.
+
+§4. INTERPRETATION CITES (V4-11 protocol)
+
+  I1.  Gemini: "cond is not found in core.rs registrations or stdlib.metta
+       definitions at HEAD"
+       Orchestrator-verified: `git grep -i 'cond\b' lib/src/metta/runner/
+       stdlib/` returns substring matches in "second" only; no `cond`
+       operator. PASS.
+
+  I2.  Gemini: "Commit 120c227 (2025-08-22) added size prefixing to
+       expressions for faster indexing"
+       Orchestrator-verified via `git log --all -S 'AtomTrie'`:
+       `120c2279 2025-08-26 23:51:21 Prefix expressions with size in
+       atomspace index to recognize them faster`.
+       SHA prefix (`120c227`) correct; date drift 2025-08-22 → 2025-08-26
+       (4 days). Substance correct, date metadata drifted. SOFT-DRIFT.
+
+  I3.  Gemini: "imports via `import!` create separate `DynSpace` instances"
+       Orchestrator-verified by reading import_dependency_as at
+       `modules/mod.rs:107` + Codex's verification — substance correct.
+       PASS.
+
+  I4.  Gemini: "BindOp::execute registers a new token; it shadows but
+       does not clear existing spaces"
+       Orchestrator-verified by reading BindOp body at module.rs:269+
+       (sed -n '267,272p'): the function takes `(token, atom)` args and
+       calls into the tokenizer; no atom-clearing path. PASS.
+
+  Interpretation-class summary: 4/4 substantively correct. 1 SOFT-DRIFT
+  (commit date 4-day off in I2). No load-bearing rejections.
+
+§5. CUMULATIVE DRIFT ESTIMATE — POST-S1
+
+  Pre-S1 cumulative: ~32/49 ≈ 65% (post-HAA close 2026-05-07).
+  S1 contributions:
+    HARD rejections (file-path hallucinations): +1 (V1-Q8)
+    SOFT drifts (line/date/cosmetic): +2 (trie.rs L1-33632 byte/line
+                                          confusion; commit date 4-day off)
+    VOCAB drifts (brief-vocab non-conformance): pattern, not per-cite count
+                                                — flagged as V1-VOCAB-DRIFT
+                                                across Q5/Q6/Q7/Q9/Q10/Q11.
+
+  New cumulative (hard + soft only, vocab as separate concern):
+    ~35/52 ≈ 67% (under the 75% gate; approximately flat).
+
+  V4-11 pattern: hallucinated file-path recurrence in Q8 (after 3 such
+  patterns in HAA S5). Note that, unlike HAA S5, the Q8 hallucination did
+  NOT propagate adjacent verdict drift — Gemini's [C-STRUCT-OPAQUE-PTR] is
+  substantively correct (cbindgen DOES emit opaque structs); only the
+  cited evidence file is fabricated. This is a positive signal for option
+  (ii) — adjacent-claim-skepticism is reduced when the underlying tag is
+  defensible from independent ground.
+
+  V4-2 pattern: brief-vocab non-conformance recurrence on Q5, Q6, Q7, Q9,
+  Q10, Q11. This is a DISCIPLINE recurrence rather than a fabrication
+  recurrence. Recommend the S2 dispatch include a stronger "single-label
+  per question, exactly from §7" instruction — the brief already requires
+  it (V4-2 lesson) but the explicit instruction may need elevation.
+
+  Decision: STAY ON OPTION (ii). 75% gate not crossed. Re-evaluate at
+  S2 close.
+
+================================================================================
+STALE-CLAIM VERIFICATIONS (P-N AUDIT)
+================================================================================
+
+P-1 [P-CLAIM-VERIFIED]: hyperon-experimental is the trueagi-io official
+    Rust reference implementation of MeTTa. Confirmed via Cargo workspace
+    members and repo identity at HEAD.
+
+P-2 [P-CLAIM-VERIFIED]: v0.2.10 is the latest stable release at brief
+    drafting date 2026-05-08. Verified via `git tag --sort=-v:refname`
+    showing v0.2.10 as most recent.
+
+P-3 [P-CLAIM-LOCKED]: DAS module default-enabled Cargo feature.
+    Re-confirmed by both reviewers via lib/Cargo.toml:46.
+
+P-4 [P-CLAIM-VERIFIED-WITH-REFINEMENT]: Hyperon 0.2.x runtime quirks at
+    HEAD `3f76dc46`:
+      Q-1: [QUIRK-CONFIRMED-AT-HEAD] (memory wording accurate at v0.2.10).
+      Q-2: [QUIRK-FIXED-SINCE-V0-2-1] (cond not implemented; memory
+            wording must be REFINED at cluster close).
+      Q-3: [QUIRK-CONFIRMED-AT-HEAD] (semantic, not bug; memory wording
+            should be REFINED to characterize as nondeterministic semantics
+            rather than a defect).
+
+P-5 [P-CLAIM-LOCKED]: PR #852 EventAgent IS mainline.
+    Re-confirmed by Codex via `git show --stat --oneline 2fd826d4`.
+
+P-6 [P-CLAIM-LOCKED]: Python sandbox sql_space is a Postgres custom-Space
+    precedent. Re-confirmed by both reviewers.
+
+P-7 [P-CLAIM-VERIFIED]: lib_spaces.metta phantom citation. Re-confirmed
+    by Codex Q12 via `rg -n "lib_spaces"` returning zero hits.
+
+================================================================================
+NEW PROTOCOLS / LESSONS FOR CLUSTER-PILOT REGISTRY
+================================================================================
+
+V1-PROTOCOL-1 (Brief vocabulary enforcement)
+  Brief vocabulary §7 specifies single-label-per-question for most
+  verdict slots. Reviewers in S1 used non-vocab tags on 6+ questions
+  (V4-2 recurrence). For S2 dispatch, the brief MUST elevate the
+  single-label-from-§7 instruction beyond the "verdict tag from {set}"
+  parenthetical — recommend an explicit "Use EXACTLY ONE tag from the
+  set in §7. Do not invent new tags. Adjacent descriptive tags belong
+  in prose body, not in the verdict line." instruction.
+
+V1-PROTOCOL-2 (Byte-vs-line discrimination)
+  Gemini's trie.rs "L1-33632" cite confused the file's BYTE size with a
+  line range. For S2-S6 dispatch, P12 protocol should add a clarifier:
+  "When citing a file's range, distinguish bytes (file size in bytes,
+  use `wc -c` or `ls -la`) from lines (use `wc -l`). Never cite a byte
+  count in a 'L<n>-<m>' line-range syntax."
+
+V1-PROTOCOL-3 (Cbindgen-generated headers)
+  C-API cluster pilots should NOT cite source-tree paths for headers
+  that are auto-generated by cbindgen. Verify via `c/cbindgen.toml`
+  whether headers are auto-generated; if so, reference the Rust-side
+  source (c/src/*.rs) and note that headers are emitted at build time
+  per cbindgen.toml. This is a generalizable lesson for any Rust-FFI
+  audit.
+
+================================================================================
+BOTTOM LINE — SOURCE 1 (hyperon-experimental)
+================================================================================
+
+REPO IDENTITY: trueagi-io/hyperon-experimental at HEAD `3f76dc46` =
+v0.2.10 = active Rust reference MeTTa runtime. Single canonical baseline
+for the MeTTa runtime cluster pilot.
+
+OVERALL ARCHITECTURAL VERDICT (12-question consensus):
+  [REFERENCE-RUST-METTA-RUNTIME] [SMALL-STEP-INTERPRETER]
+  [NONDETERMINISTIC-BRANCHING] [DYNAMIC-CHECKED] [HYBRID-RUST-PLUS-METTA-STDLIB]
+  [BUILTIN-FULLY-WIRED] [MODULE-SYSTEM-PARTIAL] [IN-MEMORY-ATOMTRIE-INDEX]
+  [NO-BENCHMARK-CLAIMS-IN-S1] [PY-PARTIAL-WITH-GAPS] [C-CORE-ONLY]
+  [SANDBOX-PROTOTYPES-NOT-PACKAGED] [TEST-COVERAGE-ADEQUATE]
+
+QUIRKS AT v0.2.10:
+  Q-1 bind!+new-space: confirmed at HEAD (memory accurate)
+  Q-2 cond: fixed via absence (memory wording must be refined)
+  Q-3 catchall: confirmed at HEAD (semantic, not bug; memory wording
+                should be refined)
+
+PHASE 4 PRIOR-ART RE-CONFIRMED: P1-P11 all hold at HEAD. PATCH-1 (Python
+observer registration binding) and PATCH-2 (MeTTa replace-atom! grounded
+op) remain accurately scoped. No code changes since v0.2.10 release would
+affect Phase 4 implementation work.
+
+WIKI STATE: card 630 IndexSubtopic Sandra-spec ported 2026-05-08; deep_dive
+target `Hyperon Experimental Full` does NOT exist. Cluster-close edit
+batch should create the Full card. Sandra-spec sibling subtree intact.
+
+================================================================================
+CROSS-SOURCE FORWARDS FOR S2-S6
+================================================================================
+
+C1-1 [LOCKED] (forward to S2-S6, generalized from V1-Q1 boundary):
+  Compare equality/dispatch semantics against the official nondeterministic
+  small-step interpreter, NOT against a deterministic "first match wins"
+  rewrite assumption. PeTTa Smart Dispatch, MeTTaTron compilation, MeTTaIL
+  semantics, MeTTaLog Prolog/WAM lineage, jetta JVM compiler all need this
+  framing.
+
+C1-2 [LOCKED] (forward to S3 MeTTa-Compiler, generalized from V1-Q2):
+  hyperon-experimental's type system is dynamic with %Undefined% wildcard
+  match-anything semantics. Compiler-side claims about static type
+  guarantees must be compared against this dynamic baseline; do not
+  describe MeTTaTron, FormalMeTTa, etc. as "identical" to hyperon-
+  experimental's type checker without evidence.
+
+C1-3 [LOCKED] (forward to S2-S6, generalized from V1-Q3):
+  Stdlib parity audits MUST cover both Rust-side token registration AND
+  MeTTa-side definitions in stdlib.metta. Single-layer audits will miss
+  behavior. PeTTa, metta-morph, MeTTaTron, MeTTaIL, FormalMeTTa, MeTTaLog,
+  jetta each must be classified against this two-layer inventory.
+
+C1-4 [LOCKED] (forward to S2-S6, generalized from V1-Q5):
+  Module system at hyperon-experimental is implemented and active but
+  evolving (poor man's public/private distinction). Alternative runtime
+  module semantics is a major comparison axis — describe each runtime's
+  module model relative to the moving target hyperon-experimental, not
+  relative to a fixed point.
+
+C1-5 [LOCKED] (forward to S6 jetta + atomspace-metta):
+  `python/sandbox/jetta/compile.py:9` says Jetta should be installed by
+  cloning `trueagi-io/jetta`. S6 jetta source cross-link verification
+  must include this sandbox precedent. atomspace-metta should be compared
+  against the C/Space surfaces (P1+P2+P7) rather than the nonexistent
+  lib_spaces.metta phantom (P10).
+
+C1-6 [LOCKED] (forward to S2 PeTTa+metta-morph):
+  Patrick Hammer authors PeTTa AND metta-morph. patham9 cross-pilot
+  attribution (HAA Source 1 AIRIS, HAA Source 5 NACE+MeTTa-NARS).
+  Reviewers must distinguish per-repo design intent vs Hammer's portfolio
+  signature.
+
+C1-7 [LOCKED] (forward to S5 metta-wam):
+  Branch identity finding from 2026-05-08 lock-in: vnamed (active) /
+  master (stale, 51 commits diverged in 2025-06 → 2025-08). 803 .cs
+  C# files in BOTH branches — structural feature, not branch-specific.
+  S5 reviewers MUST classify the C# layer at brief-drafting time.
+
+C1-8 [LOCKED] (cross-source forward — Hyperon 0.2.x quirks updated):
+  At v0.2.10:
+    - bind!+new-space NOT a reset (workaround required).
+    - cond DOES NOT EXIST as a builtin (use if/case/match).
+    - catchall multi-reduction is documented nondeterministic semantics.
+  S2-S6 must specify whether their runtime/compiler reproduces, fixes,
+  or sidesteps each.
+
+================================================================================
+CLUSTER-CLOSE EDIT CANDIDATES (PROPOSED — REQUIRES USER AUTHORIZATION)
+================================================================================
+
+The following are proposed edit candidates for cluster-close. None executed
+yet. User authorization required per orchestrator workflow.
+
+(1) WIKI: Create `MeTTa Programming Language+Hyperon Experimental+Hyperon
+    Experimental Full` (Draft cardtype). Content: S1 reconciliation findings
+    as scaffold (interpreter semantics + type system + stdlib + builtins +
+    modules + AtomIndex + Python/C bindings + sandbox status + tests +
+    quirks). Links: GitHub repo URL, this archive's reconciliation file,
+    cross-references to AtomSpace Phase 4 cluster pilot (PATCH-1 / PATCH-2).
+    Sibling: +tag (Pointer, `ai_generated`).
+
+    SANDRA-SPEC RE-CHECK: card 630 is IndexSubtopic ported 2026-05-08T18:
+    16:48Z. Before executing this create, re-read card 630's deep_dive
+    subcard to confirm the inclusion target name has not changed since
+    today's Sandra-spec port. The +deep_dive content currently reads
+    `{{_left+Hyperon Experimental Full|view:link;title:Hyperon Experimental
+    Full}}` per Codex Q12; verify still-accurate at write-time.
+
+(2) WIKI (optional, contingent on (1)): Add archive-backed notes to card
+    630's Sandra-spec siblings — +description / +docs / +examples — with
+    the runtime-semantics + stdlib-split + type-system caveat + module
+    caveat + Python observer gap + sandbox boundary findings, properly
+    formatted to match Sandra-spec sibling card style. NOT a +AI Draft
+    proposal child (card 630 is IndexSubtopic, not Published; sibling
+    cards under IndexSubtopic are Draft cardtype editable directly per
+    `feedback_published_card_edits.md`).
+
+(3) MEMORY: Update `reference_hyperon_0210_quirks.md`:
+    - Q-1 wording: keep as-is (still accurate at v0.2.10).
+    - Q-2 wording: replace "cond is non-reducing" with "cond does NOT
+      exist as a builtin at v0.2.10; use if, case, match, or user-defined
+      equations. Verified at HEAD `3f76dc46` 2026-05-08."
+    - Q-3 wording: refine to characterize as nondeterministic semantics
+      rather than defect; mutually exclusive patterns required for
+      deterministic dispatch.
+    - Add HEAD SHA `3f76dc46` and verification date 2026-05-08 as a
+      timestamp anchor.
+
+(4) MEMORY: Create `project_metta_runtime_pilot_source1_2026_05_08.md`
+    summarizing S1 close, locked V1 carry-forwards, drift metrics
+    (~67% cumulative), Phase 4 P1-P11 re-confirmations.
+
+(5) CLAUDE.md: Add MeTTa runtime cluster pilot section with audit table
+    row for S1; carry-forward C1-1..C1-8 lock-ins; "What's next" update
+    showing S2 PeTTa+metta-morph pending.
+
+(6) HYPERON_CLUSTER_FINDINGS.md (in `E:\GitHub\hyperon reference\`):
+    Add MeTTa runtime cluster pilot S1 close section with Phase 4
+    re-confirmation note + 0.2.x quirk verification at HEAD.
+
+(7) Git commit at S1 close: `Close MeTTa runtime cluster pilot Source 1
+    (hyperon-experimental, v0.2.10) — 12 questions reconciled, Phase 4
+    P1-P11 re-confirmed`. Co-Authored-By Claude.
+
+NO docs/ file edits proposed; runtime extraction did not falsify any
+docs/ROADMAP.md or docs/ATOMSPACE-INTEGRATION.md claims. Phase 4 architecture
+lock-in remains unchanged.
+
+================================================================================
+END OF RECONCILIATION — Source 1 (hyperon-experimental) — MeTTa runtime pilot
+================================================================================

@@ -1,0 +1,1032 @@
+================================================================================
+SOURCE 1 BRIEF — hyperon-experimental
+                 (MeTTa runtime cluster pilot, Source 1 of 6)
+================================================================================
+Source name:      trueagi-io/hyperon-experimental
+Cluster:          MeTTa runtime, Source 1 of 6 (per locked split 2026-05-08)
+Pilot order:      Option A (backlog burn-down) authorized 2026-05-05.
+Brief drafted:    2026-05-08
+Brief author:     Claude (orchestrator)
+Prior cluster:    Non-clustered HAA (closed 2026-05-07, commit 815194a)
+Locked split:     S1 hyperon-experimental | S2 PeTTa+metta-morph |
+                  S3 MeTTa-Compiler / MeTTaTron | S4 MeTTaIL+FormalMeTTa |
+                  S5 metta-wam (vnamed) | S6 jetta+atomspace-metta
+
+
+§0. SOURCE IDENTITY
+-------------------
+
+This is the FIRST source of the MeTTa runtime cluster pilot. hyperon-experimental
+is the trueagi-io official Rust reference implementation of the Hyperon MeTTa
+runtime — the foundational substrate every other source in this cluster either
+ports, transpiles, embeds, or bridges. Auditing it first is the prerequisite
+for cross-runtime reasoning across Sources 2-6.
+
+  Repo:     trueagi-io/hyperon-experimental
+  Origin:   https://github.com/trueagi-io/hyperon-experimental.git
+  Local:    E:\GitHub\hyperon reference\hyperon-experimental\
+  Branch:   main
+  HEAD:     3f76dc460da6961f57f69f6c3e550c59c74ada83
+  Tag:      v0.2.10 (Merge PR #1075 from vsbogd/update-version)
+  Date:     2026-02-11 14:04:17 +0300
+  Author:   Vitaly Bogdanov
+
+  Workspace: 7-crate Rust workspace (per /Cargo.toml [workspace] members):
+    - hyperon-common  (utility types: assert, collections, flex_ref, holeyvec,
+                       immutable_string, multitrie, owned_or_borrowed, reformove,
+                       shared, unique_string, vecondemand)
+    - hyperon-atom    (Atom representation: atom, gnd/, iter, matcher, serial,
+                       subexpr)
+    - hyperon-space   (Space abstractions: lib.rs + index/ — SpaceMut, Space,
+                       DynSpace, SpaceObserver, SpaceEvent, SpaceCommon, AtomTrie)
+    - hyperon-macros  (procedural macros)
+    - lib             (the main MeTTa runner: interpreter.rs, runner/,
+                       runner/stdlib/, runner/builtin_mods/, runner/modules/,
+                       runner/pkg_mgmt/, space/grounding/, space/module.rs,
+                       text.rs, types.rs)
+    - c               (C API: atom.rs, lib.rs, metta.rs, module.rs, serial.rs,
+                       space.rs, util.rs)
+    - repl            (interactive REPL crate)
+
+  Out-of-workspace dirs:
+    - python/         (pybind11 bindings via hyperonpy.cpp + Python package
+                       under hyperon/, sandbox modules under sandbox/)
+    - integration_tests/  (das/ subdirectory only at HEAD)
+    - docs/           (Markdown documentation: CONTRIBUTING, DEVELOPMENT,
+                       building_docs, das_setup, index, metta, minimal-metta,
+                       modules_dev, modules_internal_discussion, generated/,
+                       reference/)
+
+  Tracked-file inventory (per `git ls-files | wc -l`):
+    296 files total (85 .rs + 67 .metta + 65 .py + 22 .md + 10 .toml + 9 .c
+                     + 7 .yml + 6 .txt + 4 .h + 3 .svg + 2 .in + smaller misc)
+
+
+§0.A — RELEASE TIMELINE
+-----------------------
+
+Tag history (orchestrator-pre-fetched, per
+`git for-each-ref --sort=-creatordate refs/tags/`):
+
+    v0.2.10  2026-02-11   <- HEAD (this audit's pin)
+    v0.2.9   2025-11-26
+    v0.2.8   2025-09-12
+    v0.2.7   2025-09-10   (note: 2-day gap from 0.2.8 — verify hot-fix?)
+    v0.2.6   2025-07-09
+    v0.2.5   2025-04-29
+    v0.2.4   2025-04-08
+    v0.2.3   2025-03-07
+    v0.2.2   2025-01-16
+    v0.2.1   2024-10-23
+
+Cadence: 10 minor releases over ~16 months (2024-10-23 → 2026-02-11). HEAD
+itself is the version-bump merge for v0.2.10.
+
+
+§0.B — TOP-15 CONTRIBUTORS BY ALL-TIME COMMIT COUNT
+---------------------------------------------------
+
+Pre-fetched via `git shortlog -sn --all`:
+
+    2137  Vitaly Bogdanov     (vsbogd@gmail.com — primary maintainer)
+     547  Alexey Potapov      (PR #852 EventAgent author; Hyperon team lead)
+     436  Luke Peterson       (PathMap / sibling-repo author per AtomSpace pilot)
+     202  DaddyWesker
+     151  luketpeterson       (likely same person as Luke Peterson — combined: 587)
+     121  Innokenty
+      98  Wenwei Huang        (combined with "Wenwei" below: 133)
+      52  glicerico           (cross-pilot fork-author per OpenPsi Source 2)
+      45  Artur Gontijo       (DAS module documentation author 2026-01)
+      44  Oleg
+      42  Nil Geisweiller     (ngeiswei — cross-pilot reviewer/author per
+                                ECAN, OpenPsi, AtomSpace, HAA pilots)
+      35  Wenwei
+      35  sveta
+      26  Aleksei Isaev
+      24  Sergey Rodionov
+
+Reviewers: Codex/Gemini-side identity verifications for these authors should
+cross-check against AtomSpace + OpenPsi cluster-pilot prior art. Any "X wrote Y"
+claim must run `git log --author='<name>' -- <path>` per
+feedback_attribution_verify_against_git.md.
+
+
+§0.C — RECENT COMMITS (HEAD .. HEAD~20, pre-fetched)
+----------------------------------------------------
+
+Pre-fetched via `git log -20 --format='%h %ci %an %s'`:
+
+    3f76dc46  2026-02-11  Vitaly Bogdanov  Merge PR #1075: Update version to 0.2.10
+    5a2675b6  2026-02-11  Vitaly Bogdanov  Update version to 0.2.10
+    3eab571d  2026-01-30  Vitaly Bogdanov  Merge PR #1074: fix-metta-spec
+    f2d18ca7  2026-01-30  Vitaly Bogdanov  Fix empty result handling by metta_call
+    329dec44  2026-01-29  Vitaly Bogdanov  Fix typo
+    d791628b  2026-01-29  Vitaly Bogdanov  Merge PR #1073: print-mod-docs
+    07dff7dd  2026-01-28  Vitaly Bogdanov  Prevent printing No-doc when result not empty
+    61e2a25f  2026-01-28  Vitaly Bogdanov  Improve case function implementation
+    7b4b0741  2026-01-28  Vitaly Bogdanov  Print module docs in help! function
+    226ce160  2026-01-28  Vitaly Bogdanov  Merge PR #1072: artur-das-doc
+    97af6eb8  2026-01-27  Artur Gontijo    Add das.metta into module space
+    2f3cccff  2026-01-25  Artur Gontijo    Add das module documentation
+    9c5951c4  2026-01-22  Vitaly Bogdanov  Merge PR #1069: format-docs
+    0bebcb83  2026-01-22  Vitaly Bogdanov  Format modules documentation add link
+    cf317338  2026-01-22  Vitaly Bogdanov  Merge PR #1068: prevent-committing
+    e5370eb6  2026-01-22  Vitaly Bogdanov  Prevent committing generated documentation
+    e129557c  2026-01-22  Vitaly Bogdanov  Merge PR #1067: doc-catalog
+    610410da  2026-01-22  Vitaly Bogdanov  Document catalog module contents
+    815885ae  2026-01-21  Vitaly Bogdanov  Merge PR #1066: sort-docs
+    4c827c07  2026-01-21  Vitaly Bogdanov  Sort function documentation by name
+
+Pattern: HEAD~0..~20 is dominated by documentation-formatting + DAS-doc work
+(Vitaly Bogdanov + Artur Gontijo, 2026-01-21 → 2026-02-11). One semantic fix
+in the window: `f2d18ca7` "Fix empty result handling by metta_call". No new
+runtime architecture lands in this window.
+
+Reviewers: do NOT re-run these commits' git log. Run additional git only when
+answering a brief question requires deeper history (e.g., for module-system
+architecture, pickaxe at v0.2.5+ window since module work landed earlier).
+
+
+§1. SCOPE AND DELIVERABLE
+-------------------------
+
+Deliverable per reviewer (Codex + Gemini, parallel and independent):
+
+  scripts/archive/metta_runtime_pilot/source1_hyperon_experimental/
+      findings_codex.txt
+      findings_gemini.txt
+
+Per-question structure following the closed PLN/ECAN/OpenPsi/AtomSpace/
+Perception/AtomSpace-Phase-4/HAA pilot pattern. Twelve S1.Q questions in §6;
+all are MeTTa-runtime-specific (Phase 4 prior-art questions Q1-Q11 from
+AtomSpace Phase 4 Source 2 are LOCKED — see §3 — and reviewers MUST NOT
+re-litigate them).
+
+Estimated findings size ~250-400 lines per reviewer (similar to single-source
+pilots like AtomSpace Source 4; smaller than HAA S5 which had four sub-sources).
+
+After both findings files arrive, the orchestrator (Claude this session)
+produces:
+
+  scripts/archive/metta_runtime_pilot/source1_hyperon_experimental/
+      findings_reconciled_crossmodel.txt
+
+Including a Gemini cite-verification log per the new option (ii) protocol
+(see §10). Three-way sign-off (Codex + Gemini + orchestrator) before any
+cluster-close edit batch on the wiki.
+
+
+§2. ARTIFACTS TO READ
+---------------------
+
+The following module groupings are explicitly separated to avoid mixing
+audits across paradigm boundaries (per Codex's S1 dispatch suggestion
+2026-05-08):
+
+§2.A — hyperon-space crate (Space abstractions)
+    Path: hyperon-space/src/lib.rs (+ hyperon-space/src/index/)
+    Scope: traits Space (read-only) + SpaceMut (mutable) + DynSpace
+           (type-erased shared wrapper); SpaceObserver/SpaceEvent/SpaceCommon
+           observer pattern; AtomIndex/AtomTrie storage.
+    PRIOR ART (LOCKED, see §3): SpaceMut::add/remove/replace at
+           lib.rs:237/255/275; SpaceObserver/Event/Common at lib.rs:22-126;
+           SpaceCommon::clone clears observers (lib.rs:128-135).
+    NEW S1 SCOPE: AtomIndex/AtomTrie performance characteristics (only
+           cursorily covered in Phase 4 Q6); index/mod.rs structure beyond
+           the bench harness pre-cited; Space-vs-SpaceMut trait split design
+           rationale (why two traits, not one); how DynSpace differs from
+           Rc<RefCell<dyn SpaceMut>> as an ergonomic wrapper.
+
+§2.B — hyperon-atom crate (Atom representation)
+    Path: hyperon-atom/src/{lib.rs, gnd/, iter.rs, matcher.rs, serial.rs,
+          subexpr.rs}
+    Scope: atom enum (Symbol, Variable, Expression, Grounded); GroundedAtom
+           trait; pattern matcher; iteration and sub-expression traversal.
+    NEW S1 SCOPE: how atom equality is defined (structural? cited Phase 4 Q7
+           but not verified); GroundedAtom interface — what an integration
+           must implement to register a custom atom type; matcher.rs unification
+           algorithm (alpha-renaming? occurs-check?); serial.rs serialization
+           path used for cross-process or cross-language transport.
+
+§2.C — hyperon-common crate (utility types)
+    Path: hyperon-common/src/{assert.rs, collections.rs, flex_ref.rs,
+          holeyvec.rs, immutable_string.rs, multitrie.rs, owned_or_borrowed.rs,
+          reformove.rs, shared.rs, unique_string.rs, vecondemand.rs}
+    Scope: shared utility types used across crates.
+    NEW S1 SCOPE: identify which types are public vs internal; flag any
+           workspace-leakage (types used by lib/c/python that should
+           probably be in hyperon-atom/space).
+
+§2.D — hyperon-macros crate (procedural macros)
+    Path: hyperon-macros/ (entire crate)
+    Scope: procedural macros for atom/expression construction.
+    NEW S1 SCOPE: what does the macro layer enable? (terse atom literal
+           construction in tests? something deeper?). May be small.
+
+§2.E — lib crate: MeTTa interpreter and runtime
+    Paths: lib/src/lib.rs
+           lib/src/metta/{mod.rs, interpreter.rs, text.rs, types.rs}
+           lib/src/metta/runner/{mod.rs, environment.rs,
+                                  init.default.metta, environment.default.metta}
+    Scope: top-level MeTTa runner orchestration; interpreter (recursive
+           reduction); text-mode I/O; type system.
+    NEW S1 SCOPE: interpreter.rs reduction algorithm — what semantics does
+           it implement? (operational rewrite? small-step? big-step?);
+           type-system gradual typing depth (per advertised Hyperon design);
+           how `init.default.metta` and `environment.default.metta` bootstrap
+           a runner; module loading entry points; interaction with stdlib
+           (registration order, override semantics).
+
+§2.F — lib crate: stdlib
+    Path: lib/src/metta/runner/stdlib/{mod.rs, arithmetics.rs, atom.rs,
+          core.rs, debug.rs, math.rs, module.rs, package.rs, space.rs,
+          string.rs, stdlib.metta}
+    Scope: built-in MeTTa operators registered as grounded ops.
+    PRIOR ART (LOCKED, see §3): space.rs has add-atom, remove-atom,
+           new-space; replace-atom! is missing (PATCH-2 in Phase 4); existing
+           stdlib.metta carries the doc-string atoms.
+    NEW S1 SCOPE: full inventory of stdlib operators by category
+           (arithmetics, atom, core, debug, math, module, package, space,
+           string); naming-convention conformance (canonical-form vs
+           paper-form drift); MeTTa-side definitions in stdlib.metta vs
+           Rust-side registration in *.rs; gaps the wiki "MeTTa Full" cards
+           or HYPERON_CLUSTER_FINDINGS.md may have misrepresented; document
+           what is registered as a grounded op vs what is defined as MeTTa
+           equations.
+
+§2.G — lib crate: builtin_mods (DAS, catalog, fileio, json, random, skel)
+    Path: lib/src/metta/runner/builtin_mods/{mod.rs, catalog.rs,
+          catalog.metta, das.rs, das.metta, fileio.rs, fileio.metta,
+          json.rs, json.metta, random.rs, random.metta, skel.rs, skel.metta}
+    Scope: optional built-in modules; each has a Rust .rs and a docs .metta.
+    PRIOR ART (LOCKED, see §3): das.rs is the DAS module (default-enabled
+           Cargo feature at lib/Cargo.toml:46); das.metta is the DAS doc
+           file (one of the "successor files" for the phantom lib_spaces.metta
+           citation per AtomSpace Phase 4 Q11).
+    NEW S1 SCOPE: what each builtin_mod does at HEAD; Cargo feature gating
+           (which are default-enabled vs opt-in); how they integrate with
+           the runner; do any provide their own grounded-op registrations
+           that reviewers might miss when grepping only stdlib/?
+
+§2.H — lib crate: modules + pkg_mgmt
+    Path: lib/src/metta/runner/{modules/, pkg_mgmt/}
+    Scope: MeTTa module-system implementation; package management.
+    NEW S1 SCOPE: docs/modules_dev.md + docs/modules_internal_discussion.md
+           framing claims (verify against modules/ implementation);
+           version-management of dependencies; how modules import each
+           other; namespacing semantics; what tooling exists for module
+           authors.
+
+§2.I — lib crate: space integration
+    Path: lib/src/space/{grounding/mod.rs, module.rs}
+    Scope: GroundingSpace<D> concrete impl + ModuleSpace (delegating
+           space for modules).
+    PRIOR ART (LOCKED, see §3): GroundingSpace<D> at grounding/mod.rs:14-21;
+           inherent add/remove/replace at :70/:92/:119; impl Space at
+           :181-197; impl SpaceMut at :199-212.
+    NEW S1 SCOPE: ModuleSpace delegating semantics — when does a module
+           own its own GroundingSpace vs delegate to a parent; how parent
+           lookups resolve across module boundaries.
+
+§2.J — c crate: C API
+    Path: c/src/{atom.rs, lib.rs, metta.rs, module.rs, serial.rs, space.rs,
+          util.rs}
+    Scope: C-FFI surface for embedding hyperon-experimental in non-Rust hosts.
+    PRIOR ART (LOCKED, see §3): c/src/space.rs has full Space write surface
+           at :140-143; observer registration at :464; maintainer single-
+           threaded statement at :117-119.
+    NEW S1 SCOPE: the OTHER c/ files (atom.rs, lib.rs, metta.rs, module.rs,
+           serial.rs, util.rs) — what's covered, what's NOT covered;
+           identify any C-FFI gaps where Rust functionality is exposed but
+           not on the C side; C-vs-Python binding parity (does the C API
+           expose more than Python? less?).
+
+§2.K — python bindings
+    Paths: python/hyperonpy.cpp
+           python/hyperon/{__init__.py, atoms.py, base.py, conversion.py,
+                           ext.py, metta.py, module.py, runner.py, stdlib.py,
+                           exts/}
+    Scope: pybind11 layer (hyperonpy.cpp) + Python package wrapping it.
+    PRIOR ART (LOCKED, see §3): SpaceRef.add_atom/remove_atom/replace_atom
+           at base.py:205-221; observer registration NOT bound (PATCH-1);
+           PR #852 EventAgent IS mainline (commit 2fd826d4 2025-03-14)
+           with EventAgent class at python/hyperon/exts/agents/agent_base.py:
+           202-293.
+    NEW S1 SCOPE: full inventory of Python public API beyond Space; how
+           atoms.py/conversion.py/ext.py expose Atom and grounded values;
+           runner.py + metta.py orchestration semantics; module.py module
+           loading from Python; exts/ extension subsystem (what extensions
+           ship at HEAD?); stdlib.py purpose (Python-side helpers? mirror
+           of stdlib operators? something else?).
+
+§2.L — python/sandbox: experimental Space integrations
+    Path: python/sandbox/{bhv_binding/, jetta/, mork/, neurospace/, numpy/,
+                          pytorch/, repl/, resolve/, sql_space/,
+                          test_gnd_conv.metta}
+    Scope: experimental MeTTa-side integrations with external systems.
+    PRIOR ART (LOCKED, see §3): sql_space/sql_space.py is the Phase 4 Python
+           custom-Space precedent (per Q3-Codex-elevated-by-Claude).
+    NEW S1 SCOPE: each sandbox subdir — what does it integrate, status
+           (active/abandoned/skeleton), is it bundled into the Python package
+           or only available in the source tree, what are the dependencies?
+           - bhv_binding/  (binary hypervector binding? — verify)
+           - jetta/        (cross-link with S6 jetta JVM compiler — verify
+                            relationship)
+           - mork/         (MORK substrate integration — cross-link to
+                            AtomSpace Phase 4 cluster pilot)
+           - neurospace/   (neural-space integration — verify scope)
+           - numpy/        (NumPy interop — verify)
+           - pytorch/      (PyTorch interop — verify)
+           - repl/         (REPL sandbox vs the top-level repl/ Rust crate —
+                            verify relationship and overlap)
+           - resolve/      (resolution — verify scope)
+
+§2.M — repl crate (top-level Rust REPL)
+    Path: repl/ (entire crate)
+    Scope: standalone Rust REPL binary.
+    NEW S1 SCOPE: how the REPL crate consumes the lib crate; readline /
+           editing UX; relationship to python/sandbox/repl/.
+
+§2.N — integration_tests
+    Path: integration_tests/das/  (only subdirectory at HEAD)
+    Scope: integration test suite. At HEAD, only DAS tests exist.
+    NEW S1 SCOPE: what's actually tested in das/; what isn't tested but
+           probably should be (interpreter, stdlib, modules, Python
+           bindings); flag this as a possible architectural gap or as a
+           sign that integration tests live elsewhere (lib/tests/?
+           python/tests/?).
+
+§2.O — docs/ (Markdown documentation)
+    Path: docs/{CONTRIBUTING.md, DEVELOPMENT.md, building_docs.md,
+                das_setup.md, index.md, metta.md, minimal-metta.md,
+                modules_dev.md, modules_internal_discussion.md, generated/,
+                reference/}
+    Scope: human-facing documentation set.
+    NEW S1 SCOPE: cross-document consistency; identify any claims in docs
+           that contradict the runtime implementation (per the recent commit
+           pattern, doc-formatting + DAS-doc work has been heavy 2026-01 →
+           2026-02 — verify the docs accurately reflect HEAD); minimal-metta.md
+           framing (subset / pedagogical?); index.md as the canonical entry
+           point; reference/ as auto-generated or hand-written?
+
+
+§3. LOCKED PRIOR ART — DO NOT RE-LITIGATE
+-----------------------------------------
+
+The following findings are LOCKED at HEAD `3f76dc46` (= v0.2.10) by the
+AtomSpace Integration Phase 4 cluster pilot Source 2 reconciliation
+(2026-05-04, archive at scripts/archive/atomspace_integration_phase4/
+source2_hyperon_space_writeapi/findings_reconciled_crossmodel.txt). MeTTa
+runtime cluster pilot Source 1 reviewers MUST NOT re-derive or re-litigate
+these. They are reproduced here for context, NOT for re-verification.
+
+P1. SPACE WRITE API (Phase 4 Q1) [LOCKED]
+    SpaceMut::add at hyperon-space/src/lib.rs:237 (with :255 remove, :275
+    replace). GroundingSpace inherent at lib/src/space/grounding/mod.rs:
+    70/:92/:119. C-API at c/src/space.rs:140-143. Python at
+    python/hyperon/base.py:205-221. MeTTa stdlib add-atom/remove-atom/
+    new-space at lib/src/metta/runner/stdlib/space.rs:151-204.
+
+P2. OBSERVER PATTERN (Phase 4 Q2) [LOCKED]
+    SpaceEvent enum at hyperon-space/src/lib.rs:22-29; SpaceObserver at
+    :63-66; SpaceCommon at :97-100; register_observer at :106-109;
+    notify_all_observers at :113-125. Synchronous in-process; per-Space
+    scope; not thread-safe. SpaceCommon::clone at :128-135 deliberately
+    drops observers.
+
+P3. PERSISTENCE / DURABILITY (Phase 4 Q3) [LOCKED]
+    No PersistentSpace trait. SpaceMut does not include persistence hooks.
+    Custom backends use the C-extension pattern (`space_new(api, payload)`
+    at c/src/space.rs:69-72 + space_api_t function-pointer table). Phase 4
+    keeps Postgres as durability via Decko; Hyperon Space is in-memory
+    mirror.
+
+P4. CONCURRENCY MODEL (Phase 4 Q4) [LOCKED]
+    Single-process single-threaded by intentional design. Rc<RefCell<...>>
+    throughout; Send/Sync NOT implemented. Maintainer-acknowledged via
+    in-source comment at c/src/space.rs:117-119: "This API is likely to
+    change in the future to implement multi-threading...". DAS uses
+    Arc<Mutex<Properties>> at lib/src/metta/runner/builtin_mods/das.rs:64
+    for DAS-specific parameter passing only.
+
+P5. TAXONOMY (Phase 4 Q5) [LOCKED]
+    Space (read-only trait) at hyperon-space/src/lib.rs:152-216; SpaceMut
+    (mutable, extends Space) at :219-279; DynSpace at :281-298. GroundingSpace
+    canonical concrete impl at lib/src/space/grounding/mod.rs:14-21.
+    ModuleSpace at lib/src/space/module.rs (delegating). CSpace at
+    c/src/space.rs:688-808. PySpace at python/hyperonpy.cpp:399-405.
+    hyperon-space is a NEW top-level crate (refactor split from the
+    previous lib/src/space/ location).
+
+P6. DAS MODULE (Phase 4 Q9) [LOCKED]
+    `metta-bus-client` declared at lib/Cargo.toml:30-35 (git =
+    https://github.com/singnet/das, tag = "1.0.2"). Default features at
+    lib/Cargo.toml:46: `default = ["pkg_mgmt", "das"]`. DAS module file:
+    lib/src/metta/runner/builtin_mods/das.rs. new-das! token registration
+    at das.rs:66-70. DistributedAtomSpace::new at das.rs:187-195. DAS
+    MeTTa-side definitions at lib/src/metta/runner/builtin_mods/das.metta
+    (referenced via include_str! at das.rs:44).
+
+P7. PYTHON BINDINGS (Phase 4 Q8) [LOCKED — PATCH-1 GATING]
+    Python write surface complete at python/hyperon/base.py:205-221 +
+    hyperonpy.cpp space_add/space_remove/space_replace bindings. Python
+    OBSERVER REGISTRATION GAP: `register_observer` and `space_register_observer`
+    return ZERO matches in python/. PATCH-1 (REQUIRED for Phase 4 Path I or
+    Path IV): pybind11 binding for `space_register_observer` in
+    python/hyperonpy.cpp, mirroring the C API at c/src/space.rs:464
+    (declared at :328-342). Path II (Rust-only bridge service) is the
+    Phase 4 implementation strategy; Path IV (PR upstream) is the
+    contribution strategy.
+
+P8. METTA STDLIB ASYMMETRY (Phase 4 Q1-NEW-CLAUDE) [LOCKED — PATCH-2 OPTIONAL]
+    `add-atom` and `remove-atom` registered as MeTTa grounded ops at
+    lib/src/metta/runner/stdlib/space.rs:206-220, but NO `replace-atom!`
+    op. Verified: `replace-atom` returns zero matches in lib/. PATCH-2
+    (RECOMMENDED, may defer): MeTTa-side `replace-atom!` grounded op
+    in lib/src/metta/runner/stdlib/space.rs, mirroring AddAtomOp /
+    RemoveAtomOp. Strictly required only if MeTTa-writing L1 agents need
+    identity-replace semantics.
+
+P9. PR #852 / EVENTAGENT [LOCKED — IS MAINLINE]
+    PR #852 was merged at commit `2fd826d4` (2025-03-14, Alexey Potapov).
+    EventAgent class at python/hyperon/exts/agents/agent_base.py:202-293.
+    `direct-subscription` and `publish-event` registered as MeTTa atoms at
+    agent_base.py:323-326. EventAgent uses a generic `event_bus` Python
+    object; NOT bound to SpaceEvent/SpaceObserver. EventAgent and
+    SpaceObserver are disjoint event paths in the same repo.
+
+P10. PHANTOM CITATION: lib_spaces.metta DOES NOT EXIST [LOCKED]
+     `git log --all -S "lib_spaces"` returns ZERO commits. `git log --all
+     --diff-filter=D --name-only -- '*lib_spaces*'` returns ZERO deletion
+     entries. Glob `**/lib_spaces*` returns ZERO matches. Successor files
+     are: lib/src/metta/runner/builtin_mods/das.metta (DAS docs);
+     lib/src/metta/runner/stdlib/space.rs (Rust ops); lib/src/metta/runner/
+     stdlib/stdlib.metta (stdlib docs).
+     Reviewers: do NOT cite lib_spaces.metta. If any wiki card or
+     orientation doc cites it, flag for cluster-close edit batch.
+
+P11. SANDBOX SQL_SPACE PRECEDENT [LOCKED]
+     python/sandbox/sql_space/sql_space.py is a Postgres-backed Python
+     custom Space — Phase 4 starter template (NOT production-ready: no
+     observer wiring, naïve SQL string concat, no transactions, no Decko
+     schema).
+
+
+§4. CROSS-SOURCE FORWARDS FROM PRIOR CLOSED CLUSTER PILOTS
+----------------------------------------------------------
+
+Locked findings from earlier cluster pilots that S1 reviewers should be
+aware of (NOT re-derived):
+
+F1. PLN cluster No-Go theorem (PLN pilot 2026-04-25). PLN-over-AtomSpace
+    is a No-Go regardless of storage choice; Phase 5+ PLN must be
+    "semantic queries Postgres cannot trivially answer," not global PLN
+    inference. Source: HYPERON_CLUSTER_FINDINGS.md PLN section.
+
+F2. AtomSpace four-layer taxonomy (AtomSpace pilot 2026-04-29):
+    Layer 1 Classical (opencog/atomspace), Layer 2 Hyperon Space (this
+    repo's hyperon-space crate), Layer 3 DAS (singnet/das), Layer 4
+    MORK (trueagi-io/MORK). Reviewers: when classifying any sandbox
+    integration in §2.L, locate it within this taxonomy.
+
+F3. Hyperon 0.2.x runtime quirks (memory `reference_hyperon_0210_quirks.md`,
+    20 days old at 2026-05-08, applies to v0.2.10 per the 0.2.x scope):
+      Q-1. `!(bind! &name (new-space))` is a no-op on a live space — does
+           NOT clear an already-bound space. Use explicit
+           `(match &name (pattern) (remove-atom &name (pattern)))`.
+      Q-2. `cond` is non-reducing in Hyperon 0.2.1 (MAGUS pin). Use nested
+           `if` or match-on-knowledge-base.
+      Q-3. Catchall equations (`$_`, `$other`) alongside specific equations
+           cause duplicate reductions. Mutually exclusive patterns required.
+    Source-of-evidence (per memory): `HERMES/hermes/experiments/ledgerpg/
+    ledgerpg_magus.metta` header block + `hyperon_scorer.py` workaround.
+    Reviewers: VERIFY each of Q-1, Q-2, Q-3 against HEAD `3f76dc46` per
+    the memory's own staleness reminder ("verify against current code
+    before asserting as fact"). If any quirk has been fixed since v0.2.1,
+    update the memory at cluster close.
+
+F4. AtomSpace-Scheme vs MeTTa-runtime stack distinction (Perception pilot
+    2026-05-01). Two-stack ecosystem: AtomSpace-Scheme (opencog/atomspace
+    + Linas Vepstas Hyperon-era utilities sensory/agents/motor/evidence/
+    atomese-simd) vs MeTTa-runtime (this repo). Source 1 is the canonical
+    MeTTa-runtime substrate. Reviewers: when grepping for cross-runtime
+    references, distinguish AtomSpace-Scheme citations from MeTTa-runtime
+    citations.
+
+F5. Linas Vepstas Hyperon-era portfolio context (Perception pilot
+    2026-05-01). Vepstas authored 5 Hyperon-era AtomSpace-Scheme repos;
+    NONE are this hyperon-experimental repo, but Luke Peterson at #3 in
+    §0.B contributor count overlaps with PathMap/MORK ecosystem cross-
+    citations from AtomSpace pilot.
+
+F6. Wiki MCP server bugs (`hyperon-wiki-mcp/SERVER-BUGS.md`):
+    - `create_card` may return spurious "already exists" after success
+      (verify with `get_card`).
+    - `restore_card` doesn't find `+tag` Pointer subcards in trash
+      (workaround: `create_card`).
+    - One writer only for wiki state (orchestrator only — advisory
+      models do NOT write).
+    These apply at cluster-close edit-batch time; not relevant during
+    extraction.
+
+
+§5. P-CLAIMS — EXISTING WIKI / ORIENTATION CLAIMS TO VERIFY
+-----------------------------------------------------------
+
+Reviewers should treat the following as P-N candidate claims to verify
+against HEAD `3f76dc46`. Any claim that is wrong becomes a candidate
+V-N-X dissent; any claim that is correct gets flagged as [P-CLAIM-VERIFIED].
+
+P-1. The hyperon-experimental repo is the trueagi-io official Rust
+     reference implementation of MeTTa.
+     Likely [P-CLAIM-VERIFIED]. Confirm via README / Cargo.toml /
+     repo description.
+
+P-2. v0.2.10 is the latest stable release at the brief drafting date
+     (2026-05-08).
+     Likely [P-CLAIM-VERIFIED] per `git tag --sort=-v:refname` showing
+     v0.2.10 as the most-recent tag.
+
+P-3. The DAS module is a default-enabled Cargo feature (LOCKED via P6).
+     [P-CLAIM-LOCKED] (Phase 4 Q9). Reviewers: do not re-litigate.
+
+P-4. The Hyperon 0.2.x runtime has the three quirks documented in F3.
+     Reviewers must VERIFY at HEAD `3f76dc46` (memory is 20 days old,
+     covers v0.2.1 originally). Each quirk is a separate P-claim.
+
+P-5. EventAgent (PR #852) IS mainline (LOCKED via P9). Reviewers: do
+     not re-litigate. If extending, classify any agent_base.py work
+     beyond what Phase 4 Q10 captured.
+
+P-6. The Python sandbox sql_space is a Postgres custom-Space
+     precedent (LOCKED via P11). Reviewers: do not re-litigate; may
+     extend with classification of OTHER sandbox modules per §2.L.
+
+P-7. The lib_spaces.metta phantom citation (LOCKED via P10). Reviewers:
+     if you find any other phantom or stale citation in this repo's
+     prior-art set (wiki cards / HYPERON_CLUSTER_FINDINGS.md), flag it
+     as a candidate V-N-X.
+
+
+§6. QUESTIONS FOR S1 REVIEWERS
+------------------------------
+
+Reviewers (Codex + Gemini, parallel and independent) answer each S1.QN
+in the per-question format established by closed pilots. Each answer
+must include verdict tag(s) from §7, file:line evidence, and
+methodology notes (greps run, pickaxes performed, cross-references
+checked).
+
+S1.Q1. METTA INTERPRETER SEMANTICS
+       Read lib/src/metta/interpreter.rs in full. What reduction strategy
+       does it implement (small-step? big-step? top-down rewriting? CPS?
+       partial evaluation?)? Cite specific functions and line ranges.
+       Verdict tag from {[OPERATIONAL-REWRITE], [SMALL-STEP-INTERPRETER],
+       [BIG-STEP-EVALUATOR], [CPS-MACHINE], [HYBRID-STRATEGY]}. Identify
+       any non-obvious behavior (lazy vs eager argument evaluation,
+       failure semantics, backtracking). If reduction is non-confluent,
+       say so explicitly.
+
+S1.Q2. METTA TYPE SYSTEM (lib/src/metta/types.rs)
+       What does the type system check? (signature conformance? gradual
+       typing? dependent types? something simpler?) What is enforced
+       statically vs at runtime? Verdict tag from {[GRADUAL-TYPING],
+       [DYNAMIC-CHECKED], [STATIC-NOMINAL], [SIGNATURES-NO-CHECK]}. Cite
+       the public-facing functions and where they are called from in the
+       interpreter. If types interact with stdlib operators in a
+       non-obvious way (e.g., arithmetic types are inferred or coerced),
+       document the rule.
+
+S1.Q3. STDLIB OPERATOR INVENTORY
+       Produce a categorized inventory of grounded operators registered
+       across lib/src/metta/runner/stdlib/{arithmetics, atom, core, debug,
+       math, module, package, space, string}.rs. Per category, list each
+       op name, its Rust file:line, and a one-line semantic summary. Flag
+       any op whose name in stdlib.metta diverges from its Rust-side
+       registration (canonical-form-vs-paper-form drift). Note any op
+       documented in stdlib.metta that has no Rust-side registration
+       (P-claim candidate for "documented but unimplemented"). Required
+       grep: `register_op|grounded_op|primitive_atom|name:` (or the
+       actual registration token used by the runtime — verify before
+       grepping). NEW SCOPE per §2.F.
+
+S1.Q4. BUILTIN_MODS COVERAGE (catalog, fileio, json, random, skel)
+       For each builtin_mod (other than das, which is §3 P6 LOCKED):
+       enumerate the .rs file's grounded-op registrations; note Cargo
+       feature gating; verify the .metta doc-file is consistent with the
+       .rs registration. Verdict tag from {[BUILTIN-FULLY-WIRED],
+       [BUILTIN-PARTIAL], [BUILTIN-DOC-ONLY], [BUILTIN-DEAD]}. Required
+       greps per file: registration token list + cross-check against the
+       paired .metta. NEW SCOPE per §2.G.
+
+S1.Q5. MODULE SYSTEM ARCHITECTURE
+       Read lib/src/metta/runner/modules/ + pkg_mgmt/ + docs/modules_dev.md
+       + docs/modules_internal_discussion.md. What is the module-loading
+       contract? Namespace semantics (modules can shadow / extend / replace
+       parent definitions?). Inter-module dependency resolution. Cite
+       specific functions. Verdict tag from {[MODULE-SYSTEM-COMPLETE],
+       [MODULE-SYSTEM-PARTIAL], [MODULE-SYSTEM-PROTOTYPE]}. Cross-check
+       docs claims against modules/ implementation (per the recent doc-
+       formatting commit pattern, doc claims may have drifted from
+       implementation). NEW SCOPE per §2.H.
+
+S1.Q6. ATOMINDEX / ATOMTRIE PERFORMANCE CHARACTERISTICS
+       Read hyperon-space/src/index/ in full. What data structure is
+       AtomTrie (radix trie? prefix tree? something custom)? What is the
+       insertion / lookup / deletion complexity at million-atom scale?
+       Existing benches at hyperon-space/benches/atom_index.rs and
+       lib/benches/grounding_space.rs only fill 100/x10/x100 atoms
+       (Phase 4 Q6 LOCKED gap). Identify any in-source comments
+       documenting scaling-limit assumptions. Required pickaxe:
+       `git log --all -S 'AtomTrie' -- hyperon-space/src/index/` to
+       trace the structure's evolution; report 3-5 most relevant
+       commits. NEW SCOPE per §2.A.
+
+S1.Q7. PYTHON BINDING SURFACE BEYOND SPACE
+       Beyond the Space write/observer surface in P1+P7, what does the
+       Python binding cover? Inventory python/hyperonpy.cpp + python/
+       hyperon/{atoms.py, base.py, conversion.py, ext.py, metta.py,
+       module.py, runner.py, stdlib.py}. Identify gaps where Rust
+       functionality has no Python equivalent (besides the documented
+       observer-registration gap). Verdict tag from {[PY-FULL-PARITY],
+       [PY-CORE-ONLY], [PY-PARTIAL-WITH-GAPS]}. NEW SCOPE per §2.K.
+
+S1.Q8. C BINDING SURFACE BEYOND SPACE
+       Inventory c/src/{atom.rs, lib.rs, metta.rs, module.rs, serial.rs,
+       util.rs} (excluding c/src/space.rs which is LOCKED per P1+P2+P4+P7).
+       What's exposed at the C ABI? Identify functions whose Rust
+       equivalents exist but C bindings don't. Verdict tag from
+       {[C-FULL-PARITY], [C-CORE-ONLY], [C-PARTIAL-WITH-GAPS]}. NEW SCOPE
+       per §2.J.
+
+S1.Q9. SANDBOX MODULES — STATUS AND SCOPE
+       For each python/sandbox/ subdirectory (other than sql_space which
+       is LOCKED per P11): characterize integration purpose, status
+       (active/abandoned/skeleton), Python dependencies, MeTTa-side
+       interface, and whether bundled into the Python package or only in
+       the source tree. Verdict tag per sandbox per {[SANDBOX-ACTIVE],
+       [SANDBOX-PROTOTYPE], [SANDBOX-ABANDONED], [SANDBOX-EXAMPLE-ONLY]}.
+       Specifically: bhv_binding, jetta, mork, neurospace, numpy, pytorch,
+       repl, resolve. NEW SCOPE per §2.L.
+
+S1.Q10. INTEGRATION TEST COVERAGE
+        At HEAD only integration_tests/das/ exists (per §2.N). What is
+        actually tested in das/? Are there test files elsewhere
+        (lib/tests/, python/tests/) that cover the rest of the runtime?
+        Verdict tag from {[TEST-COVERAGE-ADEQUATE],
+        [TEST-COVERAGE-PARTIAL], [TEST-COVERAGE-MINIMAL-DAS-ONLY]}.
+        Identify untested architectural surfaces (interpreter, stdlib
+        operators, module system, Python bindings, observer pattern).
+
+S1.Q11. HYPERON 0.2.X RUNTIME QUIRKS — VERIFICATION AT HEAD
+        For each quirk in F3 (Q-1 bind!+new-space no-op; Q-2 cond
+        non-reducing; Q-3 catchalls duplicate), verify status at HEAD
+        `3f76dc46`. Required greps:
+          Q-1: `git log --all -S 'bind!' -- lib/src/metta/runner/stdlib/`
+                + read the relevant op registration; confirm whether
+                bind! semantics changed since v0.2.1.
+          Q-2: `git log --all -S 'cond' -- lib/src/metta/runner/stdlib/`
+                + read core.rs / debug.rs cond impl; confirm reducing
+                vs non-reducing at HEAD.
+          Q-3: read interpreter.rs for catchall-equation handling logic;
+                test or trace whether `($_)` patterns alongside specific
+                patterns produce duplicate results.
+        Verdict tag per quirk from {[QUIRK-CONFIRMED-AT-HEAD],
+        [QUIRK-FIXED-SINCE-V0-2-1], [QUIRK-PARTIAL]}. If any quirk has
+        been fixed since v0.2.1, identify the fix-commit SHA via pickaxe.
+        Cross-source forward (this updates F3 / `reference_hyperon_0210_
+        quirks.md` at cluster close).
+
+S1.Q12. WIKI / ORIENTATION-DOC COVERAGE — PRIOR-ART AUDIT
+        Audit the existing wiki and CLAUDE.md / HYPERON_CLUSTER_FINDINGS.md
+        coverage of hyperon-experimental for stale or phantom citations
+        beyond P10's lib_spaces.metta. Specifically:
+          - Search wiki for "hyperon-experimental" or "trueagi-io/hyperon"
+            references; verify file paths cited still exist at HEAD
+            `3f76dc46`.
+          - Re-verify any "implemented in X" / "located at file:line Y"
+            claims against the runtime.
+          - Flag claims about MeTTa runtime semantics that contradict
+            interpreter.rs / types.rs / stdlib/*.rs at HEAD.
+        Output format: candidate V-N-X dissents per stale citation found.
+        Required wiki searches (orchestrator-pre-loaded for reviewer
+        reference; reviewers may rely on these queries):
+          - search_cards: `hyperon-experimental` (token search)
+          - search_cards: `interpreter.rs` + `stdlib.rs` + `runner.rs`
+            (potential file-path cites)
+          - search_cards: `MeTTa runtime` + `Hyperon runtime`
+            (synthesis-card references)
+
+
+§7. VERDICT VOCABULARY (single-label per question, except where multi-label
+                        is explicitly permitted)
+---------------------------------------------------------------------------
+
+S1 verdict tags follow the closed-pilot vocabulary. Reviewers must use
+EXACTLY one of the provided tags per question (V4-2 lesson: AtomSpace
+Source 4 saw multi-label drift on dual-label questions; closed PLN/ECAN/
+OpenPsi briefs lock single-label requirements).
+
+  Interpreter / type-system / stdlib:
+    [OPERATIONAL-REWRITE] / [SMALL-STEP-INTERPRETER] / [BIG-STEP-EVALUATOR]
+    / [CPS-MACHINE] / [HYBRID-STRATEGY]
+    [GRADUAL-TYPING] / [DYNAMIC-CHECKED] / [STATIC-NOMINAL]
+    / [SIGNATURES-NO-CHECK]
+    [BUILTIN-FULLY-WIRED] / [BUILTIN-PARTIAL] / [BUILTIN-DOC-ONLY]
+    / [BUILTIN-DEAD]
+    [MODULE-SYSTEM-COMPLETE] / [MODULE-SYSTEM-PARTIAL]
+    / [MODULE-SYSTEM-PROTOTYPE]
+
+  Coverage:
+    [PY-FULL-PARITY] / [PY-CORE-ONLY] / [PY-PARTIAL-WITH-GAPS]
+    [C-FULL-PARITY] / [C-CORE-ONLY] / [C-PARTIAL-WITH-GAPS]
+    [TEST-COVERAGE-ADEQUATE] / [TEST-COVERAGE-PARTIAL]
+    / [TEST-COVERAGE-MINIMAL-DAS-ONLY]
+
+  Sandbox:
+    [SANDBOX-ACTIVE] / [SANDBOX-PROTOTYPE] / [SANDBOX-ABANDONED]
+    / [SANDBOX-EXAMPLE-ONLY]
+
+  Quirk verification:
+    [QUIRK-CONFIRMED-AT-HEAD] / [QUIRK-FIXED-SINCE-V0-2-1] / [QUIRK-PARTIAL]
+
+  Audit-finding tags (used in S1.Q12):
+    [P-CLAIM-VERIFIED] / [P-CLAIM-LOCKED] / [P-CLAIM-DISSENT]
+    [PHANTOM-CITATION-CONFIRMED] / [PHANTOM-CITATION-CANDIDATE]
+    / [STALE-CITATION-CANDIDATE]
+
+
+§8. REQUIRED GREP TARGETS
+-------------------------
+
+Reviewers run these greps repo-wide (NOT README-only — V3-4 lesson from
+MORK-atomspace-builder Source 3) before answering the relevant questions.
+Use the dual-API-layer rule (feedback_ecan_audit_token_list.md) for any
+token that has both Rust-side and MeTTa-side surfaces.
+
+  S1.Q1 (interpreter):
+    `interpret|reduce|step|eval|rewrite|fn metta_call`
+    (in lib/src/metta/, especially interpreter.rs and runner/mod.rs)
+
+  S1.Q2 (types):
+    `validate_atom|check_type|infer|TypedAtom|MettaType`
+    (in lib/src/metta/types.rs and interpreter.rs)
+
+  S1.Q3 (stdlib):
+    `register_op|grounded_op|primitive_atom|GroundedAtom|register_token|
+     register_function`
+    (in lib/src/metta/runner/stdlib/*.rs)
+
+  S1.Q4 (builtin_mods):
+    Per builtin_mod: `register|primitive_atom|MeTTaSymbol|init`
+    (in lib/src/metta/runner/builtin_mods/*.rs)
+
+  S1.Q5 (modules):
+    `Module|MettaModule|load_module|register_module|namespace|import|
+     module_space|ModuleSpace`
+    (in lib/src/metta/runner/{modules/, pkg_mgmt/} and lib/src/space/module.rs)
+
+  S1.Q6 (AtomIndex):
+    `AtomTrie|AtomIndex|insert|remove|query|trie_root`
+    + pickaxe `git log --all -S 'AtomTrie' -- hyperon-space/src/index/`
+    (3-5 most relevant commits expected)
+
+  S1.Q7 (Python bindings):
+    `pybind11|PYBIND11_MODULE|.def\(`
+    (in python/hyperonpy.cpp + python/hyperon/*.py)
+    Plus the dual-API rule: for any C ABI symbol `space_X`, grep both
+    `space_X` (C side) AND any pybind11 `def("X"|m.def("X")` patterns
+    (Python side).
+
+  S1.Q8 (C bindings):
+    `extern "C"|#[no_mangle]|pub unsafe extern`
+    (in c/src/*.rs)
+
+  S1.Q9 (Sandbox):
+    Per sandbox: README.md (if exists) + setup.py + requirements.txt
+    + entry-point .py file + .metta interfaces.
+
+  S1.Q10 (Integration tests):
+    `cargo test|#\[test\]|test_main|integration_test`
+    (across integration_tests/ + lib/tests/ + python/tests/)
+    Plus `git ls-files | grep -E 'tests?/|_test\.|test_'` for full
+    test-corpus inventory.
+
+  S1.Q11 (Quirks):
+    Q-1: `bind!` and `new-space` repo-wide; verify behavior at
+         hyperon-space/src/lib.rs (already scoped at :237-275 per P1).
+    Q-2: `cond` repo-wide; verify reducing semantics in
+         lib/src/metta/runner/stdlib/core.rs.
+    Q-3: catchall-pattern handling: search `\$_|\$other|catchall|
+         any_pattern` in interpreter.rs.
+
+  S1.Q12 (Wiki audit):
+    Wiki `search_cards` queries listed under S1.Q12.
+
+
+§9. CROSS-SOURCE FORWARDS FOR S2-S6
+-----------------------------------
+
+This brief locks the following carry-forwards that S1 reviewers will
+populate via their findings:
+
+  C1-1. Hyperon Space substrate identity (hyperon-space crate refactor split,
+        SpaceMut/observer model, single-process design at HEAD).
+        S2-S6 must place each runtime/compiler with respect to this.
+
+  C1-2. MeTTa stdlib operator inventory (S1.Q3 deliverable). S2 (PeTTa +
+        metta-morph) must compare its op coverage against this. S3
+        (MeTTa-Compiler) must specify which it supports natively, transpiles,
+        or omits. S4 (MeTTaIL+FormalMeTTa) must specify which the formal
+        spec describes vs the Rust impl provides. S5 (metta-wam) must
+        specify port coverage at HEAD. S6 (jetta) must specify JVM
+        coverage.
+
+  C1-3. Hyperon 0.2.x quirk verification at HEAD `3f76dc46` (S1.Q11
+        deliverable). S2-S6 must specify whether their runtime/compiler
+        reproduces, fixes, or sidesteps each.
+
+  C1-4. Sandbox module status and scope (S1.Q9 deliverable). S5 metta-wam
+        bridges some sandbox interfaces (cross-link verification), and
+        S6 jetta inherits the JVM-related sandbox precedent.
+
+
+§10. STANDING PROTOCOLS (CARRY-FORWARD AT FORCE)
+------------------------------------------------
+
+The following standing protocols apply to S1 extraction and reconciliation.
+Reviewer-side messaging is unchanged from prior cluster pilots. The new
+option (ii) cite-verification protocol is orchestrator-side work; reviewers
+do NOT need different instructions. Both reviewers signed off on (ii) at
+HAA close 2026-05-07.
+
+P10.1. Pickaxe before "dead code" / "never used" / "never implemented"
+       claims. `git log --all -S '<token>'` is mandatory; current-HEAD grep
+       is not sufficient. Past case studies: ECAN Source 3 V0-1 (URE
+       source_selection_mode::STI was wired 2016-2018, not "never");
+       OpenPsi (rule-sca-weight had time-indexed callers). See
+       feedback_pickaxe_for_dead_code.md.
+
+P10.2. Caller-analysis must be time-indexed. "Called/uncalled" claims
+       must include the snapshot SHA. Pickaxe the function's lifecycle
+       (added → callers added → callers removed → reintroduced as
+       helper) before classifying.
+
+P10.3. Bidirectional fork-divergence + staleness corollary. Run
+       `git log A..B` AND `B..A` AND `git diff A..B --shortstat` AND
+       grep both directions before labeling a fork as a divergent
+       tradition. A stale fork is not an isolated tradition. See
+       feedback_bidirectional_fork_divergence.md.
+
+P10.4. OpenCog audits grep BOTH C++ and Scheme/MeTTa API layers.
+       Either layer alone produces false negatives. For S1, this
+       primarily means: when grepping for grounded-op references, search
+       BOTH the Rust registration site AND the MeTTa-side reference
+       (stdlib.metta + runner/builtin_mods/*.metta + sandbox/*.metta).
+
+P10.5. CF5.6 — verify file-existence claims via ls/Glob BEFORE citation.
+       Cluster-pilot default since Perception 2026-05-01. 8/25 dissents
+       across 5 closed pilots traced to source-location/file-identity
+       drift. Do NOT infer file existence/path/extension from build-system
+       references, README listings, or architectural patterns. See
+       feedback_gemini_file_identity_verification.md.
+
+P10.6. P12 — copy-paste raw shell output for all numerical claims (fork
+       divergence counts, line counts, byte counts, commit counts).
+       Re-running on a fresh shell and citing verbatim is the only
+       acceptable evidence form. HAA Source 3 ngeiswei-miner direction-
+       reversed claim (Gemini reported 8/0 ahead/behind, orchestrator-
+       verified 0/8) was the load-bearing case study.
+
+P10.7. V4-11 [GEMINI-INTERPRETATION-VERIFICATION] — interpretation
+       claims like "X is implemented via Y" / "X reduces to Z" /
+       "consolidated into W" must include filename + grep + line-number
+       evidence. Promoted to standing protocol at HAA Source 4 close
+       2026-05-07.
+
+P10.8. NEW (HAA-S5-close 2026-05-07) — Gemini cite pre-verification
+       protocol (option ii). The orchestrator pre-verifies every Gemini
+       cite at extraction-return time across four classes (file-path,
+       line-number, numerical, interpretation) before reconciliation
+       drafting. Cite-verification log appended to the reconciliation.
+       Reviewers do not see different brief instructions; the change is
+       on the orchestrator side. Re-evaluation gate: 75% cumulative
+       Gemini drift by S2 close. Current cumulative: ~65% post-HAA.
+
+P10.9. RawData fidelity — RawData wiki cards preserve raw source text;
+       editorial annotations go in synthesis cards or editorial-metadata
+       blocks. Not directly relevant to S1 extraction (no new RawData
+       cards expected from a pure-runtime audit), but applies if any
+       paper-level RawData updates surface during reconciliation.
+
+P10.10. Author attribution — `zariuq` = Zarathustra Goertzel
+        (user-verified). `Oruži` = AI-assisted collaboration.
+        `Zarko Zaremba` = pseudonymous self-citation. `Luke Peterson`
+        and `luketpeterson` (587 combined) likely the same person; verify
+        via git log if attribution accuracy matters for any cite.
+
+P10.11. Wiki MCP one-writer-only protocol. Advisory models (Codex,
+        Gemini) do NOT execute wiki writes. The orchestrator (Claude)
+        executes all `create_card`/`update_card`/`delete_card` calls,
+        sequentially, with `get_card` after every write. Cluster-close
+        edit batch is gated on explicit user authorization.
+
+P10.12. Sandra-spec port re-check before cluster-close edit batch. A
+        parallel Sandra-spec porting agent is reportedly active in this
+        project at brief drafting (focused on styling, not content; per
+        user 2026-05-08). If between this brief and cluster-close that
+        agent ports a Published parent (rename + per-field sibling cards)
+        that S1's wiki edit batch targets, HALT and re-read all targets
+        fresh. Path-prefix shifts to renamed parent. See
+        feedback_sandra_spec_port_recheck_before_batch.md.
+
+P10.13. Parallel-Claude awareness. Two Claude sessions in the same
+        project share memory and inherit identical compaction summaries,
+        leading to drift in the same direction. User-confirmed at brief
+        drafting (2026-05-08) that the parallel agent is Sandra-spec
+        styling, not content; the orchestrator focuses edits on FULL
+        cards (Draft and Published cards with FULL in their name).
+
+P10.14. WebFetch verify external URLs before any wiki edit that adds,
+        modifies, or relays an external URL. Cite HTTP status + redirect
+        path. Promoted from CF5.6.E ≥2-instance criterion at HAA Source
+        1 close 2026-05-06. Not relevant to S1 extraction (no external
+        URL writes expected), applies if any wiki edits at cluster
+        close cite external URLs.
+
+P10.15. Wiki audits must query Draft + Markdown + Published cardtypes.
+        Published cards use the +content shell pattern with actual
+        content in a separate RichText subcard, invisible to a
+        Draft+Markdown filter. Discovered HAA S1 close 2026-05-06.
+        Applies at cluster-close edit-batch time when reconciling S1
+        findings against existing wiki cards.
+
+
+§11. METHODOLOGY NOTES (REVIEWER-FACING)
+----------------------------------------
+
+Reviewers should:
+
+(a) Read this brief in full BEFORE extraction. Sign off on the brief (or
+    propose corrections) before extraction begins.
+
+(b) Use the brief's pre-populated git history (§0.A, §0.B, §0.C). Do NOT
+    re-run `git log` or `git tag` on commits already enumerated. Run
+    additional git only when answering an S1.QN question requires deeper
+    history (per P10.1, P10.6 protocols).
+
+(c) Use the brief's locked prior art (§3) as ground truth. Do NOT
+    re-derive Phase 4 Q1-Q11. If you find evidence at HEAD `3f76dc46`
+    that contradicts a P-N claim, flag it as a candidate V-N-X dissent.
+
+(d) Use the brief's verdict vocabulary (§7). Single-label per question
+    where required.
+
+(e) Use the brief's required-grep targets (§8). Repo-wide grep is the
+    minimum bar; README-only grep is insufficient.
+
+(f) Cite specifically (file:line) and use SHA references. Every code
+    claim cites `<file>:<line-range>`. Every SHA reference is the full
+    or unambiguous short hash.
+
+(g) Flag dissents EXPLICITLY as candidate V-N-X records so the
+    reconciliation can preserve them.
+
+Output format: per S1.QN section, with verdict tag(s), file:line
+evidence, methodology notes, and (if applicable) candidate V-N-X dissents.
+Plain text. Estimated 250-400 lines per reviewer.
+
+
+§12. AT-EXTRACTION-RETURN SEQUENCE (ORCHESTRATOR-FACING)
+--------------------------------------------------------
+
+When findings_codex.txt and findings_gemini.txt arrive (user-relayed):
+
+(1) Apply P10.8 (option ii) cite pre-verification on findings_gemini.txt
+    BEFORE reconciliation drafting. Four cite classes:
+      - File-path: `git ls-tree HEAD --name-only | grep <path>` per cite.
+      - Line-number: `git show HEAD:<file> | sed -n '<n>p'` per cite.
+      - Numerical: re-run cited command verbatim; compare output.
+      - Interpretation: independent grep per "implemented via X" claim.
+    Append cite-verification log to reconciliation.
+
+(2) Draft findings_reconciled_crossmodel.txt with:
+      - Executive Summary (R1.X consensus statements).
+      - Per-question verdicts (one [TAG] per S1.QN).
+      - Cross-Model Dissents (V1-X records).
+      - CF5.6 Adjudications (per-cite rejection log from step 1).
+      - Stale-Claim Verifications (P-N audit results from S1.Q12).
+      - Cross-Source Forwards (locked for S2 onward).
+      - Bottom Line.
+
+(3) Relay reconciliation to user → reviewers for sign-off.
+
+(4) On three-way sign-off, propose cluster-close edit batch (wiki cards +
+    doc files + top-level CLAUDE.md + Claude memory + git commit).
+
+(5) Wait for explicit user authorization before any writes.
+
+
+================================================================================
+END OF BRIEF — Source 1 (hyperon-experimental)
+================================================================================

@@ -1,0 +1,540 @@
+Codex findings - MeTTa runtime pilot Source 1
+Source: trueagi-io/hyperon-experimental
+Date: 2026-05-08
+Reviewer: Codex
+
+Scope
+-----
+
+This extraction audits hyperon-experimental as the reference MeTTa runtime
+surface for the MeTTa runtime cluster pilot. It follows:
+
+- scripts/archive/metta_runtime_pilot/source1_hyperon_experimental_brief.txt
+- Standing locked prior art from AtomSpace Integration Phase 4 Source 2
+- Option (ii) methodology: exact cites and numerical outputs are written so the
+  orchestrator can pre-verify before reconciliation
+
+I did not re-open the locked Phase 4 conclusions about SpaceMut,
+SpaceObserver, DAS default feature, Python observer gap, EventAgent mainline,
+lib_spaces.metta, or sql_space except where Source 1 explicitly asked for a
+head-state consistency check.
+
+Exact source identity
+---------------------
+
+Commands run in E:\GitHub\hyperon reference\hyperon-experimental:
+
+```
+$ git rev-parse HEAD
+3f76dc460da6961f57f69f6c3e550c59c74ada83
+
+$ git tag --points-at HEAD
+v0.2.10
+
+$ (git ls-files | Measure-Object).Count
+296
+
+$ (rg --files | rg "(^|/)(tests?|benches|integration_tests)/|test|_test|tests\.rs|\.metta$" | Measure-Object).Count
+101
+```
+
+The source checkout has only untracked local orientation files
+(`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`). I extracted against committed HEAD.
+
+Q1. Interpreter semantics
+-------------------------
+
+Verdict: [RUST-MINIMAL-INTERPRETER] [NONDETERMINISTIC-PLAN-SEMANTICS]
+[QUERY-DRIVEN-REWRITE-EVALUATOR]
+
+The active interpreter is not a thin wrapper around another runtime. The core
+evaluation loop is Rust-native and plan/stack based:
+
+- `lib/src/metta/interpreter.rs:181` stores `max_stack_depth`; `:254`
+  defines `interpret_init`; `:269` defines `interpret_step`; `:285`
+  defines `interpret`.
+- `lib/src/metta/interpreter.rs:374` dispatches `interpret_stack`; `:392`
+  enforces stack depth.
+- `lib/src/metta/interpreter.rs:504` defines `eval_impl`; `:559` defines
+  `eval_result`; `:604` defines `query`.
+- `lib/src/metta/interpreter.rs:687`, `:746`, `:809`, and `:893` implement
+  `chain`, `collapse-bind`, `unify`, and `superpose-bind` behavior.
+- `lib/src/metta/interpreter.rs:922` handles native grounded symbol calls.
+
+The evaluation model is explicitly nondeterministic. `docs/minimal-metta.md`
+describes an interpretation plan that may branch and says the interpreter does
+not select one branch. `python/tests/scripts/b4_nondeterm.metta` asserts that
+multiple equality definitions and `superpose` produce multiple results.
+
+Important boundary: this is not a deterministic "first match wins" rewrite
+engine. If both a specific equation and a catchall equation match, both can
+contribute reductions unless the program makes them mutually exclusive.
+
+Q2. Type system
+---------------
+
+Verdict: [DYNAMIC-CHECKED-TYPES] [DEPENDENT-TYPE-EXPRESSIVE-BUT-NOT-PROVER]
+[UNDEFINED-TYPE-WILDCARD]
+
+The type layer is implemented in Rust and is operationally real, but it is a
+dynamic checker with permissive undefined/meta-type behavior, not a static
+proof system.
+
+Key evidence:
+
+- `lib/src/metta/types.rs:18-19` documents `%Undefined%` as the type assigned
+  to atoms without a user type and as matching any required type.
+- `lib/src/metta/types.rs:65` defines `check_arg_types`.
+- `lib/src/metta/types.rs:327` defines `get_atom_types`; `:330` returns
+  undefined when no specific type is found.
+- `lib/src/metta/types.rs:512` defines `get_application_types`.
+- `lib/src/metta/types.rs:526` defines `UndefinedTypeMatch`; `:602` defines
+  `check_type`; `:637` defines `validate_atom`.
+- Dependent-type examples/tests are present at `types.rs:817`, `:861`,
+  `:1120`, and `:1139`.
+
+The file also preserves open TODOs in the type machinery, for example
+`types.rs:42`, `:379`, `:397`, `:494-499`, `:1177`, `:1225`, and `:1298`.
+Those TODOs matter for narrative: hyperon-experimental supports expressive
+type checking, but the source should not be described as a fully settled
+categorical/dependent type verifier.
+
+Q3. Standard library inventory
+------------------------------
+
+Verdict: [HYBRID-RUST-PLUS-METTA-STDLIB]
+[RUST-TOKENIZED-CORE-WITH-METTA-LIBRARY]
+
+The stdlib is split across Rust token implementations and one large MeTTa
+library file.
+
+Rust stdlib modules under `lib/src/metta/runner/stdlib/` include:
+
+- `arithmetics.rs`: arithmetic and boolean tokens such as `+`, `-`, `*`,
+  `%`, comparisons, boolean ops, `not`, and division, with registrations at
+  `:162-198`.
+- `atom.rs`: `unique-atom`, `union-atom`, `intersection-atom`, `max-atom`,
+  `min-atom`, `size-atom`, `index-atom`, `subtraction-atom`, `get-type`,
+  `get-metatype`, and `get-type-space`; registrations at `:449-474`.
+- `core.rs`: `pragma!`, `nop`, `sealed`, `==`, `match`, `if-equal`,
+  `superpose`, `capture`, and `_minimal-foldl-atom`; registrations at
+  `:336-362`.
+- `debug.rs`: `trace!`, `print-alternatives!`, and `=alpha`, registered at
+  `:155-177`.
+- `math.rs`: power, roots, abs, logs, rounding, trigonometry, `isnan`,
+  `isinf`, plus `PI` and `EXP`, registered at `:408-443`.
+- `module.rs`: `import!`, `include`, `mod-space!`, `print-mods!`, `bind!`,
+  and `module-space-no-deps`, registered at `:280-298`.
+- `package.rs`: `register-module!` and `git-module!`, registered at
+  `:113-117`.
+- `space.rs`: `new-space`, `get-state`, `change-state!`, `get-atoms`,
+  `add-atom`, and `remove-atom`, registered at `:206-223`.
+
+MeTTa-level stdlib lives in `lib/src/metta/runner/stdlib/stdlib.metta`.
+Examples:
+
+- `return` at `stdlib.metta:47`
+- `function` at `:54`
+- `eval` at `:61`
+- `evalc` at `:69`
+- `chain` at `:78`
+- `unify` at `:88`
+- `cons-atom` at `:96`
+- `decons-atom` at `:103`
+- `collapse-bind` at `:239`
+- `superpose-bind` at `:246`
+- `metta` at `:255`
+- `switch` family at `:345-362`
+- `if` at `:511-513`
+- `let` and `let*` at `:542-553`
+- assertion helpers at `:1094-1186`
+- `collapse` at `:1203`
+- `case` at `:1224-1233`
+
+Locked Phase 4 stdlib asymmetry still holds: MeTTa stdlib exposes `add-atom`
+and `remove-atom`, but no `replace-atom!` MeTTa token was found in
+`stdlib/space.rs` or `stdlib.metta`.
+
+Q4. builtin_mods coverage
+-------------------------
+
+Verdict: [MODULE-LOADER-BACKED-BUILTINS] [DAS-BUILTIN-COMPILED-BY-DEFAULT]
+
+`lib/src/metta/runner/builtin_mods/mod.rs:16` wires builtin module loading.
+The module set is concrete, not just example code:
+
+- `catalog.rs` loads `CATALOG_METTA` at `:53`, registers catalog tokens at
+  `:73-77`, and defines operational structs at `:85`, `:150`, and `:210`.
+- `das.rs` loads `DAS_METTA` at `:44`, registers functions at `:70-121`, and
+  implements operations beginning at `:128`, `:205`, `:243`, `:323`, `:379`,
+  `:414`, `:463`, `:516`, and `:560`.
+- `fileio.rs` loads `FILEIO_METTA` at `:17`, defines a `FileHandle` grounded
+  atom at `:86`, and registers file tokens at `:124-149`.
+- `json.rs` loads `JSON_METTA` at `:17` and registers functions at `:41` and
+  `:46`.
+- `random.rs` loads `RANDOM_METTA` at `:23`, defines `RandomGenerator` at
+  `:56`, registers functions at `:97-122`, and binds `&rng` at `:128`.
+- `skel.rs` loads `SKEL_METTA` at `:8` and registers a function at `:32`.
+
+`lib/Cargo.toml:46` confirms default features include `das`.
+
+Boundary: DAS is available as a default feature and builtin module surface, but
+that does not mean a running distributed DAS service is embedded in the local
+runtime.
+
+Q5. Module system
+-----------------
+
+Verdict: [MODULE-SYSTEM-ACTIVE-EVOLVING] [LOADER-RESOURCE-TOKENIZER-MODEL]
+
+The module system is real and multi-layered:
+
+- `lib/src/metta/runner/modules/mod.rs:27` defines `ModId`.
+- `modules/mod.rs:56` defines `MettaMod`, with resource and loader fields at
+  `:58` and `:62`.
+- `modules/mod.rs:107` defines `import_dependency_as`.
+- `modules/mod.rs:131` defines `import_item_from_dependency_as`.
+- `modules/mod.rs:181` defines `import_all_from_dependency`.
+- `modules/mod.rs:251-278` exposes module path/name/package/space/tokenizer
+  and resource accessors.
+- `modules/mod.rs:314` stores descriptor state; `:439` initializes modules;
+  `:563` defines the `ModuleLoader` trait; `:608` defines `Resource`.
+- `lib/src/metta/runner/modules/mod_names.rs:265` and `:276` implement name
+  resolution paths.
+
+The internal design docs show the surface is still evolving.
+`docs/modules_internal_discussion.md` records import/tokenizer edge cases and
+a "poor man's" public/private two-layer scope idea. That supports the verdict:
+implemented and active, but not a frozen final module semantics.
+
+Q6. AtomIndex / AtomTrie / performance posture
+----------------------------------------------
+
+Verdict: [IN-MEMORY-ATOMTRIE-INDEX] [ACTIVE-INDEX-BACKEND]
+[NO-BENCHMARK-CLAIMS-IN-S1]
+
+GroundingSpace uses an in-memory AtomIndex/AtomTrie backend:
+
+- `hyperon-space/src/index/mod.rs:159` defines `AtomIndex`; `:177` inserts;
+  `:192` queries; `:207` removes.
+- `hyperon-space/src/index/trie.rs:201` defines `AtomTrie`; `:232` inserts;
+  `:261` queries; `:395` removes.
+- `lib/src/space/grounding/mod.rs:17` defines `GroundingSpace` over a
+  duplication strategy; `:18` stores the index.
+- `grounding/mod.rs:70`, `:92`, and `:119` implement add/remove/replace and
+  emit SpaceEvents.
+- `grounding/mod.rs:147` and `:152` implement query paths; `:156` calls
+  `self.index.query(query)`.
+
+Pickaxe summary for `AtomIndex` shows a concentrated implementation period in
+2025-01:
+
+- `d8bbf6f8 2025-01-31 Add atom index implementation`
+- `eb404e03 2025-01-31 Implement GroundingSpace using AtomIndex`
+- `9a91f158 2025-01-31 Duplicate atoms in AtomIndex to reproduce old GroundingSpace behavior`
+- `4ab34116 2025-01-31 Add duplication strategy parameter to GroundingSpace`
+- `a801a8dd 2025-02-03 Move AtomStorage, AtomTrieNode and AtomIndex to separate module`
+- `dc0b7556 2025-02-06 Make AtomTrie in-memory representation more compact`
+- `5fc75f84 2025-02-11 Represent custom/exact matching flags using a single enum`
+
+Do not attach quantitative performance claims from this extraction. The code
+has tests and structural improvements, but I did not run benchmarks.
+
+Q7. Python binding parity
+-------------------------
+
+Verdict: [PYTHON-PARITY-BROAD-BUT-OBSERVER-GAP]
+[PYTHON-SPACE-WRITE-API-EXPOSED]
+
+Python bindings expose much more than a CLI wrapper:
+
+- `python/hyperon/base.py:168` defines `SpaceRef`.
+- `base.py:205`, `:211`, and `:217` expose `add_atom`, `remove_atom`, and
+  `replace_atom`.
+- `python/hyperon/runner.py:24` defines `RunnerState`; `:88` module loading;
+  `:107` the `MeTTa` class; `:206` run; `:216` evaluate atom.
+- `python/hyperonpy.cpp:1017-1026` exposes interpreter stepping.
+- `hyperonpy.cpp:1047-1053` exposes type checking and type lookup.
+- `hyperonpy.cpp:1070-1122` exposes run context, MeTTa construction, module
+  loading, run, and atom evaluation.
+
+The Phase 4 Python observer gap remains:
+
+- `python/hyperonpy.cpp:387` defines `PY_SPACE_NO_SUBST_API`; its slots cover
+  add/remove/replace/query/count/iter/free, but no observer registration slot.
+- `rg register_observer python` found no Python-facing observer registration.
+
+Nuance: Python-backed custom spaces do trigger C-side observer notifications
+when add/remove/replace is called through the C/Rust space API:
+
+- `python/hyperonpy.cpp:422-434` wraps Python add with a SpaceEvent Add.
+- `hyperonpy.cpp:437-448` wraps remove.
+- `hyperonpy.cpp:456-469` wraps replace.
+
+That does not close PATCH-1. It means the missing layer is the Python-facing
+ability to subscribe/register observers, not the Rust/C event primitive.
+
+EventAgent is mainline as locked by Phase 4:
+
+- `python/hyperon/exts/agents/agent_base.py:202` defines `EventAgent`.
+- `agent_base.py:256` creates subscriptions.
+- `agent_base.py:305-312` publishes events.
+- `python/hyperon/exts/agents/events/basic_bus.py:6` defines `BasicEventBus`.
+- `git show --stat --oneline 2fd826d4` confirms the merged PR #852 commit.
+
+Q8. C API parity
+----------------
+
+Verdict: [C-API-BROAD-LOWLEVEL] [C-OBSERVER-API-PRESENT]
+
+The C API exposes the low-level runtime surface, including the observer API
+that Python lacks at the wrapper layer:
+
+- `c/src/space.rs:69` defines `space_new`.
+- `space.rs:140`, `:152`, and `:170` define `space_add`, `space_remove`, and
+  `space_replace`.
+- `space.rs:184`, `:203`, `:220`, and `:237` expose query, subst, count, and
+  iteration.
+- `space.rs:401` exposes `space_event_get_type`.
+- `space.rs:419` exposes `space_event_get_field_atom`.
+- `space.rs:464` defines `space_register_observer`.
+- `space.rs:632` defines observer notification through SpaceParams.
+- `space.rs:646`, `:659`, and `:673` construct add/remove/replace events.
+
+The C MeTTa/runner surface is also substantial:
+
+- `c/src/metta.rs:838`, `:854`, and `:882` construct MeTTa instances.
+- `metta.rs:957` returns the space; `:969` returns the tokenizer.
+- `metta.rs:1005` runs parser input; `:1035` evaluates an atom.
+- `metta.rs:1062` and `:1094` load modules.
+- `metta.rs:1305-1407` exposes runner-state stepping and results.
+
+Q9. Sandbox status
+------------------
+
+Verdict: [SANDBOX-PROTOTYPES-NOT-PACKAGED] [REFERENCE-PRECEDENTS-NOT-API]
+
+`python/sandbox/` is a prototype zone, not part of the packaged Python module:
+
+- `python/pyproject.toml:38` packages only `hyperon`; the sandbox directory is
+  not listed as a package.
+
+Sandbox surfaces are still important for later sources because they show
+precedent implementations:
+
+- `python/sandbox/sql_space/sql_space.py:131` defines `SqlSpace`; `:183`
+  defines query; `:226-227` registers atoms. It is a working pattern but uses
+  naive SQL construction and is not production persistence.
+- `python/sandbox/mork/mork.py:16` defines `MORKSpace`; TODOs at `:32` and
+  `:47` keep it prototype-level.
+- `python/sandbox/neurospace/neurospace.py:36` defines `NeuralSpace`; `:52`
+  defines `IntentSpace`.
+- `python/sandbox/jetta/compile.py:9` says Jetta should be installed by
+  cloning `trueagi-io/jetta`; `:18` and `:67` expose client/compile helpers.
+- `python/sandbox/numpy/numme.py` and `python/sandbox/pytorch/torchme.py`
+  expose experimental NumPy/PyTorch integration.
+
+Forward impact: S2-S6 should treat sandbox code as precedent and adjacency,
+not as stable release API unless the target source promotes it.
+
+Q10. Test coverage
+------------------
+
+Verdict: [MULTILAYER-TEST-COVERAGE] [STATIC-AUDIT-NOT-TEST-RUN]
+
+The repository has meaningful tests across Rust, C, Python, MeTTa scripts, and
+integration examples. Exact path-count command:
+
+```
+$ (rg --files | rg "(^|/)(tests?|benches|integration_tests)/|test|_test|tests\.rs|\.metta$" | Measure-Object).Count
+101
+```
+
+Examples:
+
+- Rust library tests in `lib/tests/` and unit tests embedded in source files.
+  `lib/src/metta/interpreter.rs` contains 52 `#[test]` occurrences;
+  `lib/src/metta/types.rs` contains 38.
+- C tests under `c/tests/`, including `check_atom.c`, `check_runner.c`,
+  `check_space.c`, and `check_types.c`.
+- Python tests under `python/tests/`.
+- `python/tests/test_run_metta.py:84-104` enumerates many MeTTa script tests.
+- DAS integration examples exist under `integration_tests/das/`.
+
+I did not run the test suite. This is a code-reading extraction, not a build
+or runtime validation pass.
+
+Q11. v0.2.x quirks re-check
+---------------------------
+
+Verdict: [V0210-QUIRKS-REFINED]
+
+Three remembered quirks were checked against HEAD v0.2.10:
+
+1. `bind!` + `new-space` is not a reset primitive.
+
+Evidence:
+
+- `lib/src/metta/runner/stdlib/module.rs:246-279` implements `BindOp` by
+  registering a token in the tokenizer.
+- `lib/src/metta/runner/stdlib/space.rs:13-30` implements `new-space` by
+  creating a new `GroundingSpace`.
+- No code path in `BindOp` clears or garbage-collects atoms in an already
+  bound space. The safe operational guidance remains: do not treat
+  `!(bind! &name (new-space))` as a reliable reset of an existing live space.
+
+2. `cond` is not a builtin at HEAD.
+
+Evidence:
+
+- `rg -n "\bcond\b|\(cond\b|cond\(" lib/src/metta python/tests docs`
+  found no stdlib/builtin `cond` implementation. Hits were local variable
+  names in docs/examples, not a callable form.
+- `git log -S "(cond"` returned no source history for a `cond` form.
+- `stdlib.metta` provides `if` at `:511-513` and `case` at `:1224-1233`.
+
+So the current wording should be updated from "cond is broken" to "no builtin
+cond exists at v0.2.10; use `if`, `case`, `match`, or user-defined equations."
+
+3. Catchall equations alongside specific equations still produce duplicate or
+   multiple reductions when both match.
+
+Evidence:
+
+- `docs/minimal-metta.md` describes nondeterministic branching semantics.
+- `lib/src/metta/interpreter.rs:604` queries all matching equality forms.
+- `python/tests/scripts/b4_nondeterm.metta` explicitly tests multi-result
+  behavior.
+
+This is semantic, not a stale bug report.
+
+Q12. Wiki and prior-art audit
+-----------------------------
+
+Verdict: [WIKI-SANDRA-SPEC-STUB] [FULL-CARD-MISSING]
+[LIB-SPACES-PHANTOM-CONFIRMED]
+
+The wiki has a Sandra-spec style parent for hyperon-experimental, but the deep
+technical full card appears missing:
+
+- `MeTTa Programming Language+Hyperon Experimental` exists as card ID 630.
+- Its `+github` child points to
+  `https://github.com/trueagi-io/hyperon-experimental/`.
+- Its `+description` child correctly frames hyperon-experimental as the
+  original Rust reference implementation with Python and C integration.
+- Its `+deep_dive` child points to
+  `{{_left+Hyperon Experimental Full|view:link;title:Hyperon Experimental Full}}`.
+- `get_card "MeTTa Programming Language+Hyperon Experimental+Hyperon Experimental Full"`
+  returned Card Not Found, and name search for "Hyperon Experimental Full"
+  returned no results.
+
+The known `lib_spaces.metta` phantom remains confirmed:
+
+- `rg -n "lib_spaces" E:\GitHub\hyperon reference\hyperon-experimental`
+  returned zero hits.
+- Current successor surfaces are `lib/src/metta/runner/stdlib/space.rs` for
+  stdlib space tokens and `hyperon-space/` plus `lib/src/space/grounding/` for
+  Space implementations.
+
+No new hyperon-experimental source file phantom is adopted from this pass.
+However, the missing Full card is a real wiki-edit candidate at cluster close.
+
+Overall Source 1 verdict
+------------------------
+
+[REFERENCE-RUST-METTA-RUNTIME] [HYBRID-RUST-PLUS-METTA-STDLIB]
+[DYNAMIC-CHECKED-TYPES] [MODULE-SYSTEM-ACTIVE-EVOLVING]
+[IN-MEMORY-ATOMTRIE-INDEX] [PYTHON-PARITY-BROAD-BUT-OBSERVER-GAP]
+[C-API-BROAD-LOWLEVEL] [SANDBOX-PROTOTYPES-NOT-PACKAGED]
+
+hyperon-experimental at v0.2.10 is the right baseline for the MeTTa runtime
+cluster. It is not just a parser or a Python wrapper: it contains the Rust
+interpreter, dynamic type system, stdlib, module loader, Space model, C API,
+Python API, builtin modules, tests, and sandbox precedents.
+
+The cluster narrative should not overstate it as a finished production
+runtime. The module system remains evolving, type checking is dynamic and
+permissive around `%Undefined%`, sandbox integrations are prototype-level, and
+the Python observer binding gap remains live.
+
+V1-X carry-forwards
+-------------------
+
+V1-1 [OFFICIAL-RUST-RUNTIME-BASELINE]
+Use hyperon-experimental v0.2.10 as the baseline runtime semantics for S2-S6.
+
+V1-2 [DYNAMIC-TYPE-SYSTEM-NOT-FORMAL-PROVER]
+Future sources that claim stronger formal type guarantees must be compared
+against the actual dynamic `%Undefined%`-tolerant checker at HEAD.
+
+V1-3 [STDLIB-HYBRID-SPLIT]
+Stdlib parity audits must check both Rust token modules and
+`stdlib.metta`; checking only one layer will miss behavior.
+
+V1-4 [MODULE-SYSTEM-EVOLVING]
+Module/import/package behavior is implemented but still has documented design
+edge cases. Treat alternative runtimes' module semantics as a major comparison
+axis.
+
+V1-5 [ATOMINDEX-IN-MEMORY-BASELINE]
+GroundingSpace currently uses AtomIndex/AtomTrie. Performance claims require
+benchmarks; this extraction supplies only structural evidence.
+
+V1-6 [PYTHON-OBSERVER-GAP-STILL-LIVE]
+C observer registration exists; Python add/remove/replace exist; Python
+register_observer does not. PATCH-1 remains accurately scoped.
+
+V1-7 [SANDBOX-PROTOTYPE-BOUNDARY]
+sql_space, mork, neurospace, jetta, numpy, and pytorch sandbox code are
+precedents, not stable package API.
+
+V1-8 [V0210-QUIRKS-REFINED]
+Update memory/wiki wording: no builtin `cond` at v0.2.10; catchall
+multi-reduction is semantic; `bind!` + `new-space` is not a reset operation.
+
+V1-9 [HYPERON-EXPERIMENTAL-FULL-CARD-MISSING]
+Cluster-close should create or repair the missing
+`MeTTa Programming Language+Hyperon Experimental+Hyperon Experimental Full`
+target referenced by the current `+deep_dive` child.
+
+V1-10 [LIB-SPACES-PHANTOM-CONFIRMED]
+Do not cite `lib_spaces.metta`. Use `lib/src/metta/runner/stdlib/space.rs`,
+`hyperon-space/`, and `lib/src/space/grounding/` instead.
+
+Forwards to S2-S6
+-----------------
+
+C1-1 to S2 PeTTa / metta-morph:
+Compare equality/dispatch semantics against the official nondeterministic
+interpreter, not against a deterministic rewrite assumption.
+
+C1-2 to S3 MeTTa-Compiler / MeTTaTron:
+Audit stdlib and module parity across both Rust-token and MeTTa-library
+layers. Also check whether the compiler models `%Undefined%` compatibility.
+
+C1-3 to S4 MeTTaIL / FormalMeTTa:
+Treat formal type-system claims as a contrast with the dynamic operational
+type checker in hyperon-experimental, not as already identical.
+
+C1-4 to S5 metta-wam:
+Classify the C# and Prolog/WAM layers against this interpreter baseline,
+including nondeterminism, module semantics, and space operations.
+
+C1-5 to S6 jetta / atomspace-metta:
+Use `python/sandbox/jetta/compile.py` as a known local Jetta precedent, and
+compare atomspace-metta against the C/Space surfaces rather than the nonexistent
+`lib_spaces.metta` file.
+
+Cluster-close edit candidates
+-----------------------------
+
+1. Create or repair `MeTTa Programming Language+Hyperon Experimental+Hyperon Experimental Full`.
+2. Add archive-backed notes to the current Hyperon Experimental Sandra-spec
+   card: runtime semantics, stdlib split, type-system caveat, module-system
+   caveat, Python observer gap, sandbox boundary.
+3. Update any memory/wiki wording that says `cond` is a live broken builtin;
+   at v0.2.10 it is absent rather than implemented incorrectly.
+4. Reaffirm `lib_spaces.metta` as a phantom in any remaining old archive-derived
+   wiki references.
+
+No code or wiki edits were made by this extraction.

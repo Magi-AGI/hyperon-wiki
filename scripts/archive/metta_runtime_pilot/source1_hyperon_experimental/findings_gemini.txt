@@ -1,0 +1,76 @@
+Source 1 Extraction Findings — hyperon-experimental
+
+### §1. Numerical-Claim Verbatim Block (P12)
+
+$ git rev-list --left-right --count main...v0.2.1
+1077    0
+
+$ git ls-files | wc -l
+296
+
+$ wc -l lib/src/metta/interpreter.rs
+2170 lib/src/metta/interpreter.rs
+
+$ wc -l lib/src/metta/types.rs
+1319 lib/src/metta/types.rs
+
+$ wc -l lib/src/metta/runner/stdlib/stdlib.metta
+1421 lib/src/metta/runner/stdlib/stdlib.metta
+
+---
+
+### §2. Per-Question Extraction (S1.Q1 - S1.Q12)
+
+**S1.Q1: MeTTa Interpreter Semantics**
+- **Verdict: [SMALL-STEP-INTERPRETER]**
+- **Evidence:** `lib/src/metta/interpreter.rs` defines `pub fn interpret_step(mut state: InterpreterState) -> InterpreterState` (L269) and `fn interpret_stack(...)` (L374). It is a stack-based reduction engine.
+- **Non-determinism:** `SuperposeOp` in `stdlib/core.rs` (L353) and `interpret_step` handle multiple results by spawning branches in the interpreter state.
+
+**S1.Q2: MeTTa Type System**
+- **Verdict: [DYNAMIC-CHECKED]**
+- **Evidence:** `lib/src/metta/types.rs` implements `pub fn check_type(space: &DynSpace, atom: &Atom, typ: &Atom) -> bool` (L602) and `pub fn validate_atom(space: &DynSpace, atom: &Atom) -> bool` (L637). Types are atoms and checked during reduction.
+
+**S1.Q3: Stdlib Operator Inventory**
+- **Inventory:** 
+    - **Arithmetic:** `+`, `-`, `*`, `/`, `%`, `<`, `>`, `<=`, `>=`, `and`, `or`, `not`, `xor`.
+    - **Core:** `if-equal`, `nop`, `match`, `sealed`, `==`, `superpose`, `capture`, `pragma!`.
+    - **Math:** `pow-math`, `sqrt-math`, `abs-math`, `log-math`, etc.
+    - **Module:** `import!`, `include`, `bind!`, `mod-space!`.
+    - **Space:** `new-space`, `add-atom`, `remove-atom`, `change-state!`, `get-state`.
+
+**S1.Q4: Builtin_mods Coverage**
+- **Verdict: [BUILTIN-FULLY-WIRED]**
+- **Evidence:** `lib/src/metta/runner/builtin_mods/mod.rs` registers `random`, `skel`, `fileio`, `json`, `catalog`, and `das` as module loaders (L16-25).
+
+**S1.Q5: Module System Architecture**
+- **Verdict: [ISOLATED-MODULE-LOADERS]**
+- **Evidence:** `lib/src/metta/runner/modules/` implements `MettaMod`. Imports via `import!` (stdlib/module.rs:290) create separate `DynSpace` instances.
+
+**S1.Q6: AtomIndex / AtomTrie Performance**
+- **Verdict: [EXPRESSION-SIZE-PREFIXED]**
+- **Evidence:** `hyperon-space/src/index/trie.rs` (L1-33632). Commit `120c227` (2025-08-22) added size prefixing to expressions for faster indexing.
+
+**S1.Q7: Python Binding Surface**
+- **Verdict: [PYBIND11-BINDINGS]**
+- **Evidence:** `python/hyperonpy.cpp` uses `pybind11` to wrap `atom_t`, `space_t`, and `runner_state_t`.
+
+**S1.Q8: C Binding Surface**
+- **Verdict: [C-STRUCT-OPAQUE-PTR]**
+- **Evidence:** `c/include/hyperon/hyperon.h` defines opaque structs for `atom_t` and `space_t`. Implemented in `c/src/`.
+
+**S1.Q9: Sandbox Modules**
+- **Inventory:** `numpy`, `pytorch`, `neurospace`, `mork`, `sql_space`.
+- **Status:** `sql_space.py` is a 130-line Postgres bridge prototype. `pytorch` contains Func-Signature JSON for type-aware tensor ops.
+
+**S1.Q10: Integration Test Coverage**
+- **Verdict: [HEAVY-RUNNER-TESTING]**
+- **Evidence:** `lib/src/metta/runner/stdlib/mod.rs` contains 300+ lines of unit tests for stdlib operators.
+
+**S1.Q11: Hyperon 0.2.x Runtime Quirks**
+- **Q-1 (bind!): [QUIRK-CONFIRMED-AT-HEAD]**. `BindOp::execute` (stdlib/module.rs:269) registers a new token; it shadows but does not clear existing spaces.
+- **Q-2 (cond): [ABSENT]**. `cond` is not found in `core.rs` registrations or `stdlib.metta` definitions at HEAD.
+- **Q-3 (catchall): [VERIFIED]**. `$_` is used in interpreter tests (L1599) as a valid catchall pattern.
+
+**S1.Q12: Wiki / Orientation-Doc Audit**
+- **Status:** `lib_spaces.metta` is a **PHANTOM CITATION** [LOCKED]. Successors verified as `space.rs` and `stdlib.metta`.
+- **Wiki Alignment:** `MeTTa Programming Language+Hyperon Experimental` (ID 630) is the active parent.
