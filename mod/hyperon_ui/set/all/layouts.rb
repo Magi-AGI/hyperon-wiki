@@ -1,5 +1,11 @@
 # frozen_string_literal: true
 
+# DEPRECATED 2026-05-08:
+#   The Left Sidebar Layout card never wired `view :page_sidebar` into its body
+#   (the right sidebar `<aside id="sidebar-right">` is empty). This view is dead
+#   code. The new sidebar lives in `*sidebar` (HTML cardtype) + `sandra ui styles`.
+#   Kept in tree until the inline-TOC migration lands; remove afterwards.
+
 # Overrides Decko's default layout to add a right sidebar, yielding a
 # two-sidebar wiki layout: left nav tree | article | right (TOC + actions).
 #
