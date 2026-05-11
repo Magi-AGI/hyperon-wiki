@@ -1,0 +1,613 @@
+Codex findings - MeTTa runtime pilot Source 2
+Source: patham9/PeTTa + trueagi-io/metta-morph
+Date: 2026-05-10
+Reviewer: Codex
+
+Scope
+-----
+
+This extraction follows:
+
+- scripts/archive/metta_runtime_pilot/source2_petta_metta_morph_brief.txt
+- S1 hyperon-experimental reconciliation lock-ins
+- S2 corrected metadata: PeTTa HEAD 16e92b4, metta-morph HEAD 9ac7b8e
+
+I did not read Gemini's findings. This is an independent extraction.
+No tests were run; this is a static code and git-history audit.
+
+Exact source identity
+---------------------
+
+PeTTa commands run in E:\GitHub\hyperon reference\PeTTa:
+
+```
+$ git rev-parse HEAD
+16e92b4ed44be144148de1c810155b9d03e57427
+
+$ git rev-list --left-right --count eb85359f8aae8ffae34f8c7c210593d3733fccfd...HEAD
+0       4
+
+$ git rev-list --count v1.0.2..HEAD
+41
+
+$ git tag --points-at HEAD
+
+$ (git ls-files | Measure-Object).Count
+198
+```
+
+Metta-morph commands run in E:\GitHub\hyperon reference\metta-morph:
+
+```
+$ git rev-parse HEAD
+9ac7b8e9452ccaffd7ce1f4b4ac7dccf7177255b
+
+$ (git ls-files | Measure-Object).Count
+63
+
+$ (Get-ChildItem tests -File -Filter *.metta).Count
+29
+```
+
+S2.A PeTTa
+==========
+
+P-claim checks
+--------------
+
+P-1 [P-CLAIM-VERIFIED].
+PeTTa README describes the repo as "Efficient MeTTa language implementation
+in Prolog" at README.md:3. The source tree matches: the interpreter and
+translation engine are in `src/*.pl`, and function/runnable forms are
+compiled or translated to Prolog goals.
+
+P-3 [P-CLAIM-VERIFIED].
+MORK and FAISS support is real but optional. README.md:18-26 describes MORK
+and FAISS spaces and names `patham9/mork_ffi`, `trueagi-io/mork`,
+`patham9/faiss_ffi`, and `facebookresearch/faiss`. `build.sh:1-11` clones and
+builds `mork_ffi` and `faiss_ffi`. `src/metta.pl:21-23` conditionally loads
+`../mork_ffi/morkspaces` only when argv contains `mork`.
+
+P-5 [P-CLAIM-PARTIAL / CANDIDATE V2-1].
+The brief's reset "Smart Dispatch - INVALID FRAMING" should be softened. It
+is true that exact tokens `smart_dispatch` and the capitalized brand phrase do
+not occur, but "smart dispatch" is present as an implementation concept:
+
+- `src/translator.pl:300` comment: "Automatic 'smart' dispatch..."
+- `examples/smartdispatch.metta` exists and exercises function/data dispatch.
+- `examples/callquoteevalreduce.metta:1` says to study smartdispatch output.
+
+So the corrected statement is: "Smart Dispatch is not a formal branded PeTTa
+feature name, but PeTTa does implement an automatic smart-dispatch block in
+the translator." Do not erase it from the narrative; define it precisely.
+
+S2.A.Q1. PeTTa interpreter strategy
+-----------------------------------
+
+Verdict: [PETTA-NONDETERMINISTIC-BRANCHING-INTERPRETER]
+
+PeTTa is a Prolog-backed interpreter/compiler hybrid. Its runtime semantics
+are nondeterministic through Prolog backtracking and explicit disjunction.
+
+Evidence:
+
+- `src/filereader.pl:20-24` parses top-level forms and classifies function
+  definitions vs expressions vs runnables.
+- `src/filereader.pl:31-35` translates runnable expressions via
+  `translate_expr([collapse, Term], Goals, Result)` and calls the resulting
+  Prolog goals.
+- `src/filereader.pl:36-44` translates function definitions into Prolog
+  clauses and asserts them.
+- `src/metta.pl:105` implements `superpose(L, X) :- member(X, L).`
+- `src/translator.pl:110-113` translates `superpose` into disjunctive branches
+  using `build_superpose_branches` and `disj_list`.
+- `src/translator.pl:409-412` builds one branch per `superpose` element.
+- `src/translator.pl:50-62` implements runtime `reduce/2`, calling registered
+  Prolog predicates where possible and otherwise leaving data or partial calls.
+- `src/spaces.pl:44-61` uses Prolog goals and backtracking for `match`.
+
+This is not first-match-wins. Multiple clauses and `superpose` branches can
+produce multiple answers. Examples such as `examples/functionhead3.metta:16-20`
+and `examples/smartdispatch.metta` exercise multi-result and function/data
+dispatch behavior.
+
+S2.A.Q2. PeTTa specialization and translation layer
+---------------------------------------------------
+
+Verdict: [HYBRID-COMPILED-INTERPRETED]
+
+PeTTa compiles function definitions into Prolog clauses, translates runnables
+into Prolog goal lists, and retains dynamic `reduce` paths for runtime
+dispatch and partial calls.
+
+Evidence:
+
+- `src/translator.pl:17-31` translates `(= Head Body)` forms into Prolog
+  clauses and stores function metadata.
+- `src/translator.pl:94-323` translates MeTTa expressions into Prolog goals.
+- `src/translator.pl:300-323` is the automatic smart-dispatch block: known
+  functions become direct calls, literals/data are left as data, list heads may
+  be recursively evaluated, and unknown heads fall back to runtime `reduce`.
+- `src/translator.pl:328-335` chooses an actual function call, partial, or
+  specialized call.
+- `src/specializer.pl:4-5` wraps specialization with state cleanup.
+- `src/specializer.pl:14-57` builds specialized function names and asserts
+  specialized translated clauses.
+- `src/specializer.pl:97-105` invalidates specializations when a source
+  function changes.
+
+So PeTTa is neither a pure interpreter nor a pure ahead-of-time compiler. It is
+a translated/interpreted Prolog runtime with optional specialization.
+
+S2.A.Q3. PeTTa stdlib parity vs hyperon-experimental
+----------------------------------------------------
+
+Verdict: [STDLIB-PARTIAL-PARITY]
+
+PeTTa implements a broad core stdlib, but it is not full parity with
+hyperon-experimental and has divergent additions.
+
+Core parity evidence:
+
+- Arithmetic/comparison are implemented in `src/metta.pl:32-50` and typed in
+  `lib/lib_builtin_types.metta:3-49`.
+- CLP(FD) integer operators are in `src/metta.pl:57-70`, a PeTTa-specific
+  extension relative to S1.
+- Math functions are in `src/metta.pl:72-91`.
+- Boolean functions are in `src/metta.pl:98-102`.
+- Nondeterminism is in `src/metta.pl:105-106` and `src/translator.pl:110-113`.
+- Atom/list operations are in `src/metta.pl:109-151`.
+- Type operations are in `src/metta.pl:158-182`.
+- Space operations are in `src/spaces.pl` and `lib/lib_spaces.metta`.
+- Import support is in `src/metta.pl:272-281` and `lib/lib_import.{metta,pl}`.
+
+Divergence and additions:
+
+- PeTTa has `lib/lib_pln.metta`, `lib/lib_nars.metta`, `lib/lib_mm2.metta`,
+  `lib/lib_roman.metta`, `lib/lib_zar.metta`, `lib/lib_he.metta`,
+  `lib/lib_tabling.metta`, and `lib/lib_vector.metta`.
+- PeTTa has no equivalent of the full hyperon-experimental module descriptor
+  system; imports are more file/library/git oriented.
+- PeTTa has a real `lib/lib_spaces.metta`, distinct from the nonexistent
+  hyperon-experimental `lib_spaces.metta` phantom locked in S1.
+
+The 15 `.metta` library files in `lib/` are a PeTTa extension ecosystem, not a
+drop-in copy of hyperon-experimental stdlib.
+
+S2.A.Q4. PeTTa tabling support
+------------------------------
+
+Verdict: [TABLING-PROLOG-STYLE]
+
+PeTTa tabling is Prolog directive injection, not just a hand-rolled MeTTa
+memo table.
+
+Evidence:
+
+- `git show --stat --oneline 02a4893`:
+  `examples/tabling_fib.metta | 10 ++++++++++`,
+  `lib/lib_tabling.metta | 11 +++++++++++`.
+- `lib/lib_tabling.metta:1-4` defines `injectPrologCode`, using
+  `translatePredicate`, `open_string`, and `load_files user`.
+- `lib/lib_tabling.metta:6-11` defines `(tabled $call)`, builds a string of
+  form `":- table name/arity."`, and injects that Prolog code.
+- `examples/tabling_fib.metta:1-10` imports `lib_tabling`, marks `(fib $N)` as
+  tabled, defines recursive Fibonacci, and tests `(fib 30)`.
+
+This is best characterized as Prolog-style tabling surfaced through MeTTa.
+
+S2.A.Q5. FunctionRemovalInNonSelfSpaces
+---------------------------------------
+
+Verdict: [REMOVE-API-EXTENDED-BEYOND-S1]
+
+The PR generalizes function-atom removal from `&self` to arbitrary spaces and
+also updates PeTTa's compiled-Prolog metadata. That goes beyond a simple
+SpaceMut::remove equivalent.
+
+Evidence:
+
+- `git show --unified=8 c1bef77 -- src/spaces.pl` changes
+  `'remove-atom'('&self', Term, Removed)` to
+  `'remove-atom'(Space, Term, Removed)`.
+- Current `src/spaces.pl:26-39` removes the S-expression from the requested
+  space, edits the stored `fun_meta` list, erases translated Prolog clauses,
+  retracts `translated_from`, invalidates specializations, and may retract
+  `fun(F)`.
+- `src/spaces.pl:41` handles ordinary atom removal by `remove_sexp`.
+
+Relative to S1, PeTTa is aligned in that removal is space-targeted; it is
+extended because function removal must also maintain the compiled Prolog
+predicate table and specialization cache.
+
+S2.A.Q6. PeTTa type system
+--------------------------
+
+Verdict: [TYPES-DYNAMIC-WILDCARD-COMPATIBLE]
+
+PeTTa has dynamic type lookup with `%Undefined%` compatibility close to S1.
+
+Evidence:
+
+- `src/metta.pl:158-161` derives function return types from `(: F (-> ...))`
+  atoms and checks argument types through `maplist('get-type', Args, As)`.
+- `src/metta.pl:163-164` declares `get-type/2` dynamic and returns
+  `%Undefined%` when no candidate type is found.
+- `src/metta.pl:166-182` checks numbers, variables, strings, booleans,
+  function types, lists, explicit type atoms, metatype, grounded/expression,
+  and space shape.
+- `src/translator.pl:308-318` uses type definitions to build typed branches.
+- `src/translator.pl:345-358` treats `%Undefined%` and `Atom` as permissive,
+  otherwise appending type/metatype checks.
+
+This is dynamic and S1-compatible in spirit, not static Prolog-only typing.
+
+S2.A.Q7. PeTTa module system
+----------------------------
+
+Verdict: [MODULE-SYSTEM-FLAT-INCLUDES]
+
+PeTTa has practical file/library/git imports, but not a hyperon-experimental
+style module descriptor system.
+
+Evidence:
+
+- `src/metta.pl:272-281` implements `import!` by resolving `.py` imports
+  through Python or `.metta` imports through `load_metta_file` into the target
+  space.
+- `lib/lib_import.metta:15` imports helper functions from `lib_import.pl`.
+- `lib/lib_import.pl:31` defines `static-import!`.
+- `lib/lib_import.pl:53-57` defines `git-import!` variants.
+- README.md:28-30 points to extension libraries invoked from MeTTa files
+  directly from the git repository.
+
+PeTTa imports are useful and implemented, but they are flat/file-oriented
+relative to S1's module loader/resource/tokenizer model.
+
+S2.A.Q8. PeTTa spaces
+---------------------
+
+Verdict: [SPACE-MULTI-LAYER]
+
+PeTTa has default in-process Prolog spaces, optional MORK integration, and a
+FAISS vector adjacency.
+
+Evidence:
+
+- `src/spaces.pl:1-7` maps S-expressions to dynamic Prolog predicates with
+  the space as the predicate name.
+- `src/spaces.pl:10-23` adds function atoms and ordinary atoms.
+- `src/spaces.pl:26-41` removes function atoms and ordinary atoms.
+- `src/spaces.pl:44-68` implements `match` and `get-atoms`.
+- `lib/lib_spaces.metta:1-29` provides MeTTa-side migration, find,
+  predicate-succeed, remove-all-atoms, and match-count helpers.
+- `src/metta.pl:21-23` conditionally loads `../mork_ffi/morkspaces` when
+  argv includes `mork`.
+- `build.sh:1-11` clones/builds both `mork_ffi` and `faiss_ffi`.
+- README.md:18-26 documents MORK atom spaces and FAISS atom-vector spaces.
+
+Default PeTTa spaces are S1 Layer-2-like in-process spaces. MORK adds a Layer
+4 durability path when built/loaded. FAISS is vector-search adjacency, not part
+of the four-layer AtomSpace taxonomy.
+
+S2.B metta-morph
+================
+
+P-claim checks
+--------------
+
+P-2 [P-CLAIM-VERIFIED].
+README.md:2 says metta-morph is a macro-based MeTTa to Chicken Scheme
+translator. README.md:4 says the goal is a sufficient, fast subset rather than
+full language capability. Code matches this.
+
+P-4 [P-CLAIM-PARTIAL].
+The "hundreds of times faster" claim is grounded in timing harness files, but
+the claim is narrow: one benchmark program or selected examples, not a full
+language-suite performance proof. README.md:97 says 10x+ with Chicken Scheme
+and usually 200x+ with the compiler, pointing to the timing folder.
+
+P-8 [P-CLAIM-REFINED].
+`metta-nars/` is not a normal populated directory and not a properly
+registered submodule. `git ls-files -s metta-nars` reports mode `160000` and
+object `945e2f83711b143e3f6e2eb112cc40c4f531c6f2`, but `.gitmodules` is
+absent and `git cat-file -t` cannot resolve that object in this checkout.
+The working directory exists but is empty. Treat as a loose/broken gitlink
+placeholder, not a functioning submodule.
+
+S2.B.Q1. metta-morph translation strategy
+-----------------------------------------
+
+Verdict: [HYBRID-MACRO-AND-RUNTIME]
+
+Metta-morph is primarily a Scheme macro compatibility layer plus shell/Python
+tooling that can compile files and provide a runtime `compile!` bridge.
+
+Evidence:
+
+- README.md:2-6 describes macro-based MeTTa-to-Chicken-Scheme translation and
+  hygienic macros using matching and ambivalence operations.
+- README.md:23-50 shows file and inline compile usage with `compile!`.
+- `run_scheme.sh:3` performs textual conversion of MeTTa syntax to Scheme
+  forms before running.
+- `compile_scheme.sh` builds `RUN.scm` into a binary.
+- `mettamorph.scm:13-32` defines `collapse` and `superpose` macros.
+- `mettamorph.scm:83-93` defines MeTTa function definition through
+  `define-syntax =`.
+- `mettamorph.scm:99-137` defines `Let`, `Let*`, `If`, and `Case`.
+- `extend/mettamorph.py:103-169` implements a Python extension layer, including
+  `call_compilefile` and registration of `compile!` and `mettamorph` atoms.
+
+It is not a general interpreter. It is a subset translator with runtime bridge
+hooks.
+
+S2.B.Q2. Performance claim
+--------------------------
+
+Verdict: [PERFORMANCE-CLAIM-NARROW-SUBSET]
+
+The performance claim is testable from source files, but it is not evidence of
+whole-language speed across all MeTTa.
+
+Evidence:
+
+- README.md:97 claims 10x+ faster with the Scheme interpreter and usually
+  200x+ faster with the compiler.
+- `timing/README.md:3` says timing illustrates benefits on various examples.
+- `timing/timing.py:26` compiles Scheme via `sh compile_scheme.sh`.
+- `timing/timing.py:34-41` runs `sh run_metta.sh timing/timing.metta` and
+  `sh run_scheme.sh timing/timing.metta run`, timing each.
+- `timing/timing.py:42-49` computes averages/variance and prints speedup.
+- `timing/timing.metta` is a specific NARS/PLN-style benchmark using
+  `TupleConcat`, `StampDisjoint`, truth functions, and inference rules.
+
+Static conclusion: benchmark harness exists, but it measures selected kernels,
+not full MeTTa language coverage.
+
+S2.B.Q3. Scope / subset coverage
+--------------------------------
+
+Verdict: [TRANSLATOR-COVERAGE-CORE]
+
+Metta-morph covers a substantial core subset, including nondeterminism,
+spaces, matching, types, NARS examples, and many control forms. It explicitly
+does not claim full language coverage.
+
+Evidence:
+
+- README.md:87-97 lists limitations and says a substantial part of MeTTa is
+  supported.
+- `tests/README.md:1-3` says tests compare MeTTa compatibility and report
+  mismatches.
+- The tests directory has 29 `.metta` files.
+- Representative tests cover `hyperpose`, `collapse`, `superpose`, spaces,
+  match, types, NARS examples, and state/space operations.
+- `tests/hyperpose_primes.metta.inactive:1` says that test is deactivated
+  because it is computationally expensive and only feasible with the compiler.
+- `tests/nalifier.metta:29-31` comments that an advanced pattern-matching
+  version is not yet in metta-morph.
+
+This is core/substantial subset coverage, not full translation coverage.
+
+S2.B.Q4. metta-morph status
+---------------------------
+
+Verdict: [SCHEME-TRANSLATOR-STABLE-LOW-ACTIVITY]
+
+The repo is low-activity but not abandoned on evidence.
+
+Evidence:
+
+- HEAD is `9ac7b8e` from 2025-08-08.
+- `git shortlog -sn --all` reports:
+  `255 Patrick Hammer`, `2 Peter Isaev`, `1 Alexey Potapov`, `1 pisaev1`.
+- `git log --since='2025-05-01'` shows 16 commits from 2025-06-22 to
+  2025-08-08, including Hyperon v0.2.5 compatibility and equality fixes.
+- README.md was updated in the final commit window and remains coherent.
+- No release tags exist.
+
+Low activity is real, but final commits are functional compatibility/equality
+work rather than deprecation notices.
+
+S2.B.Q5. metta-nars/ directory
+------------------------------
+
+Verdict: [METTA-NARS-PLACEHOLDER]
+
+`metta-nars/` is a loose gitlink placeholder without submodule registration.
+
+Evidence:
+
+```
+$ git ls-files -s metta-nars
+160000 945e2f83711b143e3f6e2eb112cc40c4f531c6f2 0    metta-nars
+
+$ Test-Path .gitmodules
+False
+```
+
+The directory exists in the working tree but is empty. `git cat-file -t` cannot
+resolve the gitlink object locally. `install_nars.sh:1` instead clones
+`https://github.com/patham9/metta-nars`. Historical log entries repeatedly say
+"subproject ref update", so this was intended as an external project pointer,
+but it is not a functional registered submodule at HEAD.
+
+S2.B.Q6. Hygienic macro implementation
+--------------------------------------
+
+Verdict: [HYGIENIC-MACRO-FULL]
+
+For its intended subset, metta-morph is genuinely macro-based and uses
+`syntax-rules` extensively.
+
+Evidence:
+
+- README.md:6 says the thin Scheme compatibility layer is achieved via
+  hygienic macros using matching and ambivalence operations.
+- README.md:18-20 lists dependencies `srfi-69`, `matchable`, and `amb`.
+- `mettamorph.scm:3-7` imports `amb`, `matchable`, and Chicken libraries.
+- `mettamorph.scm:13-32` defines `collapse` and `superpose` with
+  `define-syntax` and `syntax-rules`.
+- `mettamorph.scm:65-70` defines `hyperpose`.
+- `mettamorph.scm:83-93` defines MeTTa `=`.
+- `mettamorph.scm:99-137` defines `Let`, `Let*`, `If`, and `Case`.
+- `mettamorph.scm:240-253` defines `Typedef`.
+- `mettamorph.scm:308-316` defines `Match`.
+- `mettamorph.scm:375-384` defines deterministic and memoized definitions.
+
+The "full" label is about macro implementation technique, not full MeTTa
+language coverage.
+
+S2.X cross-cutting
+==================
+
+S2.X.Q1. patham9 portfolio coherence
+------------------------------------
+
+Verdict: [PORTFOLIO-PARADIGM-DISTINCT]
+
+PeTTa, metta-morph, NACE, metta-nars, and AIRIS show a coherent Hammer
+portfolio around efficient reasoning runtimes and NARS/MeTTa experiments, but
+the implementation paradigms are distinct.
+
+Evidence:
+
+- PeTTa is Prolog-backed MeTTa execution with optional MORK/FAISS and
+  `lib_nars.metta`.
+- metta-morph is a Scheme macro translator and has a placeholder pointer plus
+  `install_nars.sh` to `patham9/metta-nars`.
+- HAA S5 already locked NACE and metta-nars as related but distinct.
+- PeTTa recent history has 597 Patrick Hammer commits since 2024-01-01;
+  metta-morph has 32 in that window. The author signature is real, but the
+  architecture is not sequential "one replaces the other."
+
+S2.X.Q2. Roman Treutlein ownership in PeTTa
+------------------------------------------
+
+Roman Treutlein is not confined to `lib_roman.metta`. He materially owns
+translator/specializer/import infrastructure.
+
+Top files from `git log --author='Roman Treutlein' --format='' --name-only`:
+
+- `src/translator.pl`: 63 touches
+- `src/metta.pl`: 28
+- `python/petta.py`: 12
+- `.github/workflows/ci.yml`: 12
+- `src/filereader.pl`: 11
+- `.github/ci/Dockerfile`: 9
+- `test.sh`: 9
+- `src/main.pl`: 8
+- `src/specializer.pl`: 6
+- `examples/specialize.metta`: 6
+- `lib/lib_roman.metta`: 4
+
+This cross-links HAA S4 rTreutlein, but in PeTTa he is a core-runtime
+contributor, not just a namespace-file author.
+
+S2.X.Q3. Zar Goertzel commits in PeTTa
+--------------------------------------
+
+Zar Goertzel has 3 commits, touching both core translation and Zar helper
+files:
+
+- `8ff759c unique fix`: `src/translator.pl`
+- `a4c4e72 lib_zar and lib_he unification eval for pverify`:
+  `examples/test_unify_eval_branches.metta`, `lib/lib_he.metta`,
+  `lib/lib_zar.metta`, `lib/lib_zar.pl`
+- `d5f3706 Update: match var fix`: `src/translator.pl`
+
+So the brief hypothesis is partially correct: `lib_zar` files exist, but Zar
+also touched core translator logic.
+
+S2.X.Q4. 0.2.x quirk reproduction
+----------------------------------
+
+PeTTa Q-1 bind/new-space: [QUIRK-DIVERGENT-SEMANTICS]
+PeTTa's `bind!` at `src/metta.pl:232` only matches `['new-state', B]` and
+delegates to `change-state!`. Spaces are dynamic Prolog predicates via
+`src/spaces.pl`, and examples freely use `bind! &space (new-space)` even
+though no PeTTa `new-space` predicate is registered in the core list. This is
+not S1's same no-reset behavior; it is a different state/space model.
+
+PeTTa Q-2 cond: [QUIRK-REPRODUCED]
+Repo grep finds no MeTTa-level `cond` implementation. PeTTa uses `if` and
+`case` in `src/translator.pl:149-174`.
+
+PeTTa Q-3 catchall/nondeterminism: [QUIRK-REPRODUCED]
+PeTTa uses Prolog backtracking and `superpose`; examples use catchalls such as
+`$_` in `lib/lib_spaces.metta:17` and many large examples. Multi-reduction is
+semantic.
+
+metta-morph Q-1 bind/new-space: [QUIRK-FIXED]
+`mettamorph.scm:277-285` defines `new-space`, `new-state`, and `bind!`; `bind!`
+sets the `vars` hash table entry directly. This can reset a Scheme-side space
+binding, unlike S1's tokenizer-binding caveat.
+
+metta-morph Q-2 cond: [QUIRK-REPRODUCED]
+There is a Scheme-internal `cond` in `mettamorph.scm:146` inside a helper, but
+no MeTTa `cond` macro/operator is exposed. User MeTTa should use `If`/`Case`.
+
+metta-morph Q-3 catchall/nondeterminism: [QUIRK-REPRODUCED]
+`mettamorph.scm` maps nondeterminism to `amb`: `superpose` at `:27-32`,
+function definition backtracks across registered functions at `:83-93`, and
+`Match` uses `amb1` over a space at `:308-316`.
+
+Cross-source forwards
+---------------------
+
+C2-1. PeTTa dispatch should be carried forward as "Prolog translation with
+automatic smart dispatch and backtracking", not as an absent feature.
+
+C2-2. PeTTa adds a Prolog-style tabling axis that S3-S6 should compare against
+if they claim recursion/performance handling.
+
+C2-3. PeTTa removal semantics include compiled-clause and specialization-cache
+maintenance; compare future runtimes' self-modifying/function-removal behavior
+against that.
+
+C2-4. metta-morph is the first cluster source that truly fixes the S1
+bind/new-space quirk by direct hash-table reassignment, but only within its
+Scheme-side subset model.
+
+C2-5. `metta-nars/` in metta-morph should not be cited as a working submodule.
+Use `install_nars.sh` and the external `patham9/metta-nars` repo identity
+instead.
+
+C2-6. Roman Treutlein is a PeTTa runtime contributor, not just a semantic
+parsing/wiki cross-link.
+
+C2-7. Patham9 portfolio is coherent by author and NARS/MeTTa interests, but
+architecturally paradigm-distinct.
+
+Candidate dissents / reconciliation flags
+-----------------------------------------
+
+V2-1 [SMART-DISPATCH-RESET-TOO-STRONG].
+The brief's P-5 reset should be corrected. Exact `smart_dispatch` token is
+absent, but PeTTa has an "Automatic 'smart' dispatch" block at
+`src/translator.pl:300-323` and `examples/smartdispatch.metta`.
+
+V2-2 [METTA-NARS-LOOSE-GITLINK-NOT-SUBMODULE].
+If any reviewer calls `metta-nars/` a submodule, qualify it. It is a gitlink
+mode entry with no `.gitmodules` and no locally resolvable object.
+
+V2-3 [ROMAN-TREUTLEIN-CORE-RUNTIME-OWNER].
+The brief's "likely lib_roman.metta + adjacent" undersells Treutlein's role.
+He touches `src/translator.pl`, `src/metta.pl`, `src/filereader.pl`,
+`src/main.pl`, and `src/specializer.pl` substantially.
+
+Overall Source 2 verdict
+------------------------
+
+PeTTa: active Prolog-backed MeTTa runtime with nondeterministic branching,
+translation to Prolog goals, automatic smart dispatch, specialization, broad
+stdlib parity, Prolog-style tabling, extended function-removal semantics,
+dynamic `%Undefined%`-compatible typing, flat file/git imports, and
+multi-layer space support through Prolog spaces plus optional MORK/FAISS.
+
+metta-morph: stable low-activity Scheme macro translator for a substantial
+MeTTa subset, preserving nondeterminism through `amb` and hygienic macros,
+with a narrow but real performance harness and an external/broken metta-nars
+placeholder rather than a working bundled submodule.
+
+No code, wiki, or memory edits were made by this extraction.

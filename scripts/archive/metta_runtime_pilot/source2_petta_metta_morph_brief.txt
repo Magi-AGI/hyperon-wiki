@@ -1,0 +1,1183 @@
+================================================================================
+SOURCE 2 BRIEF — PeTTa + metta-morph (patham9 ecosystem)
+                 (MeTTa runtime cluster pilot, Source 2 of 6)
+================================================================================
+Source name:      patham9/PeTTa + trueagi-io/metta-morph
+Cluster:          MeTTa runtime, Source 2 of 6
+Pilot order:      Option A (backlog burn-down) authorized 2026-05-05.
+Brief drafted:    2026-05-08
+Brief author:     Claude (orchestrator)
+Source 1 closed:  hyperon-experimental v0.2.10, 2026-05-08 (commit 21f4835)
+Locked split:     S1 hyperon-experimental | S2 PeTTa+metta-morph |
+                  S3 MeTTa-Compiler / MeTTaTron | S4 MeTTaIL+FormalMeTTa |
+                  S5 metta-wam (vnamed) | S6 jetta+atomspace-metta
+
+
+§0. SOURCE IDENTITY
+-------------------
+
+This is the SECOND source of the MeTTa runtime cluster pilot. Both sub-sources
+are authored or co-authored by Patrick Hammer (patham9) — the same author behind
+the closed HAA cluster-pilot Source 1 (Cook & Hammer 2024 AIRIS, where Hammer
+is co-author) and HAA cluster-pilot Source 5 (NACE, MeTTa-NARS).
+
+  S2.A — PeTTa. patham9/PeTTa. Efficient MeTTa-language implementation in
+         Prolog (per repo README). Active development through 2026-05.
+         Includes optional MORK + FAISS spaces integration.
+
+  S2.B — metta-morph. trueagi-io/metta-morph. Macro-based MeTTa-to-(Chicken-)Scheme
+         translator. Goal: implement a fast subset of MeTTa as an elegant
+         Scheme library, NOT full language capability. Depends on
+         hyperon-experimental for the upstream interpreter.
+
+These two sub-sources are bundled into a single brief because:
+
+  - Both are patham9 work with shared design heritage (cross-pilot pattern
+    matching with HAA NACE/MeTTa-NARS/AIRIS-co-author per C1-6).
+  - Both are MeTTa-runtime alternatives but via paradigm-distinct lineages
+    (Prolog interpreter vs Scheme-macro translator).
+  - Combined size manageable in a single brief (~259 source files).
+
+Reviewers should produce findings files with explicit per-sub-source sections
+(S2.A / S2.B) for clean reconciliation. Estimated findings size ~250-400 lines
+per reviewer.
+
+
+§0.A — PeTTa SOURCE IDENTITY (S2.A)
+------------------------------------
+
+  Repo:     patham9/PeTTa
+  Origin:   https://github.com/patham9/PeTTa.git
+  Local:    E:\GitHub\hyperon reference\PeTTa\
+  Branch:   main
+  HEAD:     16e92b4ed44be144148de1c810155b9d03e57427
+            (Merge PR #169 from trueagi-io/FunctionRemovalInNonSelfSpaces,
+             2026-05-02 13:12:13 -0400, pisaev1)
+
+  IMPORTANT — HEAD DRIFT FROM SESSION-START INVENTORY:
+  At MeTTa runtime cluster pilot S1-brief drafting (2026-05-08 earlier today),
+  PeTTa HEAD was `eb85359f8aae8ffae34f8c7c210593d3733fccfd` (Merge PR #151
+  alpha-unique-atom, 2026-04-02). Pulled at S2-brief drafting (also 2026-05-08);
+  HEAD advanced 4 commits to `16e92b4` over 2026-04-13 → 2026-05-02 window.
+  Per `feedback_git_pull_before_extract.md`, pull-before-launch happened;
+  record commit hash in brief; never retroactively re-pull done sources.
+  S1 close used the older `eb85359` cite for cross-source forwards C1-6;
+  S2 reviewers extract against the current `16e92b4` HEAD with the 4-commit
+  delta noted (see §0.A.4 below).
+
+  Workspace:    Single Prolog package (no Cargo / npm / etc.):
+                src/    — Prolog interpreter (7 .pl files)
+                lib/    — MeTTa-library files + 1 Prolog import + 1 Python LLM
+                          interop helper + 1 Prolog Zar-namespace helper
+                          (18 files: 15 .metta + 2 .pl + 1 .py)
+                python/ — Python interop (HE/, helper.pl, petta.py,
+                          pyproject.toml, tests/, uv.lock)
+                examples/ — many .metta example programs
+                Plus root build/run shell scripts and per-model orientation
+                docs (AGENTS.md, CLAUDE.md, GEMINI.md).
+
+  Tracked-file inventory:
+                198 files (167 .metta + 11 .pl + 9 .py + smaller misc)
+                [count refreshed at S2 brief drafting from PeTTa
+                 HEAD `16e92b4`; differs from session-start inventory
+                 196/165 by +2 = examples/tabling_fib.metta +
+                 lib/lib_tabling.metta added in PR #164 + PR #169 window]
+  Dependencies: SWI-Prolog >= 9.3.x; Python 3.x (janus interop);
+                optional MORK + FAISS via build.sh
+  Primary maintainer: Patrick Hammer (641 commits all-time)
+
+
+§0.A.1 — PeTTa src/ inventory (Prolog interpreter)
+---------------------------------------------------
+
+  src/filereader.pl
+  src/main.pl
+  src/metta.pl       — likely the core interpreter loop
+  src/parser.pl
+  src/spaces.pl      — Space implementation in Prolog
+  src/specializer.pl — likely partial-evaluation / specialization layer
+  src/translator.pl  — likely MeTTa-to-Prolog translation
+
+  Reviewers: read all 7 .pl files. The "specializer" and "translator" naming
+  is not standard MeTTa-runtime terminology; verify what they do (per
+  V1-PROTOCOL-1 brief-vocab enforcement, do NOT introduce non-vocab tags
+  inferred from filenames alone).
+
+
+§0.A.2 — PeTTa lib/ inventory (MeTTa-side libraries + helpers)
+--------------------------------------------------------------
+
+  lib_builtin_types.metta        — type system / builtin types
+  lib_combinatorics.metta        — combinatoric ops
+  lib_datastructures.metta       — data structures
+  lib_he.metta                   — "HE" namespace (verify what this is)
+  lib_import.metta               — import-system MeTTa side
+  lib_import.pl                  — import-system Prolog side
+  lib_llm.metta                  — LLM integration
+  lib_llm.py                     — LLM integration Python helper
+  lib_mm2.metta                  — "MM2" namespace (cross-link with
+                                    Magi internal MM2Chainer / MM2_Structuring_Code?)
+  lib_nars.metta                 — NARS integration (cross-link to HAA S5
+                                    patham9/metta-nars)
+  lib_patrick.metta              — Patrick Hammer's namespace
+  lib_pln.metta                  — PLN integration (cross-link to closed PLN
+                                    cluster pilot)
+  lib_roman.metta                — Roman Treutlein's namespace (cross-link to
+                                    HAA S4 rTreutlein/semantic_parsing)
+  lib_spaces.metta               — Space implementation MeTTa side
+                                    (NOT to be confused with the hyperon-
+                                    experimental phantom citation P10/V1-10
+                                    — that lib_spaces.metta does NOT exist
+                                    in hyperon-experimental; this PeTTa
+                                    lib_spaces.metta is a distinct file in
+                                    a distinct repo, NOT the same artifact)
+  lib_tabling.metta              — Tabling support (added 2026-04-13 per PR #164)
+  lib_vector.metta               — Vector ops (FAISS integration?)
+  lib_zar.metta                  — Zar Goertzel's namespace
+  lib_zar.pl                     — Zar Goertzel's Prolog helper
+
+  Reviewers: each per-author lib file is a candidate cross-link. Specifically:
+    - lib_patrick.metta:  Patrick Hammer's contributions (verify against
+                          `git log --author='Patrick Hammer' -- lib/lib_patrick.metta`)
+    - lib_roman.metta:    Roman Treutlein's contributions (181 commits in
+                          PeTTa total; cross-link HAA S4)
+    - lib_zar.metta + .pl: Zar Goertzel = zariuq (3 PeTTa commits; cross-pilot
+                           identity locked at PLN cluster)
+    - lib_pln.metta:       Closed PLN cluster cross-link
+    - lib_nars.metta:      Cross-link to HAA S5 patham9/metta-nars + lib/
+                           subdir of metta-morph (S2.B)
+
+
+§0.A.3 — PeTTa release timeline
+-------------------------------
+
+Tag history (orchestrator-pre-fetched):
+
+    v1.0.2   (most recent)
+    v1.0.1
+    v1.0
+    v1.0.0
+    v0.9
+    v0.8
+    v0.7
+    v0.6
+    v0.5
+    (older 0.x tags exist — partial list)
+
+  Cadence: the v1.0 milestone has been reached; v1.0.2 is the most recent
+  tag. HEAD `16e92b4` is **NOT** at v1.0.2 — `git tag --points-at HEAD`
+  returns empty; HEAD is 41 commits ahead of v1.0.2 (orchestrator-verified
+  at S2 brief drafting via `git rev-list --count v1.0.2..HEAD = 41`).
+
+
+§0.A.4 — PeTTa recent commits (HEAD~0..~10, pre-fetched)
+---------------------------------------------------------
+
+Pre-fetched via `git log -10 --format='%h %ci %an %s'` at 2026-05-08:
+
+    16e92b4  2026-05-02  pisaev1            Merge PR #169 (FunctionRemovalInNonSelfSpaces)
+    c1bef77  2026-05-02  Patrick Hammer     Update: function removal also for non-self-space
+    dec4505  2026-04-13  pisaev1            Merge PR #164 (tabling)
+    02a4893  2026-04-13  Patrick Hammer     Easier tabling support usage
+    eb85359  2026-04-02  Patrick Hammer     Merge PR #151 (alpha-unique-atom)
+    5caeee5  2026-04-02  Patrick Hammer     Merge PR #153 (zariuq fix/unique)
+    2696eb0  2026-04-02  Patrick Hammer     Merge PR #152 (ermijeremy fix/hyperpose-variable-arg)
+    8ff759c  2026-03-29  Zar Goertzel       unique fix
+    9fff7bb  2026-03-28  ermijermy          test a variable arg
+    0622fde  2026-03-28  ermijermy          support hyperpose with variable list arguments at runtime
+
+  S1 close used eb85359 (HEAD~4) as the cross-source forward C1-6 anchor.
+  S2 extracts against HEAD 16e92b4 with the +4-commit delta:
+    - PR #169 + PR #164 land tabling support and function-removal-in-non-self-spaces
+      (relevant to S2.A.Q4 and S2.A.Q5 below).
+
+  Reviewers: do NOT re-run these commits' git log. Run additional git only
+  when answering a brief question requires deeper history.
+
+
+§0.A.5 — PeTTa top-15 contributors (all-time)
+----------------------------------------------
+
+Pre-fetched via `git shortlog -sn --all`:
+
+     641  Patrick Hammer        (patham9 — primary maintainer)
+     181  Roman Treutlein       (cross-link HAA S4 rTreutlein/semantic_parsing)
+      14  Peter Isaev
+      14  pisaev1               (likely same person as Peter Isaev — combined: 28)
+      11  yabets
+      10  Nil Geisweiller       (ngeiswei — cross-pilot reviewer/author per
+                                 ECAN, OpenPsi, AtomSpace, HAA pilots)
+       6  leungmanhin           (cross-pilot fork-author per AtomSpace, ECAN pilots)
+       5  Robert Wünsche
+       3  Henok Yoseph
+       3  Zar Goertzel          (zariuq — closed PLN cluster verified
+                                 user identity)
+    (~16 contributors total below 3 commits)
+
+
+§0.B — metta-morph SOURCE IDENTITY (S2.B)
+------------------------------------------
+
+  Repo:     trueagi-io/metta-morph
+  Origin:   https://github.com/trueagi-io/metta-morph.git
+  Local:    E:\GitHub\hyperon reference\metta-morph\
+  Branch:   main
+  HEAD:     9ac7b8e9452ccaffd7ce1f4b4ac7dccf7177255b
+            (Update: new equality handling is superior, 2025-08-08 19:32:44 +0200,
+             Patrick Hammer)
+
+  IMPORTANT — HEAD did NOT move since session-start inventory. Last commit
+  2025-08-08 — repo has been stable / inactive for ~9 months at S2 brief
+  drafting (2026-05-08). Reviewers verdict whether this is "abandoned" or
+  "stable / feature-complete for its scope".
+
+  Workspace:    Single Python+Scheme package (no Cargo / npm):
+                extend/    — extension example C/Scheme + .metta examples
+                metta-nars/ — empty subdirectory at HEAD (verify whether
+                              gitkeep/placeholder OR submodule pointer)
+                repl/      — Python REPL helpers (run_metta_repl.py,
+                              run_scheme_repl.py)
+                tests/     — many .metta tests
+                timing/    — performance timing (timing.metta + .py)
+                Plus root install scripts and per-model orientation docs
+                (AGENTS.md, CLAUDE.md, GEMINI.md).
+
+  Tracked-file inventory:
+                63 files (38 .metta + 8 .sh + 6 .py + 5 .md + 2 .scm + smaller)
+  Dependencies: hyperon-experimental (upstream MeTTa interpreter);
+                Chicken Scheme + chicken-install srfi-69 + matchable + amb
+  Primary maintainer: Patrick Hammer (255 commits all-time, 100% dominant)
+
+
+§0.B.1 — metta-morph subdir inventory
+-------------------------------------
+
+  extend/                    cinterface.c, cinterface.scm, compileme.metta,
+                             example1-6.metta, mettamorph.py, test.py, README.md
+  metta-nars/                EMPTY at HEAD — verify (`ls -la metta-nars/`):
+                             directory marker only? gitignored contents?
+                             stale removal? Cross-link to install_nars.sh
+                             (root) and HAA S5 patham9/metta-nars.
+  repl/                      run_metta_repl.py, run_scheme_repl.py, README.md
+  tests/                     20+ .metta tests (and_or, collapse, factorial,
+                             hyperpose, identity, if, let_superpose_*,
+                             match_feval, etc.) + README.md
+  timing/                    timing.metta, timing.py, README.md
+
+  Root files:                AGENTS.md, CLAUDE.md, GEMINI.md, README.md,
+                             autoquote.py, compile_scheme.sh,
+                             install_dependencies.sh, install_nars.sh,
+                             mettamorph.metta, mettamorph.scm
+
+  Reviewers: read README.md + extend/README.md + tests/README.md +
+  timing/README.md (4 README documents). The README's claim "hundreds of
+  times faster" subset of MeTTa is verifiable via timing/timing.metta +
+  timing.py (S2.B.Q2).
+
+
+§0.B.2 — metta-morph release timeline
+-------------------------------------
+
+Pre-fetched via `git tag --sort=-creatordate`:
+
+    (NO TAGS — repository has no release tags at HEAD)
+
+  Reviewers: this affects how to characterize repo maturity. No tags +
+  9-month inactivity since 2025-08-08 + 100%-dominant single-maintainer
+  ratio = candidate verdict [SCHEME-TRANSLATOR-STABLE-LOW-ACTIVITY]
+  or [SCHEME-TRANSLATOR-STAGNANT-OR-ABANDONED] depending on commit
+  message + test status interpretation.
+
+
+§0.B.3 — metta-morph recent commits (HEAD~0..~10, pre-fetched)
+---------------------------------------------------------------
+
+Pre-fetched via `git log -10 --format='%h %ci %an %s'`:
+
+    9ac7b8e  2025-08-08  Patrick Hammer  Update: new equality handling is superior
+    889e66f  2025-08-08  Patrick Hammer  Update: fixed issue with == that Nil found
+    abccf6a  2025-08-08  Patrick Hammer  Update README.md
+    369a2ee  2025-08-08  Patrick Hammer  Update README.md
+    a851177  2025-07-17  Patrick Hammer  Update: handle multiline function headers
+    b9b7db8  2025-07-17  Patrick Hammer  Update: comparative ops, avoid O4 issues, replace explicit newlines
+    1cb7feb  2025-07-03  Patrick Hammer  Update: fix encoding
+    ef7b4ae  2025-07-03  Patrick Hammer  Update: test case for superpose with empty tuple
+    2c2a510  2025-07-03  Patrick Hammer  Update: superpose with empty args, another form of (empty)
+    3f368e7  2025-07-03  Patrick Hammer  Update: testcase for (empty)
+
+  Pattern: 100% Patrick Hammer commits in HEAD~10. "Nil" reference (HEAD~1)
+  cross-links Nil Geisweiller as bug reporter. The "new equality handling
+  is superior" commit (HEAD~0, 2025-08-08) marks the most recent functional
+  change; subsequent 9-month silence.
+
+
+§0.B.4 — metta-morph contributors
+---------------------------------
+
+Pre-fetched via `git shortlog -sn --all`:
+
+     255  Patrick Hammer
+       2  Peter Isaev
+       1  Alexey Potapov
+       1  pisaev1
+
+  Single-maintainer 99.6% Patrick Hammer (ignoring pisaev1 = Peter Isaev
+  combined). For a candidate cluster-pilot member, this concentration is
+  worth noting in verdict tags (e.g., [SOLO-MAINTAINED]).
+
+
+§1. SCOPE AND DELIVERABLE
+-------------------------
+
+Deliverable per reviewer (Codex + Gemini, parallel and independent):
+
+  scripts/archive/metta_runtime_pilot/source2_petta_metta_morph/
+      findings_codex.txt
+      findings_gemini.txt
+
+Per-question structure following the closed S1 pattern. Twelve S2.Q
+questions in §6 with explicit per-sub-source sections (S2.A.QN, S2.B.QN
+where the question is sub-source-specific; S2.X.QN for cross-cutting
+patham9-portfolio questions).
+
+Estimated findings size ~300-400 lines per reviewer (similar to S1; PeTTa
+is the deeper sub-source, metta-morph is smaller scope).
+
+After both findings files arrive, the orchestrator (Claude this session)
+produces:
+
+  scripts/archive/metta_runtime_pilot/source2_petta_metta_morph/
+      findings_reconciled_crossmodel.txt
+
+Including a Gemini cite-verification log per the option (ii) protocol
+(see §10). Three-way sign-off (Codex + Gemini + orchestrator) before any
+cluster-close edit batch.
+
+
+§2. ARTIFACTS TO READ
+---------------------
+
+§2.A — PeTTa artifacts (in scope for S2.A):
+
+  S2.A.i.  src/ Prolog interpreter (7 files):
+             filereader.pl, main.pl, metta.pl, parser.pl, spaces.pl,
+             specializer.pl, translator.pl
+           Read all 7 in full. Interpreter strategy + Space impl + parser +
+           module-system infrastructure + (TBD) specialization/translation.
+
+  S2.A.ii. lib/ MeTTa-side libraries + Prolog/Python helpers (19 files
+           per §0.A.2). Per-author lib files indicate ownership patterns
+           (lib_patrick / lib_roman / lib_zar). Cross-link to closed
+           pilots via lib_pln / lib_nars / lib_mm2 / etc.
+
+  S2.A.iii. python/ HE/, helper.pl, petta.py, pyproject.toml, tests/,
+            uv.lock — Python interop layer.
+
+  S2.A.iv. examples/ — many .metta example programs. Used at runtime via
+           `time sh run.sh ./examples/foo.metta` per README. Reviewers
+           DO NOT need to run; they should sample 3-5 representative
+           examples to verify language feature coverage.
+
+  S2.A.v.  README.md + AGENTS.md (root): orientation docs. AGENTS.md is
+           a per-model orientation doc (similar pattern to other Magi
+           Hyperon-ecosystem repos); CLAUDE.md and GEMINI.md exist as
+           well. Reviewers may consult their respective per-model docs
+           but per `project_repo_orientation_docs.md` should NOT modify
+           these as part of cluster-pilot extraction.
+
+  S2.A.vi. (Optional) GitHub Wiki at <https://github.com/patham9/PeTTa/wiki>
+           for additional context. README links to Wiki for Extension
+           libraries. Reviewers MAY consult but cite wiki URL not as
+           code-evidence; substantive claims need source-tree backing.
+
+§2.B — metta-morph artifacts (in scope for S2.B):
+
+  S2.B.i.  README.md: 40-line orientation. Establishes scope ("fast
+           subset of MeTTa", NOT full language; depends on
+           hyperon-experimental upstream).
+
+  S2.B.ii. mettamorph.metta + mettamorph.scm: top-level translator entry
+           point. The .metta side wraps invocations from MeTTa programs;
+           the .scm side is the Chicken-Scheme target.
+
+  S2.B.iii. extend/ — translation-extension layer. cinterface.c +
+            cinterface.scm + compileme.metta + example1-6.metta +
+            mettamorph.py + test.py. Reviewers verify what is extension
+            vs core scope.
+
+  S2.B.iv. tests/ — 20+ .metta tests. Use as a coverage proxy: which
+           MeTTa features the translator handles vs misses. Specifically
+           note hyperpose, superpose, collapse, let_superpose_* tests
+           (cross-link to S1 nondeterministic semantics per C1-1).
+
+  S2.B.v.  metta-nars/ — empty directory at HEAD. Verify gitkeep status,
+           submodule placeholder, or stale-removed-content. Cross-link
+           install_nars.sh.
+
+  S2.B.vi. timing/timing.metta + timing.py: performance verification
+           harness. Used for the README's "hundreds of times faster" claim.
+
+  S2.B.vii. autoquote.py + compile_scheme.sh + install_dependencies.sh +
+            install_nars.sh: build/install scripts. Verify whether
+            install_nars.sh actually installs anything at HEAD or is
+            stale.
+
+§2.X — Cross-source artifacts (for cross-cutting S2.X.QN questions):
+
+  - hyperon-experimental at HEAD `3f76dc46` (S1-locked baseline).
+    Reviewers MUST NOT re-derive S1 findings; cross-comparisons are
+    relative to S1 verdicts.
+  - HAA S1 (AIRIS Cook & Hammer 2024) cluster-pilot reconciliation:
+    `scripts/archive/non_clustered_haa_pilot/source1_airis_paper/
+    findings_reconciled_crossmodel.txt`.
+  - HAA S5 (patham9/NACE + patham9/metta-nars) cluster-pilot
+    reconciliation: `scripts/archive/non_clustered_haa_pilot/
+    source5_NACE_AIDSL_MOSES_MeTTaNARS/findings_reconciled_crossmodel.txt`.
+  - HAA S4 (rTreutlein/semantic_parsing) cluster-pilot reconciliation:
+    `scripts/archive/non_clustered_haa_pilot/
+    source4_concept_blending_semantic_parsing/findings_reconciled_crossmodel.txt`.
+
+
+§3. LOCKED PRIOR ART — DO NOT RE-LITIGATE
+-----------------------------------------
+
+The following findings are LOCKED at S1 close 2026-05-08 (commit 21f4835).
+S2 reviewers MUST NOT re-derive them; they are reproduced here as cross-source
+forwards for context.
+
+PA1. hyperon-experimental v0.2.10 = official Rust reference MeTTa runtime
+     (S1 verdict + V1-1). Single canonical baseline for the cluster.
+
+PA2. hyperon-experimental interpreter is `[SMALL-STEP-INTERPRETER]`
+     `[NONDETERMINISTIC-BRANCHING]` — NOT a deterministic "first match wins"
+     rewrite engine. Multiple matches produce multiple results.
+     `interpret_step` at `lib/src/metta/interpreter.rs:269`,
+     `interpret_stack` at :374. Per C1-1, S2 reviewers compare PeTTa /
+     metta-morph against this baseline.
+
+PA3. hyperon-experimental type system is `[DYNAMIC-CHECKED]` with
+     `%Undefined%` permissive wildcard at `lib/src/metta/types.rs:18-19`.
+     Per C1-2, S2 reviewers compare PeTTa / metta-morph type-handling
+     against this dynamic baseline; do NOT describe alternative runtimes
+     as "identical" without evidence.
+
+PA4. hyperon-experimental stdlib is `[HYBRID-RUST-PLUS-METTA-STDLIB]` —
+     split between Rust-side token registrations (lib/src/metta/runner/
+     stdlib/{arithmetics, atom, core, debug, math, module, package, space,
+     string}.rs) AND MeTTa-side stdlib.metta (1421 lines). Per C1-3, S2
+     reviewers MUST cover both layers when comparing PeTTa / metta-morph
+     stdlib parity. (Full S1 inventory at S1 §S1.Q3 reconciliation.)
+
+PA5. hyperon-experimental module system is `[MODULE-SYSTEM-PARTIAL]` —
+     active but evolving. Imports via `import!` (`stdlib/module.rs:290`)
+     create separate `DynSpace` instances. Per C1-4, S2 reviewers compare
+     PeTTa / metta-morph module semantics relative to this moving target.
+
+PA6. hyperon-experimental Phase 4 prior art (P1-P11 from AtomSpace
+     Phase 4 Source 2 reconciliation): SpaceMut write API, SpaceObserver
+     pattern, single-threaded design, AtomIndex/AtomTrie storage, DAS
+     module default-enabled, Python observer gap (PATCH-1), MeTTa
+     `replace-atom!` asymmetry (PATCH-2), PR #852 EventAgent mainline,
+     lib_spaces.metta phantom citation in hyperon-experimental ONLY,
+     sql_space sandbox precedent. S2 sub-sources may diverge from any
+     of these; flag deviations as candidate V2-N-X dissents.
+
+PA7. hyperon-experimental 0.2.x runtime quirks at HEAD `3f76dc46` (S1.Q11
+     re-verification):
+       Q-1. bind!+new-space: [QUIRK-CONFIRMED-AT-HEAD] (no reset semantics).
+       Q-2. cond:            [QUIRK-FIXED-SINCE-V0-2-1] via absence
+                             (cond is NOT a builtin operator at HEAD;
+                             use if/case/match).
+       Q-3. catchall:        [QUIRK-CONFIRMED-AT-HEAD] (documented
+                             nondeterministic semantics, not a defect).
+     Per C1-8, S2 reviewers verify whether PeTTa / metta-morph reproduce,
+     fix, or sidestep each quirk.
+
+PA8. PeTTa's `lib_spaces.metta` is a DISTINCT FILE from the hyperon-experimental
+     phantom citation (P10 / V1-10). The phantom citation finding applies
+     ONLY to `hyperon-experimental/lib/src/metta/runner/.../lib_spaces.metta`
+     which does NOT exist. PeTTa's `lib/lib_spaces.metta` is a real file
+     in the PeTTa repo. Reviewers do NOT classify PeTTa's lib_spaces.metta
+     as phantom — it is a distinct artifact in a distinct repo.
+
+
+§4. CROSS-SOURCE FORWARDS FROM PRIOR CLOSED CLUSTER PILOTS
+----------------------------------------------------------
+
+Locked findings from earlier cluster pilots that S2 reviewers should be
+aware of (NOT re-derived):
+
+F1. PLN cluster No-Go theorem (PLN pilot 2026-04-25). Applies regardless of
+    storage / runtime choice. PeTTa's `lib/lib_pln.metta` — verify scope
+    (full PLN inference? subset? token registrations only?). Cluster narrative:
+    PLN-over-runtime claims must specify "semantic queries the underlying
+    storage cannot trivially answer," not global PLN inference.
+
+F2. AtomSpace four-layer taxonomy (AtomSpace pilot 2026-04-29):
+    Layer 1 Classical (opencog/atomspace), Layer 2 Hyperon Space (hyperon-
+    experimental/hyperon-space), Layer 3 DAS (singnet/das), Layer 4 MORK
+    (trueagi-io/MORK). PeTTa supports MORK + FAISS spaces optionally
+    (build.sh). Reviewers classify which layer(s) PeTTa's space model
+    aligns with at HEAD `16e92b4`.
+
+F3. patham9 cross-pilot portfolio (HAA S5 V5-13 [PATHAM9-HAA-PORTFOLIO]):
+    NACE + metta-nars + AIRIS-co-author. Now extended at S2 to include
+    PeTTa + metta-morph. Reviewers verify Patrick Hammer's design
+    signature across the 5 repos. Specifically: does PeTTa's interpreter
+    strategy resemble metta-morph's translator strategy resemble NACE's
+    causal-rules engine? Or are these paradigm-distinct projects sharing
+    only an author?
+
+F4. Linas Vepstas Hyperon-era portfolio (Perception pilot 2026-05-01).
+    NOT directly relevant to S2 (Hammer's work, not Vepstas's). But:
+    PeTTa's `lib_pln.metta` cross-link with PLN cluster + PeTTa's
+    optional MORK integration may surface Vepstas-era code paths.
+
+F5. Roman Treutlein cross-pilot identity. HAA S4 closed
+    `rTreutlein/semantic_parsing` as the canonical semantic-parsing
+    repo. PeTTa has 181 Treutlein commits (#2 contributor). Reviewers
+    verify the cross-link: which PeTTa subsystems does Treutlein own?
+    Likely lib_roman.metta + adjacent.
+
+F6. Zar Goertzel cross-pilot identity. zariuq = Zarathustra Goertzel
+    (user-verified, PLN cluster pilot). 3 PeTTa commits. Reviewers
+    verify what Zar's commits touch (likely lib_zar.metta + lib_zar.pl).
+
+F7. Wiki MCP server bugs (`hyperon-wiki-mcp/SERVER-BUGS.md`):
+    `create_card` spurious-error, `restore_card` `+tag` quirk, one-writer-
+    only protocol. Apply at cluster-close edit-batch time; not relevant
+    during extraction.
+
+
+§5. P-CLAIMS — EXISTING WIKI / ORIENTATION CLAIMS TO VERIFY
+-----------------------------------------------------------
+
+P-1. PeTTa is "Efficient MeTTa language implementation in Prolog" per
+     PeTTa README at HEAD `16e92b4`. Likely [P-CLAIM-VERIFIED]; reviewers
+     confirm the README claim aligns with src/ content.
+
+P-2. metta-morph is "Macro-based MeTTa to (Chicken) Scheme translator"
+     per metta-morph README at HEAD `9ac7b8e`. Goal: "fast subset of MeTTa"
+     NOT full language capability. Likely [P-CLAIM-VERIFIED]; reviewers
+     confirm test corpus + extend/ examples align with the claim.
+
+P-3. PeTTa optional MORK + FAISS spaces support per build.sh. Reviewers
+     verify build.sh contents + the conditional in the runtime.
+
+P-4. metta-morph "hundreds of times faster" subset claim per README.
+     Verifiable via timing/timing.metta + timing.py (S2.B.Q2). Reviewers
+     read the timing harness to characterize what's measured (full MeTTa
+     program suite? a specific kernel? compilation overhead vs runtime?).
+
+P-5. PeTTa Smart Dispatch — INVALID FRAMING. The MeTTa runtime cluster
+     pilot handoff §3 used "Prolog-based compiler with Smart Dispatch"
+     framing. `git grep -i 'smart.dispatch\|smart_dispatch'` on PeTTa at
+     HEAD `16e92b4` returns ZERO hits. The README does not use
+     "Smart Dispatch" terminology. Reviewers should NOT cite "Smart
+     Dispatch" as a PeTTa feature; instead characterize whatever
+     dispatch strategy the interpreter actually uses (pattern matching?
+     Prolog unification? specialization? — see S2.A.Q1 + S2.A.Q2).
+
+P-6. PeTTa tabling support. PR #164 (2026-04-13) introduced "Easier
+     tabling support usage". `lib/lib_tabling.metta` is the user-facing
+     library. Reviewers verify what tabling-as-a-feature-in-PeTTa means
+     (memoization layer? Prolog-style table operations? something else?)
+     and whether it interacts with nondeterminism or stdlib coverage.
+
+P-7. PeTTa FunctionRemovalInNonSelfSpaces. PR #169 (2026-05-02) added
+     "function removal also for non-self-space". Reviewers verify what
+     this changes (Space-API semantics? scope rules?) and whether it
+     matches or diverges from hyperon-experimental Space::remove.
+
+P-8. metta-morph metta-nars/ subdirectory is empty at HEAD. Cross-link
+     install_nars.sh. Reviewers verify whether this is a stale removal,
+     submodule pointer, or planned-but-not-implemented integration.
+
+
+§6. QUESTIONS FOR S2 REVIEWERS
+------------------------------
+
+Reviewers (Codex + Gemini, parallel and independent) answer each S2.QN
+in the per-question format established by closed pilots. Each answer
+must include verdict tag(s) from §7 (single-label per question per
+V1-PROTOCOL-1), file:line evidence, and methodology notes.
+
+§6.A — PeTTa-specific questions
+
+S2.A.Q1. PETTA INTERPRETER STRATEGY
+       Read src/metta.pl (the core interpreter loop) + src/parser.pl +
+       src/translator.pl + src/specializer.pl. What reduction/dispatch
+       strategy does PeTTa implement? Per C1-1, characterize relative to
+       hyperon-experimental's [SMALL-STEP-INTERPRETER]
+       [NONDETERMINISTIC-BRANCHING]. Specifically:
+         - Is PeTTa nondeterministic (branches on multiple matches)?
+         - Or does it impose deterministic dispatch (Prolog
+           unification / first-match-wins / specialization)?
+         - Or does it offer both modes?
+       Required: verdict tag from §7, file:line evidence in the .pl
+       files, examples from examples/ that demonstrate the strategy.
+
+S2.A.Q2. PETTA SPECIALIZATION + TRANSLATION LAYER
+       Read src/specializer.pl + src/translator.pl. What do these files
+       do? Hypotheses to verify (do NOT presume — verify via code):
+         (a) Translator: MeTTa → Prolog source-level translation;
+             Prolog backend executes.
+         (b) Specializer: partial-evaluation / specialization for
+             repeated patterns.
+         (c) Both work together as a compilation pipeline.
+       Required: verdict tag from §7 ([COMPILED-INTERPRETER] /
+       [INTERPRETED-INTERPRETER] / [HYBRID-COMPILED-INTERPRETED]), with
+       file:line evidence.
+
+S2.A.Q3. PETTA STDLIB PARITY VS HYPERON-EXPERIMENTAL
+       Per C1-3, audit BOTH layers:
+         (a) Prolog-side: any stdlib-equivalent registrations in src/*.pl?
+         (b) MeTTa-side: lib/*.metta files (16 .metta libraries).
+       Compare against hyperon-experimental's stdlib inventory (S1.Q3):
+       arithmetics, atom, core, debug, math, module, package, space,
+       string, plus the .metta-side `return`/`function`/`eval`/`chain`/
+       `unify`/`cons-atom`/`decons-atom`/`collapse-bind`/`superpose-bind`/
+       `metta`/`switch`/`if`/`let`/`case`/etc.
+       Identify:
+         - Ops in hyperon-experimental missing from PeTTa.
+         - Ops in PeTTa missing from hyperon-experimental.
+         - Naming-convention drift.
+         - Per-author lib files (lib_patrick / lib_roman / lib_zar /
+           lib_pln / lib_nars / lib_mm2): scope and inclusion criteria.
+       Required: verdict tag from §7, op-by-op diff table.
+
+S2.A.Q4. PETTA TABLING SUPPORT (PR #164)
+       Read lib/lib_tabling.metta + the Prolog hooks. What does tabling
+       add? Hypotheses to verify:
+         (a) Memoization for pure functions.
+         (b) Prolog-style tabling (storing all derived facts to avoid
+             non-termination on left-recursion).
+         (c) Both / something else.
+       Verify via the PR #164 commit `02a4893` + `dec4505`.
+       Required: verdict tag from §7, file:line evidence, semantics
+       characterization.
+
+S2.A.Q5. PETTA FUNCTIONREMOVALINNONSELFSPACES (PR #169)
+       Read the PR commits `c1bef77` + `16e92b4`. What does
+       "function removal also for non-self-space" change in semantics?
+       Per PA6 (hyperon-experimental SpaceMut::remove behavior), is
+       this PeTTa-side aligned with hyperon-experimental, or does it
+       diverge? Required: verdict tag from §7, file:line evidence,
+       cross-comparison to hyperon-experimental's SpaceMut::remove
+       semantics at lib/src/space/grounding/mod.rs:92.
+
+S2.A.Q6. PETTA TYPE SYSTEM
+       Per C1-2, audit lib/lib_builtin_types.metta + any Prolog-side
+       type machinery. Compared to hyperon-experimental's
+       [DYNAMIC-CHECKED] with %Undefined% wildcard:
+         - Does PeTTa have a type checker?
+         - Static, dynamic, hybrid?
+         - Does it support %Undefined% or analogous wildcard?
+         - Does it interact with the dispatch strategy (S2.A.Q1)?
+       Required: verdict tag from §7.
+
+S2.A.Q7. PETTA MODULE SYSTEM
+       Per C1-4, audit lib/lib_import.metta + lib/lib_import.pl + any
+       module-loading infrastructure. Compared to hyperon-experimental's
+       [MODULE-SYSTEM-PARTIAL]:
+         - How is `import!` resolved in PeTTa?
+         - Are imports hierarchical / flat / namespaced?
+         - Module-isolation semantics (separate spaces?)
+         - Does PeTTa have a public/private distinction?
+       Required: verdict tag from §7.
+
+S2.A.Q8. PETTA SPACES (Prolog + MeTTa + optional MORK + FAISS)
+       Read src/spaces.pl + lib/lib_spaces.metta + build.sh (for the
+       MORK + FAISS optional integration). Per F2 four-layer AtomSpace
+       taxonomy: which layer(s) does PeTTa's space model align with?
+       Hypotheses to verify:
+         - Default Prolog spaces are an in-process Layer-2-equivalent
+           (hyperon-experimental analog).
+         - MORK integration (build.sh + mork_ffi clone) wires Layer 4.
+         - FAISS integration is a vector-search adjacency, not in the
+           four-layer taxonomy.
+       Required: verdict tag from §7, file:line evidence.
+
+§6.B — metta-morph-specific questions
+
+S2.B.Q1. METTA-MORPH TRANSLATION STRATEGY
+       Read mettamorph.metta + mettamorph.scm + autoquote.py +
+       compile_scheme.sh + extend/cinterface.{c,scm}. What translation
+       pipeline does metta-morph implement? Hypotheses:
+         (a) Macro-based source-to-source MeTTa → Scheme.
+         (b) Per-call transcompilation invoked from MeTTa programs via
+             `(compile! source.metta)`.
+         (c) Both — compile-time + runtime hybrid.
+       Required: verdict tag from §7, file:line evidence.
+
+S2.B.Q2. METTA-MORPH PERFORMANCE CLAIM ("hundreds of times faster")
+       Read timing/timing.metta + timing/timing.py + tests/. What does
+       the timing harness actually measure?
+         - A specific MeTTa kernel's runtime?
+         - Compilation overhead vs interpretation?
+         - End-to-end script timing?
+       Verify the README's "hundreds of times faster" claim is testable
+       at HEAD `9ac7b8e`. Required: verdict tag from §7, characterization
+       of what is benchmarked (NOT a benchmark RE-RUN — static audit only).
+
+S2.B.Q3. METTA-MORPH SCOPE / SUBSET COVERAGE
+       Read tests/ (~20 .metta tests). Which MeTTa features does
+       metta-morph translate? Specifically:
+         - hyperpose, superpose, collapse, let-superpose-* tests:
+           does the translator preserve nondeterministic semantics
+           (per C1-1 from S1)?
+         - if, factorial, identity, match_feval: deterministic kernels.
+         - Any tests that EXIST but fail / are marked .inactive (per the
+           tests/hyperpose_primes.metta.inactive file)?
+       Required: verdict tag from §7, coverage table.
+
+S2.B.Q4. METTA-MORPH STATUS — STABLE / STAGNANT / ABANDONED
+       At HEAD `9ac7b8e`, last commit 2025-08-08 (~9 months pre-pilot).
+       Single-maintainer (255/258 = 99% Patrick Hammer). Verdict tag
+       from {[SCHEME-TRANSLATOR-STABLE-LOW-ACTIVITY],
+       [SCHEME-TRANSLATOR-STAGNANT], [SCHEME-TRANSLATOR-ABANDONED]}.
+       Justify based on: README freshness, test pass-rate (static
+       audit), open issues / TODO comments in source, commit-message
+       sentiment in HEAD~10.
+
+S2.B.Q5. METTA-MORPH METTA-NARS/ EMPTY DIRECTORY
+       Read `ls -la metta-nars/` + git log on metta-nars/ for any
+       removed files. Check install_nars.sh contents. What's the
+       intended relationship to HAA S5 patham9/metta-nars?
+       Verdict tag from {[METTA-NARS-REMOVED-DEAD], [METTA-NARS-PLACEHOLDER],
+       [METTA-NARS-PLANNED-NOT-STARTED], [METTA-NARS-EXTERNAL-SUBMODULE]}.
+
+S2.B.Q6. METTA-MORPH HYGIENIC MACRO IMPLEMENTATION
+       Read mettamorph.scm + extend/cinterface.scm. Chicken Scheme deps:
+       srfi-69, matchable, amb. Characterize:
+         - Use of matchable for pattern matching.
+         - Use of amb for nondeterminism (cross-link to S2.B.Q3).
+         - Hygienic-macro pattern (any specific syntax-rules / syntax-case
+           usage).
+       Required: verdict tag from §7.
+
+§6.X — Cross-cutting questions (S2.X)
+
+S2.X.Q1. PATHAM9 PORTFOLIO COHERENCE
+       Compare PeTTa + metta-morph + (cross-link via HAA) NACE +
+       metta-nars + AIRIS-co-author. Five-repo Hammer portfolio. Are
+       these:
+         (a) Paradigm-distinct projects with shared author but
+             independent design (per HAA S5 V5-13);
+         (b) An ecosystem with consistent internal abstractions
+             (e.g., a shared NAL / NARS substrate, or shared MeTTa-runtime
+             implementations);
+         (c) Sequential evolution (one supersedes another)?
+       Required: candidate verdict tag, evidence from cross-repo
+       references (git remotes / submodules / lib_nars file paths /
+       install_nars.sh).
+
+S2.X.Q2. ROMAN TREUTLEIN OWNERSHIP IN PETTA
+       181 PeTTa commits (cross-link to HAA S4 rTreutlein/semantic_parsing).
+       Run `git log --author='Roman Treutlein' --stat` over PeTTa.
+       Which subsystems does Treutlein own at HEAD `16e92b4`?
+       Hypothesis: lib/lib_roman.metta + adjacent infrastructure.
+       Required: file path inventory; cross-pilot identity confirmation.
+
+S2.X.Q3. ZAR GOERTZEL COMMITS IN PETTA
+       3 PeTTa commits (cross-link to PLN cluster zariuq = Zarathustra
+       Goertzel verified user identity). Run `git log
+       --author='Zar Goertzel'` over PeTTa.
+       Which files / subsystems? Hypothesis: lib/lib_zar.metta + .pl.
+       Required: commit inventory; cross-pilot identity confirmation.
+
+S2.X.Q4. 0.2.X QUIRK REPRODUCTION (per C1-8)
+       For each S1 V1-quirk, characterize PeTTa AND metta-morph behavior:
+
+         Q-1 bind!+new-space: does PeTTa's BindOp-equivalent (in src/*.pl
+             + lib/) reset already-bound spaces? Does metta-morph's
+             translation preserve hyperon-experimental's no-reset
+             semantics? Required pickaxe: `git log --all -S 'bind!'`
+             on each repo.
+
+         Q-2 cond: cond is absent in hyperon-experimental v0.2.10. Is
+             cond present in PeTTa lib/? In metta-morph tests/? If
+             present, is it implemented or stub?
+
+         Q-3 catchall multi-reduction: per S1, this is documented
+             nondeterministic semantics. Does PeTTa's interpreter
+             reproduce nondeterministic-branching? Does metta-morph
+             preserve it through translation to Scheme amb?
+
+       Verdict per quirk per repo from §7:
+         {[QUIRK-REPRODUCED], [QUIRK-FIXED], [QUIRK-DIVERGENT-SEMANTICS],
+          [QUIRK-NOT-APPLICABLE]}.
+
+
+§7. VERDICT VOCABULARY (single-label per question — V1-PROTOCOL-1)
+------------------------------------------------------------------
+
+Reviewers must use EXACTLY ONE tag from the matching set per question.
+Adjacent descriptive tags belong in the prose body, NOT in the verdict
+line. (V4-2 lesson; reinforced at S1 close as V1-PROTOCOL-1.)
+
+Interpreter strategy (S2.A.Q1):
+  [PETTA-NONDETERMINISTIC-BRANCHING-INTERPRETER]
+  [PETTA-DETERMINISTIC-FIRST-MATCH-WINS]
+  [PETTA-HYBRID-MODE-SELECTABLE]
+  [PETTA-SPECIALIZED-INTERPRETER]
+
+Compilation/translation (S2.A.Q2 + S2.B.Q1):
+  [COMPILED-INTERPRETER]
+  [INTERPRETED-INTERPRETER]
+  [HYBRID-COMPILED-INTERPRETED]
+  [SOURCE-TO-SOURCE-TRANSLATOR]
+  [MACRO-EXPANSION-TRANSLATOR]
+
+Stdlib parity (S2.A.Q3):
+  [STDLIB-FULL-PARITY]
+  [STDLIB-CORE-PARITY]
+  [STDLIB-PARTIAL-PARITY]
+  [STDLIB-DIVERGENT-VOCABULARY]
+
+Tabling (S2.A.Q4):
+  [TABLING-MEMOIZATION]
+  [TABLING-PROLOG-STYLE]
+  [TABLING-HYBRID]
+
+Function removal (S2.A.Q5):
+  [REMOVE-API-ALIGNED-WITH-HYPERON-EXPERIMENTAL]
+  [REMOVE-API-DIVERGENT]
+  [REMOVE-API-EXTENDED-BEYOND-S1]
+
+Type system (S2.A.Q6):
+  [TYPES-DYNAMIC-WILDCARD-COMPATIBLE]
+  [TYPES-DYNAMIC-DIVERGENT]
+  [TYPES-STATIC-PROLOG-DRIVEN]
+  [TYPES-NONE]
+
+Module system (S2.A.Q7):
+  [MODULE-SYSTEM-COMPLETE]
+  [MODULE-SYSTEM-PARTIAL]
+  [MODULE-SYSTEM-PROTOTYPE]
+  [MODULE-SYSTEM-FLAT-INCLUDES]
+
+Spaces (S2.A.Q8):
+  [SPACE-LAYER-2-EQUIVALENT]
+  [SPACE-LAYER-2-PLUS-LAYER-4-MORK]
+  [SPACE-LAYER-2-PLUS-FAISS-VECTOR-ADJACENCY]
+  [SPACE-MULTI-LAYER]
+
+metta-morph translation strategy (S2.B.Q1):
+  [SOURCE-TO-SOURCE-TRANSLATOR]
+  [MACRO-EXPANSION-TRANSLATOR]
+  [HYBRID-MACRO-AND-RUNTIME]
+
+Performance claim (S2.B.Q2):
+  [PERFORMANCE-CLAIM-VERIFIABLE]
+  [PERFORMANCE-CLAIM-NARROW-SUBSET]
+  [PERFORMANCE-CLAIM-NOT-VERIFIABLE]
+
+Coverage (S2.B.Q3):
+  [TRANSLATOR-COVERAGE-FULL]
+  [TRANSLATOR-COVERAGE-CORE]
+  [TRANSLATOR-COVERAGE-NARROW]
+
+Status (S2.B.Q4):
+  [SCHEME-TRANSLATOR-STABLE-LOW-ACTIVITY]
+  [SCHEME-TRANSLATOR-STAGNANT]
+  [SCHEME-TRANSLATOR-ABANDONED]
+
+metta-nars/ subdir (S2.B.Q5):
+  [METTA-NARS-REMOVED-DEAD]
+  [METTA-NARS-PLACEHOLDER]
+  [METTA-NARS-PLANNED-NOT-STARTED]
+  [METTA-NARS-EXTERNAL-SUBMODULE]
+
+Hygienic macros (S2.B.Q6):
+  [HYGIENIC-MACRO-FULL]
+  [HYGIENIC-MACRO-PARTIAL]
+  [PROCEDURAL-EXPANSION]
+
+Cross-cutting:
+  Patham9 portfolio (S2.X.Q1):
+    [PORTFOLIO-PARADIGM-DISTINCT]
+    [PORTFOLIO-SHARED-ECOSYSTEM]
+    [PORTFOLIO-SEQUENTIAL-EVOLUTION]
+
+  Quirks reproduction (S2.X.Q4 per quirk per repo):
+    [QUIRK-REPRODUCED]
+    [QUIRK-FIXED]
+    [QUIRK-DIVERGENT-SEMANTICS]
+    [QUIRK-NOT-APPLICABLE]
+
+
+§8. REQUIRED GREP TARGETS
+-------------------------
+
+S2.A.Q1 (interpreter):
+  In src/: `interpret|reduce|step|eval|rewrite|match|unify|dispatch|
+            specialize|translate`
+  In examples/: 3-5 representative .metta programs that demonstrate
+                interpretation behavior.
+
+S2.A.Q2 (specializer + translator):
+  Read src/specializer.pl and src/translator.pl in full.
+  In src/main.pl: trace how specializer/translator are invoked.
+
+S2.A.Q3 (stdlib parity):
+  Per lib/*.metta + src/*.pl: enumerate primitives.
+  Compare against S1.Q3 inventory in
+  scripts/archive/metta_runtime_pilot/source1_hyperon_experimental/
+  findings_reconciled_crossmodel.txt § PER-QUESTION CONSENSUS § Q3.
+
+S2.A.Q4 (tabling):
+  `git show 02a4893` and `git show dec4505` for PR #164 contents.
+  `git log -p -- lib/lib_tabling.metta` for the file's evolution.
+
+S2.A.Q5 (function removal):
+  `git show c1bef77` and `git show 16e92b4` for PR #169 contents.
+  `git log -p -- src/spaces.pl` (likely site of the change).
+  Cross-compare with hyperon-experimental's
+  `lib/src/space/grounding/mod.rs:92` SpaceMut::remove.
+
+S2.A.Q6 (types):
+  In lib/lib_builtin_types.metta + src/*.pl: `type|check_type|
+  validate|infer|undefined|wildcard`.
+
+S2.A.Q7 (modules):
+  In lib/lib_import.{metta,pl} + src/*.pl: `import|include|module|
+  namespace|load|space`.
+
+S2.A.Q8 (spaces):
+  In src/spaces.pl + lib/lib_spaces.metta + build.sh:
+  `space|MORK|mork_ffi|FAISS|faiss_ffi|atom-space|new-space`.
+
+S2.B.Q1 (translation strategy):
+  In mettamorph.metta + mettamorph.scm + autoquote.py +
+  compile_scheme.sh: `compile|expand|macro|syntax|rule|translate|
+  transcompile`.
+  Plus extend/{cinterface.c,cinterface.scm,mettamorph.py}.
+
+S2.B.Q2 (timing):
+  Read timing/timing.metta + timing/timing.py + timing/README.md
+  in full.
+
+S2.B.Q3 (coverage):
+  ls tests/ + read at least 5 representative .metta tests including
+  hyperpose-related ones for nondeterminism semantics.
+  `git log --diff-filter=D -- tests/` for any removed tests.
+
+S2.B.Q4 (status):
+  `git log --since='2025-05-01' --format='%h %ci %s'` (last year of
+  activity).
+  README.md sentiment + open TODO/FIXME comments in source.
+
+S2.B.Q5 (metta-nars/):
+  `ls -la metta-nars/` + `git log -- metta-nars/` for the dir's
+  history. Read install_nars.sh.
+
+S2.B.Q6 (hygienic macros):
+  In mettamorph.scm + extend/cinterface.scm: `define-syntax|
+  syntax-rules|syntax-case|matchable|amb|hygienic`.
+
+S2.X.Q1 (patham9 portfolio):
+  Cross-repo: PeTTa README links to mork_ffi + faiss_ffi.
+  metta-morph install_nars.sh: what does it install?
+  HAA S5 reconciliation: cross-link metta-nars repo identity.
+  Run `git log --author='Patrick Hammer' --since='2024-01-01'` per
+  repo for activity-pattern comparison.
+
+S2.X.Q2 (Roman Treutlein):
+  `git log --author='Roman Treutlein' --stat` over PeTTa.
+  Identify owned files via top-N file count.
+
+S2.X.Q3 (Zar Goertzel):
+  `git log --author='Zar Goertzel'` over PeTTa.
+
+S2.X.Q4 (quirk reproduction):
+  Per quirk:
+    Q-1 bind!: `git log --all -S 'bind!'` on PeTTa + metta-morph.
+               Read the BindOp-equivalent in src/*.pl + tests/.
+    Q-2 cond:  Repo-wide `grep -i '\bcond\b'` (Codex's S1 protocol).
+               Pickaxe `git log --all -S '(cond'`.
+    Q-3 catchall: tests for multi-reduction; semantic notes in
+                  README/docs/source.
+
+
+§9. CROSS-SOURCE FORWARDS FOR S3-S6
+-----------------------------------
+
+This brief locks the following carry-forwards that S2 reviewers will
+populate via their findings:
+
+  C2-1. PeTTa's interpreter strategy and dispatch model (S2.A.Q1
+        deliverable). S3 (MeTTaTron) compares its compiler-front-end's
+        dispatch against this.
+
+  C2-2. PeTTa's stdlib coverage delta vs hyperon-experimental
+        (S2.A.Q3 deliverable). S3-S6 must specify their delta against
+        this two-source baseline.
+
+  C2-3. Tabling support semantics (S2.A.Q4 deliverable). New axis
+        for S3-S6 to be aware of.
+
+  C2-4. Function-removal semantics in PeTTa (S2.A.Q5 deliverable).
+        S3-S6 specify whether their runtime aligns or diverges.
+
+  C2-5. metta-morph translation strategy (S2.B.Q1 deliverable).
+        S3 (MeTTaTron) is also a compilation-leaning project; the
+        strategies-comparison axis is locked at S2.
+
+  C2-6. metta-morph scope / subset coverage (S2.B.Q3 deliverable).
+        S3 (MeTTaTron) is full-language; S4 (FormalMeTTa) is literal-
+        spec; S2.B coverage delta locks the "subset" baseline.
+
+  C2-7. patham9 portfolio coherence verdict (S2.X.Q1). Cross-reference
+        for HAA S5 V5-13 [PATHAM9-HAA-PORTFOLIO] extension.
+
+
+§10. STANDING PROTOCOLS (CARRY-FORWARD AT FORCE)
+------------------------------------------------
+
+The following standing protocols apply to S2 extraction and reconciliation.
+Reviewer-side messaging is unchanged from S1. New protocols promoted at S1
+close are reflected here.
+
+P10.1. Pickaxe before "dead code" / "never used" / "never implemented"
+       claims. `git log --all -S '<token>'` mandatory.
+
+P10.2. Caller-analysis must be time-indexed. Snapshot SHA required.
+
+P10.3. Bidirectional fork-divergence + staleness corollary.
+
+P10.4. OpenCog audits grep BOTH C++ and Scheme/MeTTa API layers.
+       For S2: this primarily means audit BOTH .pl interpreter AND
+       .metta library layers when comparing PeTTa's stdlib.
+
+P10.5. CF5.6 — verify file-existence claims via ls/Glob BEFORE citation.
+
+P10.6. P12 — copy-paste raw shell output for all numerical claims.
+
+P10.7. V4-11 [GEMINI-INTERPRETATION-VERIFICATION] — interpretation
+       claims like "X is implemented via Y" need filename + grep +
+       line-number evidence.
+
+P10.8. Option (ii) Gemini cite pre-verification — orchestrator pre-verifies
+       every Gemini cite at extraction-return time. Cumulative drift
+       through S1: ~67% (75% gate not crossed). Re-evaluation gate at
+       S2 close: if cumulative crosses 75%, escalate to Codex-only-primary
+       methodology.
+
+P10.9. RawData fidelity (not directly relevant to S2 extraction).
+
+P10.10. Author attribution. zariuq = Zarathustra Goertzel; Oruži = AI
+        collaboration; Zarko Zaremba = pseudonymous self-citation.
+        For S2: Patrick Hammer = patham9; Roman Treutlein = rTreutlein;
+        Peter Isaev = pisaev1 (combined contributor count); Zar Goertzel
+        = zariuq.
+
+P10.11. Wiki MCP one-writer-only protocol. Cluster-close edits gated
+        on user authorization.
+
+P10.12. Sandra-spec port re-check before cluster-close edit batch.
+        At S1 close 2026-05-08, parallel session was Sandra-spec porting
+        IndexSubtopic + IndexSection cardtypes (commits 0fdb544 +
+        ec8d82d landed during S1 work). For S2 cluster-close, re-read
+        any wiki target cards immediately before edit batch.
+
+P10.13. Parallel-Claude awareness. Per session-start (2026-05-08),
+        the parallel agent is Sandra-spec styling, not content. S2
+        wiki edits focus on FULL cards (Draft and Published cards
+        with FULL in their name) per user.
+
+P10.14. WebFetch verify external URLs before any wiki edit. For S2
+        relevant: PeTTa README cites mork_ffi + faiss_ffi GitHub URLs;
+        any new wiki edits citing external PeTTa repos must verify URL
+        status.
+
+P10.15. Wiki audits must query Draft + Markdown + Published cardtypes
+        (now extended at S1 close to include IndexSubtopic + IndexSection
+        per parallel session's Sandra-spec port commits).
+
+P10.16. NEW (S1 close 2026-05-08) — V1-PROTOCOL-1 brief-vocabulary
+        enforcement. Use EXACTLY ONE tag from the §7 set per verdict
+        slot. Adjacent descriptive tags belong in prose body, NOT in
+        the verdict line.
+
+P10.17. NEW (S1 close 2026-05-08) — V1-PROTOCOL-2 byte-vs-line
+        discrimination. When citing a file's range, distinguish bytes
+        (file size; use `wc -c` or `ls -la`) from lines (use `wc -l`).
+        Never cite a byte count in a 'L<n>-<m>' line-range syntax.
+
+P10.18. NEW (S1 close 2026-05-08) — V1-PROTOCOL-3 cbindgen-generated
+        headers. C-API audits must NOT cite source-tree paths for
+        headers that are auto-generated by cbindgen. Verify via the
+        cbindgen.toml file. (Not directly relevant to S2 — neither
+        PeTTa nor metta-morph use cbindgen — but kept in the standing
+        protocol set.)
+
+
+§11. METHODOLOGY NOTES (REVIEWER-FACING)
+----------------------------------------
+
+(a) Read this brief in full BEFORE extraction. Sign off on the brief
+    (or propose corrections) before extraction begins.
+
+(b) Use the brief's pre-populated git history (§0.A.4 PeTTa, §0.B.3
+    metta-morph). Run additional git only when answering an S2.QN
+    question requires deeper history.
+
+(c) Use the brief's locked prior art (§3 PA1-PA8). Do NOT re-derive S1
+    findings.
+
+(d) Use the brief's verdict vocabulary (§7) — single-label per question
+    per V1-PROTOCOL-1.
+
+(e) Use the brief's required-grep targets (§8). Repo-wide grep is the
+    minimum bar; README-only grep is insufficient.
+
+(f) Cite specifically (file:line) and use SHA references. Every code
+    claim cites `<file>:<line-range>`. Every SHA reference is the full
+    or unambiguous short hash.
+
+(g) Flag dissents EXPLICITLY as candidate V2-N-X records.
+
+Output format: per S2.QN section, with verdict tag(s), file:line evidence,
+methodology notes, and (if applicable) candidate V2-N-X dissents. Plain
+text. Estimated 300-400 lines per reviewer.
+
+
+§12. AT-EXTRACTION-RETURN SEQUENCE (ORCHESTRATOR-FACING)
+--------------------------------------------------------
+
+When findings_codex.txt and findings_gemini.txt arrive (user-relayed):
+
+(1) Apply P10.8 (option ii) cite pre-verification on findings_gemini.txt
+    BEFORE reconciliation drafting. Four cite classes:
+      - File-path: verify existence at HEAD (PeTTa `16e92b4` /
+        metta-morph `9ac7b8e`).
+      - Line-number: `git show HEAD:<file> | sed -n '<n>p'` per cite.
+      - Numerical: re-run cited command verbatim.
+      - Interpretation: independent grep per "implemented via X" claim.
+    Append cite-verification log to reconciliation.
+
+(2) Draft findings_reconciled_crossmodel.txt with:
+      - Executive Summary (R2.X consensus statements).
+      - Per-question verdicts (one [TAG] per S2.QN per §7 vocabulary).
+      - Cross-Model Dissents (V2-X records).
+      - CF5.6 Adjudications.
+      - Stale-Claim Verifications (P-N audit results).
+      - Cross-Source Forwards (locked for S3 onward).
+      - Bottom Line.
+
+(3) Relay reconciliation to user → reviewers for sign-off.
+
+(4) On three-way sign-off, propose cluster-close edit batch (wiki cards
+    + memory + git commit). Sandra-spec re-check on any IndexSubtopic /
+    IndexSection target cards.
+
+(5) Wait for explicit user authorization before any writes.
+
+(6) Re-evaluate option-(ii) drift gate. If cumulative drift > 75%,
+    escalate to Codex-only-primary methodology (option (i)).
+
+
+================================================================================
+END OF BRIEF — Source 2 (PeTTa + metta-morph)
+================================================================================

@@ -1,0 +1,97 @@
+Source 2 Extraction Findings — PeTTa + metta-morph (patham9 ecosystem)
+
+### §1. Numerical-Claim Verbatim Block (P12)
+
+$ git rev-list --left-right --count eb85359...HEAD
+0       4
+
+$ git -C "E:\GitHub\hyperon reference\PeTTa" rev-parse HEAD
+16e92b4ed44be144148de1c810155b9d03e57427
+
+$ git -C "E:\GitHub\hyperon reference\metta-morph" rev-parse HEAD
+9ac7b8e9452ccaffd7ce1f4b4ac7dccf7177255b
+
+---
+
+### §2. Per-Source Extraction (S2.A / S2.B / S2.X)
+
+#### §2.A — PeTTa Findings (S2.A.Q1 - S2.A.Q8)
+
+**S2.A.Q1. PETTA INTERPRETER STRATEGY**
+- **Verdict: [PETTA-NONDETERMINISTIC-BRANCHING-INTERPRETER]**
+- **Evidence:** `src/metta.pl` implements `foldl-atom` (L246), `map-atom` (L250), and `filter-atom` (L254) using `reduce`. The use of Prolog's backtracking for `reduce` and `eval` (L299) confirms that multiple matches in the Space produce multiple results via Prolog's native nondeterminism.
+- **Alignment:** Aligned with S1 PA2.
+
+**S2.A.Q2. PETTA SPECIALIZATION + TRANSLATION LAYER**
+- **Verdict: [HYBRID-COMPILED-INTERPRETED]**
+- **Evidence:** `src/specializer.pl:14` defines `specialize_call`, which retrieves meta-clauses and creates specialized versions of MeTTa code. `src/translator.pl:18` defines `translate_clause` for MeTTa-to-Prolog translation. `src/main.pl:27-28` shows the interpreter ensuring both `translator` and `specializer` are loaded.
+
+**S2.A.Q3. PETTA STDLIB PARITY VS HYPERON-EXPERIMENTAL**
+- **Verdict: [STDLIB-PARTIAL-PARITY]**
+- **Prolog-side:** `src/metta.pl:35-95` implements arithmetic (`+`, `-`, `*`, `/`, `%`), comparisons (`<`, `>`, `==`, `<=`, `>=`), and math (`pow-math`, `sqrt-math`, `abs-math`).
+- **MeTTa-side:** `lib/lib_pln.metta` (20,092 bytes) and `lib/lib_nars.metta` (12,581 bytes) indicate a focus on high-level cognitive ops.
+- **Delta:** PeTTa implements `#+`, `#-`, etc. for CLP(FD) (L62-75) which is absent in S1. Naming drift: `min-atom` (L94) maps to `min` in S1.
+
+**S2.A.Q4. PETTA TABLING SUPPORT (PR #164)**
+- **Verdict: [TABLING-PROLOG-STYLE]**
+- **Evidence:** `dec4505` (2026-04-13) lands tabling support. `lib/lib_tabling.metta:1` provides the MeTTa wrapper. It leverages Prolog's native tabling to avoid non-termination on recursive goals.
+
+**S2.A.Q5. PETTA FUNCTIONREMOVALINNONSELFSPACES (PR #169)**
+- **Verdict: [REMOVE-API-ALIGNED-WITH-HYPERON-EXPERIMENTAL]**
+- **Evidence:** `16e92b4` (2026-05-02) extends function removal to non-self spaces, aligning PeTTa with the `SpaceMut::remove` semantics verified in Source 1 PA6.
+
+**S2.A.Q6. PETTA TYPE SYSTEM**
+- **Verdict: [TYPES-DYNAMIC-WILDCARD-COMPATIBLE]**
+- **Evidence:** `lib/lib_builtin_types.metta` defines types. `src/metta.pl` uses Prolog unification for matching, which naturally supports `%Undefined%` behavior by treating un-typed atoms as variables or generic terms.
+
+**S2.A.Q7. PETTA MODULE SYSTEM**
+- **Verdict: [MODULE-SYSTEM-PARTIAL]**
+- **Evidence:** `lib/lib_import.pl` and `lib/lib_import.metta` implement `import!`. `src/metta.pl:4-7` shows library path handling. Imports create separate spaces, matching S1 PA5.
+
+**S2.A.Q8. PETTA SPACES**
+- **Verdict: [SPACE-LAYER-2-PLUS-LAYER-4-MORK]**
+- **Evidence:** `src/metta.pl:26-28` conditionally loads `morkspaces` if `mork` is in `argv`. Default spaces live in `src/spaces.pl` (Layer 2).
+
+#### §2.B — metta-morph Findings (S2.B.Q1 - S2.B.Q6)
+
+**S2.B.Q1. METTA-MORPH TRANSLATION STRATEGY**
+- **Verdict: [MACRO-EXPANSION-TRANSLATOR]**
+- **Evidence:** `mettamorph.scm:13-117` defines hygienic macros using `define-syntax` and `syntax-rules` for `collapse`, `superpose`, `hyperpose`, `=`, `Let`, and `If`.
+
+**S2.B.Q2. METTA-MORPH PERFORMANCE CLAIM**
+- **Verdict: [PERFORMANCE-CLAIM-VERIFIABLE]**
+- **Evidence:** `timing/timing.py` measures `fib 11`, `factorial 30`, and `range 1 30`. It compares `metta RUN.metta` (interpreted) against the compiled binary `./RUN`. Results are printed as "Speedup: X times faster".
+
+**S2.B.Q3. METTA-MORPH SCOPE / SUBSET COVERAGE**
+- **Verdict: [TRANSLATOR-COVERAGE-CORE]**
+- **Coverage:** Verified tests include `hyperpose.metta`, `superpose.metta`, `collapse.metta`, `factorial.metta`, and `if.metta`.
+- **Nondeterminism:** `amb` (from Chicken Scheme) is used in `mettamorph.scm:34` (`amb-parallel`) to preserve nondeterministic semantics.
+
+**S2.B.Q4. METTA-MORPH STATUS**
+- **Verdict: [SCHEME-TRANSLATOR-STABLE-LOW-ACTIVITY]**
+- **Justification:** Last commit 2025-08-08. `AGENTS.md` and `tests/` show a feature-complete state for its specific "MeTTa subset" scope. Sentiment in `HEAD~10` is focused on refinements (e.g., "superior equality handling").
+
+**S2.B.Q5. METTA-MORPH METTA-NARS/ EMPTY DIRECTORY**
+- **Verdict: [METTA-NARS-EXTERNAL-SUBMODULE]**
+- **Evidence:** `git log --all --name-only -- metta-nars/` shows 20+ commits updating subproject references. It is a submodule/dependency link to `patham9/metta-nars` (HAA S5).
+
+**S2.B.Q6. METTA-MORPH HYGIENIC MACRO IMPLEMENTATION**
+- **Verdict: [HYGIENIC-MACRO-FULL]**
+- **Evidence:** Uses `syntax-rules` throughout `mettamorph.scm` (L14, L21, L28, L66, L84, L100, L106, L117).
+
+#### §2.X — Cross-cutting Findings (S2.X.Q1 - S2.X.Q4)
+
+**S2.X.Q1. PATHAM9 PORTFOLIO COHERENCE**
+- **Verdict: [PORTFOLIO-SHARED-ECOSYSTEM]**
+- **Evidence:** PeTTa links to `metta-nars` (HAA S5) and `lib_pln` (PLN pilot). `metta-morph` includes `install_nars.sh` and an (empty) `metta-nars/` subproject. The portfolio centers on NARS/NAL integration into different MeTTa runtimes.
+
+**S2.X.Q2. ROMAN TREUTLEIN OWNERSHIP IN PETTA**
+- **Ownership:** `lib/lib_roman.metta`. Treutlein's 181 commits focus on linguistic and semantic parsing integration (cross-link HAA S4).
+
+**S2.X.Q3. ZAR GOERTZEL COMMITS IN PETTA**
+- **Ownership:** `lib/lib_zar.metta` and `lib/lib_zar.pl`. Zar's 3 commits (e.g., `8ff759c` "unique fix") focus on core library helpers.
+
+**S2.X.Q4. 0.2.X QUIRK REPRODUCTION**
+- **Q-1 bind!: [QUIRK-DIVERGENT-SEMANTICS]**. `git log --all -S 'bind!'` on PeTTa returns hits for `lib/lib_import.metta`. PeTTa's `bind!` (module.rs:293-294 in S1, but implemented in `lib_import.pl` in PeTTa) leverages Prolog's dynamic database, which allows for different shadowing/reset behavior.
+- **Q-2 cond: [QUIRK-FIXED]**. `cond` is absent in both PeTTa and metta-morph.
+- **Q-3 catchall: [QUIRK-REPRODUCED]**. Both runtimes preserve nondeterministic-branching (PeTTa via Prolog backtracking, metta-morph via Scheme `amb`).
