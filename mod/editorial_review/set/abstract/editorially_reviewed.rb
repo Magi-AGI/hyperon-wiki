@@ -11,12 +11,18 @@ APPROVAL_BANNER_DAYS = 7
 format :html do
   view :core, cache: :never do
     seal = render_approval_indicator
-    if seal.present?
-      output [seal, super()]
-    else
-      super()
-    end
+    ai_link = render_ai_draft_link
+    output([seal, ai_link, super()].compact.reject(&:blank?))
   end
+
+  # NOTE: the implementation of view :ai_draft_link lives in
+  # `mod/editorial_review/set/all/ai_draft_aware.rb` (universal scope)
+  # so it can be invoked both from view :core above (via render_ai_draft_link
+  # for Published cards, where view :core dispatch works) and from
+  # `{{_self|ai_draft_link}}` inclusion in IndexSubtopic / IndexSection
+  # structure rules (where the cardtype's view :core dispatch is bypassed
+  # by the structure-rule rendering and inclusion-style lookup needs the
+  # view to be visible from set/all).
 
   # Choose banner vs badge based on approval recency
   view :approval_indicator, cache: :never do

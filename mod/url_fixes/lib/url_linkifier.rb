@@ -24,6 +24,22 @@ module UrlLinkifier
 
   SKIP_PARENTS = %w[a script style pre code textarea].freeze
 
+  # Source-file extensions Decko's URI chunk processor sometimes mis-classifies
+  # as TLDs when a filename like `nace.py` or `MorkDB.cc` appears in card text.
+  # Used to detect and unwrap pseudo-URL anchors like `<a href="http://nace.py">`.
+  FILENAME_EXTENSION_RE = %r{
+    \A https?:// (?:[^/?#]+) \. (?:
+      py|rs|cc|cpp|c|h|hpp|hh|cxx|
+      md|txt|rst|json|yml|yaml|toml|cfg|conf|ini|log|
+      ts|tsx|js|jsx|mjs|cjs|coffee|
+      go|rb|erb|scm|ss|lisp|cl|lean|idr|metta|
+      erl|hs|ml|mli|sh|bash|zsh|fish|
+      java|kt|kts|scala|swift|dart|
+      sql|svg|scss|sass|less|
+      pl|pm|tex|bib|nim|zig
+    ) (?: : | / | \z )
+  }xi
+
   module_function
 
   def linkify_html(html)
@@ -37,6 +53,26 @@ module UrlLinkifier
     end
 
     frag = Nokogiri::HTML::DocumentFragment.parse(html)
+
+    # Cleanup pass FIRST — undo two render-time-compounding artifacts from
+    # Decko's URI chunk processor (`Card::Content::Chunk::URI`):
+    #   1. Nested same-href anchors: the chunk processor wraps URL-shaped
+    #      text in `<a class="external-link">` even when that text is already
+    #      inside an authored `<a>`. Each render pass adds another wrapping
+    #      layer, producing 3-10-deep `<a><a><a>...URL</a></a></a>` nests
+    #      over multiple renders/saves (inventory walk 2026-05-08 found
+    #      DAS Full at 10 deep on `docs.asichain.io`-style links).
+    #   2. Filename pseudo-URLs: source-file references like `nace.py`,
+    #      `MorkDB.cc:268`, `airis_stable.py` get matched as bare-domain
+    #      URLs and wrapped as `<a href="http://nace.py">nace.py</a>` even
+    #      when they sit inside `<code>` tags (Decko's chunk processor
+    #      operates pre-Nokogiri-tree on raw content, doesn't see the
+    #      `<code>` parent). Inventory found ~56 such artifacts across the
+    #      54 walked Full cards.
+    # See project_wiki_ui_bugs_inventory.md and docs/usability-inventory-2026-05-08.md
+    # for the full diagnosis.
+    unwrap_nested_matching_anchors(frag)
+    unwrap_filename_anchors(frag)
 
     # First, fix existing anchors' href values to percent-encode specials
     fix_existing_anchors(frag)
@@ -227,6 +263,58 @@ module UrlLinkifier
     allowed = /[A-Za-z0-9\-._~:\/\?#\[\]@!$&'()*+,;=%]/
     href.gsub(/[^#{allowed.source}]/) do |ch|
       ch.bytes.map { |b| '%%%02X' % b }.join
+    end
+  end
+
+  # Unwrap any <a> whose href matches an ancestor <a>'s href. The inner
+  # one is the duplicate added by Decko's URI chunk processor on top of
+  # an already-authored <a>; preserve the outer authored anchor and
+  # promote the inner's children up. Iterating in document order then
+  # working from the deepest matching descendant outward (via repeated
+  # passes) handles arbitrary depth — but in practice one pass + the
+  # cumulative effect across renders converges quickly.
+  def unwrap_nested_matching_anchors(frag)
+    return unless frag
+
+    # Multiple passes because removing an inner anchor can expose another
+    # nested pair (e.g., the 10-deep nests reported in the inventory).
+    # Cap at 12 passes as a safety bound.
+    12.times do
+      changed = false
+      frag.xpath('.//a').each do |inner|
+        inner_href = inner['href']
+        next if inner_href.nil? || inner_href.empty?
+        ancestor_a = inner.ancestors('a').find { |a| a['href'] == inner_href }
+        next unless ancestor_a
+
+        # Promote children of inner above inner, then remove inner.
+        # reverse + add_next_sibling preserves child order.
+        inner.children.to_a.reverse.each { |c| inner.add_next_sibling(c) }
+        inner.remove
+        changed = true
+      end
+      break unless changed
+    end
+  end
+
+  # Unwrap anchors whose href is a filename-shaped pseudo-URL (e.g.,
+  # http://nace.py, http://MorkDB.cc:268, http://README.md:5). These are
+  # produced by Decko's URI chunk processor matching `name.ext` patterns
+  # as bare-domain URLs. Replace the whole anchor with its text content
+  # so the original `nace.py` reads as plain text again. Decko will
+  # re-wrap on the next render unless the chunk-processor side is also
+  # patched, but the cleanup running on every render means user-visible
+  # output is always correct.
+  def unwrap_filename_anchors(frag)
+    return unless frag
+
+    frag.css('a[href]').each do |a|
+      href = a['href']
+      next if href.nil? || href.empty?
+      next unless FILENAME_EXTENSION_RE.match?(href)
+
+      text_node = Nokogiri::XML::Text.new(a.text, a.document)
+      a.replace(text_node)
     end
   end
 end
