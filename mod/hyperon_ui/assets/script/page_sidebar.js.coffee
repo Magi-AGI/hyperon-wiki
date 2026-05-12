@@ -20,9 +20,11 @@ buildPageSidebar = ->
     leftCrumb.appendChild(crumbFrag)
 
   # ── Right sidebar: breadcrumb + TOC ──────────────────────────────────────
+  # Only inject when the right sidebar is empty. If the *sidebar_right card
+  # has been populated (e.g. the MeTTa Playground / Wiki Assistant panels),
+  # leave its content alone. Blank *sidebar_right to restore breadcrumb+TOC.
   right = document.getElementById("sidebar-right")
-  if right
-    right.innerHTML = ""
+  if right and right.innerHTML.trim() == ""
     right.appendChild(buildBreadcrumbs(article))
     toc = buildToc(article)
     right.appendChild(toc) if toc
