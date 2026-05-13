@@ -31,7 +31,11 @@ format :html do
     raw = (desc&.content || card.content).to_s
     return nil if raw.empty?
 
-    text = Nokogiri::HTML.fragment(raw).text.gsub(/\s+/, " ").strip
+    # Strip Decko inclusions/links ({{...}}, [[...]]) before HTML parsing —
+    # card.content is stored unrendered, so these would otherwise leak as
+    # literal text through Nokogiri's text() pass.
+    stripped = raw.gsub(/\{\{[^}]*\}\}/, " ").gsub(/\[\[[^\]]*\]\]/, " ")
+    text = Nokogiri::HTML.fragment(stripped).text.gsub(/\s+/, " ").strip
     return nil if text.empty?
 
     text.length > 200 ? text[0, 200].rstrip + "…" : text
