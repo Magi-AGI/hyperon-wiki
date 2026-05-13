@@ -5,11 +5,12 @@
 #
 # Body source order:
 #   1. `+description` subcard if present (preferred — short, curated)
-#   2. The card's own rendered :core view, stripped to plain text, first ~200 chars
+#   2. The card's raw `content` (stored body), stripped to plain text
 #
-# Returns plain-text inside a small HTML envelope; no inclusions, no links.
-# Cache mode is :never for V1 so editing a `+description` is immediately
-# visible. Promote to :standard once the client cache contract is settled.
+# We read `card.content` directly rather than rendering the :core view so we
+# don't pick up Draft-banner chrome or other view wrappers. Inclusions and
+# inline HTML are stripped via Nokogiri text(); result is truncated to ~200
+# chars with an ellipsis. Cache mode is :never for V1 so edits land instantly.
 
 format :html do
   view :tooltip, cache: :never do
@@ -27,12 +28,10 @@ format :html do
   # Returns the plain-text tooltip body (≤ ~200 chars, single-line) or nil.
   def tooltip_body_text
     desc = Card.fetch([card.name, :description])
-    rendered_html = if desc
-                      desc.format(:html).render(:core).to_s
-                    else
-                      render(:core).to_s
-                    end
-    text = Nokogiri::HTML.fragment(rendered_html).text.gsub(/\s+/, " ").strip
+    raw = (desc&.content || card.content).to_s
+    return nil if raw.empty?
+
+    text = Nokogiri::HTML.fragment(raw).text.gsub(/\s+/, " ").strip
     return nil if text.empty?
 
     text.length > 200 ? text[0, 200].rstrip + "…" : text
