@@ -1,0 +1,1195 @@
+================================================================================
+SOURCE 3 BRIEF — MeTTa-Compiler / MeTTaTron (F1R3FLY-io)
+                 (MeTTa runtime cluster pilot, Source 3 of 6)
+================================================================================
+Source name:      F1R3FLY-io/MeTTa-Compiler (project name: MeTTaTron)
+Cluster:          MeTTa runtime, Source 3 of 6
+Pilot order:      Option A (backlog burn-down) authorized 2026-05-05.
+Brief drafted:    2026-05-11
+Brief author:     Claude (orchestrator)
+Source 1 closed:  hyperon-experimental v0.2.10, 2026-05-08 (commit 21f4835)
+Source 2 closed:  PeTTa + metta-morph, 2026-05-10 (commit f6a20a2)
+Locked split:     S1 hyperon-experimental | S2 PeTTa+metta-morph |
+                  S3 MeTTa-Compiler / MeTTaTron | S4 MeTTaIL+FormalMeTTa |
+                  S5 metta-wam (vnamed) | S6 jetta+atomspace-metta
+
+
+REVIEWER DISPATCH FRAMING — REVIEW ONLY UNTIL AUTHORIZED
+========================================================
+
+This brief is for **REVIEWER REVIEW ONLY** at first relay. **DO NOT BEGIN
+EXTRACTION** until the user issues an explicit "Extraction Trigger" relay.
+
+S2 saw a process drift incident (logged as PROCESS-DRIFT-GEMINI-S2 in the
+S2 reconciliation): one reviewer extracted before the brief-review cycle
+completed, against the uncorrected brief. This is the third occurrence of
+that overreach pattern (per `feedback_gemini_has_wiki_mcp_write_access.md`).
+S3 dispatch makes the sequencing explicit:
+
+  Phase 1 (NOW). Reviewer reads the brief end-to-end and proposes
+                 corrections / sign-off as a separate message.
+  Phase 2 (LATER). User relays sign-offs back. Orchestrator applies any
+                   agreed corrections via Edit on this brief file.
+  Phase 3 (LATER). User issues explicit "Extraction Trigger" relay to
+                   reviewers. Only THEN may reviewers begin extraction.
+  Phase 4 (LATER). Reviewers extract and return findings_<reviewer>.txt.
+  Phase 5 (LATER). Orchestrator runs option-(ii) cite pre-verification
+                   on findings_gemini.txt and reconciles.
+
+Codex committed at HAA close 2026-05-07 to wait-for-explicit-trigger.
+Gemini committed at S2 close 2026-05-10 to the same: "I fully accept the
+'REVIEW ONLY — DO NOT EXTRACT' directive. I will not begin the S3
+extraction until I have received the explicit 'Extraction Trigger' relay
+from the orchestrator." S3 is the test of that commitment.
+
+
+§0. SOURCE IDENTITY
+-------------------
+
+This is Source 3 of the MeTTa runtime cluster pilot. MeTTaTron (the
+project name; the repo is `MeTTa-Compiler`) is F1R3FLY-io's Rust MeTTa
+evaluator with lazy evaluation, MORK/PathMap integration, Rholang
+integration, and Tokio-based async parallel evaluation. Distinct from
+the S1 hyperon-experimental reference runtime in that it targets
+Rholang-coupled deployment and has its own evaluator implementation
+rather than re-using upstream hyperon-experimental.
+
+  Repo:     F1R3FLY-io/MeTTa-Compiler
+  Origin:   https://github.com/F1R3FLY-io/MeTTa-Compiler.git
+  Local:    E:\GitHub\hyperon reference\MeTTa-Compiler\
+  Branch:   main
+  HEAD:     efee4bec53f7d38414255f7478f3d509816ecc45
+            (Merge PR #96 from F1R3FLY-io/feature/alpha-equality-functions,
+             2026-01-19 12:22:05 -0500, Dylon Edwards)
+
+  IMPORTANT — HEAD STALE BY ~4 MONTHS:
+  Last commit 2026-01-19; today 2026-05-11. Roughly 4 months without
+  main-branch commits at S3 brief drafting. **However** the remote has
+  several active feature branches (basic-instrumenting, c2rust, cleanup/
+  remove-ffi-simplify-json, docs/comprehensive-documentation, dylon/
+  conjunction-pattern, dylon/main, dylon/metta-compiler-optimizations) —
+  so main-branch staleness does NOT necessarily mean abandonment.
+  Reviewers verdict the status (S3.Q11).
+
+  Workspace:    Single Cargo package (NOT a multi-crate workspace like
+                S1 hyperon-experimental):
+                  [package] name = "mettatron", version = "0.2.0"
+                  (Cargo package version; NOT the same as the Git tag
+                  position — see §0.A)
+                  edition = "2021", authors = ["F1R3FLY.io"]
+                  [lib] crate-type = ["rlib", "cdylib"]
+                  [[bin]] mettatron
+                Top-level:
+                  src/        — Rust source (103 .rs files)
+                  benches/    — performance benchmarks
+                  docs/       — documentation (heavy, 319 .md files
+                                across this dir and integration/)
+                  examples/   — example programs (.metta + .rho + .rs)
+                  integration/ — integration tests + 15-doc integration
+                                 guide set
+                  packaging/  — package configs
+                  scripts/    — build/utility scripts
+                  tests/      — Rust test suite
+                  tree-sitter-metta/ — sibling tree-sitter grammar
+                                       package for MeTTa (separate Cargo
+                                       package; verify relationship)
+                Plus root: AGENTS.md, CHANGELOG.md, CLAUDE.md, GEMINI.md,
+                           INSTALL.md, README.md, Cargo.toml
+
+  Tracked-file inventory:
+                542 files at HEAD `efee4be`
+                  319 .md (heavy doc set — 50% of repo)
+                  103 .rs
+                   64 .metta
+                   10 .rho (Rholang integration — distinctive)
+                    8 .txt + 4 .yml + 4 .toml + 4 .sh + 3 .svg
+                    3 .json + 3 .h + 2 .scm + 2 .lock + 2 .c + 1 .rb
+                    + smaller misc
+
+  Dependencies: Rust nightly toolchain (required); Cargo; Tokio (per
+                README "True parallelization with configurable
+                threading via Tokio")
+  Primary maintainer: Dylon Edwards (657 commits all-time)
+
+
+§0.A — RELEASE TIMELINE
+-----------------------
+
+Tag history (orchestrator-pre-fetched via `git tag --sort=-creatordate`):
+
+    v0.2.0  (most recent — at commit `affeb89`, 2025-11-27)
+    v0.1.2
+    v0.1.1
+    v0.1.0
+
+  **VERSION-VS-TAG DISTINCTION (Codex S3 brief-review correction)**:
+
+    - Cargo package version (`Cargo.toml`): **0.2.0**
+    - Latest Git tag: **v0.2.0** at commit `affeb89` (2025-11-27)
+    - HEAD `efee4be` is **190 commits AHEAD of tag v0.2.0**
+      (verified: `git rev-list --count v0.2.0..HEAD` = 190;
+      `git tag --points-at HEAD` = empty)
+
+  In other words: HEAD is unreleased main-branch work that has NOT been
+  tagged. The Cargo package version string at HEAD remains "0.2.0" but
+  the codebase is 190 commits past where the v0.2.0 tag was placed. Do
+  not conflate "HEAD" with "v0.2.0 tag" — they are different anchors.
+
+  Reviewers: re-verify the 190-commit count and tag-vs-HEAD relationship
+  at extraction time (`git tag --points-at HEAD` + `git rev-list --count
+  v0.2.0..HEAD`).
+
+
+§0.B — TOP-15 CONTRIBUTORS BY ALL-TIME COMMIT COUNT
+---------------------------------------------------
+
+Pre-fetched via `git shortlog -sn --all`:
+
+     657  Dylon Edwards         (primary maintainer; F1R3FLY-io lead)
+     112  Serhii Lypko          (recent set-operations + alpha-equality
+                                 + testing-operator work, 2025-12 to
+                                 2026-01)
+      16  SerhiiK-DevBrother    (likely same person as Serhii Lypko —
+                                 combined: 128)
+       7  Zar Goertzel          (cross-pilot identity: zariuq = Zarathustra
+                                 Goertzel per PLN cluster lock + PeTTa S2
+                                 (3 PeTTa commits) — note `git log
+                                 --author='Zar Goertzel'` returned only 1
+                                 commit at brief drafting; the shortlog 7-
+                                 count may include alias attributions
+                                 [zariuq, etc.])
+       2  Mike Stay             (NOTABLE: `9f03102 2025-09-03 Initial
+                                 commit` — Mike Stay started this repo;
+                                 cross-link to S4 candidate MeTTaIL where
+                                 F1R3FLY-io lead Lucius Meredith is
+                                 maintainer; Mike Stay is co-author of
+                                 Categorical Foundations work with John
+                                 Baez, F1R3FLY-io cofounder)
+
+
+§0.C — RECENT COMMITS (HEAD~0..~14, pre-fetched)
+------------------------------------------------
+
+Pre-fetched via `git log -15 --format='%h %ci %an %s'`:
+
+    efee4be  2026-01-19  Dylon Edwards   Merge PR #96 alpha-equality-functions
+    1213b4d  2026-01-19  Dylon Edwards   Merge PR #95 impl-missing-minimal-metta
+    0bab957  2026-01-19  Dylon Edwards   Merge PR #94 extended-throughput-benchmarking
+    20902c8  2026-01-19  Serhii Lypko    More testing functions: =alpha, assertAlphaEqual,
+                                          assertAlphaEqualMsg, assertAlphaEqualToResult,
+                                          assertAlphaEqualToResultMsg
+    b6a7635  2026-01-14  Serhii Lypko    Implement some of testing operators (tree-walk)
+    5a03b8d  2026-01-14  Serhii Lypko    Implement if-equal operator (tree-walk)
+    5691be4  2026-01-09  Serhii Lypko    Merge main
+    0fdc500  2026-01-09  Serhii Lypko    Enhance e2e benchmarking
+    74ec5fb  2026-01-05  Dylon Edwards   Merge PR #64 feature/set-operation-functions
+    dd46d7c  2025-12-31  Serhii Lypko    Merge main
+    3c9649b  2025-12-31  Serhii Lypko    Finalyze set operations PR based on hashmap implementation
+    9d7ea4b  2025-12-31  Dylon Edwards   **REPLACES PATHMAP-BASED MULTISET OPERATIONS WITH
+                                          HASHMAP-BASED ONES**; benchmarks parallel PathMap
+                                          multiset operations vs. sequential HashMap operations
+                                          and demonstrates, empirically, that the HashMap-based
+                                          operations perform better than the PathMap-based
+                                          operations regardless the dataset size or depth of
+                                          structures
+    4fabdf0  2025-12-24  Serhii Lypko    Set operation functions: eval_unique_atom finalyzed
+    de9128d  2025-12-24  Serhii Lypko    Set operation functions: eval_union_atom finalyzed
+    d97b7fa  2025-12-24  Serhii Lypko    Set operation functions: draft impls for intersection
+                                          and substraction
+
+  **Commit `9d7ea4b` is LOAD-BEARING for cross-cluster framing**:
+  MeTTaTron empirically benchmarked MORK PathMap-based multiset operations
+  vs HashMap-based and replaced the former with the latter. This is a
+  performance finding adjacent to the AtomSpace cluster pilot's PathMap
+  framing + the AtomSpace Integration Phase 4 cluster pilot's MORK
+  substrate work. Reviewers: extract the benchmark methodology + scope
+  + result; flag for cross-cluster cross-link.
+
+  Reviewers: do NOT re-run these commits' git log. Run additional git
+  only when answering a brief question requires deeper history.
+
+
+§0.D — REMOTE BRANCH ACTIVITY (HEAD STALENESS CAVEAT)
+-----------------------------------------------------
+
+Pre-fetched via `git branch -a`:
+
+  remotes/origin/main                         (HEAD anchor)
+  remotes/origin/backup-before-cleanup
+  remotes/origin/basic-instrumenting
+  remotes/origin/c2rust
+  remotes/origin/cleanup/remove-ffi-simplify-json
+  remotes/origin/docs/comprehensive-documentation
+  remotes/origin/dylon/conjunction-pattern
+  remotes/origin/dylon/main
+  remotes/origin/dylon/metta-compiler-optimizations
+
+  Several active feature branches exist on the remote even though main
+  is 4 months stale. Reviewers: do NOT extract against these branches;
+  S3 extracts against `main` HEAD `efee4be` ONLY. The branches inform
+  the S3.Q11 status verdict (active-on-feature-branches vs main-stale).
+
+
+§1. SCOPE AND DELIVERABLE
+-------------------------
+
+Deliverable per reviewer (Codex + Gemini, parallel and independent):
+
+  scripts/archive/metta_runtime_pilot/source3_metta_compiler_mettatron/
+      findings_codex.txt
+      findings_gemini.txt
+
+Per-question structure following the closed S1 + S2 patterns. Twelve
+S3.QN questions in §6.
+
+Estimated findings size ~300-450 lines per reviewer (S1-comparable —
+single-source brief with multiple distinct surfaces but no sub-source
+split).
+
+After both findings files arrive, the orchestrator (Claude this session)
+produces:
+
+  scripts/archive/metta_runtime_pilot/source3_metta_compiler_mettatron/
+      findings_reconciled_crossmodel.txt
+
+Including a Gemini cite-verification log per the option (ii) protocol
+(see §10 + §12). Three-way sign-off (Codex + Gemini + orchestrator)
+before any cluster-close edit batch.
+
+
+§2. ARTIFACTS TO READ
+---------------------
+
+§2.A — Rust evaluator core (in scope for S3.Q1-Q2-Q3-Q5):
+
+  Path: src/
+  Inventory (Cargo package name = "mettatron"):
+    src/lib.rs (per Cargo.toml [lib] name = "mettatron")
+    src/main.rs (per [[bin]] name = "mettatron")
+    src/backend/
+      compile.rs           — main compile entry point
+      environment.rs       — env state
+      fuzzy_match.rs       — fuzzy matching (Zar Goertzel touched this)
+      mod.rs
+      models/
+        bindings.rs
+        metta_state.rs
+        metta_value.rs
+        mod.rs
+      eval/                — evaluation subdirectory (~18 files)
+        bindings.rs
+        builtin.rs
+        control_flow.rs
+        errors.rs
+        evaluation.rs
+        expression.rs
+        fixed_point.rs
+        list_ops.rs
+        macros.rs
+        mod.rs
+        mork_forms.rs      — MORK integration (cross-cluster cross-link)
+        priority.rs
+        quoting.rs
+        set.rs             — set ops (HashMap replacement of PathMap
+                             per commit 9d7ea4b)
+        space.rs
+        testing.rs         — testing-operator infrastructure (PR #96 +
+                             #95 work, =alpha + assertAlphaEqual*)
+        types.rs
+    src/repl/              — REPL crate subdir (verify whether separate
+                             package or in-package)
+
+  Reviewers: read src/backend/eval/{evaluation, expression, control_flow,
+  bindings}.rs in full for interpreter strategy (S3.Q1). Then
+  src/backend/eval/{mork_forms, set, space}.rs for MORK + set + space
+  semantics (S3.Q5). src/backend/eval/types.rs for type system (S3.Q3).
+
+§2.B — Rholang integration (in scope for S3.Q6):
+
+  10 .rho files at HEAD:
+    examples/metta_rholang_example.rho
+    examples/robot_planning.rho
+    examples/test_foldl_nondeterministic.rho
+    integration/test_basic_evaluation.rho
+    integration/test_composability.rho
+    integration/test_control_flow.rho
+    integration/test_edge_cases.rho
+    integration/test_repl_simulation.rho
+    integration/test_rules.rho
+    integration/test_types.rho
+
+  Integration docs (in integration/):
+    RHOLANG_INTEGRATION.md
+    RHOLANG_REGISTRY_PATTERN.md
+    RHOLANG_SYNC_GUIDE.md
+    SYNC_OPERATOR_SUMMARY.md
+    FFI_VS_DIRECT_COMPARISON.md
+    DIRECT_RUST_INTEGRATION.md
+    DEPLOYMENT_GUIDE.md
+    DEPLOYMENT_CHECKLIST.md
+    TESTING_GUIDE.md
+    TEST_HARNESS_README.md
+    PATHMAP_INTEGRATION.md
+    PATHMAP_PAR_USAGE.md
+    QUICK_START.md
+    integration/archive/rholang_handler_v1_ffi.rs
+
+  Reviewers: read at least RHOLANG_INTEGRATION.md +
+  RHOLANG_REGISTRY_PATTERN.md + DIRECT_RUST_INTEGRATION.md +
+  FFI_VS_DIRECT_COMPARISON.md to characterize the integration model.
+
+§2.C — MORK / PathMap integration (in scope for S3.Q5 + S3.Q7):
+
+  Source: src/backend/eval/mork_forms.rs + src/backend/eval/set.rs
+  Examples: examples/mork_coalg_demo.metta, mork_complete_demo.metta,
+            mork_exec_demo.metta
+  Docs: docs/MORK_SPECIAL_FORMS.md
+  Benchmarks: any benches/* with "pathmap" / "mork" in name
+  Integration docs: integration/PATHMAP_INTEGRATION.md +
+                    PATHMAP_PAR_USAGE.md
+
+  CRITICAL EVIDENCE: commit `9d7ea4b` (2025-12-31, Dylon Edwards):
+  "Replaces PathMap-based multiset operations with hashmap-based ones;
+  benchmarks parallel PathMap multiset operations vs. sequential HashMap
+  operations and demonstrates, empirically, that the HashMap-based
+  operations perform better than the PathMap-based operations regardless
+  the dataset size or depth of structures"
+
+  S3.Q7 reviewers: extract the benchmark methodology + scope (which
+  operations were tested, what HashMap was used, what PathMap config was
+  used) + the empirical results from the bench code + reconciliation
+  with the AtomSpace cluster pilot's PathMap positive framing.
+
+§2.D — tree-sitter-metta sibling package (in scope for S3.Q4):
+
+  Path: tree-sitter-metta/
+    Cargo.toml (separate package)
+    Cargo.lock
+    grammar.js               — tree-sitter grammar definition
+    bindings/                — language bindings
+    build.rs
+    package.json             — npm packaging for JS bindings
+    queries/
+    src/
+    test/
+
+  **DEPENDENCY EVIDENCE (Codex S3 brief-review sharpening)**:
+
+  tree-sitter is NOT merely "sibling tooling" — it is a runtime
+  dependency wired into the compiler/runtime:
+
+    - Root `Cargo.toml` depends on `tree-sitter` AND `tree-sitter-metta`
+      as Cargo dependencies (not dev-dependencies or build-dependencies
+      alone; reviewers verify exact dependency block).
+    - `src/backend/compile.rs` imports `TreeSitterMettaParser`.
+
+  README.md (root, L13-14) claims: "**Direct S-expression parsing** -
+  No external parser generators required". The Cargo + import evidence
+  contradicts the README claim's literal wording.
+
+  S3.Q4 is therefore NOT "is tree-sitter only external tooling?" —
+  S3.Q4 is "**how does tree-sitter-metta relate to direct S-expression
+  parsing along the runtime and compiler code paths?**" Possible shapes
+  (reviewers extract evidence):
+
+    (a) tree-sitter-metta is the PRIMARY parser; README's "Direct
+        S-expression parsing" claim is stale or refers to a different
+        code path that was replaced.
+    (b) tree-sitter-metta is one of TWO parsing paths (e.g., compiler
+        backend uses tree-sitter; runtime/REPL uses a hand-rolled
+        S-expression parser).
+    (c) tree-sitter-metta is used for tooling/IDE-syntax-highlight
+        AND a subset of runtime parsing (mixed role).
+    (d) Some other shape entirely — extract directly from the code.
+
+  Reviewers resolve via: root `Cargo.toml` `[dependencies]` block +
+  `src/backend/compile.rs` import + grep for `TreeSitterMettaParser`
+  callsites + grep for hand-rolled S-expression parsing code +
+  `tree-sitter-metta/build.rs` and binding artifacts.
+
+§2.E — Test corpus + integration tests (in scope for S3.Q8):
+
+  Path: tests/ (Rust integration tests)
+    Files: ancestor_mm2_full.rs, ancestor_mm2_integration.rs,
+           common/{collections, config, mod, output_parser, query}.rs +
+           more
+    Plus: tests/QUERY_LANGUAGE.md, tests/README.md
+
+  README (root, L25) claims **"287 tests covering all language features"**.
+  This is a P-claim worth verifying — exact count + categorization
+  (per-feature mapping; integration tests vs unit tests).
+
+§2.F — Benchmarks (in scope for S3.Q7 + S3.Q11):
+
+  Path: benches/
+    benches/algebraic_status_duplicate_detection.rs
+    benches/branch_comparison.rs
+    benches/bulk_operations.rs
+    benches/cow_environment.rs
+    benches/e2e/e2e.rs + e2e_throughput.rs + e2e_throughput_configurable.rs
+    benches/expression_parallelism.rs
+    benches/metta_samples/{backward_chaining, concurrent_space_operations,
+                          constraint_search_simple, fib, knowledge_graph,
+                          metta_programming_stress, multi_space_reasoning}.metta
+
+  Reviewers: identify which bench corresponds to the HashMap-vs-PathMap
+  result (commit 9d7ea4b). Likely `bulk_operations.rs` or `branch_
+  comparison.rs` (per filename hints).
+
+§2.G — Documentation (cross-cutting):
+
+  Path: docs/ (319 .md files include this dir + integration/ docs)
+    docs/ARCHITECTURE.md      — architecture overview
+    docs/THREADING_MODEL.md   — async + threading model
+    docs/MORK_SPECIAL_FORMS.md — MORK integration semantics
+    docs/CONFIGURATION.md
+    docs/CONTRIBUTING.md
+    docs/BUILTIN_FUNCTIONS_IMPLEMENTATION.md
+    docs/COLLECTION_AWARE_PARSER.md
+    docs/COMPOSABILITY_TESTS.md
+    docs/CONJUNCTION_PATTERN.md
+    docs/FUTURE_ENHANCEMENTS.md
+    docs/INTEGRATION_COMPLETE.md
+    docs/INTEGRATION_TESTING_IMPLEMENTATION.md
+    docs/ISSUE_3_SATISFACTION.md
+    docs/MVP_BACKEND_COMPLETE.md
+    docs/README.md
+    Plus root: AGENTS.md, CHANGELOG.md, CLAUDE.md, GEMINI.md, INSTALL.md,
+               README.md
+
+  Reviewers: read ARCHITECTURE.md + THREADING_MODEL.md +
+  MORK_SPECIAL_FORMS.md + COLLECTION_AWARE_PARSER.md first; supplement
+  per the specific S3.QN under audit. Per
+  `project_repo_orientation_docs.md`, AGENTS.md / CLAUDE.md / GEMINI.md
+  are per-model orientation docs — reviewers may consult their
+  respective doc but should NOT modify these as part of cluster-pilot
+  extraction.
+
+
+§3. LOCKED PRIOR ART — DO NOT RE-LITIGATE
+-----------------------------------------
+
+The following findings are LOCKED at S1 close (commit `21f4835`) and
+S2 close (commit `f6a20a2`). S3 reviewers MUST NOT re-derive or
+re-litigate these.
+
+From S1 hyperon-experimental (`3f76dc46` v0.2.10):
+
+PA1. hyperon-experimental is the trueagi-io OFFICIAL REFERENCE Rust
+     MeTTa runtime (V1-1). MeTTaTron is an ALTERNATIVE Rust evaluator,
+     not an upstream-of or downstream-of hyperon-experimental.
+
+PA2. hyperon-experimental interpreter = `[SMALL-STEP-INTERPRETER]`
+     `[NONDETERMINISTIC-BRANCHING]`. Per C1-1, S3 reviewers compare
+     MeTTaTron's evaluator against this baseline. MeTTaTron README
+     claims "Nondeterministic evaluation - Multiply-defined patterns
+     with Cartesian product semantics" — verify whether this matches
+     S1's nondeterminism semantics or diverges (S3.Q1).
+
+PA3. hyperon-experimental type system = `[DYNAMIC-CHECKED]` with
+     `%Undefined%` permissive wildcard. Per C1-2, S3 reviewers compare
+     MeTTaTron's type system against this baseline (S3.Q3). MeTTaTron
+     README claims "Type system - Type assertions, type inference, and
+     type checking with arrow types" — verify scope.
+
+PA4. hyperon-experimental stdlib = `[HYBRID-RUST-PLUS-METTA-STDLIB]`
+     (S1.Q3 inventory in S1 reconciliation). Per C1-3, S3 reviewers MUST
+     cover both Rust-side AND MeTTa-side stdlib layers when comparing
+     MeTTaTron stdlib parity.
+
+PA5. hyperon-experimental MeTTa replace-atom! op MISSING at HEAD; PATCH-2
+     would add it. S3 reviewers: does MeTTaTron implement `replace-atom!`?
+
+PA6. hyperon-experimental Hyperon Space write API + observer pattern
+     specifics from AtomSpace Phase 4 Source 2 — locked for Phase 4
+     context, not directly relevant to S3 unless MeTTaTron uses
+     hyperon-experimental's Space crate.
+
+PA7. PeTTa Smart Dispatch concept EXISTS (R2.NEW-2 from S2). Per V2-1,
+     do NOT use "INVALID FRAMING" framing for similar concept-vs-token-
+     name patterns. MeTTaTron's dispatch is independent — verify.
+
+PA8. patham9 portfolio is `[PORTFOLIO-PARADIGM-DISTINCT]` (HAA S5 V5-13).
+     Not directly relevant to S3 (F1R3FLY-io is Lucius Meredith's
+     ecosystem, NOT patham9's). But: MeTTaTron + MeTTaIL (S4) are both
+     F1R3FLY-io repos; reviewers expect a similar portfolio question for
+     F1R3FLY-io at S3.X.Q1.
+
+PA9. PeTTa's `lib_spaces.metta` is a DISTINCT FILE from the
+     hyperon-experimental phantom citation (S1 P10 + V1-10). NOT relevant
+     to S3 unless MeTTaTron cites `lib_spaces.metta` somewhere.
+
+PA10. metta-morph FIXES the S1 Q-1 bind/new-space quirk within its
+      Scheme-side subset (R2.NEW-1, C2-4). Per C2-4, S3 reviewers verdict
+      whether MeTTaTron also bypasses the v0.2.10 Q-1 quirk.
+
+PA11. metta-morph `metta-nars/` is loose gitlink placeholder, not
+      working submodule (R2-B-Q5 LOCKED + C2-5). Not directly relevant
+      to S3 unless MeTTaTron uses similar pattern.
+
+PA12. hyperon-experimental v0.2.10 quirks at HEAD (S1.Q11):
+        Q-1 bind!+new-space: [QUIRK-CONFIRMED-AT-HEAD]
+        Q-2 cond: [QUIRK-FIXED-SINCE-V0-2-1] via absence
+        Q-3 catchall multi-reduction: [QUIRK-CONFIRMED-AT-HEAD]
+              (documented semantics, not defect)
+      Per C1-8, S3 reviewers verdict per-quirk per S3.Q11.
+
+
+§4. CROSS-SOURCE FORWARDS FROM PRIOR CLOSED CLUSTER PILOTS
+----------------------------------------------------------
+
+Locked findings from earlier cluster pilots that S3 reviewers should be
+aware of (NOT re-derived):
+
+F1. PLN cluster No-Go theorem (PLN pilot 2026-04-25). Storage-agnostic;
+    applies to any MeTTa runtime that claims PLN integration.
+
+F2. AtomSpace four-layer taxonomy (AtomSpace pilot 2026-04-29):
+    Layer 1 Classical, Layer 2 Hyperon Space, Layer 3 DAS, Layer 4 MORK.
+    Per C2-4 of S2, S3 reviewers classify which layer(s) MeTTaTron's
+    space model aligns with at HEAD.
+
+F3. MORK production deployment topology (cross-cluster from AtomSpace
+    Integration Phase 4 cluster pilot 2026-05-05). MORK PathMap is the
+    substrate. MeTTaTron empirically benchmarked PathMap-vs-HashMap for
+    multiset operations and replaced PathMap with HashMap (commit
+    `9d7ea4b` 2025-12-31). This is a load-bearing cross-cluster
+    finding — reviewers extract methodology + result + framing for the
+    AtomSpace Phase 4 cluster pilot's MORK-positive baseline.
+
+F4. patham9 portfolio is PARADIGM-DISTINCT (HAA S5 V5-13). F1R3FLY-io
+    portfolio at S3 is an analogous question.
+
+F5. Author identities:
+    - Dylon Edwards = F1R3FLY-io engineering lead (657 MeTTaTron commits).
+    - Serhii Lypko = F1R3FLY-io developer (recent set-ops + alpha-equality
+      work).
+    - Mike Stay = NOTABLE: Initial commit on MeTTaTron `9f03102`
+      (2025-09-03); cross-link to S4 candidate MeTTaIL where Lucius
+      Meredith is maintainer; Categorical Foundations co-author with
+      John Baez.
+    - Zar Goertzel = zariuq = Zarathustra Goertzel (user-verified PLN
+      cluster identity). 1 git-log commit (`5700f23` 2025-12-03 "Fixed
+      bug where fuzzy matching blocks innocent atom use") but
+      `git shortlog -sn --all` reports 7 commits — possible alias
+      attribution. Reviewers verify.
+    - Lucius Meredith = F1R3FLY-io cofounder + MeTTaIL maintainer (S4
+      candidate). NOT a MeTTaTron contributor at HEAD — verify.
+
+F6. Wiki MCP server bugs (`hyperon-wiki-mcp/SERVER-BUGS.md`):
+    `create_card` spurious-error, `restore_card` `+tag` quirk,
+    one-writer-only protocol. Apply at cluster-close edit-batch time.
+
+
+§5. P-CLAIMS — EXISTING README / DOC CLAIMS TO VERIFY
+-----------------------------------------------------
+
+P-1. README claim: "Direct S-expression parsing - No external parser
+     generators required". **CONTRADICTED BY CARGO + IMPORT EVIDENCE**:
+     root Cargo.toml depends on `tree-sitter` + `tree-sitter-metta`;
+     `src/backend/compile.rs` imports `TreeSitterMettaParser`. README
+     wording is at minimum stale. Reviewers reconcile how tree-sitter
+     relates to S-expression parsing along the runtime + compiler code
+     paths (S3.Q4 — sharpened framing per §2.D).
+
+P-2. README claim: "Pure Rust implementation". Verifiable via Cargo.toml
+     + cargo tree. Likely [P-CLAIM-VERIFIED] (no obvious non-Rust deps
+     beyond bindings).
+
+P-3. README claim: "Lazy evaluation - Expressions evaluated only when
+     needed". Verifiable via src/backend/eval/{evaluation, expression,
+     fixed_point}.rs.
+
+P-4. README claim: "Async parallel evaluation - True parallelization
+     with configurable threading via Tokio". Verifiable via Cargo.toml
+     tokio dep + src/backend/eval/* threading code +
+     docs/THREADING_MODEL.md.
+
+P-5. README claim: "Pattern matching - Automatic variable binding with
+     `$x`, `&y`, `'z` variables". Three variable prefixes ($, &, ').
+     This DIVERGES from hyperon-experimental's $-only convention.
+     Verify the semantics of each prefix (S3.Q9).
+
+P-6. README claim: "Rule definitions - Define rewrite rules with `=`".
+     Verify against S1's rule semantics; compare.
+
+P-7. README claim: "Special forms - Control flow (`if`), evaluation
+     (`!`), quote, error handling". Verify scope.
+
+P-8. README claim: "Type system - Type assertions, type inference, and
+     type checking with arrow types". S3.Q3.
+
+P-9. README claim: "Grounded functions - Direct arithmetic and comparison
+     operations". S3.Q5.
+
+P-10. README claim: "MORK/PathMap integration - Efficient pattern matching
+      with MORK zipper optimization". Verify against commit `9d7ea4b`
+      HashMap-replacement finding (S3.Q7). Apparent tension: README claims
+      MORK/PathMap as a feature; commit 9d7ea4b empirically demonstrated
+      HashMap superiority. Reviewers reconcile.
+
+P-11. README claim: "REPL mode - Interactive evaluation environment".
+      src/repl/. S3.Q4.
+
+P-12. README claim: "CLI and library - Use as a command-line tool or
+      integrate into your Rust projects". Cargo.toml [[bin]] mettatron +
+      [lib] mettatron. Verify.
+
+P-13. README claim: **"Comprehensive tests - 287 tests covering all
+      language features"**. P12 verbatim numerical protocol applies —
+      reviewers run `cargo test -- --list 2>/dev/null | wc -l` or
+      similar to verify count at HEAD `efee4be` (S3.Q8).
+
+P-14. README claim: "Nondeterministic evaluation - Multiply-defined
+      patterns with Cartesian product semantics". S3.Q1 — compare
+      against S1 hyperon-experimental's
+      [SMALL-STEP-INTERPRETER][NONDETERMINISTIC-BRANCHING].
+
+
+§6. QUESTIONS FOR S3 REVIEWERS
+------------------------------
+
+Reviewers (Codex + Gemini, parallel and independent) answer each S3.QN
+in the per-question format established by closed pilots. Each answer
+must include verdict tag from §7 (single-label per question per
+V1-PROTOCOL-1 + V2-PROTOCOL-1), file:line evidence, and methodology
+notes.
+
+S3.Q1. METTATRON EVALUATOR STRATEGY
+       Read src/backend/eval/{evaluation, expression, control_flow,
+       bindings, fixed_point}.rs in full. What evaluation strategy does
+       MeTTaTron implement? Lazy (per README P-3) — verify. Tokio-async-
+       parallel (per README P-4) — verify. Nondeterministic Cartesian-
+       product (per README P-14) — verify against S1 PA2 baseline.
+       Specifically:
+         - Is the evaluator small-step or big-step?
+         - How does lazy evaluation interact with async parallelism?
+         - Is nondeterminism Cartesian-product (all combinations) or
+           branching (per-match)?
+         - Does it diverge from S1's [SMALL-STEP-INTERPRETER]
+           [NONDETERMINISTIC-BRANCHING] semantics?
+
+S3.Q2. METTATRON COMPILATION VS INTERPRETATION
+       README says "MeTTaTron is a direct evaluator". But repo named
+       "MeTTa-Compiler" + branch "metta-compiler-optimizations" exists.
+       Read src/backend/compile.rs + src/backend/mod.rs. Is MeTTaTron:
+         (a) A pure tree-walking interpreter (no compilation).
+         (b) A compiler-to-intermediate-form + interpreter pipeline.
+         (c) A JIT/AOT compiler.
+         (d) Hybrid with optional compilation paths.
+       Verdict tag from §7 vocabulary.
+
+S3.Q3. METTATRON TYPE SYSTEM
+       Read src/backend/eval/types.rs in full. Per C1-2, characterize
+       relative to S1's [DYNAMIC-CHECKED] with %Undefined%. Specifically:
+         - Does MeTTaTron support arrow types (per README P-8)?
+         - Type assertions, type inference, type checking — implemented?
+         - Static or dynamic?
+         - Compatible with hyperon-experimental's `%Undefined%` wildcard
+           or different?
+         - Does it diverge from S1 enough to need a new verdict tag?
+
+S3.Q4. PARSER STRATEGY + TREE-SITTER-METTA RELATIONSHIP
+       **Framing (sharpened per Codex S3 brief review)**: tree-sitter is
+       NOT merely external tooling — root `Cargo.toml` depends on
+       `tree-sitter` AND `tree-sitter-metta`, and `src/backend/
+       compile.rs` imports `TreeSitterMettaParser`. The README claim
+       "Direct S-expression parsing - No external parser generators
+       required" is therefore contradicted at the dependency-graph level.
+       Resolve: **how does tree-sitter-metta relate to direct
+       S-expression parsing along the runtime AND compiler code paths?**
+         - Where exactly is `TreeSitterMettaParser` invoked? (grep all
+           callsites in src/.)
+         - Is there a separate hand-rolled S-expression parser that
+           coexists with the tree-sitter path? If so, where is it
+           dispatched between them?
+         - Does the runtime/REPL use a different parser than the
+           compiler backend?
+         - Is the README's "Direct S-expression parsing" wording stale,
+           accurate-for-one-path-only, or accurate at a different
+           abstraction level?
+       Read: root `Cargo.toml` `[dependencies]` block + tree-sitter-metta/
+       Cargo.toml + `src/backend/compile.rs` (TreeSitterMettaParser
+       import + use) + src/backend/* parsing code + src/repl/ parser
+       wiring + tree-sitter-metta/build.rs + tree-sitter-metta/bindings/.
+       Verdict tag from §7.
+
+S3.Q5. STDLIB / GROUNDED-FUNCTION INVENTORY
+       Per C1-3, audit BOTH Rust-side AND MeTTa-side stdlib layers.
+       Read src/backend/eval/{builtin, list_ops, set, mork_forms,
+       space, expression, control_flow}.rs to enumerate grounded ops.
+       Plus examples/*.metta for MeTTa-side ops used in practice. Compare
+       against S1.Q3 hyperon-experimental inventory and PA5 (replace-atom!
+       check):
+         - Does MeTTaTron implement `replace-atom!`?
+         - Set operations (union, intersection, subtraction, unique) per
+           PR #64 — what's the API?
+         - Arithmetic / comparison / boolean parity?
+         - Control flow (if, switch, case, match) parity?
+         - Type-system ops (get-type, get-metatype, %Undefined%) parity?
+       Verdict tag from §7.
+
+S3.Q6. RHOLANG INTEGRATION
+       Read integration/RHOLANG_INTEGRATION.md +
+       integration/RHOLANG_REGISTRY_PATTERN.md +
+       integration/FFI_VS_DIRECT_COMPARISON.md +
+       integration/DIRECT_RUST_INTEGRATION.md. Plus sample .rho files:
+       examples/metta_rholang_example.rho, examples/robot_planning.rho,
+       integration/test_basic_evaluation.rho.
+       Specifically:
+         - How is MeTTa-Rholang coupling implemented (FFI? direct Rust?
+           subprocess?)?
+         - What semantic boundary exists between the two languages?
+         - Does Rholang call MeTTa or vice versa or both?
+         - integration/archive/rholang_handler_v1_ffi.rs in archive
+           suggests v1 FFI was superseded — by what?
+       Verdict tag from §7.
+
+S3.Q7. MORK / PATHMAP INTEGRATION + HASHMAP-VS-PATHMAP FINDING
+       Read src/backend/eval/mork_forms.rs + src/backend/eval/set.rs +
+       docs/MORK_SPECIAL_FORMS.md + integration/PATHMAP_INTEGRATION.md +
+       integration/PATHMAP_PAR_USAGE.md.
+
+       Per F3, commit `9d7ea4b` (2025-12-31, Dylon Edwards) reports:
+       "Replaces PathMap-based multiset operations with hashmap-based
+       ones; benchmarks parallel PathMap multiset operations vs.
+       sequential HashMap operations and demonstrates, empirically, that
+       the HashMap-based operations perform better than the PathMap-based
+       operations regardless the dataset size or depth of structures"
+
+       Reviewers extract:
+         - Which exact MORK/PathMap operations were benchmarked?
+         - Which bench file in benches/ contains the methodology?
+         - What were the raw measurement numbers (per P12 verbatim
+           protocol)?
+         - What was MeTTaTron's prior PathMap usage that was replaced?
+         - Does MeTTaTron still use PathMap for OTHER operations beyond
+           multiset?
+         - Verify README P-10's framing of MORK/PathMap as a feature is
+           still accurate post-9d7ea4b.
+
+       Verdict tag from §7.
+
+S3.Q8. TEST COVERAGE
+       README P-13: "Comprehensive tests - 287 tests covering all
+       language features". Per P12 verbatim protocol, verify exact count.
+       Run via static read of tests/ + benches/ + integration/ test
+       files OR exact `cargo test -- --list` output (if static-readable
+       from test attributes).
+
+       Per S1.Q10 verdict vocabulary {[TEST-COVERAGE-ADEQUATE],
+       [TEST-COVERAGE-PARTIAL], [TEST-COVERAGE-MINIMAL-...]}, characterize
+       coverage scope.
+
+       NEITHER reviewer runs the test suite. Static audit only.
+
+S3.Q9. PATTERN MATCHING + VARIABLE PREFIXES
+       README P-5 says variable prefixes `$x`, `&y`, `'z`. Three
+       different prefixes is DIVERGENT from hyperon-experimental's
+       `$x`-only convention. Read src/backend/eval/{bindings, expression,
+       quoting, macros}.rs.
+
+       Specifically:
+         - What does `$x` mean (likely standard MeTTa variable)?
+         - What does `&y` mean? (S1 hyperon-experimental uses `&` for
+           space references, e.g., `&self`)
+         - What does `'z` mean? (quote? rate-limited binding?)
+         - Are these semantically equivalent to or distinct from S1's
+           conventions?
+         - Is the divergence documented (e.g., in docs/)?
+
+       Verdict tag from §7.
+
+S3.Q10. ASYNC + THREADING MODEL
+        Read docs/THREADING_MODEL.md + src/backend/eval/* for Tokio
+        usage. README P-4: "Async parallel evaluation - True parallel-
+        ization with configurable threading via Tokio". Specifically:
+          - What level of granularity is parallelized (per-expression?
+            per-rule? per-pattern-match?)?
+          - How does it interact with nondeterminism (S3.Q1)?
+          - Configurable threading: what config options exist?
+          - Does it provide guarantees about evaluation order? Confluence?
+        Verdict tag from §7.
+
+S3.Q11. PROJECT STATUS — STALE, ACTIVE-ON-FEATURES, ABANDONED
+        At HEAD `efee4be`, main branch last commit 2026-01-19 (~4
+        months stale at brief drafting). However, remote has multiple
+        active feature branches (per §0.D). Read:
+          - CHANGELOG.md for recent activity narrative.
+          - Cargo.toml version (0.2.0) + tag history (v0.2.0 most recent).
+          - Open issues / TODOs in source.
+
+        Verdict tag per {[METTATRON-STABLE-LOW-ACTIVITY],
+        [METTATRON-ACTIVE-ON-FEATURE-BRANCHES],
+        [METTATRON-STAGNANT-MAIN-WITH-BRANCH-WORK],
+        [METTATRON-ABANDONED]}.
+
+S3.Q12. 0.2.X QUIRK REPRODUCTION (per C1-8)
+        Per C1-8, characterize MeTTaTron behavior for each S1 v0.2.x
+        quirk at HEAD `efee4be`:
+
+          Q-1 bind!+new-space: Does MeTTaTron's `bind!` (if it exists)
+              reset already-bound spaces? Or does it preserve the v0.2.10
+              no-reset semantics? Or does it diverge entirely (different
+              state/space model — like PeTTa)?
+          Q-2 cond: Does MeTTaTron implement `cond` as a builtin? If so,
+              what semantics? If not (matching v0.2.10), how is it
+              substituted (if/case/match)?
+          Q-3 catchall multi-reduction: Does MeTTaTron's nondeterministic
+              evaluation (per README P-14 "Cartesian product semantics")
+              reproduce the catchall + specific-equation multi-reduction
+              behavior?
+
+        Verdict per quirk per §7 vocabulary:
+          {[QUIRK-REPRODUCED], [QUIRK-FIXED], [QUIRK-DIVERGENT-SEMANTICS],
+           [QUIRK-NOT-APPLICABLE]}.
+
+
+§7. VERDICT VOCABULARY (single-label per question — V1-PROTOCOL-1 +
+                        V2-PROTOCOL-1)
+--------------------------------------------------------------------
+
+Reviewers MUST use EXACTLY ONE tag from the matching set per question.
+Per V2-PROTOCOL-1, pick the MOST SPECIFIC tag in the set that captures
+the evidence, not the broadest. Adjacent descriptive tags belong in
+the prose body, NOT in the verdict line.
+
+Evaluator strategy (S3.Q1):
+  [METTATRON-LAZY-NONDETERMINISTIC-CARTESIAN]
+  [METTATRON-LAZY-NONDETERMINISTIC-BRANCHING]
+  [METTATRON-STRICT-NONDETERMINISTIC]
+  [METTATRON-LAZY-DETERMINISTIC]
+
+Compilation vs interpretation (S3.Q2):
+  [TREE-WALK-INTERPRETER]
+  [COMPILER-AND-INTERPRETER-HYBRID]
+  [COMPILER-WITH-OPTIONAL-INTERPRETER]
+  [AOT-COMPILER-ONLY]
+
+Type system (S3.Q3):
+  [TYPES-DYNAMIC-WILDCARD-COMPATIBLE]
+  [TYPES-DYNAMIC-DIVERGENT]
+  [TYPES-ARROW-TYPE-FULL]
+  [TYPES-STATIC]
+  [TYPES-NONE]
+
+Parser strategy (S3.Q4):
+  [PARSER-DIRECT-S-EXPRESSION]
+  [PARSER-TREE-SITTER]
+  [PARSER-HYBRID-DIRECT-AND-TREE-SITTER]
+  [TREE-SITTER-METTA-EXTERNAL-TOOLING-ONLY]
+
+Stdlib parity (S3.Q5):
+  [STDLIB-FULL-PARITY]
+  [STDLIB-CORE-PARITY]
+  [STDLIB-PARTIAL-PARITY]
+  [STDLIB-DIVERGENT-VOCABULARY]
+  [STDLIB-EXTENDED-WITH-SET-OPS]
+
+Rholang integration (S3.Q6):
+  [RHOLANG-DIRECT-RUST-INTEGRATION]
+  [RHOLANG-FFI-LEGACY]
+  [RHOLANG-SUBPROCESS-COUPLING]
+  [RHOLANG-CO-PROCESS-PATTERN]
+
+MORK/PathMap integration (S3.Q7):
+  [MORK-PATHMAP-RETAINED-FOR-CORE]
+  [MORK-PATHMAP-REPLACED-BY-HASHMAP]
+  [MORK-PATHMAP-HYBRID-PER-OPERATION]
+  [MORK-PATHMAP-REMOVED]
+
+Test coverage (S3.Q8):
+  [TEST-COVERAGE-ADEQUATE]
+  [TEST-COVERAGE-PARTIAL]
+  [TEST-COVERAGE-MINIMAL-INTEGRATION-ONLY]
+
+Pattern matching / variable prefixes (S3.Q9):
+  [VARIABLES-DOLLAR-ONLY-S1-COMPATIBLE]
+  [VARIABLES-MULTI-PREFIX-DIVERGENT]
+  [VARIABLES-MULTI-PREFIX-EQUIVALENT]
+
+Async + threading (S3.Q10):
+  [ASYNC-PER-EXPRESSION-PARALLEL]
+  [ASYNC-PER-RULE-PARALLEL]
+  [ASYNC-PER-PATTERN-PARALLEL]
+  [ASYNC-COARSE-GRAINED]
+
+Project status (S3.Q11):
+  [METTATRON-STABLE-LOW-ACTIVITY]
+  [METTATRON-ACTIVE-ON-FEATURE-BRANCHES]
+  [METTATRON-STAGNANT-MAIN-WITH-BRANCH-WORK]
+  [METTATRON-ABANDONED]
+
+Quirks (S3.Q12 per-quirk):
+  [QUIRK-REPRODUCED]
+  [QUIRK-FIXED]
+  [QUIRK-DIVERGENT-SEMANTICS]
+  [QUIRK-NOT-APPLICABLE]
+
+
+§8. REQUIRED GREP TARGETS
+-------------------------
+
+Reviewers run these repo-wide (NOT README-only). Use the dual-API-layer
+rule (feedback_ecan_audit_token_list.md) for any token with multiple
+surfaces.
+
+S3.Q1 (evaluator):
+  In src/backend/eval/: `lazy|thunk|force|nondeterministic|cartesian|
+  step|reduce|tokio::spawn|async|await|future|join_all`.
+
+S3.Q2 (compile vs interpret):
+  In src/backend/: `compile|interpret|tree.walk|eval.tree|AST|IR`.
+
+S3.Q3 (types):
+  In src/backend/eval/types.rs: `check_type|infer|undefined|wildcard|
+  arrow|fn_type|return_type`.
+
+S3.Q4 (parser):
+  In src/ + tree-sitter-metta/: `parse|tokenize|s_expression|
+  tree_sitter|grammar|lex|TreeSitterMettaParser`.
+  In src/backend/compile.rs specifically: confirm
+  `TreeSitterMettaParser` import + locate all callsites.
+  In root Cargo.toml: `[dependencies]` block for `tree-sitter` AND
+  `tree-sitter-metta` deps (Codex confirms both present); record
+  whether they are `[dependencies]` (runtime), `[dev-dependencies]`,
+  or `[build-dependencies]` — the distinction matters for verdict
+  selection.
+
+S3.Q5 (stdlib):
+  In src/backend/eval/: `register|builtin|primitive|grounded`.
+  In src/backend/eval/set.rs: `union|intersection|subtraction|unique`.
+  Plus pickaxe: `git log --all -S 'replace-atom!'` for PA5 check.
+
+S3.Q6 (Rholang):
+  Search `rholang|rho_handler|rspace|rnode` in src/ and integration/.
+
+S3.Q7 (MORK/PathMap + 9d7ea4b):
+  In src/backend/eval/mork_forms.rs + set.rs: `pathmap|PathMap|
+  mork|MORK|hashmap|HashMap|multiset`.
+  `git show 9d7ea4b` for the load-bearing commit content.
+  In benches/: which file contains the HashMap-vs-PathMap benchmark.
+
+S3.Q8 (tests):
+  `cargo test -- --list 2>/dev/null` (static if --list works without
+  building); OR enumerate `#[test]` occurrences across tests/, src/,
+  and benches/.
+
+S3.Q9 (variables):
+  `\$[a-zA-Z]|&[a-zA-Z]|'[a-zA-Z]` in examples/ and src/.
+  Plus pickaxe: `git log --all -S "'z"` for the apostrophe variable
+  semantics (likely quote).
+
+S3.Q10 (async):
+  In src/backend/eval/ + Cargo.toml: `tokio|async|await|spawn|join|
+  channel|barrier`.
+
+S3.Q11 (status):
+  CHANGELOG.md + `git log --since='2025-12-01'` for activity volume +
+  branch-level activity per remote.
+
+S3.Q12 (quirks):
+  Q-1: pickaxe `git log --all -S 'bind!'`.
+  Q-2: `grep -i '\bcond\b'` repo-wide + pickaxe `git log --all -S '(cond'`.
+  Q-3: examples and tests for catchall + specific-equation behavior.
+
+
+§9. CROSS-SOURCE FORWARDS FOR S4-S6
+-----------------------------------
+
+This brief locks the following carry-forwards that S3 reviewers will
+populate via their findings:
+
+C3-1. MeTTaTron evaluator strategy + nondeterminism flavor (Cartesian
+      product vs branching) — comparison axis for S4 (FormalMeTTa
+      semantics) + S5 (metta-wam Prolog).
+
+C3-2. MeTTaTron compilation pipeline (S3.Q2) — comparison axis for
+      S5 (metta-wam Warren Abstract Machine — also a compiler) +
+      S6 (jetta JVM compiler).
+
+C3-3. MeTTaTron type system divergence (or compatibility) — comparison
+      axis for S4 FormalMeTTa (Scala literal-spec).
+
+C3-4. Tree-sitter-metta sibling — cross-source forward if S4-S6 also
+      have tree-sitter grammars or parser-generators.
+
+C3-5. Stdlib parity gaps — extends two-source baseline from S1+S2 to
+      three-source baseline at S3 close.
+
+C3-6. Rholang integration — distinctive cross-source feature; not
+      relevant to S4 FormalMeTTa / MeTTaIL, but possibly relevant to
+      Rholang-adjacent atomspace-metta (S6).
+
+C3-7. **MORK/PathMap HashMap-superiority empirical finding** (load-
+      bearing). If commit 9d7ea4b's benchmark is reproducible, this
+      challenges the AtomSpace cluster pilot's PathMap-positive framing.
+      Cross-link to F3 / AtomSpace Phase 4 PATCH set + Phase 5+
+      ROCKS-PATH vs MORK-PATH carry-forwards.
+
+C3-8. F1R3FLY-io portfolio coherence (S3.X.Q1-equivalent at S3
+      reconciliation time, if reviewers identify) — analogous to
+      patham9 portfolio (HAA S5 V5-13). MeTTaTron + MeTTaIL (S4) +
+      other F1R3FLY-io repos (rholang-rs, f1r3sky, etc., out of cluster
+      scope but adjacent).
+
+C3-9. v0.2.x quirks per S3.Q12 — extends the per-runtime quirk-
+      verification baseline beyond S1+S2.
+
+
+§10. STANDING PROTOCOLS (CARRY-FORWARD AT FORCE)
+------------------------------------------------
+
+All standing protocols from S1 + S2 apply. Reviewer-side messaging
+unchanged. Re-listing the protocol set for completeness:
+
+P10.1. Pickaxe before "dead code" / "never used" / "never implemented"
+       claims (`git log --all -S '<token>'` mandatory).
+
+P10.2. Caller-analysis must be time-indexed (snapshot SHA required).
+
+P10.3. Bidirectional fork-divergence + staleness corollary.
+
+P10.4. OpenCog audits grep BOTH C++ and Scheme/MeTTa API layers (here:
+       audit BOTH Rust-side AND MeTTa-side stdlib layers per C1-3).
+
+P10.5. CF5.6 — verify file-existence claims via ls/Glob BEFORE citation.
+
+P10.6. P12 — copy-paste raw shell output for all numerical claims.
+
+P10.7. V4-11 [GEMINI-INTERPRETATION-VERIFICATION] — interpretation
+       claims like "X is implemented via Y" need filename + grep +
+       line-number evidence.
+
+P10.8. Option (ii) Gemini cite pre-verification — orchestrator
+       pre-verifies every Gemini cite at extraction-return time.
+       Cumulative drift through S2: ~37/55 ≈ 67% (flat post-S1).
+       75% escalation gate; re-evaluate at S3 close.
+
+P10.9. RawData fidelity (not directly relevant to S3 extraction).
+
+P10.10. Author attribution. zariuq = Zarathustra Goertzel; for S3:
+        Dylon Edwards = F1R3FLY-io lead; Serhii Lypko (+ alias
+        SerhiiK-DevBrother); Mike Stay = MeTTaTron initial committer +
+        F1R3FLY-io cofounder; Lucius Meredith = F1R3FLY-io cofounder
+        + MeTTaIL S4 maintainer.
+
+P10.11. Wiki MCP one-writer-only protocol. Cluster-close edits gated
+        on user authorization.
+
+P10.12. Sandra-spec port re-check before cluster-close edit batch.
+        Parallel-session Sandra-spec porting has been active in this
+        project window; re-read targets immediately before edit batch.
+
+P10.13. Parallel-Claude awareness. Per session-start (2026-05-08), the
+        parallel agent is Sandra-spec styling, not content. S3 wiki
+        edits focus on FULL cards (Draft + Published with FULL in name).
+
+P10.14. WebFetch verify external URLs before wiki edit. For S3:
+        F1R3FLY-io GitHub URLs in any wiki cards must be verified.
+
+P10.15. Wiki audits must query Draft + Markdown + Published cardtypes
+        (extended to include IndexSubtopic + IndexSection per S1 close
+        observation).
+
+P10.16. V1-PROTOCOL-1 (S1 close) — brief-vocabulary single-label
+        enforcement.
+
+P10.17. V1-PROTOCOL-2 (S1 close) — byte-vs-line discrimination.
+
+P10.18. V1-PROTOCOL-3 (S1 close) — cbindgen-generated headers (not
+        directly relevant to S3 since MeTTaTron's Cargo includes
+        cdylib but no obvious cbindgen).
+
+P10.19. V2-PROTOCOL-1 (S2 close) — brief-vocab specificity-within-set
+        (pick MOST SPECIFIC tag in §7 set). Gemini lost 8 dissents in
+        S2 to less-specific tag choices.
+
+P10.20. V2-PROTOCOL-2 (S2 close) — gitlink vs submodule discrimination
+        via `.gitmodules` check.
+
+P10.21. V2-PROTOCOL-3 (S2 close) — smart-dispatch / branded-feature
+        discrimination (when a feature is described by non-exact-token
+        concept, search comments + examples + README before concluding
+        "INVALID FRAMING").
+
+P10.22. V2-PROTOCOL-4 (S2 close) — per-repo verdict granularity. Not
+        directly relevant to S3 (single-source) but applies to S6
+        jetta + atomspace-metta and any cross-repo verdict in this
+        brief.
+
+P10.23. NEW (S3 dispatch protocol) — REVIEW ONLY UNTIL EXPLICIT
+        EXTRACTION TRIGGER. See top of this brief. Reviewers do NOT
+        begin extraction until the user issues explicit "Extraction
+        Trigger" relay.
+
+
+§11. METHODOLOGY NOTES (REVIEWER-FACING)
+----------------------------------------
+
+(a) Read this brief in full BEFORE doing anything else. Sign off (or
+    propose corrections) before extraction begins.
+
+(b) DO NOT EXTRACT until explicit "Extraction Trigger" relay. See top.
+
+(c) Use the brief's pre-populated git history (§0.A, §0.B, §0.C, §0.D).
+    Do NOT re-run `git log` or `git tag` on commits already enumerated.
+
+(d) Use the brief's locked prior art (§3 PA1-PA12). Do NOT re-derive S1
+    or S2 findings.
+
+(e) Use the brief's verdict vocabulary (§7) — single-label per question.
+    Pick MOST SPECIFIC per V2-PROTOCOL-1.
+
+(f) Use the brief's required-grep targets (§8). Repo-wide grep.
+
+(g) Cite specifically (file:line) and use SHA references.
+
+(h) Flag dissents EXPLICITLY as candidate V3-N-X records.
+
+Output format: per S3.QN section, verdict tag + file:line evidence +
+methodology notes + (if applicable) V3-N-X candidate dissents. Plain
+text. Estimated 300-450 lines per reviewer.
+
+
+§12. AT-EXTRACTION-RETURN SEQUENCE (ORCHESTRATOR-FACING)
+--------------------------------------------------------
+
+When findings_codex.txt and findings_gemini.txt arrive (user-relayed):
+
+(1) Apply P10.8 (option ii) cite pre-verification on findings_gemini.txt
+    BEFORE reconciliation drafting. Four cite classes:
+      - File-path: verify existence at HEAD `efee4be`.
+      - Line-number: `git show HEAD:<file> | sed -n '<n>p'` per cite.
+      - Numerical: re-run cited command verbatim (P12).
+      - Interpretation: independent grep per "implemented via X" claim
+        (V4-11).
+    Append cite-verification log to reconciliation.
+
+(2) Draft findings_reconciled_crossmodel.txt with:
+      - Executive Summary (R3.X consensus statements).
+      - Per-question verdicts (one tag per S3.QN per §7 vocabulary).
+      - Cross-Model Dissents (V3-X records).
+      - CF5.6 Adjudications.
+      - Stale-Claim Verifications (P-N audit results).
+      - Cross-Source Forwards (C3-1..C3-9 locked for S4-S6).
+      - Bottom Line.
+      - **Cross-cluster cross-link**: HashMap-vs-PathMap finding
+        (S3.Q7) reconciled with AtomSpace Phase 4 PATCH set if relevant.
+
+(3) Relay reconciliation to user → reviewers for sign-off.
+
+(4) On three-way sign-off, propose cluster-close edit batch (wiki audit
+    + memory create + CLAUDE.md retroactive update + HYPERON_CLUSTER_
+    FINDINGS.md retroactive update + git commit). Sandra-spec re-check
+    on any IndexSubtopic / IndexSection target cards.
+
+(5) Wait for explicit user authorization before any writes.
+
+(6) Re-evaluate option-(ii) drift gate. If cumulative drift > 75%,
+    escalate to Codex-only-primary methodology (option (i)).
+
+
+================================================================================
+END OF BRIEF — Source 3 (MeTTa-Compiler / MeTTaTron)
+================================================================================

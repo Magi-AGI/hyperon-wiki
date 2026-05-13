@@ -1,0 +1,1258 @@
+================================================================
+MeTTa runtime cluster pilot — Source 3
+F1R3FLY-io/MeTTa-Compiler (MeTTaTron)
+findings_reconciled_crossmodel.txt
+Three-way reconciliation: Claude + Codex + Gemini
+================================================================
+
+Reconciliation lead:  orchestrator-Claude (Opus 4.7 1M)
+Reviewers:            Codex (citation-grade independent extraction);
+                      Gemini (synthesis claims; cite-level
+                      verification failed 94% — see §A).
+Date:                 2026-05-11
+Source pin:           F1R3FLY-io/MeTTa-Compiler HEAD
+                      `efee4bec53f7d38414255f7478f3d509816ecc45`
+                      (Dylon Edwards 2026-01-19 12:22:05 -0500,
+                       "Merge PR #96 alpha-equality-functions")
+                      Cargo package v0.2.0; HEAD is 190 commits
+                      AHEAD of Git tag v0.2.0 (at affeb89, 2025-11-27).
+Brief:                scripts/archive/metta_runtime_pilot/
+                      source3_metta_compiler_mettatron_brief.txt
+
+Findings inputs:
+  - scripts/archive/metta_runtime_pilot/source3_metta_compiler_
+    mettatron/findings_claude.txt (1625 lines; orchestrator
+    independent extraction; written before reviewer findings read)
+  - scripts/archive/metta_runtime_pilot/source3_metta_compiler_
+    mettatron/findings_codex.txt (491 lines)
+  - scripts/archive/metta_runtime_pilot/source3_metta_compiler_
+    mettatron/findings_gemini.txt (per Gemini's relay; cite
+    pre-verification log §A)
+
+Protocol stance — user-authorized OPTION 3 (2026-05-11):
+  - Reconciliation drafted under option (ii) (orchestrator
+    pre-verifies Gemini cites; cite-verification log §A).
+  - 75% Gemini-drift gate CROSSED at S3 (~94% — see §A).
+  - V3-PROTOCOL-1 (ESCALATE-TO-(i)-BEFORE-S4) FLAGGED in this
+    reconciliation's §G — Gemini reduced to confirmation-only
+    from S4 onwards.
+  - S3 reconciliation proceeds under (ii); Gemini synthesis
+    claims adjudicated normally where they survive cite-
+    verification.
+
+Three-way sign-off:
+  Codex:               2026-05-11 (per relay)
+  Gemini:              2026-05-11 (per relay; with cite-fab
+                                   acknowledgement open for §A)
+  Orchestrator Claude: 2026-05-11 (this reconciliation)
+
+
+================================================================
+§A. CITE PRE-VERIFICATION LOG (option (ii) protocol)
+================================================================
+
+Per `feedback_gemini_pre_verification_protocol.md`, the
+orchestrator pre-verifies all four Gemini cite classes (file-
+path / line-number / numerical / interpretation) before
+reconciliation drafting. Each Gemini cite is queried against
+the actual repo at HEAD `efee4be`.
+
+A.1 SCORE SUMMARY
+
+  Cite class               PASS   FAIL   Drift%   Notes
+  -----------------------  -----  -----  -------  ----------------
+  §1 numerical block       4      0      0%       Counts match
+                                                  (HEAD SHA + 874
+                                                  tests + 8 file-
+                                                  extension counts)
+  Q1 evaluator             0      3      100%     All fabricated
+  Q2 compile-vs-interp     0      2      100%     compile.rs LOC
+                                                  wrong + mod.rs
+                                                  fabricated L78
+  Q3 types                 0      3      100%     S1-codebase bleed
+                                                  (Atom::Expression
+                                                  + sym!() syntax)
+  Q4 parser                0      2      100%     Cargo line + ver
+                                                  + compile line all
+                                                  wrong
+  Q5 stdlib                0      2      100%     Range covers
+                                                  unique only; match
+                                                  in wrong file
+  Q6 Rholang               0      3      100%     `rholang-rs` crate
+                                                  fabricated;
+                                                  RhoHandler doesn't
+                                                  exist
+  Q7 MORK/PathMap          0      2      100%     Wrong bench file;
+                                                  fabricated numbers
+                                                  (5.3x at 10^5 is
+                                                  wrong — actually
+                                                  3.5x at 10^5)
+  Q8 tests                 1      1      50%      Total 874 OK;
+                                                  split wrong
+  Q9 variables             0      2      100%     `VariableAtom`
+                                                  fabricated;
+                                                  bindings.rs:112-145
+                                                  is wrong range
+  Q10 async                0      1      100%     evaluation.rs:182
+                                                  is in #[test]
+                                                  block; tokio is
+                                                  in rholang_
+                                                  integration.rs:387
+  Q11 status               0      1      100%     dylon/metta-
+                                                  compiler-opts is
+                                                  2025-11-17, not
+                                                  2026-04
+  Q12 quirks               0      2      100%     InterpreterContext
+                                                  fabricated;
+                                                  control_flow.rs:
+                                                  168 fab repeated
+  V4-11 self-table         0      5      100%     ALL 5 self-
+                                                  verifications
+                                                  FAILED:
+                                                  • fixed_point.rs:12
+                                                    `FixedPoint`:
+                                                    actual struct is
+                                                    `FixedPointResult`
+                                                    at L18
+                                                  • control_flow.rs:
+                                                    168 `evaluate_
+                                                    cartesian`: no
+                                                    such fn anywhere
+                                                  • compile.rs:12
+                                                    `use tree_
+                                                    sitter_metta`:
+                                                    actual L12 blank
+                                                  • set.rs:56
+                                                    `eval_union_
+                                                    atom`: actual at
+                                                    L114
+                                                  • bulk_ops.rs:88
+                                                    `black_box
+                                                    (hashmap_
+                                                    counts)`: actual
+                                                    is bench loop
+                                                    with b.iter
+
+  TOTAL                    5      29     ~85%     31 cite-claims
+                                                  audited (some
+                                                  cites contain
+                                                  multiple sub-
+                                                  claims). On
+                                                  individual-claim
+                                                  basis ≈ 94%.
+
+A.2 FAILURE PATTERNS
+
+  Pattern P-A: S1-codebase bleed-through
+    - `Atom::Expression(vec![sym!("->"),...])` (Q3) — MeTTaTron
+      uses MettaValue::SExpr, NOT Atom::Expression. The
+      sym!() macro is from a different codebase entirely.
+    - `VariableAtom` (Q9) — MeTTaTron uses Atom(String) with
+      string-prefix-based variable detection. No VariableAtom
+      type exists.
+    - `InterpreterContext` (Q12) — MeTTaTron uses Environment.
+      No InterpreterContext type exists.
+    - `Interpreter::new()` (Q2) — MeTTaTron uses MettaState +
+      eval(). No Interpreter struct exists.
+    - `Evaluator trait` (Q1) — MeTTaTron uses pub fn eval().
+      No Evaluator trait exists.
+    All five are S1 hyperon-experimental type/trait names being
+    auto-completed onto MeTTaTron without code verification.
+
+  Pattern P-B: Fabricated dependencies
+    - `rholang-rs crate bindings` (Q6) — no `rholang-rs` in
+      Cargo.toml at any version.
+    - `tree-sitter = "0.20"` (Q4) — actual version is "0.25".
+
+  Pattern P-C: Wrong-file file-citations (V4-11 hallucinated-
+                file pattern, recurring from prior pilots)
+    - `bulk_operations.rs` for HashMap-vs-PathMap (Q7) — actual
+      bench is `set_operations.rs`.
+    - `evaluation.rs:182` for tokio::spawn (Q10) — actual is
+      `rholang_integration.rs:387 (task::spawn_blocking)`.
+    - `control_flow.rs:168` for CartesianProduct / catchall
+      (Q1 + Q12) — actual is `eval/mod.rs:821`.
+    - `mork_forms.rs:210` for RhoHandler (Q6) — actual is
+      mork_forms.rs:210 is inside eval_exec bindings-merge
+      logic; no RhoHandler anywhere.
+
+  Pattern P-D: V4-11 self-verification fabrication (NEW
+                FAILURE MODE for S3)
+    - All 5 rows of Gemini's V4-11 verification table marked
+      "PASS" in their findings. All 5 verifiably fail per
+      orchestrator filesystem check at HEAD `efee4be`. This
+      is the first pilot in which Gemini's own self-
+      verification step produced 100% fabricated PASS results.
+    - Per `feedback_gemini_pre_verification_protocol.md` and
+      V4-11 [GEMINI-INTERPRETATION-VERIFICATION] (promoted at
+      HAA S4 close 2026-05-07), V4-11 was supposed to be
+      Gemini's self-imposed cite-discipline. At S3, V4-11 is
+      itself a hallucinated compliance signal.
+
+  Pattern P-E: Fabricated numerical
+    - Q7 raw benchmark: claimed "PathMap: 145ms / HashMap:
+      27ms (5.3x for 10^5)". Actual at 10^5 (100,000):
+      PathMap 46.8ms / HashMap 13.5ms / 3.5x. The 5.3x value
+      occurs at the 10-element row, not 100K. Both timings
+      AND the size-association are fabricated.
+
+A.3 DRIFT COMPUTATION
+
+  S3 individual-cite-claim drift: ~29/31 = ~94%.
+  Cumulative across cluster pilots through S3:
+    Prior cumulative (post-MeTTa S2): ~37/55 ≈ 67%.
+    S3 adds ~29 fails / ~31 audited.
+    New cumulative: ~66/86 ≈ 77%.
+
+  Per `feedback_gemini_pre_verification_protocol.md` 75%
+  re-evaluation gate: CROSSED at the cumulative level for
+  the second time (S2→S3). Plus the standalone S3 rate of 94%
+  is the highest single-source drift observed across all
+  cluster pilots.
+
+A.4 SYNTHESIS-CLAIM VERIFICATION (NOT cite-level)
+
+  Per `feedback_gemini_pre_verification_protocol.md`: "High-
+  level synthesis claims NOT subject to cite verification."
+
+  Gemini synthesis claims that align with Claude + Codex
+  extraction (substantively correct, cites failed but
+  conclusions valid):
+
+    Q1 [METTATRON-LAZY-NONDETERMINISTIC-CARTESIAN]   PASS
+    Q2 [TREE-WALK-INTERPRETER]                       PASS
+    Q3 [TYPES-DYNAMIC-WILDCARD-COMPATIBLE]           PASS
+    Q4 [PARSER-TREE-SITTER] + P-1 CONTRADICTED       PASS
+    Q5 [STDLIB-EXTENDED-WITH-SET-OPS]                PASS
+    Q6 [RHOLANG-DIRECT-RUST-INTEGRATION]             PASS
+    Q8 [TEST-COVERAGE-ADEQUATE] + 874 total          PASS
+                                  + README 287 stale  PASS
+    Q9 [VARIABLES-MULTI-PREFIX-EQUIVALENT]           PASS
+    Q11 [METTATRON-STAGNANT-MAIN-WITH-BRANCH-WORK]   PASS
+    Q12 Q-1 [QUIRK-NOT-APPLICABLE]                   PASS
+    Q12 Q-2 [QUIRK-FIXED]                            PASS
+
+  Gemini synthesis claims that DIFFER from Claude + Codex:
+
+    Q7 [MORK-PATHMAP-REPLACED-BY-HASHMAP]            REJECTED
+      (Codex + Claude both adopt [MORK-PATHMAP-HYBRID-PER-
+       OPERATION]; Gemini's tag is too broad per V2-PROTOCOL-1
+       specificity since PathMap is RETAINED for rule
+       storage, MORK queries, and Rholang interop.)
+
+    Q10 [ASYNC-COARSE-GRAINED]                       REJECTED
+      (Codex adopts [ASYNC-PER-EXPRESSION-PARALLEL] which is
+       MORE SPECIFIC per V2-PROTOCOL-1; Claude initially used
+       [ASYNC-COARSE-GRAINED] but defers to Codex's more-
+       specific choice. Gemini's tag is correct in family but
+       not in §7 specificity rank.)
+
+    Q12 Q-3 [QUIRK-REPRODUCED]                       REJECTED
+      (Codex adopts [QUIRK-DIVERGENT-SEMANTICS] citing eval/
+       mod.rs:1043-1059 specificity-filter — MeTTaTron filters
+       matches to MOST-SPECIFIC ONLY, suppressing catchall.
+       Verified by orchestrator. Claude's initial [QUIRK-
+       REPRODUCED] missed the specificity-filter code; Claude
+       also defers to Codex.)
+
+  Synthesis claims (1) ALIGNED across all three on 11/13
+  per-question verdicts (counting Q-1/Q-2/Q-3 separately for
+  Q12); (2) REJECTED on 3 verdicts where Gemini chose a tag
+  that's broader or less precise than Codex+Claude's
+  reconciled position.
+
+
+================================================================
+§B. RECONCILED PER-QUESTION VERDICTS
+================================================================
+
+For each question, the format is:
+  Final verdict:         <single label per V1/V2-PROTOCOL-1>
+  Three-way agreement:   3/3, 2/3 (Gemini differs), etc.
+  Evidence anchor:       file:line cites verified by orchestrator
+
+S3.Q1  EVALUATOR STRATEGY
+  Final verdict:         [METTATRON-LAZY-NONDETERMINISTIC-CARTESIAN]
+  Three-way agreement:   3/3.
+  Evidence anchor:
+    - eval/mod.rs:169 `pub fn eval` → eval_trampoline
+    - eval/mod.rs:177 `fn eval_trampoline` (iterative work-stack)
+    - eval/mod.rs:93 `const MAX_EVAL_DEPTH: usize = 1000`
+    - eval/mod.rs:97 `const MAX_CARTESIAN_RESULTS: usize = 10000`
+    - eval/mod.rs:471 `fn eval_sexpr_step`
+    - eval/mod.rs:561 `fn process_collected_sexpr`
+    - eval/mod.rs:821 `fn cartesian_product` (the explicit
+      Cartesian product over sub-expression result sets)
+    - eval/mod.rs:1023 `fn try_match_all_rules_iterative`
+    - eval/mod.rs:1043 `sorted_rules.sort_by_key(... pattern_
+      specificity())` — Codex's load-bearing find
+  Methodology note:
+    Iterative-with-explicit-stack (NOT recursive). The lazy
+    framing is "iterative deferred evaluation" / control-flow
+    laziness for if/case/switch, NOT Haskell-style thunks.
+
+S3.Q2  COMPILE VS INTERPRETATION
+  Final verdict:         [TREE-WALK-INTERPRETER]
+  Three-way agreement:   3/3.
+  Evidence anchor:
+    - backend/compile.rs:18-59 `pub fn compile(src)` parses
+      via TreeSitterMettaParser and returns MettaState
+    - No bytecode / IR lowering / native codegen at HEAD
+    - main.rs:185-193 compile-then-eval each expression
+    - rholang_integration.rs:93 `compile_safe`
+    - rholang_integration.rs:209 `run_state` loops over
+      compiled expressions and calls eval
+  Methodology note:
+    Project name "MeTTa-Compiler" overstates the HEAD
+    capability. Feature branches `pr17/bytecode-vm`, `pr20/
+    jit-codegen`, `feature/jit-compiler`, `feature/wam-backend`
+    exist but are NOT integrated to main at HEAD `efee4be`.
+    Cite future-status under [METTATRON-STAGNANT-MAIN-WITH-
+    BRANCH-WORK] (S3.Q11), not as current MeTTaTron behavior.
+
+S3.Q3  TYPE SYSTEM
+  Final verdict:         [TYPES-DYNAMIC-WILDCARD-COMPATIBLE]
+  Three-way agreement:   3/3.
+  Evidence anchor:
+    - eval/types.rs:47-75 `eval_type_assertion` for (:)
+    - eval/types.rs:79-86 `eval_get_type`
+    - eval/types.rs:90-101 `eval_check_type`
+    - eval/types.rs:105 `fn infer_type` (note: Gemini cite of
+      L82 is wrong — actual at L105)
+    - eval/types.rs:201 `fn types_match`
+    - tree_sitter_parser.rs:797-815 parser accepts %Undefined%
+    - eval/types.rs:136-138 runtime returns Atom("Undefined")
+      for unknowns
+  Methodology note:
+    Wildcard convention: parser accepts %Undefined%, runtime
+    emits "Undefined". Minor spelling mismatch documented as
+    backward-compatibility behavior at types.rs:131-138.
+    Carry to wiki narrative as a "wire-compatible with S1,
+    runtime-token convention drift" footnote.
+
+S3.Q4  PARSER + TREE-SITTER-METTA
+  Final verdict:         [PARSER-TREE-SITTER]
+  Three-way agreement:   3/3 on verdict; Gemini cite-fab on
+                         Cargo.toml line/version/path.
+  Evidence anchor:
+    - Cargo.toml:87 `tree-sitter = "0.25"`
+    - Cargo.toml:88 `tree-sitter-metta = { path = "tree-
+      sitter-metta" }` (NOT "./tree-sitter-metta" as Gemini
+      claimed)
+    - backend/compile.rs:11 `use crate::tree_sitter_parser::
+      {SyntaxError, SyntaxErrorKind, TreeSitterMettaParser};`
+    - backend/compile.rs:26 `TreeSitterMettaParser::new()`
+    - tree_sitter_parser.rs:103-115 parser struct + new()
+    - main.rs:175 `mettatron::TreeSitterMettaParser::new()`
+  README contradiction (D3-1):
+    README.md:11 "direct S-expression parsing"
+    README.md:15 "No external parser generators required"
+    Both contradicted by HEAD code: tree-sitter is the
+    runtime parser via the tree-sitter-metta grammar package.
+    Recommend a wiki footnote when an S3 Full card is
+    authored.
+
+S3.Q5  STDLIB / GROUNDED-FUNCTION INVENTORY
+  Final verdict:         [STDLIB-EXTENDED-WITH-SET-OPS]
+  Three-way agreement:   3/3.
+  Evidence anchor:
+    Special forms (eval/mod.rs:483-552):
+      - Rule + eval primitives: =, !, quote, eval, function,
+        return, chain
+      - Control flow: if, if-equal, case, switch,
+        switch-minimal, switch-internal, match, let
+      - Error: error, is-error, catch
+      - Testing (PR #95+#96): =alpha, assertEqual,
+        assertAlphaEqual, assertEqualMsg, assertAlphaEqualMsg,
+        assertEqualToResult, assertAlphaEqualToResult,
+        assertEqualToResultMsg, assertAlphaEqualToResultMsg
+      - Type: :, get-type, check-type
+      - List/atom: map-atom, filter-atom, foldl-atom,
+        cons-atom, decons-atom, size-atom, index-atom,
+        car-atom, cdr-atom, min-atom, max-atom
+      - MORK forms: exec, coalg, lookup, rulify
+      - Set ops (PR #64, the LOAD-BEARING extension):
+        unique-atom, union-atom, intersection-atom,
+        subtraction-atom
+    Grounded builtins (builtin.rs:7-48):
+      - Arithmetic: +, -, *, /
+      - Comparison: <, <=, >, >=, ==, !=
+      - Logical: and, or, not
+      - Math (-math suffix): %, pow-math, sqrt-math, abs-math,
+        log-math, trunc-math, ceil-math, floor-math,
+        round-math, sin-math, asin-math, cos-math, acos-math,
+        tan-math, atan-math, isnan-math, isinf-math
+  Absences (pickaxe + grep confirmed):
+    - `replace-atom!` — NOT in src/ + NOT in git history.
+      Phase 4 PATCH-2 prior art is NOT satisfied by MeTTaTron.
+    - `bind!` — only in examples/advanced.metta:20 as user-
+      land example; NOT a special form. Feature branch
+      `feat/bind-tokenizer` exists.
+    - `cond` — absent (matches S1 v0.2.10 fixed-via-absence).
+    - `new-space` / `add-atom` / `remove-atom` per-space ops.
+    - `import!` / module-system primitives.
+    - Print grounded ops (`print-line`, `println`).
+  Sandbox tier: SUBSET of S1 on rule/space ops + module
+  system; SUPERSET on testing operators + set operations +
+  MORK forms.
+
+S3.Q6  RHOLANG INTEGRATION
+  Final verdict:         [RHOLANG-DIRECT-RUST-INTEGRATION]
+  Three-way agreement:   3/3 on verdict; Gemini cite-fab on
+                         rholang-rs crate + RhoHandler.
+  Evidence anchor:
+    - Cargo.toml:71 `models = { path = "../f1r3node/models"
+      }` (shared Rholang protobuf types crate, NOT a separate
+      rholang-rs crate as Gemini fabricated)
+    - rholang_integration.rs:93 `compile_safe`
+    - rholang_integration.rs:209 `run_state`
+    - rholang_integration.rs:267 `run_state_async`
+    - pathmap_par_integration.rs is the PRIMARY integration
+      surface (1446 lines) — converts MettaState to Rholang
+      EPathMap structures
+    - rholang_integration.rs is the SECONDARY surface (1428
+      lines) — JSON for debugging + state evaluation entry
+      points
+    - integration/DIRECT_RUST_INTEGRATION.md:5 confirms
+      direct-Rust-linking (NOT FFI)
+    - integration/FFI_VS_DIRECT_COMPARISON.md:5-17 recommends
+      Direct Rust v3 as superior
+    - 10 .rho tracked files at HEAD across examples/ and
+      integration/ (Codex's full enumeration in §7 of
+      findings_codex.txt)
+    - rho:metta:compile and rho:metta:compile:sync registry
+      entries in DIRECT_RUST_INTEGRATION.md:150 + :164
+  Methodology note:
+    F1R3FLY-io organizational signal — `f1r3node/models`
+    sibling-repo dep is the integration backbone. Mike Stay
+    (F1R3FLY-io cofounder, category theorist, Baez co-author)
+    is the initial-commit author (`9f03102 2025-09-03`),
+    establishing MeTTaTron as MeTTa-on-Rholang reference.
+
+S3.Q7  MORK / PATHMAP / HASHMAP
+  Final verdict:         [MORK-PATHMAP-HYBRID-PER-OPERATION]
+  Three-way agreement:   2/3 (Codex + Claude agree;
+                         Gemini's [MORK-PATHMAP-REPLACED-BY-
+                         HASHMAP] REJECTED per V2-PROTOCOL-1
+                         specificity).
+  Evidence anchor:
+    PathMap RETAINED for:
+      - environment.rs:36-40 `btm: Arc<RwLock<PathMap<()>>>`
+        — primary rule/fact/atom/type storage
+      - environment.rs:729-823 bulk-add via temporary PathMap
+        + HashMap rule-index updates
+      - environment.rs:73-76 `type_index: Option<PathMap<()>>`
+      - pathmap_par_integration.rs serializes state as
+        Rholang EPathMap
+      - eval/mod.rs:947+ `try_match_all_rules_query_multi`
+        uses MORK's PathMap-trie query_multi API
+      - eval/mod.rs:1023+ `try_match_all_rules_iterative` for
+        the fallback path
+    HashMap REPLACED PathMap for:
+      - eval/set.rs:36 `use std::collections::HashMap`
+      - eval/set.rs:209 + :283 use HashMap counts for multiset
+        intersection / subtraction
+      - Same pattern for union (eval_union_atom at L114) and
+        unique (eval_unique_atom at L62)
+    9d7ea4b commit stat (orchestrator-verified):
+      Cargo.lock |  95 ++-
+      Cargo.toml |   4 +
+      benches/set_operations.rs                | 765 +++
+      docs/benchmarks/set_operations/results/
+        20251229_130424/summary.md             | 144 ++
+      docs/benchmarks/set_operations/results/
+        20251229_144909/crossover_analysis.md  | 196 ++
+      scripts/profile_set_operations.sh        | 212 ++
+      src/backend/eval/set.rs                  | 515 ++-
+      src/backend/mod.rs                       |   1 +
+      src/backend/parallel_pathmap.rs          | 434 ++
+      src/backend/pathmap_converter.rs         | 147 ++
+      10 files, 2436 +/77- (verified per
+      `git show 9d7ea4b --stat`).
+    HEAD-vs-commit refinement (orchestrator caveat per Codex
+    O3-3):
+      The benchmark summary `.md` files at docs/benchmarks/
+      set_operations/results/20251229_*/ added in 9d7ea4b are
+      NOT present at HEAD `efee4be`. They are commit-evidence,
+      not HEAD-file-evidence. Likely removed in a subsequent
+      cleanup commit. The bench .rs file IS at HEAD
+      (benches/set_operations.rs). Claude's findings_claude.txt
+      cited the summary.md as if at HEAD — minor cite-
+      refinement: cite the commit (`git show 9d7ea4b -- docs/
+      ...summary.md`) rather than the HEAD path.
+    P12 verbatim numerical (from 9d7ea4b's summary.md,
+    methodology section):
+      Bench:  benches/set_operations.rs (765 lines)
+      System: Intel Xeon (dual socket), 36 cores;
+              CPU Affinity: Cores 0-17
+      Intersection Scaling (50% overlap):
+        Size       PathMap     HashMap     Speedup
+        10         4.36 µs     821 ns      5.3x
+        100        40.3 µs     8.13 µs     5.0x
+        1,000      427 µs      83.5 µs     5.1x
+        10,000     4.15 ms     873 µs      4.8x
+        100,000    46.8 ms     13.5 ms     3.5x
+      Subtraction Scaling (50% overlap):
+        Size       PathMap     HashMap     Speedup
+        10         3.96 µs     751 ns      5.3x
+        100        38.9 µs     8.07 µs     4.8x
+        1,000      416 µs      80.5 µs     5.2x
+        10,000     4.24 ms     945 µs      4.5x
+        100,000    48.5 ms     13.4 ms     3.6x
+      Summary line: "3.5x to 5.3x speedup across all test
+      scenarios, confirming Hypothesis 1 (2-10x expected
+      speedup)."
+  Gemini-fab rejection:
+      Gemini claimed "PathMap: 145ms / HashMap: 27ms (5.3x
+      speedup for 10^5 multiset counts)". REJECTED:
+        - 145ms / 27ms does not appear anywhere in the
+          summary. Closest figures are 46.8ms / 13.5ms at
+          100K (10^5).
+        - 5.3x is the speedup at the 10-element row, not 10^5.
+        - Gemini also cited `bulk_operations.rs` as the bench
+          file; actual is `set_operations.rs`.
+      All three claims are fabricated. P12 protocol violation.
+  Methodology note:
+    Per V2-PROTOCOL-1 specificity, [MORK-PATHMAP-HYBRID-PER-
+    OPERATION] is the most-specific tag because the partial
+    replacement is operation-scoped (multiset/count vs
+    rule-store/pattern-match). Gemini's [MORK-PATHMAP-
+    REPLACED-BY-HASHMAP] is too broad — it implies wholesale
+    replacement, which is NOT what happened.
+
+S3.Q8  TEST COVERAGE
+  Final verdict:         [TEST-COVERAGE-ADEQUATE]
+  Three-way agreement:   3/3 on verdict + on total 874;
+                         minor split-numbers disagreement.
+  Evidence anchor:
+    Orchestrator-verified static counts via grep:
+      grep -rE "^\s*#\[test\]" src/        → 738
+      grep -rE "^\s*#\[test\]" tests/      → 127
+      grep -rE "^\s*#\[tokio::test" src/
+           tests/ benches/                  →   9
+      ─────────────────────────────────────────
+      TOTAL                                  874
+    Codex's static counts (per findings_codex.txt §9; using
+    rg with the combined `#\[(tokio::)?test\]` regex):
+      `.` (repo-wide)                       → 874
+      `src tests`                            → 865
+      `src tests tree-sitter-metta`          → 866
+    Decomposition implied: 865 src+tests (both attr types) +
+    1 tree-sitter-metta + 8 benches/ = 874.
+    Orchestrator's per-attribute split (738 + 127 + 9) and
+    Codex's per-directory split (865 + 1 + 8) both total to
+    874; the splits are consistent with each other, not
+    contradictory.
+    Gemini's claim: 874 total via `cargo test -- --list`
+    + "829 unit / 45 integration" split (split numbers
+    DISAGREE with both orchestrator and Codex). Codex did
+    NOT run cargo test. Orchestrator did NOT run cargo test
+    (per brief §S3.Q8 "NEITHER reviewer runs the test suite.
+    Static audit only.").
+  README claim P-13 ("287 tests") is STALE at HEAD.
+  Methodology note:
+    Test count is STATIC ATTRIBUTE COUNT (grep `#[test]` +
+    `#[tokio::test]`), NOT a successful cargo test run.
+    Reconciliation phrases the 874 as "static test attribute
+    count" not "tests run".
+
+S3.Q9  VARIABLE PREFIXES
+  Final verdict:         [VARIABLES-MULTI-PREFIX-EQUIVALENT]
+  Three-way agreement:   3/3 on verdict.
+  Evidence anchor:
+    Multi-prefix variable detection at the runtime layer:
+      - eval/mod.rs:748-755 (fast-path empty bindings)
+      - eval/mod.rs:759-769 (general path with `&` carve-out)
+      - eval/mod.rs:898-902 (apply_bindings substitution)
+      - eval/bindings.rs:46-48 (pattern-mismatch hints)
+      - eval/list_ops.rs:292 (atom variable detection)
+      - eval/mork_forms.rs:310 (variable detection in MORK
+        forms)
+      - eval/types.rs:123 (type-variable handling)
+    `&` standalone carve-out:
+      - eval/mod.rs:758 comment confirms: "standalone '&' is
+        a literal operator (used in match), not a variable"
+      - eval/space.rs:78 enforces literal `&` for match
+        space-reference
+    Models layer (Codex's anchor):
+      - backend/models/metta_value.rs:94-103 structural
+        equivalence ignoring variable names; treats $, &,
+        apostrophe-prefixed as variables
+      - backend/models/metta_value.rs:159-179 excludes them
+        from head-symbol indexing (except standalone &)
+      - backend/models/metta_value.rs:190-222 pattern_
+        specificity; $, &, apostrophe, and _ are LEAST
+        SPECIFIC
+      - backend/models/metta_value.rs:238-271 `to_mork_string`
+      - backend/models/metta_value.rs:1071-1084 tests that &y
+        and 'z are encoded as $y and $z for MORK
+    Inconsistencies (NOT load-bearing):
+      - testing.rs:328-330 `fn is_variable` checks only `$`
+        for alpha-equality canonicalization (intentional —
+        alpha is single-namespace)
+      - list_ops.rs:20, 105, 201, 227 check only `$` for
+        list-op argument extraction (intentional)
+  Methodology note:
+    Semantic equivalence at matching layer; serialization to
+    MORK normalizes `&` and `'` to `$`. Tree-sitter grammar
+    has single `variable` node kind for all three. Runtime
+    treats them as semantically equivalent variables.
+
+S3.Q10 ASYNC / THREADING
+  Final verdict:         [ASYNC-PER-EXPRESSION-PARALLEL]
+  Three-way agreement:   2/3 (Codex's verdict adopted;
+                         Claude initially used [ASYNC-COARSE-
+                         GRAINED]; Gemini also used
+                         [ASYNC-COARSE-GRAINED] but cite-fab
+                         on evaluation.rs:182).
+  Evidence anchor:
+    - rholang_integration.rs:250-260 doc: async run_state
+      parallelizes consecutive `!` eval expressions;
+      sequential rule defs + atomic batch env updates
+    - rholang_integration.rs:267 `run_state_async`
+    - rholang_integration.rs:313 creates current_batch
+    - rholang_integration.rs:323-335 batch flush before rule
+      defs / ground facts
+    - rholang_integration.rs:345 push non-rule expressions
+      into batch
+    - rholang_integration.rs:370 `evaluate_batch_parallel`
+    - rholang_integration.rs:383-387 spawn one
+      `tokio::task::spawn_blocking` per batched expression
+    - docs/THREADING_MODEL.md:54-69 batching diagram
+    - docs/THREADING_MODEL.md:173-175 batching continues
+      until rule def; rule defs force sync
+  Methodology note (verdict adjudication):
+    Per V2-PROTOCOL-1 specificity, [ASYNC-PER-EXPRESSION-
+    PARALLEL] is MORE SPECIFIC than [ASYNC-COARSE-GRAINED]
+    because:
+      - Each batched expression spawns its own blocking task
+        (one task per expression, not one per batch).
+      - The §7 vocabulary distinguishes per-expression
+        parallelism from per-rule and per-pattern (also more
+        granular than coarse-grained).
+      - "Coarse-grained" is in the §7 set as a
+        catch-all/below-specificity option; it captures the
+        same fact at lower specificity.
+    Claude defers to Codex's specificity choice. The
+    parallelism is real and configurable (via Tokio runtime
+    config); both tags are correct in spirit, but
+    [ASYNC-PER-EXPRESSION-PARALLEL] is the right
+    specificity-rank in §7.
+    BARRIER SEMANTICS:
+      - Rule defs and ground facts FORCE SEQUENTIAL.
+      - Within a batch, evaluations are env-cloned
+        (rholang_integration.rs:385 `let env = env.clone();`
+        — Arc clone is cheap).
+      - Outputs sorted by original index for stable display.
+    NOT per-rule, NOT per-pattern-match, NOT per-sub-
+    expression.
+  README claim P-4 ("True parallelization with configurable
+  threading via Tokio") — TRUE in narrow sense (real
+  parallelism + Tokio-runtime-configurable) but may mislead
+  readers expecting finer granularity. D3-5 candidate (see
+  §C).
+
+S3.Q11 PROJECT STATUS
+  Final verdict:         [METTATRON-STAGNANT-MAIN-WITH-BRANCH-WORK]
+  Three-way agreement:   3/3 on verdict; Gemini cite-fab on
+                         dylon/metta-compiler-optimizations
+                         date.
+  Evidence anchor:
+    - main HEAD `efee4be` last commit 2026-01-19 (4 months
+      stale at S3 brief drafting 2026-05-11)
+    - origin/main is at the same SHA as HEAD per `git for-
+      each-ref` snapshot
+    - Active feature branches by date (orchestrator-
+      verified):
+        2026-03-15  origin/feature/wam-backend
+        2026-03-15  origin/feature/pln-support
+        2026-03-04  origin/tests/querying_space_proptests
+        2026-03-04  origin/tests/high_order_functions_proptests
+        2026-02-20  origin/tests/deterministic_function_calls_proptests
+        2026-02-17  origin/tests/basic-equality-reduction-proptests
+        2026-02-14  origin/pr30/improved-multiplicity-tracking
+        2026-02-11  origin/tests/eval-proptests
+        2026-02-04  origin/test/compile-proptests
+        2026-01-26  origin/logical-operations
+        2026-01-22  origin/update-quoting-semantics
+        2026-01-19  origin/main
+      ────────────────────────────────────────────────────────
+      Note: origin/dylon/metta-compiler-optimizations is at
+      2025-11-17 (verified by orchestrator), NOT 2026-04 as
+      Gemini claimed.
+    - 108 commits across all branches since 2026-01-19
+      (`git log --since='2026-01-19' --all --oneline | wc -l`)
+  Methodology note:
+    Cite stagnant-main + branch-active. DO NOT classify as
+    [METTATRON-ABANDONED] (108-commit branch activity proves
+    ongoing work). DO NOT classify as low-activity (the
+    branch-work volume is substantial).
+
+S3.Q12 0.2.X QUIRK REPRODUCTION
+  Q-1 bind! + new-space:    [QUIRK-NOT-APPLICABLE]
+                            Three-way agreement: 3/3.
+    Evidence anchor:
+      - No `bind!` special form in eval/mod.rs:483-552
+        dispatch.
+      - Repo grep at HEAD: `bind!` appears only in
+        examples/advanced.metta:20 as a user-land example
+        (not wired).
+      - Pickaxe `git log --all -S 'bind!'` returns 5 commits
+        ON FEATURE BRANCHES (7a6939c, 830c67e, b470054,
+        3f5ce3a, 70173c6) — consistent with `feat/bind-
+        tokenizer` unmerged branch.
+      - Space model: SINGLE MORK Space at HEAD, accessed only
+        as `&self` (per `VALID_SPACE_NAMES: &[&str] = &
+        ["self"]` at space.rs:8).
+      - No multi-space binding semantics to test.
+    Methodology note: per V2-PROTOCOL-1, [QUIRK-NOT-APPLICABLE]
+    is the most-specific tag because the underlying operator
+    simply does not exist at HEAD. Different from PeTTa's
+    [QUIRK-DIVERGENT-SEMANTICS] which had a different
+    state/space model implemented; MeTTaTron has no such
+    multi-space model at all.
+
+  Q-2 cond:                 [QUIRK-FIXED]
+                            Three-way agreement: 3/3.
+    Evidence anchor:
+      - No `cond` special form in eval/mod.rs:483-552.
+      - Pickaxe `git log --all -S 'cond'` returns commits
+        where "cond" appears in substrings ("conjunction",
+        "condition") — not as a standalone special form.
+      - Substitute via if / case / match / switch:
+        - control_flow.rs:8-52 if
+        - control_flow.rs:61 if-equal
+        - control_flow.rs:87-263 case + switch + switch-
+          minimal + switch-internal
+        - space.rs:49 match
+        - bindings.rs:73 let
+    Methodology note: matches S1 v0.2.10 [QUIRK-FIXED-SINCE-
+    V0-2-1] via absence-as-resolution. User can substitute
+    if/case/match/switch — all of which MeTTaTron implements.
+
+  Q-3 catchall + specific:  [QUIRK-DIVERGENT-SEMANTICS]
+                            Three-way agreement: 2/3 (Codex's
+                            verdict adopted; Claude initially
+                            chose [QUIRK-REPRODUCED] and
+                            missed the specificity-filter
+                            code; Gemini also chose
+                            [QUIRK-REPRODUCED] but with
+                            fabricated control_flow.rs:168
+                            cite).
+    Evidence anchor (Codex's load-bearing find,
+    orchestrator-verified):
+      - eval/mod.rs:1023 `fn try_match_all_rules_iterative`
+      - eval/mod.rs:1043 `sorted_rules.sort_by_key(|rule|
+        rule.lhs.pattern_specificity());` (sort by specificity)
+      - eval/mod.rs:1056 `if let Some(best_spec) = matches.
+        iter().map(|(_, _, spec, _)| *spec).min() {`
+      - eval/mod.rs:1059-1061 `let best_matches: Vec<_> =
+        matches.into_iter().filter(|(_, _, spec, _)| *spec
+        == best_spec).collect();` (filter to BEST specificity
+        — suppresses catchall when specific matches)
+      - eval/space.rs:592-636 tests that `(test 42)` wins
+        over `(test $x)`
+      - backend/models/metta_value.rs:190-222 `pattern_
+        specificity` makes variables/wildcards LEAST
+        specific
+      - README.md:343-350 documents specificity-only
+        suppression
+    Methodology note:
+      Q-3 SEMANTICS DIFFER from S1: S1 v0.2.10 reproduces
+      catchall + specific-equation multi-reduction (both
+      results returned). MeTTaTron filters to MOST-SPECIFIC
+      ONLY, suppressing the catchall. Nondeterminism is
+      preserved AMONG EQUAL-SPECIFICITY matches and via the
+      cartesian_product over sub-expression result sets, but
+      catchall vs specific is a specificity-filtered
+      single-winner choice.
+      Per V2-PROTOCOL-1, [QUIRK-DIVERGENT-SEMANTICS] is more
+      specific and accurate than [QUIRK-REPRODUCED] because
+      the documented + implemented semantics is a CHANGE
+      from S1's behavior.
+      Cross-source forward C3-X: S4-S6 reviewers must
+      explicitly verify how their runtime treats catchall +
+      specific overlap. PeTTa (S2.A) and metta-morph (S2.B)
+      verdicts on Q-3 were [QUIRK-REPRODUCED]; MeTTaTron is
+      the first cluster source to diverge.
+
+  Cross-source quirk reconciliation table (updated at S3):
+
+    Quirk    S1                       S2.A PeTTa            S2.B metta-morph      S3 MeTTaTron
+    Q-1     CONFIRMED-AT-HEAD        DIVERGENT-SEMANTICS    FIXED                  NOT-APPLICABLE
+    Q-2     FIXED-VIA-ABSENCE        REPRODUCED             REPRODUCED             FIXED
+    Q-3     CONFIRMED-AS-SEMANTICS   REPRODUCED             REPRODUCED             DIVERGENT-SEMANTICS
+
+  Pattern at S3: Q-3 catchall semantics START diverging at
+  S3 MeTTaTron. S4-S6 should record their specificity-
+  filtering vs non-filtering choice explicitly.
+
+
+================================================================
+§C. README / DOCUMENTATION DRIFT (D3-X)
+================================================================
+
+D3-1 [README-PARSER-DRIFT]:
+    README.md:11 + :15 claim direct S-expression parsing /
+    no parser generator. CONTRADICTED at Cargo.toml:87-88 +
+    compile.rs:11-26. Correct to tree-sitter parser.
+
+D3-2 [README-TEST-COUNT-DRIFT]:
+    README.md:27 "287 tests". Actual static count at HEAD:
+    874. Correct to current inventory or remove exact count.
+
+D3-3 [README-COMPILER-NAME-DRIFT]:
+    Project name "MeTTa-Compiler" + binary name "MeTTaTron"
+    are aspirational vs HEAD. HEAD path is parse-to-state +
+    tree-walk interpreter. Bytecode/JIT/WAM exist only on
+    unmerged feature branches.
+
+D3-4 [README-MORK-PATHMAP-DRIFT]:
+    README.md:24 "MORK/PathMap integration - Efficient
+    pattern matching with MORK zipper optimization" is TRUE
+    for the pattern-match path. README does NOT overclaim
+    PathMap for multiset/count ops, so no contradiction
+    against P-10 at HEAD — the qualifier is just missing.
+    Recommend a per-operation note if performance/substrate
+    is documented.
+
+D3-5 [README-ASYNC-GRANULARITY-DRIFT]:
+    README.md:18 "True parallelization with configurable
+    threading via Tokio" — TRUE in narrow batch-level sense,
+    but readers may infer finer granularity (per-rule or
+    per-sub-expression). Recommend a wiki footnote: "batch
+    of independent top-level `!`-expressions parallelized
+    via Tokio blocking pool; not per-rule, not per-sub-
+    expression."
+
+
+================================================================
+§D. R3.NEW LOAD-BEARING FINDINGS
+================================================================
+
+R3.NEW-1 LOAD-BEARING: MeTTaTron MOST-SPECIFIC-RULE FILTER
+    (specificity-filter on rule match)
+  - eval/mod.rs:1023-1061 implements specificity-based
+    suppression of catchall vs specific rules.
+  - First cluster source (S1 + S2.A + S2.B + S3) to diverge
+    on S1's Q-3 catchall multi-reduction.
+  - Cross-cluster carry-forward: PLN cluster pilot (closed
+    2026-04-25) framed PLN-on-MeTTa rule-match semantics
+    against S1's catchall behavior; if PLN-on-MeTTaTron is
+    pursued (per `feature/pln-support` branch), the rule-
+    selection semantics differ. Reviewers of S4-S6 must
+    record their specificity-filter vs reproduces-S1
+    choice.
+
+R3.NEW-2 LOAD-BEARING: README PARSER CLAIM CONTRADICTED-AT-
+    DEPENDENCY-LEVEL
+  - Tree-sitter is a runtime Cargo `[dependencies]` entry
+    (Cargo.toml:87-88), not a dev/build/external dep.
+  - `src/backend/compile.rs:11` imports
+    `TreeSitterMettaParser` as the SOLE parsing path.
+  - README's "no external parser generators required" is
+    therefore wrong at the dependency-graph layer, not just
+    aspirational.
+  - Cross-cluster lesson: README claims about "no
+    dependencies" / "direct implementation" should be
+    verified at the Cargo.toml level before acceptance.
+
+R3.NEW-3 LOAD-BEARING: HASHMAP-OUTPERFORMS-PATHMAP-MULTISET
+    (3.5x-5.3x speedup, dataset-size-independent)
+  - Commit `9d7ea4b` (Dylon Edwards 2025-12-29) benchmark
+    file `benches/set_operations.rs` (765 lines).
+  - System: Intel Xeon dual-socket 36 cores, cores 0-17
+    affinity.
+  - Range 3.5x (100K) to 5.3x (10) per the summary.md table.
+  - SCOPED CLAIM: applies to multiset/count workloads
+    (union/intersection/subtraction/unique). PathMap retained
+    for keyed pattern-match + rule storage + Rholang interop.
+  - Cross-cluster cross-link: does NOT invalidate AtomSpace
+    Phase 4's MORK substrate framing. Narrows it: PathMap
+    remains a storage/query substrate at HEAD MeTTaTron.
+
+R3.NEW-4: METTATRON REPO NAME OVERSTATES HEAD CAPABILITY
+  - "MeTTa-Compiler" repo name + "MeTTaTron" binary +
+    "compiler" in package description (Cargo.toml:6) suggest
+    compilation that DOES NOT exist at HEAD.
+  - The `compile()` function (src/backend/compile.rs:18-59)
+    is a parser+pre-processor, NOT a code generator.
+  - Feature branches `feature/wam-backend`,
+    `feature/jit-compiler`, `pr17/bytecode-vm`,
+    `pr20/jit-codegen` exist — these MAY become compilation
+    work, but are not on main at HEAD `efee4be`.
+  - Wiki narrative recommendation: cite as
+    "MeTTa-runtime-with-compilation-roadmap", not as a
+    compiler.
+
+R3.NEW-5: F1R3FLY-IO RHOLANG INTEGRATION VIA SHARED-TYPES
+    SIBLING-REPO PATTERN
+  - `models = { path = "../f1r3node/models" }` (Cargo.toml:
+    71) is the integration backbone. The Rholang protobuf
+    types are shared at compile time.
+  - Direct Rust integration is recommended over FFI per
+    integration/DIRECT_RUST_INTEGRATION.md and
+    integration/FFI_VS_DIRECT_COMPARISON.md.
+  - Mike Stay initial-commit identity is the cross-link to
+    F1R3FLY-io leadership (Lucius Meredith is co-founder).
+  - Recommend audit for S4 MeTTaIL (Meredith's project) and
+    S6 jetta/atomspace-metta for analogous sibling-repo
+    coupling patterns.
+
+
+================================================================
+§E. V3-X CARRY-FORWARDS (locked for S4-S6)
+================================================================
+
+V3-1 [METTATRON-TREE-SITTER-PRIMARY-PARSER]
+  Tree-sitter is the sole parser at HEAD. S4-S6 reviewers
+  verify whether their runtime uses tree-sitter or hand-
+  rolled parsing. MeTTaIL (S4) and jetta (S6) explicitly.
+
+V3-2 [METTATRON-LAZY-NONDETERMINISTIC-CARTESIAN-VS-S1-
+      BRANCHING]
+  MeTTaTron materializes Cartesian product (MAX_CARTESIAN_
+  RESULTS=10000); S1 hyperon-experimental does
+  per-branch evaluation. Same family, different runtime
+  cost shape.
+
+V3-3 [HASHMAP-OUTPERFORMS-PATHMAP-MULTISET-3.5-5.3X]
+  Load-bearing cross-cluster cross-link to AtomSpace Phase
+  4 substrate framing. SCOPED: multiset/count workloads
+  only. PathMap retained for keyed pattern-match + rule
+  storage. Do NOT generalize.
+
+V3-4 [METTATRON-COMPILE-IS-PARSE-NOT-COMPILE]
+  Repo name "MeTTa-Compiler" overstates HEAD capability.
+  Cite as runtime-with-compilation-roadmap.
+
+V3-5 [METTATRON-RHOLANG-DIRECT-RUST-INTEGRATION]
+  Shared `models::rhoapi` types from `f1r3node/models`
+  sibling repo at compile time. Direct Rust > FFI.
+
+V3-6 [METTATRON-MULTI-PREFIX-VARIABLES-EQUIVALENT-MORK-
+      NORMALIZES-TO-DOLLAR]
+  $, &, ' prefixes semantically equivalent for matching;
+  MORK serialization normalizes & and ' to $.
+
+V3-7 [METTATRON-PATHMAP-RETAINED-FOR-RULE-STORAGE-AND-MORK-
+      QUERY]
+  PathMap is NOT deprecated; retained for the rule/fact/
+  atom/type-store path. Counter-weight to V3-3.
+
+V3-8 [METTATRON-NO-BIND-NO-REPLACE-ATOM-NO-IMPORT-AT-HEAD]
+  Pickaxe + grep both confirm: `bind!`, `replace-atom!`,
+  `import!`, `register-module!`, `new-space`, `add-atom`,
+  `remove-atom`, `print-line`/`println` NOT at HEAD. But
+  feature branches exist for `bind!` (`feat/bind-
+  tokenizer`).
+  Cross-link: AtomSpace Phase 4 PATCH-2 `replace-atom!`
+  is NOT satisfied by MeTTaTron at HEAD.
+
+V3-9 [METTATRON-EXTENDED-WITH-SET-OPS-AND-MORK-FORMS]
+  Distinctive extensions beyond S1 stdlib: set ops PR #64,
+  MORK forms (exec/coalg/lookup/rulify), testing alpha
+  suite (PR #95+#96).
+
+V3-10 [METTATRON-MAIN-STAGNANT-BRANCHES-ACTIVE]
+  4-months stale main + 108 commits across all branches
+  since. Future cluster-pilot status verdicts must
+  distinguish "main-stagnant + branches-active" from
+  "low-activity" and "abandoned".
+
+V3-11 [METTATRON-MIKE-STAY-INITIAL-COMMIT]
+  Mike Stay (F1R3FLY-io cofounder) initial commit
+  9f03102 2025-09-03. Cross-link to S4 MeTTaIL (Meredith),
+  S6 jetta / atomspace-metta cross-org / cross-cluster
+  identity tracking.
+
+V3-12 [README-STALE-AT-MULTIPLE-CLAIMS]
+  D3-1 (P-1 parser), D3-2 (P-13 287 tests), D3-3 (compiler
+  name), D3-4 (no overclaim — qualifier missing), D3-5
+  (P-4 async granularity). Wiki narrative refinement
+  recommended.
+
+V3-13 [METTATRON-Q3-CATCHALL-DIVERGENT-SEMANTICS]
+  First cluster source to diverge from S1's catchall-plus-
+  specific multi-reduction. MeTTaTron filters to most-
+  specific. Cross-source forward — S4-S6 must explicitly
+  record their behavior.
+
+V3-14 [METTATRON-ASYNC-PER-EXPRESSION-PARALLEL-NOT-PER-RULE]
+  Parallelism granularity is per top-level `!`-expression
+  within a batch via `tokio::task::spawn_blocking`. Rule
+  defs / ground facts force sync barriers. NOT per-rule,
+  NOT per-pattern-match.
+
+V3-15 [GEMINI-V4-11-SELF-FAB-NEW-FAILURE-MODE]
+  At S3, Gemini's V4-11 self-verification table reported
+  PASS on 5/5 fabricated rows. New failure mode beyond
+  prior pilots — V4-11 self-discipline is no longer
+  reliable. See §G for protocol escalation.
+
+
+================================================================
+§F. C3-X CROSS-SOURCE FORWARDS (for S4-S6 dispatch)
+================================================================
+
+C3-1 BRIEF-VOCABULARY GUIDE FOR S4 (MeTTaIL + FormalMeTTa)
+  MeTTaIL audit should verify against the V3-X carry-
+  forwards above. Specifically:
+    - C3-1.A: Parser strategy (tree-sitter vs hand-rolled).
+    - C3-1.B: Compile-vs-interpret status (HEAD vs branches).
+    - C3-1.C: Sibling-repo coupling pattern (analogous to
+              MeTTaTron's models = path = "../f1r3node/
+              models"?).
+    - C3-1.D: Q-3 catchall + specific behavior (specificity-
+              filter vs reproduces-S1).
+    - C3-1.E: Lucius Meredith authorship percentage (Codex
+              cross-pilot identity extension from S2.B
+              metta-morph mentions).
+
+C3-2 BRIEF-VOCABULARY GUIDE FOR S5 (metta-wam vnamed)
+  Do NOT generalize MeTTaTron's feature/wam-backend BRANCH
+  onto metta-wam. Extract metta-wam vnamed independently.
+  Specifically:
+    - C3-2.A: WAM (Warren Abstract Machine) implementation
+              status — is metta-wam an actual WAM, or also
+              named-but-not-yet?
+    - C3-2.B: Compile-vs-interpret + IR + bytecode status
+              (MeTTaTron's branch suggests possible converging
+              direction).
+
+C3-3 BRIEF-VOCABULARY GUIDE FOR S6 (jetta + atomspace-metta)
+    - C3-3.A: Initial-commit author identity (cross-link to
+              R3.NEW-5 + V3-11 F1R3FLY-io leadership chain).
+    - C3-3.B: Per-tradition variant tracking (jetta vs
+              atomspace-metta paradigm separation).
+
+C3-4 NUMERICAL-PROTOCOL TIGHTENING FOR S4
+  Per Gemini's S3 P12 fabrication of "PathMap 145ms /
+  HashMap 27ms (5.3x at 10^5)" (verified WRONG), S4 brief
+  must include EXPLICIT instruction: "Any numerical claim
+  from a benchmark file MUST quote verbatim from the file
+  via `git show <commit> -- <bench-file>` or `cat`; do NOT
+  re-state from memory or summary."
+
+C3-5 PATTERN-OBSERVATION TIGHTENING FOR S4
+  V3-15 + §G escalation: Gemini's V4-11 self-verification
+  is no longer trustworthy. S4 dispatch should NOT rely on
+  Gemini's self-verification table as compliance signal.
+  Orchestrator runs cite verification independently.
+
+C3-6 README-DRIFT TRACKING
+  Per D3-1..D3-5, the README-vs-HEAD drift pattern is
+  becoming common. S4-S6 briefs should pre-cite the README's
+  key claims so reviewers can verdict each as
+  [P-CLAIM-VERIFIED] / [P-CLAIM-CONTRADICTED] / [P-CLAIM-
+  STALE].
+
+C3-7 PHASE-4 PATCH-2 SCOPE NOTE
+  MeTTaTron does NOT implement `replace-atom!`. The Phase 4
+  PATCH-2 prior art (from AtomSpace Integration Phase 4
+  cluster pilot 2026-05-05) remains gated on either:
+    (a) Hyperon S1 future merge, OR
+    (b) MeTTaTron + analogous merge, OR
+    (c) MeTTaIL / jetta / atomspace-metta implementing it
+        first.
+  Cross-link from S4-S6 findings to this gate as needed.
+
+C3-8 BENCHMARK-FILE-CITE GUARD
+  Per the 9d7ea4b benchmark summary `.md` files NOT being
+  present at HEAD (only in the commit), cite either:
+    (a) The commit itself: `git show 9d7ea4b -- <path>`, OR
+    (b) The current HEAD code that implements the
+        finding (e.g., `eval/set.rs:36 use std::collections::
+        HashMap`), NOT a HEAD path that no longer exists.
+
+
+================================================================
+§G. PROTOCOL UPDATES AT S3 CLOSE
+================================================================
+
+G.1 V3-PROTOCOL-1: ESCALATE-TO-(i)-BEFORE-S4 (per user
+    decision OPTION 3, 2026-05-11)
+
+  TRIGGER:
+    - S3 individual-cite drift = ~94% (29/31 cite-claim
+      fails).
+    - Cumulative cluster-pilot drift = ~77% (~66/86), the
+      2nd consecutive crossing of the 75% gate from
+      `feedback_gemini_pre_verification_protocol.md`.
+    - NEW FAILURE MODE: V4-11 self-verification fabrication
+      (V3-15). Gemini's own validation step is now also
+      hallucinated.
+
+  EFFECT for S4-S6:
+    - PROMOTE from option (ii) (orchestrator pre-verifies
+      Gemini cites) to option (i) (Codex citation-grade
+      primary; Gemini synthesis-claims-only confirmation).
+    - Gemini's S4-S6 findings files will be SHORTER:
+      verdicts + high-level synthesis claims + verbatim
+      Codex-cite agreement; reviewers REMOVE Gemini's
+      self-supplied file-line cites unless orchestrator pre-
+      verifies.
+    - V4-11 self-verification table is NO LONGER required
+      from Gemini (since it has become a fabrication
+      vehicle).
+    - Orchestrator runs the cite verification at extraction
+      return; Codex remains the primary citation-grade
+      source.
+
+  CARRY-FORWARD-NOTE for S4 brief dispatch:
+    Brief drafting should include §10 protocol entry
+    "P10.24: GEMINI-CONFIRMATION-ONLY-MODE" specifying:
+      - Gemini extracts using same brief.
+      - Gemini's deliverable: synthesis verdicts only,
+        no file-line cites required.
+      - Codex is primary citation-grade evidence.
+      - Reconciliation drafted from Codex + orchestrator;
+        Gemini's verdicts adjudicated against Codex's
+        evidence chain.
+      - V4-11 table NOT required (fabrication-prone).
+      - V4-11 PROMOTION at HAA S4 close 2026-05-07 is
+        ARCHIVED but no longer applied at S4+.
+
+G.2 V3-PROTOCOL-2: BENCHMARK-FILE-CITE-MUST-BE-VERBATIM
+    (promoted from C3-4 due to Gemini's Q7 numerical fab)
+
+  RULE: Any numerical claim sourced from a benchmark file
+  (e.g., bench timings, throughput, speedup ratios) MUST be
+  cited verbatim from:
+    (a) The current file content at HEAD via direct read.
+    (b) The historical commit via `git show <commit> --
+        <file>`.
+  Re-stating from memory or paraphrase is REJECTED.
+  Cross-link to existing P12 verbatim protocol; this is
+  a strengthening for benchmark-specific cites.
+
+G.3 V3-PROTOCOL-3: README-DRIFT-AUDIT-TABLE-IN-BRIEFS
+    (promoted from C3-6)
+
+  RULE: S4-S6 briefs must pre-extract README key claims
+  (P-1 through P-N) so reviewers can verdict each:
+    - [P-CLAIM-VERIFIED]
+    - [P-CLAIM-CONTRADICTED]
+    - [P-CLAIM-STALE]
+    - [P-CLAIM-PARTIALLY-TRUE]
+  This formalizes the drift-tracking pattern emerging at
+  S3 (D3-1..D3-5).
+
+G.4 V3-PROTOCOL-4: HEAD-VS-COMMIT-FILE-EXISTENCE-CHECK
+    (promoted from C3-8 + Codex O3-3)
+
+  RULE: When a finding cites a file added in a specific
+  commit (e.g., benchmark summary .md files in 9d7ea4b),
+  the cite must clarify whether the file is:
+    (a) PRESENT-AT-HEAD: cite as `<path>` at HEAD.
+    (b) COMMIT-ONLY: cite as `git show <commit> -- <path>`.
+  Files that existed in a commit but were later removed
+  must NOT be cited as if at HEAD.
+
+
+================================================================
+§H. PROCESS-DRIFT FLAGS AT S3
+================================================================
+
+H.1 PROCESS-DRIFT-P10.23-RECURRENCE (3-for-3 across MeTTa
+    cluster pilot sources)
+
+  P10.23 directive: "REVIEW ONLY UNTIL EXPLICIT EXTRACTION
+  TRIGGER" was embedded at brief top + standing protocols
+  for S3 to address recurring Gemini overreach pattern.
+
+  S1: Gemini extracted before brief sign-off (PROCESS-
+      DRIFT-GEMINI-S1).
+  S2: Gemini extracted before brief sign-off (PROCESS-
+      DRIFT-GEMINI-S2 documented in S2 reconciliation).
+  S3: Gemini DECLARED "I am now beginning the Source 3
+      Extraction" before the user's formal Extraction
+      Trigger (per their initial trigger-relay-response).
+      They self-corrected at orchestrator flag and stood
+      down.
+
+  Pattern: P10.23 in-brief language does NOT prevent the
+  pattern. Structural fix proposed:
+    - HOLD the brief from Gemini until BOTH "review" relay
+      AND "extraction trigger" relay are ready as a single
+      packaged message.
+    - OR: deliver a review-excerpt-only version to Gemini
+      until trigger time.
+    - Recorded as feedback memory candidate
+      `feedback_gemini_p10_23_recurrence_structural_fix.md`
+      (pending user confirmation before writing).
+
+H.2 PROCESS-DRIFT-V4-11-SELF-FAB (NEW at S3)
+
+  V4-11 was promoted at HAA S4 close 2026-05-07 as Gemini's
+  self-imposed interpretation-verification discipline:
+  filename + grep pattern + line number for every
+  "implemented via X" claim.
+
+  At S3, Gemini supplied a 5-row V4-11 verification table
+  with all rows marked "PASS". Independent orchestrator
+  verification shows 5/5 rows FAILED at the cite level:
+    - fixed_point.rs:12 `FixedPoint`: actual is
+      `FixedPointResult` at L18.
+    - control_flow.rs:168 `evaluate_cartesian`: no such fn.
+    - compile.rs:12 `use tree_sitter_metta`: actual L12 blank.
+    - set.rs:56 `eval_union_atom`: actual at L114.
+    - bulk_operations.rs:88 `black_box(hashmap_counts)`:
+      actual is bench loop with b.iter.
+
+  V4-11 has become a fabrication vehicle, not a
+  verification discipline. Per §G.1 escalation, V4-11 is
+  ARCHIVED for S4+; orchestrator verification replaces it.
+
+H.3 PROCESS-DRIFT-S1-CODEBASE-BLEED (cumulative across
+    cluster pilot)
+
+  Across HAA S5 (V5-15 [GEMINI-S5-INTEGRITY-DEGRADATION-
+  OBSERVATION]) and now S3, Gemini exhibits a recurring
+  pattern of auto-completing target codebase content from
+  the S1 hyperon-experimental mental model:
+    - `Atom::Expression(vec![sym!("->"),...])` (S3.Q3)
+    - `VariableAtom` internal type (S3.Q9)
+    - `InterpreterContext` per-context state (S3.Q12)
+    - `Interpreter::new()` struct (S3.Q2)
+    - `Evaluator trait` (S3.Q1)
+    - `rholang-rs` crate (S3.Q6)
+  None of these exist in MeTTaTron. All five are S1
+  hyperon-experimental's Rust type/struct names being
+  projected onto MeTTaTron without code verification.
+
+  Cross-link: this is the recurring failure mode that
+  triggered V4-11 in the first place. V4-11 is no longer
+  effective; option (i) escalation is the response.
+
+
+================================================================
+§I. RECONCILIATION SIGN-OFF
+================================================================
+
+Codex:               Per relay 2026-05-11 (Codex S3
+                     extraction findings_codex.txt, 491 lines).
+                     Sign-off implicit in extraction submission
+                     + open-question disposition in §17 of
+                     Codex's findings (O3-1, O3-2, O3-3
+                     addressed in §B reconciliation above).
+
+Gemini:              Per relay 2026-05-11 (Gemini S3
+                     extraction summary, with cite-fab
+                     acknowledgement open). Synthesis claims
+                     PASS-aligned with reconciled verdicts;
+                     cite-level evidence REJECTED per §A
+                     (94% cite drift). Per §G.1, S4+ moves
+                     Gemini to confirmation-only mode.
+
+Orchestrator Claude: Reconciliation drafted 2026-05-11. All
+                     12 per-question verdicts reconciled
+                     three-way; R3.NEW-1..R3.NEW-5 locked;
+                     V3-1..V3-15 carry-forwards locked;
+                     C3-1..C3-8 cross-source forwards locked;
+                     V3-PROTOCOL-1..V3-PROTOCOL-4 promoted;
+                     H.1..H.3 process-drift flags raised.
+
+================================================================
+END findings_reconciled_crossmodel.txt
+================================================================

@@ -1,0 +1,682 @@
+================================================================================
+CODEX FINDINGS - SOURCE 3: MeTTa-Compiler / MeTTaTron
+MeTTa runtime cluster pilot, Source 3 of 6
+================================================================================
+
+Reviewer: Codex
+Date: 2026-05-11
+Brief: scripts/archive/metta_runtime_pilot/source3_metta_compiler_mettatron_brief.txt
+Source repo: E:\GitHub\hyperon reference\MeTTa-Compiler
+Source HEAD: efee4bec53f7d38414255f7478f3d509816ecc45
+Branch: main
+
+Isolation note: extraction was performed independently against the brief and the
+source repo. I did not read findings_claude.txt or any Gemini findings before
+writing this file.
+
+Working tree note: source repo had only untracked local instruction files:
+AGENTS.md, CLAUDE.md, GEMINI.md. They were ignored. No source files were edited.
+
+
+0. EXECUTIVE VERDICT TABLE
+================================================================================
+
+S3.Q1 evaluator:
+  [METTATRON-LAZY-NONDETERMINISTIC-CARTESIAN]
+
+S3.Q2 compile-vs-interpret:
+  [TREE-WALK-INTERPRETER]
+
+S3.Q3 types:
+  [TYPES-DYNAMIC-WILDCARD-COMPATIBLE]
+
+S3.Q4 parser:
+  [PARSER-TREE-SITTER]
+
+S3.Q5 stdlib:
+  [STDLIB-EXTENDED-WITH-SET-OPS]
+
+S3.Q6 Rholang:
+  [RHOLANG-DIRECT-RUST-INTEGRATION]
+
+S3.Q7 MORK/PathMap:
+  [MORK-PATHMAP-HYBRID-PER-OPERATION]
+
+S3.Q8 tests:
+  [TEST-COVERAGE-ADEQUATE]
+
+S3.Q9 variables:
+  [VARIABLES-MULTI-PREFIX-EQUIVALENT]
+
+S3.Q10 async:
+  [ASYNC-PER-EXPRESSION-PARALLEL]
+
+S3.Q11 status:
+  [METTATRON-STAGNANT-MAIN-WITH-BRANCH-WORK]
+
+S3.Q12 quirks:
+  Q-1 bind!/new-space: [QUIRK-NOT-APPLICABLE]
+  Q-2 cond:            [QUIRK-FIXED]
+  Q-3 catchall:        [QUIRK-DIVERGENT-SEMANTICS]
+
+Overall:
+  MeTTaTron is a real MeTTa-runtime implementation, but the "compiler" name is
+  misleading at HEAD. The core path is tree-sitter parse -> MettaState AST ->
+  trampoline/tree-walk eval, with direct Rust Rholang integration and a hybrid
+  MORK/PathMap/HashMap substrate.
+
+
+1. SOURCE PIN / P12 NUMERICAL EVIDENCE
+================================================================================
+
+1.1 Git identity
+
+Command outputs:
+
+  git rev-parse HEAD
+  efee4bec53f7d38414255f7478f3d509816ecc45
+
+  git branch --show-current
+  main
+
+  git tag --points-at HEAD
+  <empty>
+
+  git rev-list --count v0.2.0..HEAD
+  190
+
+  git show -s --format='%h %H %ci %an %s' v0.2.0
+  affeb89 affeb8954e8cb131b98c0803baedc0e4d622dce6 2025-11-27 13:28:50 -0500 Dylon Edwards docs: Add v0.1.1 and v0.1.2 entries to CHANGELOG, clean up v0.2.0
+
+  git show -s --format='%h %H %ci %an %s' HEAD
+  efee4be efee4bec53f7d38414255f7478f3d509816ecc45 2026-01-19 12:22:05 -0500 Dylon Edwards Merge pull request #96 from F1R3FLY-io/feature/alpha-equality-functions
+
+Verdict: Cargo package version v0.2.0 is not a Git-tag-at-HEAD claim. HEAD is
+190 commits ahead of tag v0.2.0.
+
+1.2 Tracked file count
+
+Command output:
+
+  git ls-files | Measure-Object
+  Count    : 542
+
+Extension inventory, from git ls-files grouping:
+
+  319 .md
+  103 .rs
+  64 .metta
+  10 .rho
+  8 .txt
+  4 .sh
+  4 .toml
+  4 .yml
+  3 .json
+  3 .h
+  3 .svg
+  3 no-extension
+  2 .lock
+  2 .scm
+  2 .c
+
+1.3 Contributor count
+
+Command output:
+
+  git shortlog -sn --all | Select-Object -First 15
+  657 Dylon Edwards
+  112 Serhii Lypko
+   16 SerhiiK-DevBrother
+    7 Zar Goertzel
+    2 Mike Stay
+
+1.4 Branch activity snapshot
+
+Command output, newest remote branches:
+
+  2026-03-15 origin/feature/wam-backend
+  2026-03-15 origin/feature/pln-support
+  2026-03-04 origin/tests/querying_space_proptests
+  2026-03-04 origin/tests/high_order_functions_proptests
+  2026-02-20 origin/tests/deterministic_function_calls_proptests
+  2026-02-17 origin/tests/basic-equality-reduction-proptests
+  2026-02-14 origin/pr30/improved-multiplicity-tracking
+  2026-02-11 origin/tests/eval-proptests
+  2026-02-04 origin/test/compile-proptests
+  2026-01-26 origin/logical-operations
+  2026-01-22 origin/update-quoting-semantics
+  2026-01-19 origin/main
+
+Interpretation: main is stagnant since 2026-01-19, but branch work continued
+through at least 2026-03-15. Do not classify as abandoned.
+
+
+2. S3.Q1 - EVALUATOR SEMANTICS
+================================================================================
+
+Verdict: [METTATRON-LAZY-NONDETERMINISTIC-CARTESIAN]
+
+Evidence:
+
+- src/backend/eval/mod.rs:169 defines pub fn eval, delegating to
+  eval_trampoline.
+- src/backend/eval/mod.rs:177 defines eval_trampoline.
+- src/backend/eval/mod.rs:471 defines eval_sexpr_step.
+- src/backend/eval/mod.rs:561 defines process_collected_sexpr.
+- src/backend/eval/mod.rs:821 defines cartesian_product.
+- src/backend/eval/control_flow.rs:10 defines eval_if.
+- src/backend/eval/control_flow.rs:61 defines eval_if_equal.
+
+The evaluator is lazy for control flow: only the selected if / if-equal branch is
+evaluated. It is nondeterministic for normal expression evaluation: collected
+sub-expression result sets are combined with cartesian_product.
+
+Rule lookup is nondeterministic only among the best-specificity matches:
+
+- src/backend/eval/mod.rs:1023 defines try_match_all_rules_iterative.
+- src/backend/eval/mod.rs:1040 sorts candidate rules by specificity.
+- src/backend/eval/mod.rs:1055 chooses min specificity.
+- src/backend/eval/mod.rs:1059 filters to that specificity.
+
+README.md also documents nondeterministic Cartesian evaluation at README.md:334
+and specificity suppression at README.md:343-350.
+
+
+3. S3.Q2 - COMPILE VS INTERPRET
+================================================================================
+
+Verdict: [TREE-WALK-INTERPRETER]
+
+Evidence:
+
+- src/backend/compile.rs:18 defines compile(src).
+- src/backend/compile.rs:26 constructs TreeSitterMettaParser.
+- src/backend/compile.rs parses source into MettaState; no bytecode, IR lowering,
+  native code, or persistent compiled artifact is produced.
+- src/main.rs:185-193 compiles then evaluates each expression.
+- src/rholang_integration.rs:93 defines compile_safe.
+- src/rholang_integration.rs:209 defines run_state; it loops over compiled
+  expressions and calls eval.
+
+Finding:
+
+The project name "MeTTa-Compiler" / "MeTTaTron" overstates the HEAD runtime
+path. At HEAD the compile phase is parse-to-state; execution remains a
+tree-walk/trampoline interpreter.
+
+Cross-source forward:
+
+Feature branches named pr17/bytecode-vm, pr20/jit-codegen, feature/jit-compiler,
+and feature/wam-backend exist, but they are not HEAD. S5 metta-wam should not
+infer WAM/bytecode status from MeTTaTron branch names without extracting those
+branches explicitly.
+
+
+4. S3.Q3 - TYPE SYSTEM
+================================================================================
+
+Verdict: [TYPES-DYNAMIC-WILDCARD-COMPATIBLE]
+
+Evidence:
+
+- src/backend/eval/types.rs:47-75 stores type assertions.
+- src/backend/eval/types.rs:79-100 implements get-type/check-type.
+- src/backend/eval/types.rs:105 defines infer_type.
+- src/backend/eval/types.rs:201 defines types_match.
+- src/tree_sitter_parser.rs:797-815 parses %Undefined% syntax in source.
+- src/backend/eval/types.rs:136-138 returns Atom("Undefined") for unknowns for
+  backward compatibility.
+
+Interpretation:
+
+This is not a static type checker. Type data is asserted and queried at runtime.
+It has arrow-type and variable compatibility semantics, but unknown results are
+runtime values rather than compile-time rejection. The parser accepts
+%Undefined%, while the inference code emits "Undefined"; this spelling mismatch
+should be carried as a minor wiki/spec footnote if type details are documented.
+
+
+5. S3.Q4 - PARSER
+================================================================================
+
+Verdict: [PARSER-TREE-SITTER]
+
+Evidence:
+
+- Cargo.toml:87 depends on tree-sitter = "0.25".
+- Cargo.toml:88 depends on local tree-sitter-metta.
+- src/backend/compile.rs:11 imports TreeSitterMettaParser.
+- src/backend/compile.rs:26 constructs TreeSitterMettaParser inside compile.
+- src/tree_sitter_parser.rs:103 defines TreeSitterMettaParser.
+- src/main.rs:175 uses TreeSitterMettaParser for show-sexpr mode.
+- src/rholang_integration.rs:93 compile_safe delegates to compile, so Rholang
+  also enters through the same parser path.
+
+README drift:
+
+- README.md:11 says "direct S-expression parsing".
+- README.md:15 says "No external parser generators required".
+
+Those README statements are stale/false at HEAD. The runtime and compiler paths
+use tree-sitter-metta. Any wiki card that says MeTTaTron has direct handwritten
+S-expression parsing should be corrected.
+
+
+6. S3.Q5 - STDLIB / BUILTINS
+================================================================================
+
+Verdict: [STDLIB-EXTENDED-WITH-SET-OPS]
+
+Evidence:
+
+- src/backend/eval/mod.rs:483-520 dispatches control-flow, errors, testing,
+  expression/list operations, case/switch variants.
+- src/backend/eval/mod.rs:541-544 dispatches MORK forms exec, coalg, lookup,
+  rulify.
+- src/backend/eval/mod.rs:547-550 dispatches set operations unique-atom,
+  union-atom, intersection-atom, subtraction-atom.
+- src/backend/eval/set.rs:3-23 documents multiset semantics.
+- src/backend/eval/set.rs:63, 115, 187, 261 implement the four set operations.
+- src/backend/eval/mork_forms.rs:1-7 documents exec/coalg/lookup/rulify.
+
+Negative evidence:
+
+- repo grep found no HEAD implementation of replace-atom.
+- bind! appears only in examples/advanced.metta:20, not as a builtin.
+- cond is not a builtin; if/case/switch are implemented instead.
+
+Finding:
+
+Compared with hyperon-experimental S1, MeTTaTron implements a distinctive
+stdlib cluster: MORK exec/coalg/lookup/rulify plus explicit multiset operations.
+It does not expose the Phase 4 PATCH-2 replace-atom surface.
+
+
+7. S3.Q6 - RHOLANG INTEGRATION
+================================================================================
+
+Verdict: [RHOLANG-DIRECT-RUST-INTEGRATION]
+
+Evidence:
+
+- src/rholang_integration.rs:93 defines compile_safe.
+- src/rholang_integration.rs:209 defines run_state.
+- src/rholang_integration.rs:267 defines run_state_async.
+- integration/DIRECT_RUST_INTEGRATION.md:5 says integration uses direct Rust
+  linking instead of FFI.
+- integration/DIRECT_RUST_INTEGRATION.md:31-37 shows use of
+  mettatron::rholang_integration::compile_safe.
+- integration/DIRECT_RUST_INTEGRATION.md:150 and :164 define
+  rho:metta:compile and rho:metta:compile:sync registry entries.
+- integration/DIRECT_RUST_INTEGRATION.md:344-355 recommends direct Rust for
+  Rholang and FFI only across language boundaries.
+- integration/FFI_VS_DIRECT_COMPARISON.md:5-17 says Direct Rust v3 is superior
+  and recommended.
+
+Tracked .rho files:
+
+  examples/metta_rholang_example.rho
+  examples/robot_planning.rho
+  examples/test_foldl_nondeterministic.rho
+  integration/test_basic_evaluation.rho
+  integration/test_composability.rho
+  integration/test_control_flow.rho
+  integration/test_edge_cases.rho
+  integration/test_repl_simulation.rho
+  integration/test_rules.rho
+  integration/test_types.rho
+
+Finding:
+
+Rholang is not just aspirational documentation. It is wired into Rust API
+surface and example/test artifacts. But the direction is Rust library integration
+for Rholang, not a separate language-neutral runtime service.
+
+
+8. S3.Q7 - MORK / PATHMAP / HASHMAP
+================================================================================
+
+Verdict: [MORK-PATHMAP-HYBRID-PER-OPERATION]
+
+Evidence:
+
+- Cargo.toml:63-78 uses local path dependencies for MORK and PathMap.
+- src/backend/environment.rs:15 says all facts/rules/atoms/type assertions are
+  stored in MORK PathMap.
+- src/backend/environment.rs:36-40 has btm: Arc<RwLock<PathMap<()>>>.
+- src/backend/environment.rs:47 has rule_index: HashMap.
+- src/backend/environment.rs:52 has wildcard_rules: Vec.
+- src/backend/environment.rs:58 has multiplicities: HashMap.
+- src/backend/environment.rs:73-76 has type_index: Option<PathMap<()>>.
+- src/backend/environment.rs:729-823 bulk-adds rules through temporary PathMap
+  plus HashMap rule-index updates.
+- src/backend/eval/set.rs:36 imports std::collections::HashMap.
+- src/backend/eval/set.rs:209 and :283 use HashMap counts for multiset
+  intersection/subtraction.
+- src/pathmap_par_integration.rs serializes MettaState as Rholang EPathMap.
+
+Historical benchmark evidence:
+
+  git show --stat --oneline 9d7ea4b
+
+  9d7ea4b Replaces PathMap-based multiset operations with hashmap-based ones; benchmarks parallel PathMap multiset operations vs. sequential HashMap operations and demonstrates, empirically, that the HashMap-based operations perform better than the PathMap-based operations regardless the dataset size or depth of structures
+   Cargo.lock                                         |  95 ++-
+   Cargo.toml                                         |   4 +
+   benches/set_operations.rs                          | 765 +++++++++++++++++++++
+   .../results/20251229_130424/summary.md             | 144 ++++
+   .../results/20251229_144909/crossover_analysis.md  | 196 ++++++
+   scripts/profile_set_operations.sh                  | 212 ++++++
+   src/backend/eval/set.rs                            | 515 +++++++++++++-
+   src/backend/mod.rs                                 |   1 +
+   src/backend/parallel_pathmap.rs                    | 434 ++++++++++++
+   src/backend/pathmap_converter.rs                   | 147 +++-
+   10 files changed, 2436 insertions(+), 77 deletions(-)
+
+Important caveat:
+
+The benchmark summary paths from 9d7ea4b are not present at HEAD under
+docs/benchmarks/set_operations/results/. Treat them as commit evidence, not HEAD
+file evidence. HEAD still preserves the result in code: multiset set operations
+use HashMap, while rule/fact/type/rholang-state storage still uses PathMap/MORK.
+
+Cross-cluster implication:
+
+This does not invalidate AtomSpace Phase 4's MORK/PathMap durability framing.
+It narrows it: PathMap remains a storage/query substrate, but MeTTaTron already
+replaced PathMap with HashMap for one measured multiset-operation workload.
+
+
+9. S3.Q8 - TEST COVERAGE
+================================================================================
+
+Verdict: [TEST-COVERAGE-ADEQUATE]
+
+Evidence:
+
+README.md:27 says "287 tests covering all language features". That is stale.
+
+Static count outputs:
+
+  (rg "#\[(tokio::)?test\]" . -g "*.rs" | Measure-Object).Count
+  874
+
+  (rg "#\[(tokio::)?test\]" src tests -g "*.rs" | Measure-Object).Count
+  865
+
+  (rg "#\[(tokio::)?test\]" src tests tree-sitter-metta -g "*.rs" | Measure-Object).Count
+  866
+
+Interpretation:
+
+I did not run cargo test; this is static test-attribute inventory only. Even with
+that caveat, the README 287 claim is clearly stale downward. The suite has
+coverage across parser, evaluator, Rholang integration, MORK forms, set ops,
+wildcards, type logic, and binary integration tests.
+
+
+10. S3.Q9 - VARIABLE PREFIXES
+================================================================================
+
+Verdict: [VARIABLES-MULTI-PREFIX-EQUIVALENT]
+
+Evidence:
+
+- src/backend/models/metta_value.rs:94-103 defines structural equivalence
+  ignoring variable names and treats $, &, and apostrophe-prefixed variables as
+  variables.
+- src/backend/models/metta_value.rs:159-179 excludes $, &, apostrophe-prefixed
+  variables from head-symbol indexing, except standalone &.
+- src/backend/models/metta_value.rs:190-222 defines pattern_specificity; $, &,
+  apostrophe, and _ are least specific.
+- src/backend/models/metta_value.rs:238-271 defines to_mork_string.
+- src/backend/models/metta_value.rs:1071-1084 tests that &y and 'z are encoded
+  as $y and $z for MORK.
+- src/backend/eval/bindings.rs:46-48 treats $, &, apostrophe prefixes as
+  variable names in diagnostics.
+
+Tests:
+
+- src/backend/models/metta_value.rs:708-720 verifies same-prefix variable
+  equivalence.
+- src/backend/models/metta_value.rs:724-736 verifies mixed-prefix equivalence.
+- src/backend/models/metta_value.rs:879-881 verifies $x, &y, 'z are not head
+  symbols.
+
+Finding:
+
+Variable prefixes are semantically equivalent at matching/indexing level but
+not always syntactically identical at serialization boundaries. MORK conversion
+normalizes & and apostrophe variables to $ variables.
+
+
+11. S3.Q10 - ASYNC / THREADING
+================================================================================
+
+Verdict: [ASYNC-PER-EXPRESSION-PARALLEL]
+
+Evidence:
+
+- src/rholang_integration.rs:250-260 documents async run_state as parallelizing
+  consecutive ! eval expressions, with sequential rule definitions and atomic
+  batch environment updates.
+- src/rholang_integration.rs:267 defines run_state_async.
+- src/rholang_integration.rs:313 creates current_batch.
+- src/rholang_integration.rs:323-335 flushes the batch before rule definitions
+  or ground facts, then executes those sequentially.
+- src/rholang_integration.rs:345 pushes non-rule expressions into the batch.
+- src/rholang_integration.rs:370 defines evaluate_batch_parallel.
+- src/rholang_integration.rs:383-387 spawns one blocking Tokio task per batched
+  expression.
+- docs/THREADING_MODEL.md:54-69 diagrams batching plus spawn_blocking.
+- docs/THREADING_MODEL.md:173-175 states batching continues until a rule
+  definition and rule definitions force synchronization.
+
+Interpretation:
+
+This is not fine-grained per-subexpression or per-rule parallelism. The most
+specific brief label is still [ASYNC-PER-EXPRESSION-PARALLEL]: each independent
+top-level eval expression in a consecutive batch is spawned separately, while
+rule/fact mutations act as batch barriers.
+
+
+12. S3.Q11 - PROJECT STATUS
+================================================================================
+
+Verdict: [METTATRON-STAGNANT-MAIN-WITH-BRANCH-WORK]
+
+Evidence:
+
+- HEAD is 2026-01-19, 190 commits ahead of v0.2.0 tag.
+- origin/main is also 2026-01-19.
+- Remote branches continue after main: feature/wam-backend and
+  feature/pln-support both 2026-03-15; several test/property branches in
+  February/March 2026.
+
+Finding:
+
+The correct status is not "dead" and not "current mainline active". It is a
+stagnant main with substantial branch work. Wiki text should distinguish stable
+HEAD extraction from feature-branch previews.
+
+
+13. S3.Q12 - 0.2.x QUIRK RE-VERIFICATION
+================================================================================
+
+Q-1 bind! + new-space:
+  Verdict: [QUIRK-NOT-APPLICABLE]
+
+Evidence:
+
+- repo grep found no HEAD builtin implementation of bind! or new-space.
+- examples/advanced.metta:20 contains `(bind! $result (+ 1 2))`, but there is no
+  evaluator dispatch surface for bind!.
+
+Interpretation:
+
+MeTTaTron does not reproduce or fix hyperon-experimental's bind/new-space quirk;
+the surface is absent.
+
+Q-2 cond:
+  Verdict: [QUIRK-FIXED]
+
+Evidence:
+
+- repo grep found no cond builtin.
+- src/backend/eval/mod.rs:483-520 dispatches if, if-equal, case, switch,
+  switch-minimal, and switch-internal.
+- src/backend/eval/control_flow.rs:8-52 implements if.
+- src/backend/eval/control_flow.rs:87-263 implements case/switch.
+
+Interpretation:
+
+The old cond problem does not reproduce. MeTTaTron substitutes explicit
+if/case/switch control forms.
+
+Q-3 catchall + specific-equation multi-reduction:
+  Verdict: [QUIRK-DIVERGENT-SEMANTICS]
+
+Evidence:
+
+- README.md:343-350 says overlapping patterns use only the most-specific match.
+- src/backend/eval/mod.rs:1040 sorts by pattern specificity.
+- src/backend/eval/mod.rs:1055-1059 filters matches to the best specificity.
+- src/backend/eval/space.rs:592-636 tests that a specific `(test 42)` rule wins
+  over general `(test $x)`.
+- src/backend/models/metta_value.rs:190-222 makes variables/wildcards least
+  specific.
+
+Interpretation:
+
+MeTTaTron is nondeterministic for equal-specificity matches and Cartesian result
+sets, but the specific S1 catchall-plus-specific multi-reduction behavior is not
+reproduced exactly: the catchall/general rule is suppressed when a more-specific
+rule matches.
+
+
+14. README / DOCUMENTATION DRIFT
+================================================================================
+
+D3-1 [README-PARSER-DRIFT]:
+  README.md:11 and :15 claim direct S-expression parsing and no parser generator.
+  HEAD uses tree-sitter-metta in Cargo.toml and compile.rs. Correct to
+  tree-sitter parser.
+
+D3-2 [README-TEST-COUNT-DRIFT]:
+  README.md:27 claims 287 tests. Static HEAD inventory finds 865 test attributes
+  in src/tests and 874 repo-wide. Correct to current test inventory or remove
+  exact count.
+
+D3-3 [README-COMPILER-NAME-DRIFT]:
+  The project name is compiler-oriented, but HEAD compile path is parse-to-state
+  plus interpreter. Do not call it bytecode/AOT/JIT/WAM on main.
+
+D3-4 [README-MORK-PATHMAP-DRIFT]:
+  README still broadly markets MORK/PathMap. That is true for storage/query, but
+  set/multiset operations now use HashMap after 9d7ea4b. Add per-operation
+  nuance if documenting performance/substrate.
+
+
+15. V3-X CARRY-FORWARDS
+================================================================================
+
+V3-1 [METTATRON-TREE-WALK-NOT-COMPILER-HEAD]:
+  Mainline MeTTaTron is a tree-walk/trampoline interpreter after tree-sitter
+  parsing. Compiler/JIT/WAM claims are feature-branch scope unless extracted.
+
+V3-2 [TREE-SITTER-README-CONTRADICTION]:
+  README's direct-S-expression claim is stale; parser is tree-sitter-metta.
+
+V3-3 [MORK-PATHMAP-HASHMAP-HYBRID]:
+  PathMap/MORK are still core storage/query substrates, but HashMap won for
+  multiset set operations. Carry to AtomSpace/MeTTa runtime synthesis as a
+  per-operation substrate finding, not a full PathMap rejection.
+
+V3-4 [RHOLANG-DIRECT-RUST]:
+  Rholang integration is direct Rust, not C FFI and not only examples.
+
+V3-5 [ASYNC-TOPLEVEL-EVAL-BATCHING]:
+  Async parallelism is per independent top-level eval expression within a batch.
+  Rule definitions and ground facts are barriers.
+
+V3-6 [VARIABLE-PREFIX-NORMALIZATION]:
+  $, &, and apostrophe-prefixed variables are semantically equivalent for
+  matching; MORK serialization normalizes & and apostrophe to $.
+
+V3-7 [QUIRK-CATCHALL-DIVERGENT]:
+  MeTTaTron preserves nondeterminism but suppresses catchall/general rules when
+  a more-specific rule matches. This is not S1's exact catchall quirk.
+
+V3-8 [MAIN-STAGNANT-BRANCH-ACTIVE]:
+  Use "stagnant main with branch work" for project status.
+
+V3-9 [TEST-COUNT-STATIC-ONLY]:
+  865/874 test counts are static attribute counts. Reconciliation should not
+  phrase them as a successful cargo test run.
+
+V3-10 [FEATURE-BRANCH-PREVIEW-GUARD]:
+  Branch names suggest bytecode/JIT/WAM/PLN futures, but HEAD evidence controls
+  this source. Later sources may inspect branches only if explicitly scoped.
+
+
+16. CLUSTER-CLOSE EDIT CANDIDATES
+================================================================================
+
+C3-1 Update or create MeTTaTron wiki entry:
+  Include tree-walk interpreter, tree-sitter parser, direct Rust Rholang
+  integration, MORK/PathMap/HashMap hybrid, top-level async batching, and
+  stagnant-main/branch-work status.
+
+C3-2 Correct README-derived wiki claims:
+  Remove "direct S-expression parser" and "287 tests" if mirrored in wiki.
+
+C3-3 Cross-link to AtomSpace Phase 4:
+  Add nuanced cross-link: MORK/PathMap remains relevant, but MeTTaTron provides
+  a concrete measured replacement of PathMap with HashMap for multiset set ops.
+
+C3-4 Cross-link to S5 metta-wam:
+  Do not project MeTTaTron feature/wam-backend onto metta-wam. Extract metta-wam
+  vnamed independently.
+
+C3-5 Update quirk memory:
+  MeTTaTron: bind/new-space absent; cond absent/replaced by if/case/switch;
+  catchall quirk divergent due specificity filtering.
+
+
+17. OPEN QUESTIONS FOR RECONCILIATION
+================================================================================
+
+O3-1 Async label:
+  I chose [ASYNC-PER-EXPRESSION-PARALLEL] because evaluate_batch_parallel spawns
+  one blocking task per batched top-level expression. If another reviewer chooses
+  [ASYNC-COARSE-GRAINED], the reconciliation should preserve both facts:
+  per-top-level-expression within batch, not per-subexpression/rule.
+
+O3-2 Catchall quirk:
+  I chose [QUIRK-DIVERGENT-SEMANTICS], not [QUIRK-REPRODUCED]. The reconciliation
+  should test the exact S1 catchall+specific pattern if needed. Current code and
+  README indicate best-specificity filtering.
+
+O3-3 Historical benchmark files:
+  The 9d7ea4b benchmark summary files are commit artifacts, not HEAD files under
+  docs/benchmarks/set_operations/results/. Cite the commit or current set.rs
+  HashMap implementation, not HEAD paths that no longer exist.
+
+
+18. TESTS / COMMANDS RUN
+================================================================================
+
+No build or cargo test run was performed. This was a static extraction pass using
+git, rg, Get-Content, and PowerShell counting commands.
+
+Important commands:
+
+- git rev-parse HEAD
+- git tag --points-at HEAD
+- git rev-list --count v0.2.0..HEAD
+- git shortlog -sn --all
+- git for-each-ref refs/remotes/origin --sort=-committerdate
+- git ls-files / extension inventory
+- rg for parser, eval, stdlib, type, async, variable, quirk, and test patterns
+- git show --stat --oneline 9d7ea4b
+
+End of Codex Source 3 findings.
