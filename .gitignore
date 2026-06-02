@@ -115,3 +115,4 @@ __pycache__/
 *.pyc
 /raw_data_exports/
 /publication_texts/
+/transcript_exports/
