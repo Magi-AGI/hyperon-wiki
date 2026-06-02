@@ -1,0 +1,166 @@
+OpenCog Mailing List Thread: CogServer replacement?
+Messages: 10
+Date range: Thu, 8 Jun 2017 00:22:02 -0700 (PDT) to Wed, 19 Sep 2018 13:43:46 -0700 (PDT)
+Source: opencog@googlegroups.com
+
+============================================================
+
+--- Message 1/10 ---
+From: Roman Treutlein
+Date: Thu, 8 Jun 2017 00:22:02 -0700 (PDT)
+
+Hey,
+
+so this is mainly a question to linas. You seem to want to get rid of the 
+CogServer and I was wondering what exactly you would prefer in its place.
+The way I see it the CogServer currently serves a vital role in the whole 
+
+[... truncated]
+
+--- Message 2/10 ---
+From: Linas Vepstas
+Date: Thu, 8 Jun 2017 17:08:00 -0500
+
+On Thu, Jun 8, 2017 at 2:22 AM, Roman Treutlein <lordmord94@gmail.com>
+wrote:
+
+Except it does none of these things. You can use opencog, via both python
+and scheme, without ever starting the cogserver.  You can use both python
+and guile together, even, without starting the cogserver.
+
+Now, the cogserver provides a network interface, but so does guile, and I
+presume that there's some generic python module out there that would do
+this too.  So you can start the a scheme or a python network server, and
+remotely log into opencog, without ever actually starting the cogserver.
+So basically, the cogserver isn't needed for neworking.
+
+I'll bet Haskel also has some network server module, too. I'll bet that at
+least some of these network modules might be pretty fancy, providing
+
+[... truncated]
+
+--- Message 3/10 ---
+From: Roman Treutlein
+Date: Fri, 9 Jun 2017 00:54:37 -0700 (PDT)
+
+Okay so make Mind-Agents managed their own resources. Yea that makes sense.
+You'd still need some simple Agent-Manger but yea I can see how that would 
+clean up the overall design.
+
+Thanks for clearing my Mind. It got a bit stuck after redesigning ECAN and 
+depending on the CogServer so much :)
+
+--- Message 4/10 ---
+From: Linas Vepstas
+Date: Fri, 9 Jun 2017 05:52:46 -0500
+
+On Fri, Jun 9, 2017 at 2:54 AM, Roman Treutlein <lordmord94@gmail.com>
+wrote:
+
+well, there are also some deep theoretical problems with the naive
+conception of "mind-agents".  I suppose I should write this in a wiki
+somewhere.
+
+--  its surely just a lot easier to just launch a thread if you need that.
+
+-- the naive idea is that mindagents are scheduled, but how? this is a
+really hard problem that OS designers struggle with. What if a mind-agent
+does file or network i/o? etc. naive conceptions of ecan can't solve this.
+
+-- for robustness and reliability, its usually better to split up large
+things into multiple network servers, so that if one small component
+crashes, it doesn't take down the whole system.  Jamming all mind-agents
+into one giant address space goes counter to this.
+
+
+[... truncated]
+
+--- Message 5/10 ---
+From: Mitch Francis
+Date: Mon, 3 Jul 2017 21:27:54 -0700 (PDT)
+
+I tried this approach, but running into issues when loading a module
+
+scheme@(guile-user)>  (use-modules (opencog))
+While compiling expression:
+ERROR: no code for module (opencog)
+
+I saw on github that someone mentioned manually copying the modules into 
+the Guile module path.
+[... truncated]
+
+--- Message 6/10 ---
+From: Mitch Francis
+Date: Mon, 3 Jul 2017 21:55:07 -0700 (PDT)
+
+Found the module directory under /usr/share/opencog
+
+I exported the directory using the  GUILE_LOAD_PATH environment variable
+
+export GUILE_LOAD_PATH=/usr/local/share/opencog/scm
+
+guile
+GNU Guile 2.0.11
+Copyright (C) 1995-2014 Free Software Foundation, Inc.
+
+
+[... truncated]
+
+--- Message 7/10 ---
+From: Linas Vepstas
+Date: Wed, 5 Jul 2017 17:20:13 -0500
+
+On Mon, Jul 3, 2017 at 11:27 PM, Mitch Francis <vaektor.phresh@gmail.com>
+wrote:
+
+You almost surely need to say
+ (add-to-load-path "/usr/local/share/opencog/scm")
+
+
+it might also be convenient to add
+
+ (use-modules (ice-9 readline))
+  (activate-readline)
+
+(debug-enable 'backtrace)
+; Record positions of source code expressions.
+  (read-enable 'positions)
+
+(add-to-load-path ".")
+
+Its convenient to cut n paste those into ~/.guile
+
+
+
+Don't copy. Just add /usr/local/share/opencog/scm to the search path, as
+above.
+
+In the long run, perhaps we should just copy to where guile finds these by
+default.
+
+   (use-modules (opencog persist) (opencog persist-sql))
+
+--linas
+
+--- Message 8/10 ---
+From: Mitch Francis
+Date: Wed, 5 Jul 2017 20:41:24 -0700 (PDT)
+
+Thank you for the assistance. I'm still gaining familiarity with Guile and 
+Scheme
+
+--- Message 9/10 ---
+From: Mitch Francis
+Date: Wed, 5 Jul 2017 20:42:46 -0700 (PDT)
+
+Thank you for the assistance!
+
+--- Message 10/10 ---
+From: Dagim Sisay
+Date: Wed, 19 Sep 2018 13:43:46 -0700 (PDT)
+
+true that the cogserver isn't very useful specially considering how everything should be running. 
+modules should be fired from within a code not by typing into a terminal. 
+but does the attention module have a scheme binding that can "start-ecan" : the various agents 
+
+[... truncated]

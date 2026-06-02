@@ -1,0 +1,176 @@
+OpenCog Mailing List Thread: Speculation/musing -- possible future Common-LISP / CLASP wrapping for OpenCog and related tools
+Messages: 9
+Date range: Sun, 11 Jun 2017 12:11:55 +0800 to Sat, 17 Jun 2017 23:07:43 -0500
+Source: opencog@googlegroups.com
+
+============================================================
+
+--- Message 1/9 ---
+From: Ben Goertzel
+Date: Sun, 11 Jun 2017 12:11:55 +0800
+
+!!! Caveat: This post presents some speculative suggestions, not to be
+interpreted
+
+as a definitive plan or mandate for work-to-be-done or anything like
+
+that; just as an interesting-looking directly for investigation
+
+
+TL;DR — particularly for use of OpenCog in bioinformatics and other
+
+scientific-computing applications — but also for other applications like
+
+corpus linguistics where one deals with large datasets and wants to
+
+combine OpenCog with other command-line tools — it might be a good
+
+idea to replace or supplement our current Guile shell with a wrapping-up
+
+of OpenCog in Common Lisp … and in particular in the CLASP Common
+
+Lisp framework that Christian Schafmeister has developed.   This would
+
+also have some other smaller side-benefits like letting us exploit the CL
+
+
+[... truncated]
+
+--- Message 2/9 ---
+From: AmeBel
+Date: Sun, 11 Jun 2017 20:03:16 -0700 (PDT)
+
+fyi http://wiki.ros.org/roslisp
+
+--- Message 3/9 ---
+From: Ben Goertzel
+Date: Mon, 12 Jun 2017 14:08:49 +0800
+
+nice!
+
+--- Message 4/9 ---
+From: Linas Vepstas
+Date: Sat, 17 Jun 2017 21:48:34 -0500
+
+Hi Ben,
+
+I like the general idea, but many particulars I don't like.  Yes, we need
+something like this, but maybe there's an alternate route.
+
+TL;DR:  Maybe we should pick the science tools first, and then ask which
+languages we should target.
+
+You met a really great salesman who convinced you that his CL product is
+the best, but I think you need to step back and get some bearings:
+
+-- why is his CL better than bigger, established CL projects?
+-- why is some other CL project better than some other scheme project?
+-- why not consider scala or haskel?
+-- are there science libraries for scala or haskel, or some other scheme or
+lisp?
+-- maybe its easier to fix cython, and just use scipy with cython?
+assuming scipy is adequate for the science needs?
+
+
+[... truncated]
+
+--- Message 5/9 ---
+From: Ben Goertzel
+Date: Sun, 18 Jun 2017 11:12:03 +0800
+
+Hi Linas, thanks for the detailed thoughts and responses...  I will
+write an equally carefu reply when I get time; or else I will return
+to all this in detail when/if resources are obtained to pursue these
+sorts of directions... (which I hope will be soon...)
+
+About Jupyter Notebooks, I note that Google is now using it to supply
+new Tensorflow tutorials...   I do think it would be great if we could
+get our OpenCog tutorials working with Jupyter.  Perhaps making
+Jupyter support Guile is indeed the easiest way... it seems this
+"shouldn't be hard" ...   I agree Jupyter is not perfect, but it's a
+lot nicer than embedding code in the wiki pages like we are now,
+tutorial-wise...
+
+I agree that if we wanted to go with CL, we would want to test
+
+[... truncated]
+
+--- Message 6/9 ---
+From: Linas Vepstas
+Date: Sat, 17 Jun 2017 22:43:03 -0500
+
+1) jupyter is probably great for tutorials, and is nice for collaboration,
+but is immature and inadequate if you want to use it as an actual diary for
+actual results (which is my personal use-case).  So sure, install it now on
+the opencog website, and have at it.  Its clearly some kind of wave of some
+kind of future.  I doubt that sticking guile in it would be hard. Maybe we
+should ask Nala Ginrut about this.
+
+2)  I most emphatically did NOT say "put other tools inside of opencog". I
+said the exact opposite.  Our data is in opencog. Put a pipeline between
+where the data is: in opencog, and these other tools.
+
+3) the "guille shell" is wayyyyy too low-level for a data API. Using scheme
+and using atomese are like programming in assembly code.  Don't do that.
+
+[... truncated]
+
+--- Message 7/9 ---
+From: Ben Goertzel
+Date: Sun, 18 Jun 2017 11:52:06 +0800
+
+We'll see...
+
+We have an R wrapper for MOSES now which is being used to apply MOSES
+to genomic data...
+
+Now Hedra and Mike are experimenting with PLN backward chaining
+inference on bio-data in the Atomspace (building on stuff Eddie and
+Misgana did way back w/ the forward chainer)... we will want to make
+some good way to access this from R, but need to figure out what this
+will be....
+
+--- Message 8/9 ---
+From: Linas Vepstas
+Date: Sat, 17 Jun 2017 22:56:40 -0500
+
+I mean for R -- seriously, this cannot possibly be hard.  I used R for a
+few days, almost a week, and got the impression it was mostly vectors and
+arrays.   I'm pretty sure that in R, there is a C/C++ wrapper, where you
+can create a "special" R vector, or R array, and whenever you access item k
+in the vector, or item i,j,k in the array, that wrapper calls your C++
+code, and the only thing your C++ code has to do is to return a float or an
+int or a string.
+
+For us, under the covers that C++ code just gets or sets some truth-value
+(or other value) on some pile of atoms in the atomspace.  This can't
+possibly be more than a few days worth of work.  and bingo: you can now
+move data between R and the atomspace.
+
+I'm really pretty sure I saw this kind of API in R, somwhere.
+
+--lins
+
+
+[... truncated]
+
+--- Message 9/9 ---
+From: Linas Vepstas
+Date: Sat, 17 Jun 2017 23:07:43 -0500
+
+http://dirk.eddelbuettel.com/code/rcpp.html
+
+I quote:
+Overview The Rcpp package provides C++ classes that greatly facilitate
+interfacing C or C++ code in R packages using the .Call() interface
+provided by R. Rcpp provides matching C++ classes for a large number of
+basic R data types. Hence, a package author can keep his data in normal R
+data structures without having to worry about translation or transfering to
+C++. At the same time, the data structures can be accessed as easily at the
+C++ level, and used in the normal manner. The mapping of data types works
+in both directions. It is as straightforward to pass data from R to C++, as
+it is it return data from C++ to R. The following two sections list
+supported data types.
+
+
+[... truncated]

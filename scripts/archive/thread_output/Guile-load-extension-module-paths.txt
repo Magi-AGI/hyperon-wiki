@@ -1,0 +1,112 @@
+OpenCog Mailing List Thread: Anyone knows the paths of guile module searched by "load-extension"?
+Messages: 9
+Date range: Tue, 28 Mar 2017 17:19:32 +0200 to Thu, 30 Mar 2017 21:23:22 +0200
+Source: opencog@googlegroups.com
+
+============================================================
+
+--- Message 1/9 ---
+From: Shujing Ke
+Date: Tue, 28 Mar 2017 17:19:32 +0200
+
+Hi,
+
+Anyone know is there a file or somewhere that specify the paths that
+"load-extension" will search? I am adding a new module , it always says
+"ERROR: In procedure dynamic-link: file: "libguile-patternminer", message:
+"file not found"".
+libguile-patternminer.
+[... truncated]
+
+--- Message 2/9 ---
+From: Linas Vepstas
+Date: Tue, 28 Mar 2017 23:34:51 +0800
+
+they should all be in /usr/local/lib/opencog
+
+Did you run 'make install'?  I'm pretty sure that none of the scheme
+modules work, until you install them.
+
+--linas
+
+--- Message 3/9 ---
+From: Shujing Ke
+Date: Tue, 28 Mar 2017 18:10:11 +0200
+
+Thanks, Linas, it works. I forgot that OpenCog does make install now.
+
+Shujing
+
+On Tue, Mar 28, 2017 at 5:34 PM, Linas Vepstas <linasvepstas@gmail.com>
+wrote:
+
+--- Message 4/9 ---
+From: Shujing Ke
+Date: Tue, 28 Mar 2017 21:38:03 +0200
+
+Actually, it still doesn't work....
+
+
+After I did make install, I found libguile-patternminer.so in
+/usr/local/lib/opencog/ but  when I load patternminer.scm in guile manually
+, it still cannot find the so file:
+
+guile> (load "opencog/scm/opencog/learning/patternminer.scm")
+
+....
+[... truncated]
+
+--- Message 5/9 ---
+From: AmeBel
+Date: Tue, 28 Mar 2017 18:54:56 -0700 (PDT)
+
+Place 
+ https://github.com/opencog/docker/blob/master/opencog/base/scripts/.guile in 
+your home directory, or or execute the second line in your guile shell.
+
+--- Message 6/9 ---
+From: Shujing Ke
+Date: Wed, 29 Mar 2017 12:02:01 +0200
+
+Thanks Amen.
+
+I found that ADD_GUILE_MODULE (xxxxx.scm) will install xxxxx.scm to
+/usr/local/share/opencog/scm/opencog/xxxxx's dictionary, like
+patternminer.scm is installed in:
+/usr/local/share/opencog/scm/opencog/learning/ , but this dictionary will
+
+[... truncated]
+
+--- Message 7/9 ---
+From: Shujing Ke
+Date: Wed, 29 Mar 2017 16:40:24 +0200
+
+Let me make the problem more clearly:
+
+I start cogserver, and enter guile by rlwrap telnet localhost 17001
+If I do  (load-extension "libguile-cogserver" "opencog_cogserver_init") ,
+it works, but If I do (load-extension "libguile-patternminer.so"
+
+[... truncated]
+
+--- Message 8/9 ---
+From: AmeBel
+Date: Wed, 29 Mar 2017 20:49:07 -0700 (PDT)
+
+yes that is a correct behavior, A brief intro on how guile module's 
+file-system structure 
+work, https://www.gnu.org/software/guile/manual/guile.html#Modules-and-the-File-System 
+
+See 
+https://github.com/opencog/opencog/blob/master/opencog/openpsi/CMakeLists.txt 
+for an example.
+The openpsi.
+[... truncated]
+
+--- Message 9/9 ---
+From: Shujing Ke
+Date: Thu, 30 Mar 2017 21:23:22 +0200
+
+Thanks Amen. It turned out to be a dependency problem, not really cannot
+find the lib file, but cannot find another lib that this lib depends on.
+Guile gives a wrong error message.

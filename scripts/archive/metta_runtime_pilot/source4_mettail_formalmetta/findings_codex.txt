@@ -1,0 +1,652 @@
+MeTTa Runtime Cluster Pilot - Source 4 Codex Findings
+Source: MeTTaIL + FormalMeTTa
+Date: 2026-05-15
+Reviewer: Codex
+
+Scope and method
+================
+
+Brief read:
+  scripts/archive/metta_runtime_pilot/source4_mettail_formalmetta_brief.txt
+
+Source repos read:
+  E:/GitHub/hyperon reference/MeTTaIL
+  E:/GitHub/hyperon reference/FormalMeTTa
+
+I did not read any Gemini or Claude findings for S4 before writing this file.
+This is a static source audit. I did not run sbt/cargo tests because both
+source repos live outside the writable workspace and test runs would write
+target/ artifacts there.
+
+Headline verdict table
+======================
+
+S4.A.Q1 MeTTaIL GSLT implementation:
+  [GSLT-PARTIAL-IMPLEMENTATION]
+
+S4.A.Q2 MeTTaIL build pipeline:
+  [BUILD-BNFC-FULL]
+
+S4.A.Q3 MeTTaIL Gillespie/fuzzer:
+  [GILLESPIE-PROTOTYPE]
+
+S4.A.Q4 MeTTaIL2Matrix/GPU track:
+  [MATRIX-COMPILATION-PROTOTYPE]
+
+S4.A.Q5 MeTTaIL-to-MeTTa relationship:
+  [METTAIL-PARALLEL-FORMAL-SEMANTICS]
+
+S4.A.Q6 MeTTaIL project status:
+  [METTAIL-ACTIVE-ON-FRMLBYTECODE-BRANCH]
+
+S4.B.Q1 FormalMeTTa preliminary-spec faithfulness:
+  [FORMALMETTA-PARTIAL-COVERAGE]
+
+S4.B.Q2 FormalMeTTa implementation depth:
+  [FORMALMETTA-DEMO-GRADE]
+
+S4.B.Q3 FormalMeTTa project status:
+  [FORMALMETTA-ARCHIVAL]
+
+S4.X.Q1 MeTTaIL-vs-FormalMeTTa relationship:
+  [PARALLEL-TRACKS-NO-OVERLAP]
+
+S4.X.Q2 0.2.x quirks:
+  MeTTaIL:     Q-1 [QUIRK-NOT-APPLICABLE] / Q-2 [QUIRK-NOT-APPLICABLE] / Q-3 [QUIRK-NOT-APPLICABLE]
+  FormalMeTTa: Q-1 [QUIRK-SPEC-DEFINES-NEITHER] / Q-2 [QUIRK-SPEC-DEFINES-NEITHER] / Q-3 [QUIRK-SPEC-DEFINES-NEITHER]
+
+S4.X.Q3 cluster placement:
+  [IL-TRACK-FORMAL-SEMANTICS], with FormalMeTTa as an archival spec-reference sidecar.
+
+0. Source-state verification and brief drifts
+=============================================
+
+0.1 MeTTaIL pin is valid, but the branch identity in the brief is wrong.
+
+Verified:
+  git rev-parse HEAD
+  -> 3343fbea78af5543d2469d882dd5736e3ca983b2
+
+  git branch -vv
+  -> * dev 3343fbe [origin/dev] fixing overzealous commit
+
+  git symbolic-ref refs/remotes/origin/HEAD
+  -> refs/remotes/origin/dev
+
+  git show -s --format='%H %ci %an %s' origin/dev origin/main origin/frmlbytecode
+  -> origin/dev         3343fbea... 2026-03-02 Lucius Meredith fixing overzealous commit
+  -> origin/main        2090611... 2025-07-08 Mike Stay Merge pull request #24 from F1R3FLY-io/dev
+  -> origin/frmlbytecode e61f075... 2026-03-30 Lucius Meredith initial spec and formalization
+
+  git rev-list --left-right --count origin/dev...origin/main
+  -> 180 2
+
+  git rev-list --left-right --count origin/dev...origin/frmlbytecode
+  -> 2 1
+
+Conclusion:
+  Extraction target 3343fbea is valid, but it is origin/dev, not main. The brief's
+  "Branch: main (default)" and "origin/main at HEAD anchor" framing should be
+  corrected. origin/main is stale and materially behind dev. The frmlbytecode
+  branch is newer than dev but only one commit ahead / two behind.
+
+0.2 FormalMeTTa pin is valid.
+
+Verified:
+  git rev-parse HEAD
+  -> 0448156b91841b63ef5d3b5637a713f5bb4a0f18
+
+  git branch -vv
+  -> * master 0448156 [origin/master] Add Aunt KG example
+
+  git symbolic-ref refs/remotes/origin/HEAD
+  -> refs/remotes/origin/master
+
+0.3 Dirty-tree note.
+
+Both source repos have untracked AGENTS.md / CLAUDE.md / GEMINI.md files. I
+ignored them for source verdicts and used tracked files via git grep / git
+ls-files where branch or cross-reference claims mattered.
+
+0.4 Inventory spot-checks.
+
+MeTTaIL:
+  git ls-files | Measure-Object                 -> 78
+  git ls-files '*.scala' | Measure-Object       -> 27
+  git ls-files '*.rs' | Measure-Object          -> 17
+  git ls-files '*.module' | Measure-Object      -> 8
+  git ls-files '*.md' | Measure-Object          -> 4
+  git ls-files '*.tex' | Measure-Object         -> 2
+
+FormalMeTTa:
+  git ls-files | Measure-Object                 -> 17
+  git ls-files '*.scala' | Measure-Object       -> 12
+  git ls-files 'src/main/scala/*.scala'         -> 6
+  git ls-files 'src/test/scala/*.scala'         -> 6
+
+1. S4.A.Q1 - MeTTaIL GSLT implementation status
+================================================
+
+Verdict: [GSLT-PARTIAL-IMPLEMENTATION]
+
+Evidence:
+
+1. The BNFC grammar has first-class theory-instance and presentation syntax,
+   not just comments:
+
+  GSLT/src/main/bnfc/metta_venus.cf:60-72
+    TheoryInstEmpty, AddExports, AddReplacements, AddTerms, AddEquations,
+    AddRewrites, ctor/ref/let/free/conj/disj/subtract.
+
+  GSLT/src/main/bnfc/metta_venus.cf:81
+    BasePres ::= Presentation Exports ... Terms ... Equations ... Rewrites ... References ...
+
+  GSLT/src/main/bnfc/metta_venus.cf:84
+    BaseTheoryDecl ::= Theory Name (...) { TheoryInst }
+
+2. Rholang.module is a real worked GSLT-style module with theories, terms,
+   equations, rewrites, and a top-level theory instance:
+
+  GSLT/src/test/module/Rholang.module:3
+    Module Rholang
+
+  GSLT/src/test/module/Rholang.module:4,22,44,59,70,78
+    Theory declarations for ParMonoid, NewReplCalc, QuoteDropCalc, RhoCalc,
+    Rholang, FreeRholang.
+
+  GSLT/src/test/module/Rholang.module:13-18,38-40,65-66
+    Rewrites, including RComm.
+
+  GSLT/src/test/module/Rholang.module:91
+    theory FreeRholang()
+
+3. The Scala pipeline actually parses, checks, interprets, and can transform
+   those modules:
+
+  MeTTaIL/src/main/scala/io/f1r3fly/mettail/ModuleProcessor.scala:21-28
+    Opens module, lexes with MettaVenusLexer, parses start_Module().
+
+  MeTTaIL/src/main/scala/io/f1r3fly/mettail/Pipeline.scala:70-81
+    Collects ProgTheoryInst and interprets it with InstInterpreter.
+
+  MeTTaIL/src/main/scala/io/f1r3fly/mettail/Pipeline.scala:90-100
+    CheckInterpret runs InstInterpreter.check_interpret and errors on failure.
+
+  MeTTaIL/src/main/scala/io/f1r3fly/mettail/InstInterpreter.scala:16-35
+    interpret/check_interpret dispatch over TheoryInst cases.
+
+4. The GSLT type-lift / hypercube apparatus is implemented as code, but still
+   looks like a partial transform relative to the design docs:
+
+  MeTTaIL/src/main/scala/io/f1r3fly/mettail/Hypercube.scala:15
+    def transform(base: BasePres): BasePres
+
+  MeTTaIL/src/main/scala/io/f1r3fly/mettail/Hypercube.scala:33-61
+    Comments describe adding modal types for process-shaped subtrees and
+    arbitrary reductions.
+
+  MeTTaIL/src/main/scala/io/f1r3fly/mettail/Hypercube.scala:93,123,143
+    typeLiftDef, transform(cat), typeLift(defs) exist as functions.
+
+  hypercube.md:183 and hypercube.md:667 contain TODO-style future-work notes.
+
+5. Tests exercise interpreter and hypercube behavior:
+
+  MeTTaIL/src/test/scala/io/f1r3fly/mettail/InstInterpreterSpec.scala:25-31
+    "interpret the Rholang module correctly"
+
+  MeTTaIL/src/test/scala/io/f1r3fly/mettail/InstInterpreterSpec.scala:83-88
+    ArrowCats module interpretation.
+
+  MeTTaIL/src/test/scala/io/f1r3fly/mettail/InstInterpreterSpec.scala:128-133
+    RenameRewrite module interpretation.
+
+  MeTTaIL/src/test/scala/io/f1r3fly/mettail/HypercubeSpec.scala:10,29,53
+    Tests type-lifted terms for PZero/PPar, binders like PNew, receives like
+    PRecv.
+
+Interpretation:
+  This is not docs-only scaffolding: grammar, parser integration, interpreter,
+  hypercube transform, example modules, and tests exist. It is still partial as
+  a full mathematical GSLT implementation because the docs retain open TODOs,
+  and the hypercube code is a transform prototype rather than a complete proof
+  or production semantics stack.
+
+2. S4.A.Q2 - MeTTaIL build pipeline
+===================================
+
+Verdict: [BUILD-BNFC-FULL]
+
+Evidence:
+
+  README.md:7-10
+    Lists bnfc, ghc, alex, happy as prerequisites.
+
+  build:22
+    SOURCE_CF="../GSLT/src/main/bnfc/metta_venus.cf"
+
+  build:42
+    CLASSPATH=... bnfc --antlr --java -m "$SOURCE_CF"
+
+  build:96
+    sbt assembly
+
+  build:104
+    Example assembled-jar invocation.
+
+  MeTTaIL/build.sbt:3
+    Scala version 3.4.1.
+
+  MeTTaIL/build.sbt:8
+    Adds ../target/mettailparser.jar as an unmanaged dependency.
+
+  MeTTaIL/build.sbt:16
+    assemblyJarName := "mettail_assembly.jar"
+
+  MeTTaIL/src/main/scala/io/f1r3fly/mettail/ModuleProcessor.scala:4-5
+    Imports metta_venus generated classes.
+
+  MeTTaIL/src/main/scala/io/f1r3fly/mettail/ModuleProcessor.scala:26-28
+    Uses MettaVenusParser.start_Module().
+
+Interpretation:
+  The pipeline is BNFC-full in the practical sense: grammar -> generated Java
+  parser jar -> Scala assembly. The GHC/Alex/Happy prerequisites are BNFC toolchain
+  dependencies, not a Haskell implementation surface for MeTTaIL itself.
+
+3. S4.A.Q3 - Gillespie/fuzzer status
+====================================
+
+Verdict: [GILLESPIE-PROTOTYPE]
+
+Evidence:
+
+  MeTTaIL-Gillespie/Cargo.toml:2-5
+    Crate name mettail-gillespie; description is stochastic and quantum
+    Gillespie simulation extensions for MeTTaIL rewrite rules.
+
+  MeTTaIL-Gillespie/src/augmented_rule.rs:43-47
+    In full integration TermRef would be parameterized over generated AST;
+    current code uses generic TermRef.
+
+  MeTTaIL-Gillespie/src/augmented_rule.rs:87-148
+    AugmentedRewriteRule with LHS/RHS terms, rate maps, propensity, and total
+    propensity.
+
+  MeTTaIL-Gillespie/src/gillespie.rs:59,126,200,212
+    ClassicalGillespie struct, step(), run(), run_until().
+
+  MeTTaIL-Gillespie/src/simulator.rs:105-173
+    Unified Simulator enum, new/with_mode/step/run.
+
+  MeTTaIL-Gillespie/src/simulator.rs:253-262
+    detect_mode chooses quantum if rate maps are quantum, otherwise classical.
+
+  MeTTaIL-Gillespie/src/fuzzer.rs:608-815
+    Fuzzer implementation, generate/generate_with_stats.
+
+  MeTTaIL-Gillespie/src/fuzzer.rs:874-882
+    Fuzzed term -> TermRef bridge.
+
+  MeTTaIL-Gillespie/src/language_ext.rs:3-8,289
+    Describes extension helpers for a language! macro rather than a committed
+    integration with the Scala BNFC pipeline.
+
+Tests exist in augmented_rule.rs, fuzzer.rs, gillespie.rs, language_ext.rs,
+quantum.rs, rate_map.rs, rate_value.rs, simulator.rs, and spatial_behavior.rs.
+
+Interpretation:
+  The Rust crate is more than a stub: it has actual simulation types and tests.
+  It is still a prototype because it is structurally separate from the Scala
+  MeTTaIL pipeline and uses generic TermRef placeholders rather than generated
+  GSLT/BNFC AST integration.
+
+4. S4.A.Q4 - MeTTaIL2Matrix / GPU compilation track
+===================================================
+
+Verdict: [MATRIX-COMPILATION-PROTOTYPE]
+
+Evidence:
+
+  MeTTaIL2Matrix/Cargo.toml:2-7
+    Crate is dag-triangular, version 0.1.0; description is graph-to-upper-
+    triangular adjacency matrices.
+
+  MeTTaIL2Matrix/Cargo.toml dependencies:
+    petgraph, nalgebra, thiserror. No CUDA/wgpu/OpenCL/GPU runtime dependency.
+
+  MeTTaIL2Matrix/README.md:3,8,26
+    Claims automata/synchronization-tree path targeting GPU execution and
+    wavefront schedule.
+
+  MeTTaIL2Matrix/src/lib.rs:78
+    pub fn triangularize(...)
+
+  MeTTaIL2Matrix/src/lib.rs:183
+    pub fn triangularize_weighted(...)
+
+  MeTTaIL2Matrix/src/lib.rs:275-288
+    is_upper_triangular and pretty-print support.
+
+  MeTTaIL2Matrix/src/automata.rs:224-287
+    Automaton representation and to_digraph().
+
+  MeTTaIL2Matrix/src/automata.rs:351-387
+    wavefront_schedule().
+
+  MeTTaIL2Matrix/src/automata.rs:424-464
+    automaton_to_triangular().
+
+  MeTTaIL2Matrix/examples/rholang_sync_tree.rs:154-160
+    Example computes automaton_to_triangular and wavefront schedule.
+
+  MeTTaIL2Matrix/src/lib.rs:337-444 and src/automata.rs:767-977
+    Unit tests cover graph triangularization and automata/wavefront cases.
+
+Interpretation:
+  Matrix compilation and automaton triangularization are implemented as a real
+  Rust prototype. The GPU part is not a GPU backend at HEAD: it is a scheduling
+  model and README target, not CUDA/wgpu/OpenCL kernel generation or execution.
+
+5. S4.A.Q5 - MeTTaIL to MeTTa relationship
+==========================================
+
+Verdict: [METTAIL-PARALLEL-FORMAL-SEMANTICS]
+
+Evidence:
+
+  README.md:1-2
+    MeTTaIL = Meta Type Talk Intermediate Language.
+
+  transformation.md:7-9
+    Defines GSLT presentations with shapes P/R and src/tgt to describe
+    operational semantics of computational calculi.
+
+  papers/agents/present-moment.tex:303-311
+    Places MeTTaIL as a framework for reasoning about whole models of
+    computation and GSLTs/user-defined languages.
+
+  git grep -n "FormalMeTTa|mops-short|rho4u|PicoUnify" -- .
+    In MeTTaIL, tracked hits are only in MeTTaIL-Gillespie/session.vibe for
+    leithaus local paths; no FormalMeTTa or mops-short code dependency.
+
+  rg "bind!|new-space|cond|catchall|$_" in tracked MeTTaIL source
+    No Hyperon-experimental runtime operator surface found.
+
+Interpretation:
+  MeTTaIL is not a compiler backend for hyperon-experimental MeTTa at HEAD, and
+  it is not wired to FormalMeTTa. It is a parallel formal-semantics / IL track
+  for GSLT-defined calculi, with Rholang/rho-calculus emphasis and some MeTTa
+  naming/vision overlap.
+
+6. S4.A.Q6 - MeTTaIL project status
+===================================
+
+Verdict: [METTAIL-ACTIVE-ON-FRMLBYTECODE-BRANCH]
+
+Evidence:
+
+  origin/dev HEAD:
+    3343fbea... 2026-03-02 Lucius Meredith fixing overzealous commit
+
+  origin/frmlbytecode HEAD:
+    e61f075... 2026-03-30 Lucius Meredith initial spec and formalization
+
+  git rev-list --left-right --count origin/dev...origin/frmlbytecode
+    2 1
+
+  git log --since='2026-02-01' --all --format='%h %ci %an %s'
+    Shows 2026-02-23..2026-03-30 Lucius Meredith activity, including paper
+    writing, Gillespie, fuzzer, MeTTaIL2Matrix, and frmlbytecode.
+
+Interpretation:
+  The default branch is dev and has been quiet since 2026-03-02, but repository
+  work continued on frmlbytecode through 2026-03-30. This is closer to the
+  MeTTaTron "stale main/default with branch work" pattern than to abandonment.
+  Because the brief vocabulary has a more specific frmlbytecode tag, use
+  [METTAIL-ACTIVE-ON-FRMLBYTECODE-BRANCH].
+
+7. S4.B.Q1 - FormalMeTTa preliminary-spec faithfulness
+======================================================
+
+Verdict: [FORMALMETTA-PARTIAL-COVERAGE]
+
+Evidence:
+
+  README.md:1-2
+    "Formal MeTTa" and "literal implementation of the preliminary short MeTTa spec"
+    with rho4u/mops-short PDF link.
+
+  src/main/scala/Terms.scala:6-34
+    Space, Term, Expr, Var, Symbol, transform, "=", addAtom, remAtom, Bool/Double/
+    Long/String literals.
+
+  src/main/scala/Parser.scala:15-32
+    Tokenizer.FormalMeTTa registers transform, "=", addAtom, remAtom, "*", and
+    primitive literals; parseAtoms defaults to Tokenizer.FormalMeTTa.
+
+  src/main/scala/Unification.scala:1,41-76
+    Unification based on PicoUnify; unifyWith, bind, occursCheck.
+
+  src/main/scala/RewriteRules.scala:1-3
+    State(i,k,w,o) and RewriteRule.
+
+  src/main/scala/RewriteRules.scala:6-82
+    QueryRule, ChainRule, TransformRule.
+
+  src/main/scala/RewriteRules.scala:116-136
+    AddAtom1Rule exists but apply() returns Space(??? : Term) in output.
+
+  src/main/scala/RewriteRules.scala:248-268
+    baseRules, contextFreeRules, groundingRules, allRules.
+
+  src/main/scala/utils.scala:20-35
+    execute and executeWithContext repeatedly choose rules.find / contextRules(...).find.
+
+Interpretation:
+  It implements a recognizable preliminary MeTTa spec subset, but not completely:
+  addAtom has an unimplemented ??? output, and there is no evidence of alignment
+  with current hyperon-experimental v0.2.10 semantics. I did not fetch the
+  external PDF; this verdict is code-side faithfulness/coverage, not a full
+  source-paper proof.
+
+8. S4.B.Q2 - FormalMeTTa implementation depth
+=============================================
+
+Verdict: [FORMALMETTA-DEMO-GRADE]
+
+Evidence:
+
+  Inventory:
+    17 tracked files total, 12 Scala, 6 main Scala, 6 test Scala.
+
+  src/test/scala/Examples.scala:26,52,81,114,150,177,187-205
+    Examples execute Nats, FrogUnification, Socrates, VitalyEq, StackBased, and
+    Aunt KG-style queries.
+
+  src/test/scala/ParserTest.scala:5-128
+    Parser coverage.
+
+  src/test/scala/RewriteRulesTest.scala:22-151
+    Query/Chain/Transform/Output behavior tests.
+
+  src/test/scala/GroundingTest.scala:22-86
+    Bool/Double multiplication grounding tests.
+
+  src/main/scala/RewriteRules.scala:136 and RewriteRulesInContext.scala:137
+    AddAtom remains partially unimplemented with ???.
+
+Interpretation:
+  It is a compact runnable reference/demo with meaningful tests and examples,
+  but not a production library/CLI or comprehensive spec implementation. The
+  unimplemented addAtom path prevents [FORMALMETTA-RESEARCH-GRADE] or
+  [FORMALMETTA-LIBRARY-USABLE].
+
+9. S4.B.Q3 - FormalMeTTa project status
+=======================================
+
+Verdict: [FORMALMETTA-ARCHIVAL]
+
+Evidence:
+
+  git show -s --format='%H %ci %an %s' HEAD
+    0448156b... 2024-03-14 Adam Vandervorst Add Aunt KG example
+
+  git log --oneline --decorate --all --max-count=25
+    Development window spans 2023-04 through 2024-03, no newer commits in the
+    local clone.
+
+  git shortlog -sn --all
+    Adam-Vandervorst / Adam Vandervorst / Adam V are the only author identities.
+
+Interpretation:
+  Functional enough as a reference/demo, but status is archival: no active branch
+  work or recent maintenance is visible at the pinned source.
+
+10. S4.X.Q1 - Relationship between MeTTaIL and FormalMeTTa
+===========================================================
+
+Verdict: [PARALLEL-TRACKS-NO-OVERLAP]
+
+Evidence:
+
+MeTTaIL tracked grep:
+  git grep -n "FormalMeTTa|mops-short|rho4u|PicoUnify" -- .
+  -> no FormalMeTTa/mops-short/rho4u code reference; only MeTTaIL-Gillespie
+     session transcript references local leithaus paths.
+
+FormalMeTTa tracked grep:
+  git grep -n "MeTTaIL|GSLT|mops-short|rho4u|PicoUnify" -- .
+  -> README.md:2 mops-short/rho4u PDF link.
+  -> src/main/scala/Unification.scala:1 PicoUnify attribution.
+  -> no MeTTaIL or GSLT reference.
+
+Interpretation:
+  The two repos share broad formal-methods / MeTTa-language neighborhood, but
+  not code, parser, test corpus, or explicit tracked dependency. FormalMeTTa is
+  not visibly a precursor imported by MeTTaIL at HEAD, and MeTTaIL does not
+  subsume FormalMeTTa in code.
+
+11. S4.X.Q2 - 0.2.x quirk relevance
+===================================
+
+Verdict:
+  MeTTaIL:     Q-1 [QUIRK-NOT-APPLICABLE] / Q-2 [QUIRK-NOT-APPLICABLE] / Q-3 [QUIRK-NOT-APPLICABLE]
+  FormalMeTTa: Q-1 [QUIRK-SPEC-DEFINES-NEITHER] / Q-2 [QUIRK-SPEC-DEFINES-NEITHER] / Q-3 [QUIRK-SPEC-DEFINES-NEITHER]
+
+Evidence:
+
+  MeTTaIL rg for bind!, new-space, cond, catchall, $_:
+    No tracked Hyperon-experimental runtime operator surface found. It has its
+    own GSLT grammar and Rholang/rho constructs such as match/new/for.
+
+  FormalMeTTa Parser.scala:18-27
+    Registered builtins are transform, "=", addAtom, remAtom, "*", and primitive
+    literal recognizers. No bind!, new-space, cond, or catchall operator.
+
+  FormalMeTTa utils.scala:20-35
+    execute/executeWithContext choose the first currently applicable rule via
+    find(), so there is no S1-style nondeterministic catchall behavior to test.
+
+Interpretation:
+  S4 does not add a new reproduction/fix point to the v0.2.10 quirk matrix.
+  MeTTaIL is an IL/formal-semantics stack, not a Hyperon Space runtime. FormalMeTTa
+  implements a preliminary spec subset that does not define the operators involved
+  in the v0.2.x quirks.
+
+12. S4.X.Q3 - Cluster-narrative placement
+=========================================
+
+Verdict:
+  [IL-TRACK-FORMAL-SEMANTICS], with FormalMeTTa as [SPEC-REFERENCE-IMPLEMENTATION]
+  only in the descriptive sense, not as the selected S4.X.Q3 label.
+
+Rationale:
+  MeTTaIL is best placed as the formal-semantics / intermediate-language track
+  inside the MeTTa runtime cluster. It is neither a direct runtime peer of
+  hyperon-experimental/PeTTa/MeTTaTron nor a pure paper artifact. It supplies
+  GSLT grammar/interpreter/transforms and side prototypes for stochastic and
+  matrix interpretations.
+
+  FormalMeTTa is a compact archival reference/demo for an older preliminary
+  MeTTa spec. It is useful for historical/spec comparison, but it should not be
+  treated as an active runtime implementation line.
+
+13. V4-X carry-forwards
+=======================
+
+V4-1 [METTAIL-BRANCH-IDENTITY-DRIFT]
+  Brief says main/default; verified source default is dev. origin/main is old
+  and diverged 180/2 relative to origin/dev. frmlbytecode is newer than dev by
+  one commit.
+
+V4-2 [METTAIL-GSLT-PARTIAL-IMPLEMENTATION]
+  GSLT grammar/parser/interpreter/hypercube/tests exist, but the formal transform
+  remains prototype/partial relative to design docs.
+
+V4-3 [METTAIL-BNFC-FULL-BUILD]
+  Build path is BNFC grammar -> generated Java parser jar -> Scala assembly.
+
+V4-4 [METTAIL-GILLESPIE-PROTOTYPE-SEPARATE-CRATE]
+  Real classical/quantum simulator code and tests exist, but integration to the
+  Scala GSLT pipeline is placeholder/generic TermRef based.
+
+V4-5 [METTAIL2MATRIX-PROTOTYPE-NO-GPU-BACKEND]
+  Graph/automata -> triangular matrix + wavefront scheduling is real; GPU
+  execution is README target, not runtime backend.
+
+V4-6 [METTAIL-PARALLEL-FORMAL-SEMANTICS-NOT-HYPERON-RUNTIME]
+  Do not describe MeTTaIL as compiling hyperon-experimental MeTTa at HEAD.
+
+V4-7 [FORMALMETTA-ARCHIVAL-DEMO-WITH-ADDATOM-HOLE]
+  FormalMeTTa is compact, tested, and useful, but addAtom has ??? and the repo
+  has no visible post-2024 activity.
+
+V4-8 [FORMALMETTA-PARALLEL-NO-CODE-OVERLAP-WITH-METTAIL]
+  No tracked code references connect MeTTaIL to FormalMeTTa or vice versa.
+
+V4-9 [S4-QUIRK-MATRIX-NO-NEW-RUNTIME-DATAPOINT]
+  S4 should not be used as a bind/new-space, cond, or catchall quirk datapoint
+  for Hyperon runtime behavior.
+
+V4-10 [METTAIL-STATUS-ACTIVE-BRANCH-WORK]
+  Default dev quiet since 2026-03-02, but frmlbytecode branch activity on
+  2026-03-30 keeps the source in active-branch-work territory.
+
+14. Candidate cluster-close edits
+=================================
+
+C4-1 Update any wiki/reference text that calls MeTTaIL "main" at 3343fbea.
+  Correct branch framing: default/origin HEAD is dev; origin/main is stale; the
+  recent branch-work signal is frmlbytecode.
+
+C4-2 If editing MeTTa implementation tables, classify MeTTaIL as:
+  "formal-semantics / intermediate-language track for GSLT-defined calculi;
+   Scala+BNFC core; Rust Gillespie and matrix prototypes; not a Hyperon runtime."
+
+C4-3 Add MeTTaIL sub-status:
+  GSLT partial implementation; BNFC full build; Gillespie prototype; matrix
+  compilation prototype without GPU backend.
+
+C4-4 If editing FormalMeTTa, classify it as:
+  "archival preliminary-spec reference/demo; 6 main Scala files + tests; addAtom
+   output path incomplete; no current Hyperon 0.2.10 quirk relevance."
+
+C4-5 Cross-link Adam Vandervorst cautiously.
+  S4 verifies him as FormalMeTTa author. Any claim that this is the same thread
+  as the HAA concept-blending category-theoretic branch should be stated as
+  cross-cluster identity context, not code dependency.
+
+15. Open checks / non-goals
+===========================
+
+O4-1 I did not fetch the external mops-short PDF. The FormalMeTTa Q1 verdict is
+  based on README + code coverage, not an external spec line-by-line comparison.
+
+O4-2 I did not run sbt/cargo tests. Evidence is static file/line plus existing
+  test coverage inventory.
+
+O4-3 I did not inspect out-of-scope mettail-rust or zariuq forks.
+
+O4-4 I did not inspect Gemini's S4 output. Under option (i), Gemini should be
+  confirmation/synthesis-only; this file is the citation-grade Codex pass.

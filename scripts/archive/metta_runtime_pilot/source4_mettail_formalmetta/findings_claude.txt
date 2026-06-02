@@ -1,0 +1,653 @@
+================================================================
+MeTTa runtime cluster pilot — Source 4
+F1R3FLY-io/MeTTaIL + Adam-Vandervorst/FormalMeTTa
+findings_claude.txt — orchestrator-Claude focused extraction
+================================================================
+
+Reviewer:           orchestrator-Claude (Opus 4.7 1M)
+Date:               2026-05-15
+Sources:            F1R3FLY-io/MeTTaIL HEAD `3343fbea78af5543d2469
+                    d882dd5736e3ca983b2` (Lucius Meredith
+                    2026-03-02; on `dev` default branch — NOT
+                    `main` per brief framing; V4-1 correction).
+                    Adam-Vandervorst/FormalMeTTa HEAD
+                    `0448156b91841b63ef5d3b5637a713f5bb4a0f18`
+                    (Adam Vandervorst 2024-03-14; archival).
+Local paths:        E:\GitHub\hyperon reference\MeTTaIL\
+                    E:\GitHub\hyperon reference\FormalMeTTa\
+Brief reference:    scripts/archive/metta_runtime_pilot/
+                    source4_mettail_formalmetta_brief.txt
+
+Protocols applied:  P10.24 GEMINI-CONFIRMATION-ONLY-MODE (option
+                    (i)) — first source under the new protocol;
+                    V4-11 archived; V1-PROTOCOL-1/2/3 +
+                    V2-PROTOCOL-1/2/3/4 + V3-PROTOCOL-2/3/4
+                    standing.
+
+Independence stance — PARTIAL (acknowledged):
+  This is the first cluster-pilot source where Codex's headline
+  verdicts were leaked to orchestrator via the user's relay
+  message before this file was written (the user's relay
+  included Codex's "Key points" summary section, which exposed
+  the 12 single-label verdicts plus the V4-1 branch-identity-
+  drift finding). Full blind-extraction independence is
+  therefore broken at S4. Mitigation: this file focuses on
+  independent EVIDENCE adjudication of the four Codex-vs-Gemini
+  disagreements rather than producing a redundant full 12-Q
+  extraction; spot-checks Codex's strong claims via direct
+  filesystem queries; and explicitly notes the leak. Future
+  cluster-pilot sources should preserve the "Claude extracts
+  first" workflow corrected at S3.
+
+Workflow choice:
+  Per user authorization 2026-05-15 OPTION 2 (compressed
+  sequence vs full re-extraction), this findings_claude.txt is
+  shorter than S3's findings_claude.txt (1625 lines) and
+  scoped to the disagreement-adjudication contribution. The
+  three-way reconciliation drafted from this file plus
+  findings_codex.txt (citation-grade primary) plus Gemini
+  synthesis-only verdicts.
+
+
+----------------------------------------------------------------
+§A. BRANCH-IDENTITY VERIFICATION (V4-1 adjudication)
+----------------------------------------------------------------
+
+Codex's V4-1 [METTAIL-BRANCH-IDENTITY-DRIFT] claim
+(findings_codex.txt §0.1): "Extraction target 3343fbea is valid,
+but it is origin/dev, not main. The brief's 'Branch: main
+(default)' framing should be corrected."
+
+Orchestrator verification commands run independently:
+
+  cd E:/GitHub/hyperon reference/MeTTaIL
+  git branch --show-current
+    → dev
+  git symbolic-ref refs/remotes/origin/HEAD
+    → refs/remotes/origin/dev
+  git rev-list --left-right --count origin/dev...origin/main
+    → 180   2
+       (origin/dev is 180 commits ahead of origin/main;
+        origin/main is 2 commits ahead of origin/dev — merge
+        artifacts, not new feature work)
+  git log -1 --format='%h %ci %an %s' origin/main
+    → 2090611... 2025-07-08 Mike Stay  Merge pull request #24
+       from F1R3FLY-io/dev
+
+VERDICT: Codex's V4-1 claim is CORRECT. origin/main is 10
+months stale at S4 brief drafting (2025-07-08); origin/dev
+is the active default branch at HEAD `3343fbe`. The S4 brief's
+"Branch: main (default)" + "origin/main at HEAD anchor"
+framing is WRONG. Corrected in §B.A.Q6 verdict below + carried
+forward as a permanent V4-1 correction.
+
+Lesson for future briefs: orchestrator should run
+`git symbolic-ref refs/remotes/origin/HEAD` at brief-drafting
+time to confirm the default branch. The MeTTa runtime cluster
+pilot S1-S3 sources all had `main` as the default branch, so
+the assumption propagated to S4 by default — a process-drift
+that V4-1 surfaces. Future briefs should NOT assume `main` by
+default.
+
+
+----------------------------------------------------------------
+§B. DISAGREEMENT ADJUDICATIONS (Codex vs Gemini)
+----------------------------------------------------------------
+
+Four Codex-vs-Gemini disagreements identified at first relay
+read. Each adjudicated below via independent orchestrator
+evidence.
+
+§B.1  S4.A.Q2  MeTTaIL BUILD PIPELINE
+       Codex:   [BUILD-BNFC-FULL]
+       Gemini:  [BUILD-BNFC-PARTIAL]
+       Verdict: [BUILD-BNFC-FULL] — Codex wins.
+
+  Independent evidence (orchestrator-verified):
+    `MeTTaIL/build:22` SOURCE_CF="../GSLT/src/main/bnfc/
+       metta_venus.cf"
+    `MeTTaIL/build:42` CLASSPATH="lib/antlr-4.9.3-complete.jar:
+       ${CLASSPATH:-}" bnfc --antlr --java -m "$SOURCE_CF"
+
+  The BNFC tool generates the parser/lexer from the `.cf`
+  grammar file as the SOLE parser-generation step. The
+  generated Java parser is then assembled into `mettailparser
+  .jar`. Subsequently, `sbt assembly` (per Codex's
+  `build:96`) bundles the Scala-side jar including the BNFC-
+  generated parser.
+
+  Gemini's `[BUILD-BNFC-PARTIAL]` framing argued that BNFC
+  is "for grammar generation, not the runtime core". This is
+  TECHNICALLY ACCURATE that BNFC runs at build-time, NOT at
+  runtime — but the §7 vocabulary's `[BUILD-BNFC-FULL]` tag
+  captures "BNFC is the full parser-generation path" not
+  "BNFC executes at runtime". The runtime parser IS the
+  BNFC-generated artifact; therefore the pipeline is BNFC-
+  full from grammar through assembled-jar deployment.
+
+  Per V2-PROTOCOL-1 specificity rule + Codex's stronger
+  evidence chain, `[BUILD-BNFC-FULL]` is the right §7 tag.
+
+§B.2  S4.A.Q6  MeTTaIL PROJECT STATUS
+       Codex:   [METTAIL-ACTIVE-ON-FRMLBYTECODE-BRANCH]
+       Gemini:  [METTAIL-STAGNANT-MAIN-WITH-BRANCH-WORK]
+       Verdict: [METTAIL-ACTIVE-ON-FRMLBYTECODE-BRANCH] —
+                Codex wins per V2-PROTOCOL-1 specificity.
+
+  Independent evidence (orchestrator-verified):
+    Active branches with post-dev-HEAD activity:
+      origin/frmlbytecode  2026-03-30  (`e61f075` Lucius
+        Meredith "initial spec and formalization") — 28 days
+        post-dev-HEAD
+      origin/dev           2026-03-02  (`3343fbe` Lucius
+        Meredith "fixing overzealous commit")
+      origin/main          2025-07-08  (`2090611` Mike Stay
+        "Merge pull request #24 from F1R3FLY-io/dev") — 10
+        months stale; merge of OLDER dev
+
+  Both verdicts capture the conceptual finding (default
+  branch quiet + branch activity continuing). Gemini's tag
+  uses the wrong branch label ("MAIN" — but the default at
+  HEAD is `dev`) AND is less specific than Codex's tag which
+  names the active branch (`frmlbytecode`).
+
+  Per V2-PROTOCOL-1 specificity rule, the more-specific tag
+  in the §7 set wins. Codex's tag also avoids the V4-1 branch
+  identity drift.
+
+§B.3  S4.B.Q1  FormalMeTTa PRELIMINARY-SPEC FAITHFULNESS
+       Codex:   [FORMALMETTA-PARTIAL-COVERAGE]
+       Gemini:  [FORMALMETTA-FAITHFUL-TO-2023-SPEC]
+       Verdict: [FORMALMETTA-PARTIAL-COVERAGE] — Codex wins.
+
+  Independent evidence (orchestrator-verified):
+    `FormalMeTTa/src/main/scala/RewriteRules.scala:136`
+      State(i_, k, Space(t) ++ w, Space(??? : Term) ++ o)
+
+  The `???` token in Scala is the standard placeholder for
+  "method not yet implemented" — it compiles but throws
+  NotImplementedError at runtime. Its presence in the
+  AddAtom1Rule output path means FormalMeTTa cannot
+  successfully execute add-atom operations — a substantive
+  hole in the preliminary-spec implementation.
+
+  Reconciling the two verdicts:
+    - Gemini's `[FORMALMETTA-FAITHFUL-TO-2023-SPEC]` is
+      contextually correct: FormalMeTTa IS pinned to the
+      2023-era leithaus/rho4u mops-short spec.
+    - But the addAtom `???` hole means coverage of THAT spec
+      is partial, not complete.
+    - The §7 vocabulary distinguishes "faithful" (alignment
+      with the source spec, regardless of completeness) from
+      "partial-coverage" (some spec features not implemented).
+    - Per V2-PROTOCOL-1 specificity, "partial-coverage" is
+      MORE specific because it captures both the alignment
+      AND the incompleteness, whereas "faithful" only
+      captures alignment.
+
+  Codex's `[FORMALMETTA-PARTIAL-COVERAGE]` wins.
+
+§B.4  S4.B.Q2  FormalMeTTa IMPLEMENTATION DEPTH
+       Codex:   [FORMALMETTA-DEMO-GRADE]
+       Gemini:  [FORMALMETTA-RESEARCH-GRADE]
+       Verdict: [FORMALMETTA-DEMO-GRADE] — Codex wins.
+
+  Independent evidence (orchestrator-verified):
+    `FormalMeTTa` inventory: 17 tracked files at HEAD
+      0448156. 12 .scala (6 main, 6 test). 1 .sbt + project/.
+
+    `src/test/scala/Examples.scala:26..205` (per Codex's
+       cite) runs Nats, FrogUnification, Socrates, VitalyEq,
+       StackBased, AuntKG examples.
+
+    `src/main/scala/RewriteRules.scala:136` ??? in AddAtom
+       output — confirmed in §B.3 above.
+
+  The 12-Scala-file scope with 6 main + 6 test split is the
+  shape of a research demo, NOT a research-grade library.
+  Plus the addAtom `???` hole prevents anyone from running
+  FormalMeTTa as a complete reference implementation —
+  research-grade requires the code to be usable for follow-on
+  research, but the incomplete addAtom blocks that.
+
+  Per V2-PROTOCOL-1 + the addAtom hole, `[FORMALMETTA-DEMO-
+  GRADE]` is the more-accurate tag. `[FORMALMETTA-RESEARCH-
+  GRADE]` overstates the maturity.
+
+
+----------------------------------------------------------------
+§C. MY VERDICT SLATE (12 verdicts; alignment with Codex
+                     citation-grade primary)
+----------------------------------------------------------------
+
+  Q         My verdict                          Adjudication
+  --------  ----------------------------------  --------------
+  S4.A.Q1   [GSLT-PARTIAL-IMPLEMENTATION]       3/3 align
+  S4.A.Q2   [BUILD-BNFC-FULL]                   2/3 (vs Gemini)
+  S4.A.Q3   [GILLESPIE-PROTOTYPE]               3/3 align
+  S4.A.Q4   [MATRIX-COMPILATION-PROTOTYPE]      3/3 align
+  S4.A.Q5   [METTAIL-PARALLEL-FORMAL-SEMANTICS] 3/3 align
+  S4.A.Q6   [METTAIL-ACTIVE-ON-FRMLBYTECODE-    2/3 (vs Gemini)
+             BRANCH]
+  S4.B.Q1   [FORMALMETTA-PARTIAL-COVERAGE]      2/3 (vs Gemini)
+  S4.B.Q2   [FORMALMETTA-DEMO-GRADE]            2/3 (vs Gemini)
+  S4.B.Q3   [FORMALMETTA-ARCHIVAL]              3/3 align
+  S4.X.Q1   [PARALLEL-TRACKS-NO-OVERLAP]        3/3 align
+  S4.X.Q2   See per-quirk below                 2/3 (split)
+  S4.X.Q3   [IL-TRACK-FORMAL-SEMANTICS] +       3/3 align
+             [SPEC-REFERENCE-IMPLEMENTATION]
+             (cluster-narrative dual classification)
+
+  S4.X.Q2 per-quirk per repo:
+    MeTTaIL Q-1:     [QUIRK-NOT-APPLICABLE]      align
+    MeTTaIL Q-2:     [QUIRK-NOT-APPLICABLE]      align
+    MeTTaIL Q-3:     [QUIRK-NOT-APPLICABLE]      align (Codex)
+                     vs [QUIRK-SPEC-DEFINES-     (Gemini)
+                          NEITHER]
+    FormalMeTTa Q-1: [QUIRK-NOT-APPLICABLE]      (Codex)
+                     vs [QUIRK-SPEC-DEFINES-     (Gemini)
+                          NEITHER]
+    FormalMeTTa Q-2: [QUIRK-NOT-APPLICABLE]      (Codex)
+                     vs [QUIRK-SPEC-DEFINES-     (Gemini)
+                          NEITHER]
+    FormalMeTTa Q-3: [QUIRK-NOT-APPLICABLE]      (Codex)
+                     vs [QUIRK-SPEC-DEFINES-     (Gemini)
+                          NEITHER]
+
+  Note on S4.X.Q2 quirk verdicts: Codex used [QUIRK-NOT-
+  APPLICABLE] for MeTTaIL across all three quirks
+  (acknowledges MeTTaIL is an IL, not a Hyperon Space
+  runtime) AND for FormalMeTTa Q-1/Q-2 (the operators are
+  not in the spec FormalMeTTa implements). Gemini used
+  [QUIRK-NOT-APPLICABLE] for Q-1+Q-2 for both but
+  [QUIRK-SPEC-DEFINES-NEITHER] for FormalMeTTa Q-3
+  (catchall multi-reduction specificity-filter choice not
+  defined by the spec).
+
+  My adjudication: The new §7 tag [QUIRK-SPEC-DEFINES-
+  NEITHER] was added to the brief vocabulary specifically
+  for formal-spec repos like FormalMeTTa. Gemini's use of
+  it for FormalMeTTa Q-3 is the more-specific tag because
+  it explicitly captures "the spec does not commit to
+  either side of the catchall vs specificity-filter
+  choice". Codex's blanket `[QUIRK-NOT-APPLICABLE]` is
+  also acceptable but less specific. I lean towards
+  reconciling with Gemini's [QUIRK-SPEC-DEFINES-NEITHER]
+  for FormalMeTTa Q-3 (it's the more-precise §7 choice),
+  Codex's [QUIRK-NOT-APPLICABLE] for everything else.
+
+  Net: I adopt Codex's slate verbatim for 11/12 (or 10/12
+  if S4.X.Q2 is fully Gemini-aligned on the new tag). My
+  contribution at S4 is primarily the four adjudications
+  in §B above; the slate alignment with Codex follows
+  from independent evidence verification.
+
+  Total alignment (Claude with Codex): 11/12 verdicts
+  identical or 10/12 with the [QUIRK-SPEC-DEFINES-NEITHER]
+  refinement on FormalMeTTa Q-3.
+
+  Total alignment (Claude with Gemini): 8/12 verdicts
+  identical (Q1, Q3, Q4, Q5, Q3.B, Q1.X, Q3.X (partial)),
+  plus the FormalMeTTa Q-3 tag adoption mentioned above.
+
+  Gemini's 4 verdict misses (Q2, Q6, Q1.B, Q2.B) all align
+  with the recurring pattern at MeTTa runtime S3 close: Gemini
+  picks less-specific or marketing-aligned tags when the §7
+  set offers a more-specific choice with stronger evidence.
+  Synthesis-claim alignment for Gemini at S4 ≈ 8/12 = 67%.
+
+
+----------------------------------------------------------------
+§D. SPOT-CHECKS ON CODEX'S STRONG CLAIMS (independent
+                                          orchestrator
+                                          verification)
+----------------------------------------------------------------
+
+Per the partial-independence stance, this section spot-
+verifies Codex's most load-bearing evidence claims.
+
+§D.1  Codex S4.A.Q1 — GSLT grammar at metta_venus.cf:60-72
+                      + :81 + :84
+
+  Verification: `git -C MeTTaIL show HEAD:GSLT/src/main/
+                bnfc/metta_venus.cf | sed -n '58,90p'`
+
+  Spot-result: file path exists at HEAD; content at L60-72
+  contains TheoryInst constructors (TheoryInstEmpty,
+  AddExports, AddReplacements, AddTerms, AddEquations,
+  AddRewrites, etc.); L81 contains the BasePres production;
+  L84 contains the BaseTheoryDecl production.
+
+  ✓ Verified.
+
+§D.2  Codex S4.A.Q1 — Rholang.module L3-91
+
+  Verification: `cat MeTTaIL/GSLT/src/test/module/Rholang.
+                module`
+
+  Spot-result: 91-line module file with Theory declarations
+  (ParMonoid, NewReplCalc, QuoteDropCalc, RhoCalc, Rholang,
+  FreeRholang) + Rewrite at L13-18, L38-40, L65-66 + top-
+  level `theory FreeRholang()` at L91.
+
+  ✓ Verified.
+
+§D.3  Codex S4.A.Q3 — Gillespie simulator at
+                      MeTTaIL-Gillespie/src/gillespie.rs
+
+  Verification: `wc -l MeTTaIL/MeTTaIL-Gillespie/src/
+                gillespie.rs` + spot-checks for the cited
+                line numbers.
+
+  Spot-result: gillespie.rs exists, contains
+  ClassicalGillespie struct + step() + run() + run_until()
+  per Codex's citations.
+
+  ✓ Verified.
+
+§D.4  Codex S4.A.Q4 — MeTTaIL2Matrix dependencies (no GPU)
+
+  Verification: `cat MeTTaIL/MeTTaIL2Matrix/Cargo.toml`
+
+  Spot-result: Dependencies are `petgraph`, `nalgebra`,
+  `thiserror` — no CUDA, no wgpu, no OpenCL, no GPU runtime
+  dependency. Confirms Codex's "GPU is README target, not
+  runtime backend" framing.
+
+  ✓ Verified.
+
+§D.5  Codex S4.B.Q1 — addAtom `???` hole
+
+  Already verified in §B.3 above. ✓ Verified.
+
+§D.6  Cross-pilot identity reaffirmation (per brief §1
+       + Codex confirmation)
+
+  Verification: `git -C MeTTaIL shortlog -sn --all`
+
+  Spot-result:
+    136 SerhiiK-DevBrother  (cross-pilot S3 identity confirmed)
+    129 Mike Stay            (cross-pilot S3 R3.NEW-5 identity
+                              confirmed — F1R3FLY-io cofounder
+                              + initial-commit author of S3
+                              MeTTa-Compiler)
+     36 Lucius Meredith      (cross-pilot S3 C3-1.E identity
+                              confirmed — F1R3FLY-io cofounder
+                              + MeTTaIL primary maintainer)
+      2 MeTTa Developer
+      1 AndriiB-DevBrother
+      1 Heorhii Chyzhmak
+
+  Three cross-pilot identities reaffirmed at S4. ✓ Verified.
+
+§D.7  Adam Vandervorst cross-cluster identity (new at S4)
+
+  Verification: `git -C FormalMeTTa shortlog -sn --all`
+
+  Spot-result:
+    15 Adam-Vandervorst
+     7 Adam Vandervorst
+     1 Adam V
+
+  Single-author repo confirmed. The cross-cluster identity
+  to HAA S4 concept-blending category-theoretic branch
+  maintainer is per the S4 brief §1 framing; Codex's C4-5
+  recommendation to state this as "cross-cluster identity
+  context, not code dependency" is correct caveat.
+
+  ✓ Verified at S4-repo-side; cross-cluster claim stands as
+    context only.
+
+
+----------------------------------------------------------------
+§E. V4-X CARRY-FORWARDS (alignment with Codex; locked for S5-S6)
+----------------------------------------------------------------
+
+Codex enumerated V4-1 through V4-10 in findings_codex.txt §13.
+My alignment + reaffirmation:
+
+V4-1  [METTAIL-BRANCH-IDENTITY-DRIFT] — ADOPT. My §A
+      verification confirms.
+
+V4-2  [METTAIL-GSLT-PARTIAL-IMPLEMENTATION] — ADOPT.
+
+V4-3  [METTAIL-BNFC-FULL-BUILD] — ADOPT (overrides Gemini's
+      partial framing).
+
+V4-4  [METTAIL-GILLESPIE-PROTOTYPE-SEPARATE-CRATE] — ADOPT.
+
+V4-5  [METTAIL2MATRIX-PROTOTYPE-NO-GPU-BACKEND] — ADOPT.
+      Codex's "no CUDA/wgpu/OpenCL dependency" finding is
+      the load-bearing evidence (verified in §D.4).
+
+V4-6  [METTAIL-PARALLEL-FORMAL-SEMANTICS-NOT-HYPERON-RUNTIME]
+      — ADOPT. Cross-link to existing wiki claim on card
+      7161 (per S3 close pass): "MeTTa-IL ... Targets
+      multiple backends (MORK, Rholang, JAX, Rust kernels)."
+      That claim is ASPIRATIONAL per HEAD evidence; the
+      actual implementation is GSLT-Rholang-focused with
+      MORK/JAX/Rust-kernel targeting as roadmap, not backed
+      at HEAD. Candidate wiki refinement at S4 close batch.
+
+V4-7  [FORMALMETTA-ARCHIVAL-DEMO-WITH-ADDATOM-HOLE] — ADOPT.
+
+V4-8  [FORMALMETTA-PARALLEL-NO-CODE-OVERLAP-WITH-METTAIL] —
+      ADOPT.
+
+V4-9  [S4-QUIRK-MATRIX-NO-NEW-RUNTIME-DATAPOINT] — ADOPT.
+      S5 + S6 should not use S4 as a Q-1/Q-2/Q-3 evidence
+      source.
+
+V4-10 [METTAIL-STATUS-ACTIVE-BRANCH-WORK] — ADOPT.
+
+Additional Claude-contributed V4-X candidate:
+
+V4-11 [METTAIL-WIKI-7161-ASPIRATIONAL-BACKEND-TARGETING-CLAIM]
+      (Claude-proposed; carry-forward for cluster-close edit
+      batch consideration)
+
+  At wiki card 7161 (`MeTTa Programming Language+MeTTa
+  Programming Language Full+Language Stack and
+  Implementations`), the MeTTa-IL entry currently reads
+  (per S3 close):
+    "MeTTa-IL — Intermediate representation derived from
+     Graph-Structured Lambda Theory (GSLT) for compilation
+     and optimization. Targets multiple backends (MORK,
+     Rholang, JAX, Rust kernels). Maintains two GSLTs:
+     fine-grained (implementation) and coarse-grained
+     (developer-facing types) with proven correspondence."
+
+  At HEAD, MeTTaIL targets Rholang (rho-calc) via the
+  GSLT module pipeline + Rust prototypes (Gillespie,
+  Matrix). MORK/JAX/Rust-kernel targeting is ASPIRATIONAL
+  per the search results (`git grep MORK|JAX|kernel` in
+  MeTTaIL returns no integration code at HEAD). The
+  "Maintains two GSLTs ... with proven correspondence" claim
+  appears to be from a paper/spec, not code.
+
+  Wiki-refinement candidate at S4 close batch: add caveat
+  to the MeTTa-IL entry distinguishing HEAD-backed reality
+  (GSLT-Rholang focused + Rust prototypes) from roadmap
+  (multi-backend targeting). NOT load-bearing, but worth
+  noting for accuracy.
+
+
+----------------------------------------------------------------
+§F. P10.24 GEMINI-CONFIRMATION-ONLY-MODE COMPLIANCE
+                                                ASSESSMENT
+----------------------------------------------------------------
+
+First source under option (i) / P10.24. Gemini's S4
+deliverable assessed against protocol requirements:
+
+  Required:                                  Compliance:
+  - Synthesis verdicts only (one §7 tag      ✓ All 12
+    per question)                              questions
+                                               + per-quirk
+                                               sub-verdicts
+                                               supplied.
+  - NO self-supplied file:line cites          ✓ None present.
+                                               Gemini correctly
+                                               omitted all
+                                               file:line
+                                               references.
+  - NO V4-11 self-verification table          ✓ Not present.
+                                               V4-11 archival
+                                               complied.
+  - Cross-source forwards / cluster-          ✓ S4.X.Q3 + IL-
+    narrative claims (high-level only)         track / SPEC-
+                                               REFERENCE
+                                               framing
+                                               supplied at
+                                               high level.
+
+  Gemini compliance with P10.24: 4/4. CLEAN COMPLIANCE on
+  first attempt.
+
+Synthesis-claim alignment (Gemini vs Codex+Claude):
+  - 8/12 perfect agreement.
+  - 4/12 disagreements (Q2, Q6, Q1.B, Q2.B) all adjudicate
+    to Codex+Claude via cite-grade evidence (§B above).
+
+Synthesis-claim alignment ≈ 67%. This is BELOW the 80% gate
+mentioned in `feedback_gemini_option_i_confirmation_only_
+mode.md` re-evaluation criteria, but it's a SINGLE source.
+The protocol's gate is "<80% over 3 consecutive sources" →
+escalate to option (0) Gemini-excluded. S4 is the first
+under option (i); two more sources to evaluate before that
+gate triggers. S5 + S6 will provide the additional data.
+
+Per the gate's other branch: "100% alignment over 3
+consecutive sources → consider retrying option (ii)". S4's
+67% is well below 100%, so retrying option (ii) is NOT
+indicated. Stay on option (i) for S5 + S6 and re-evaluate
+at S6 close.
+
+
+----------------------------------------------------------------
+§G. PROCESS-DRIFT FLAGS AT S4
+----------------------------------------------------------------
+
+§G.1  PROCESS-DRIFT-CLAUDE-INDEPENDENCE-LEAK (NEW at S4)
+
+  At S4, the user's relay message containing Codex's "Key
+  points" summary section leaked Codex's headline verdicts
+  to the orchestrator BEFORE orchestrator's findings_claude.
+  txt was written. This breaks the "Claude extracts first
+  blind" workflow corrected at S3.
+
+  Pattern (3rd workflow drift across the cluster-pilot
+  project):
+    - S1: orchestrator role was bleeding "verification"
+      into "extraction" (no separate findings_claude.txt).
+    - S2: same as S1.
+    - S3: corrected via explicit findings_claude.txt
+      independent extraction (1625 lines).
+    - S4 (NEW): orchestrator was exposed to Codex's
+      headline verdicts via relay BEFORE writing
+      findings_claude.txt. Independence partially broken.
+
+  Mitigation at S4: focused on independent adjudication of
+  the 4 disagreements + spot-checks of Codex's strong
+  claims rather than redundant full extraction.
+
+  Recommendation for S5: orchestrator should request user
+  to relay Codex+Gemini findings WITHOUT a "Key points"
+  summary section (or with the summary withheld until
+  findings_claude.txt is written). Alternative: relay
+  findings as raw file content only, no prose
+  summarization.
+
+  Candidate feedback memory: `feedback_claude_independence_
+  preservation.md` if this pattern recurs at S5+S6.
+
+§G.2  PROCESS-DRIFT-BRIEF-DEFAULT-BRANCH-ASSUMPTION
+                                              (V4-1
+                                              meta-finding)
+
+  My S4 brief assumed `main` as the default branch for
+  MeTTaIL without running `git symbolic-ref refs/remotes/
+  origin/HEAD` to confirm. The actual default is `dev`.
+  This is the FIRST cluster-pilot source where the brief's
+  default-branch assumption was wrong.
+
+  Recommendation for S5+: brief drafting protocol should
+  include explicit `git symbolic-ref refs/remotes/origin/
+  HEAD` verification at §0.A source pin block. Candidate
+  brief-template addition.
+
+
+----------------------------------------------------------------
+§H. CLUSTER-NARRATIVE PLACEMENT (Claude alignment with
+                                  Codex + Gemini)
+----------------------------------------------------------------
+
+S4 cluster-narrative position locked at three-way agreement:
+
+  - MeTTaIL = `[IL-TRACK-FORMAL-SEMANTICS]` — formal-
+    semantics / intermediate-language track for GSLT-defined
+    calculi. NOT a Hyperon runtime peer of S1/S2/S3.
+
+  - FormalMeTTa = `[SPEC-REFERENCE-IMPLEMENTATION]` — archival
+    reference for the 2023-era preliminary leithaus/rho4u
+    mops-short spec. Not a Hyperon runtime peer.
+
+  - Both sources are PARADIGM-DISTINCT from the runtime
+    cluster (S1 hyperon-experimental Rust reference / S2
+    PeTTa+metta-morph patham9 ecosystem / S3 MeTTaTron
+    F1R3FLY-io runtime).
+
+  - Cluster-pilot now spans both runtime and formal-semantics
+    axes; future S5 metta-wam (vnamed) returns to runtime
+    axis (WAM-based Prolog).
+
+  - Recommendation: distinguish runtime sources (S1+S2+S3+S5+S6
+    expected) from formal-semantics sources (S4 only) in
+    cluster-narrative framing.
+
+
+----------------------------------------------------------------
+§I. EXTRACTION-METADATA + RECONCILIATION HOOKS
+----------------------------------------------------------------
+
+  Reviewer:          orchestrator-Claude (Opus 4.7 1M)
+  Date:              2026-05-15
+  Independence:      PARTIAL (acknowledged; see §G.1)
+  Workflow:          OPTION 2 compressed sequence (per user
+                     authorization 2026-05-15)
+  Brief vocabulary:  §7 of source4_mettail_formalmetta_
+                     brief.txt
+  Verdicts:          12 single-label per V1-PROTOCOL-1 +
+                     V2-PROTOCOL-1 (slate adopts Codex's
+                     verbatim for 11/12 questions; FormalMeTTa
+                     Q-3 refined per §C note).
+  V4-X carry-forwards: V4-1 through V4-10 adopted from
+                       Codex; V4-11 [METTAIL-WIKI-7161-
+                       ASPIRATIONAL-BACKEND-TARGETING-CLAIM]
+                       proposed as Claude addition (§E).
+  P-CLAIM verdicts:
+    P-A-1 (MeTTaIL name)    VERIFIED   — matches build output
+    P-A-2 (Prereqs)         VERIFIED   (with note: GHC/Alex/
+                                       Happy are BNFC build-
+                                       time deps, not runtime
+                                       surfaces; Codex's
+                                       framing in §2)
+    P-B-1 (FormalMeTTa spec) CONTEMPORANEOUS-WITH-2023-SPEC
+                                       (per brief framing)
+
+  Open questions for reconciliation (not load-bearing):
+    O-1 Wiki card 7161 MeTTa-IL backend-targeting claim is
+        aspirational per HEAD evidence (V4-11 candidate).
+        Refinement at S4 close batch?
+    O-2 Adam Vandervorst cross-cluster identity (HAA S4
+        category-theoretic concept blending) — confirmed at
+        S4 as cross-cluster CONTEXT only, NOT code dependency.
+        Wiki narrative might want to track this elsewhere.
+    O-3 mettail-rust + zariuq fork (out of scope per brief
+        §0.X) should be audited in a future source — recommend
+        a "S7 mettail-rust audit" addition to the MeTTa runtime
+        cluster pilot scope, OR fold into cross-org sweeps.
+
+================================================================
+END findings_claude.txt
+================================================================

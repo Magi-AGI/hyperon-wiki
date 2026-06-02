@@ -1,0 +1,144 @@
+{
+  "operations": [
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Contributing to OpenCog (14f758468a0d12a0)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Contributing to OpenCog\nMessages: 2\nDate range: 28 Aug 2015 to 2015-08-28\nSource: opencog@googlegroups.com\nThread ID: 14f758468a0d12a0\n\n============================================================\n\n--- Message 1/2 ---\nFrom: Elita Lobo\nDate: 28 Aug 2015\n\nHi All, I am Elita Lobo, 4th year ECE student of NIT Durgapur. I am interested in contributing to any OpenCog project involving machine learning. I have experience with C++, Python, Go and Machine Learning.\n\n--- Message 2/2 ---\nFrom: Linas Vepstas\nDate: 2015-08-28\n\nHi Elita, It is best if you have a clear idea of what you would want to do with OpenCog. The best way to learn is to start fixing bugs listed in github. After that, you might want to implement one of the ideas on the wiki: http://wiki.opencog.org/w/Ideas\n\n--linas\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Contributing to OpenCog (15013a1de089933f)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Contributing to OpenCog\nMessages: 6\nDate range: 2015-09-28 to 2015-09-30\nSource: opencog@googlegroups.com\nThread ID: 15013a1de089933f\n\n============================================================\n\n--- Message 1/6 ---\nFrom: Vatika Harlalka\nDate: 2015-09-28\n\nI am a 3rd year CS student and would like to contribute to OpenCog. I went through the issues on github but I am confused on which ones I should work on being a beginner.\n\n--- Message 2/6 ---\nFrom: 'Nil Geisweiller' via opencog\nDate: 2015-09-28\n\nThere is something that would be incredibly useful: fix one of OpenCog's failing unit tests. If you've compiled the unit tests you might have noticed not all of them pass. You may pick any one and try to figure out why it fails. Those failures prevent us from really using our nice circleci automatic unit test checker.\n\n--- Message 3/6 ---\nFrom: Vatika Harlalka\nDate: 2015-09-29\n\nSo, the anaphora test is in opencog/tests/nlp/anaphora/test_anaphora.py. Even after commenting all the test_* functions, the test is shown as failed.\n\n--- Message 4/6 ---\nFrom: Linas Vepstas\nDate: 2015-09-29\n\nThe test passes, for me, when I run it manually, when I set up the python library search paths correctly. This implies that there are some kind of python configuration issues when one runs make test.\n\n--- Message 5/6 ---\nFrom: Vatika Harlalka\nDate: 2015-09-30\n\nmake test tracks down to CTestTestfile.cmake. If the tests run independently then there must be an issue with the PYTHONPATH paths?\n\n--- Message 6/6 ---\nFrom: Linas Vepstas\nDate: 2015-09-30\n\nWell, if you read the README file in the tests/cython directory it will tell you how to run the tests by hand. If you do that, do they pass? If so, then what is different between the unit test, and what you do by hand?\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Contributing to OpenCog (150b357c75b814cf)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Contributing to OpenCog\nMessages: 3\nDate range: 29 Oct 2015 to 30 Oct 2015\nSource: opencog@googlegroups.com\nThread ID: 150b357c75b814cf\n\n============================================================\n\n--- Message 1/3 ---\nFrom: Dhruvin Patel\nDate: 29 Oct 2015\n\nHi, I am Senior Undergraduate Computer Science Student. I am deeply interested in AI and Machine Learning and hence wish to contribute to ML projects of OpenCog.\n\n--- Message 2/3 ---\nFrom: Amen Belayneh\nDate: 29 Oct 2015\n\nHi, welcome to the community :-) you can checkout http://wiki.opencog.org/wikihome/index.php/Meta-Optimizing_Semantic_Evolutionary_Search for an overview, check MOSES_for_Noobs for tutorials and the examples directory for more examples.\n\n--- Message 3/3 ---\nFrom: Dhruvin Patel\nDate: 30 Oct 2015\n\nThanks!\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Contributing to OpenCog (150f3d2a690792ac)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Contributing to OpenCog\nMessages: 3\nDate range: 10 Nov 2015 to 2015-11-12\nSource: opencog@googlegroups.com\nThread ID: 150f3d2a690792ac\n\n============================================================\n\n--- Message 1/3 ---\nFrom: Ehab Albadawy\nDate: 10 Nov 2015\n\nHi Guys, My name ehab albadawy, I want to contribute to one of opencog projects, specifically computer vision ones.\n\n--- Message 2/3 ---\nFrom: Linas Vepstas\nDate: 2015-11-11\n\nHi, Our machine-vision component used to be Destin, but last I talked to Ben, he seemed to have soured on it.\n\nWe currently do some ad-hoc work, using off-the-shelf software to detect human faces in a video stream for a robot demo w/ Hanson Robotics.\n\n--linas\n\n--- Message 3/3 ---\nFrom: Ben Goertzel\nDate: 2015-11-12\n\nI had been thinking about integrating deep learning based vision into OpenCog according to these ideas:\nhttp://blog.opencog.org/2015/11/01/putting-deep-perceptual-learning-in-opencog/\n\nbut now am thinking tensorflow may be a better choice than Theano...\n\n-- Ben\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Cool Mario AI Application (14b0f77615c5977c)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Cool Mario AI Application\nMessages: 2\nDate range: 21 Jan 2015 to 2015-01-22\nSource: opencog@googlegroups.com\nThread ID: 14b0f77615c5977c\n\n============================================================\n\n--- Message 1/2 ---\nFrom: Lareina Milambiling\nDate: 21 Jan 2015\n\nGiven OpenCog's interest in NLP and using a game world for AI simulations, I thought this would interest quite a few of you!\n\nhttp://dataconomy.com/mario-gets-self-aware-with-application-of-artificial-intelligence/\n\n--- Message 2/2 ---\nFrom: Murilo Saraiva de Queiroz\nDate: 2015-01-22\n\nA few years ago while Ben was visiting Brazil I suggested to him using a 2D platform world for opencog embodiment, in a fashion much similar to this Mario approach. But back then OpenCog was very focused in Second Life and other 3D worlds so this idea didn't receive any attention. :-D\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Cosine Distance of words (14f2ab431160989c)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Cosine Distance of words\nMessages: 7\nDate range: 2015-08-14 to 2015-10-17\nSource: opencog@googlegroups.com\nThread ID: 14f2ab431160989c\n\n============================================================\n\n--- Message 1/7 ---\nFrom: Rohit Shinde\nDate: 2015-08-14\n\nI have been writing code for computing cosine distance between two words. How do I compute the cosine score? Do I see if their decoded disjuncts exactly match?\n\n--- Message 2/7 ---\nFrom: Linas Vepstas\nDate: 2015-10-02\n\nYes. If a connector is missing, it is the same as being present with a count of zero. For example, bicycle has disjuncts (the- and is+) or (a- and was+), and car has (a- and was+) and (the- and ran+). The cosine similarity computes the sum of products of matching disjunct probabilities. Missing disjuncts count as zero.\n\n--- Message 3/7 ---\nFrom: Rohit Shinde\nDate: 2015-10-11\n\nOkay I get this now. Take all unique decoded disjuncts among a pair and calculate their cosine distance.\n\n--- Message 4/7 ---\nFrom: Linas Vepstas\nDate: 2015-10-11\n\nThat would be good. Extraction from what? There are no perl bindings to the atomspace, so I am confused.\n\n--- Message 5/7 ---\nFrom: Rohit Shinde\nDate: 2015-10-12\n\nYou had told me to write a script to automate disjunct extraction from sentences from wikipedia articles.\n\n--- Message 6/7 ---\nFrom: Linas Vepstas\nDate: 2015-10-12\n\nThe goal is always to maintain statistics as a result of parsing. One needs to obtain the disjuncts to compute the cosine-distance metric. The cosine-distance metric will be used to create clusters. Clustering takes a set of word-disjunct pairs, and converts them into a single (set-of-words)-disjunct pair. The idea is that the set-of-words resembles a part-of-speech.\n\n--- Message 7/7 ---\nFrom: Rohit Shinde\nDate: 2015-10-17\n\nYes, that is exactly what I am saying. We need to obtain disjuncts. I had to write a script and I am debugging it.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Culturia implementation description (ref PredicateLink Proposal) (15023a9412a3073c)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Culturia implementation description (ref PredicateLink Proposal)\nMessages: 4\nDate range: 2015-10-01 to 2015-10-05\nSource: opencog@googlegroups.com\nThread ID: 15023a9412a3073c\n\n============================================================\n\n--- Message 1/4 ---\nFrom: Amirouche Boubekki\nDate: 2015-10-01\n\nThis is mildly related to the discussion about PredicateLink. I experimented with hypergraph databases and wanted to see how atomspace schema compares to graphdb.\n\n--- Message 2/4 ---\nFrom: Linas Vepstas\nDate: 2015-10-02\n\nFor all practical purposes, the atomspace just stores graphs, and the word hypergraph does nothing but confuse. Actually, the atomspace stores forests which are collections of trees. It does NOT really store graphs in general.\n\n--- Message 3/4 ---\nFrom: Linas Vepstas\nDate: 2015-10-03\n\nThe pattern matcher can handle simple and complex PLN searches. The question is how to do this efficiently. Its NP-complete in general; the atomspace has some support for indexing, but this is still very much a work in progress.\n\n--- Message 4/4 ---\nFrom: Nil Geisweiller via opencog\nDate: 2015-10-05\n\nNote that you probably want to have the entity as member, not the inheritance link. The PM query for that would use an AndLink with PredicateLink and InheritanceLink.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Deer Conscious Cognition Project Unity, Opencog, ZeroMQ (1507239a05c17b7f)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Deer Conscious Cognition Project Unity, Opencog, ZeroMQ\nMessages: 5\nDate range: 2015-10-16 to 2015-10-22\nSource: opencog@googlegroups.com\nThread ID: 1507239a05c17b7f\n\n============================================================\n\n--- Message 1/5 ---\nFrom: Jim Rutt\nDate: 2015-10-16\n\nI have completed the first prototype of my first non-toy Opencog project. The main purpose was to get basic plumbing in place to connect Unity3D and Opencog via ZeroMQ. I achieved very close to real time synchronization on a 40hz frame rate simulation, pushing about 200,000 messages per second. [...]\n\n--- Message 2/5 ---\nFrom: Ben Goertzel\nDate: 2015-10-16\n\nThanks Jim -- Along with many other purposes, this may be useful as a playground for ECAN tweaking...\n\n--- Message 3/5 ---\nFrom: 'Nil Geisweiller' via opencog\nDate: 2015-10-20\n\nWow, it is really cool to see you are moving forward with that project, Jim! Have you put the code online?\n\n--- Message 4/5 ---\nFrom: Matt Chapman\nDate: 2015-10-20\n\nReally cool! Thanks for sharing. I am hoping to read your spec in full when I have time.\n\n--- Message 5/5 ---\nFrom: Jim Rutt\nDate: 2015-10-22\n\nI have uploaded the software for AIDeer as three github code repositories at github.com/memetic007. Warning: this code is rough prototype style code. I have long preferred building a throw away first prototype to achieve end-to-end connectivity and benchmark the couplings for performance.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Defining default stv for r2l output (150b76f68ef9d94e)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Defining default stv for r2l output\nMessages: 2\nDate range: 29 Oct 2015 to 30 Oct 2015\nSource: opencog@googlegroups.com\nThread ID: 150b76f68ef9d94e\n\n============================================================\n\n--- Message 1/2 ---\nFrom: Tareq Alkhaldi\nDate: 29 Oct 2015\n\nHi all, I've passed by this issue https://github.com/opencog/opencog/issues/781 and I'm wondering how is this applied in the new ure based r2l because PLN formulas break when dealing with the current default tv (1 0).\n\n--- Message 2/2 ---\nFrom: William Ma\nDate: 30 Oct 2015\n\nYes, a new default stv for R2L output was added in the past. However, at some point there was a decision to use ptv instead, to keep track the count of how many times a word is used. Then it was discovered the old default stv setting method kept overwriting the count.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Design for Implementing Neo4J as a backend store for OpenCog (14bf70c6f093acd8)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Design for Implementing Neo4J as a backend store for OpenCog\nMessages: 4\nDate range: 7 Mar 2015 to 2015-03-10\nSource: opencog@googlegroups.com\nThread ID: 14bf70c6f093acd8\n\n============================================================\n\n--- Message 1/4 ---\nFrom: tushar bihany\nDate: 7 Mar 2015\n\nHi all, I am Tushar pursuing Bachelors in Comp Sc. at BITS Pilani. I am interested in the implementation of Neo4J as the backend. I am proficient with JAVA and have robust knowledge about GraphDBs.\n\n--- Message 2/4 ---\nFrom: Ben Goertzel\nDate: 2015-03-08\n\nHi Tushar, I think either Amen Belayneh or Dagmawi Moges could mentor a GSoC project on a Neo4J Backing Store. Amen or Dagmawi, can you think of any simple tasks Tushar could do to build familiarity?\n\n-- Ben\n\n--- Message 3/4 ---\nFrom: Amen Belayneh\nDate: 8 Mar 2015\n\nHi Tushar, have you started playing with opencog? If not I suggest you start by building and running opencog and understanding the hypergraph representation and the Pattern-Matcher. For neo4j check http://neo4j.com/graphacademy/online-course/\n\n--- Message 4/4 ---\nFrom: Dagmawi Moges\nDate: 2015-03-10\n\nI believe that is very promising! neo4j-rest-client: http://neo4j-rest-client.readthedocs.org/en/latest/info.html\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+DeSTIN updates (14ac80fb087f1f0a)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: DeSTIN updates\nMessages: 3\nDate range: 7 Jan 2015 to 2015-01-07\nSource: opencog@googlegroups.com\nThread ID: 14ac80fb087f1f0a\n\n============================================================\n\n--- Message 1/3 ---\nFrom: Kevin Sebastian\nDate: 7 Jan 2015\n\nHello all, I just wanted to know updates on the DeSTIN project since summer.\n\n--- Message 2/3 ---\nFrom: Ben Goertzel\nDate: 2015-01-07\n\nHi Kevin, Honestly not a lot is happening with DeSTIN now. Tewodros made a python version but it doesn't yet have all the features of the C version. I am still very interested in DeSTIN but don't have a DeSTIN-appropriate funding source right now.\n\nben\n\n--- Message 3/3 ---\nFrom: Ben Goertzel\nDate: 2015-01-07\n\nI became convinced the C codebase was too messy, and decided we should try moving to a python version based on Theano. It seems the unique value we can add in the deep learning vision space has to do with exporting patterns from DeSTIN into the Atomspace, doing reasoning there, and sending feedback back to DeSTIN.\n\n-- Ben\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+details distributed processing for opencog with gearman (14feee1c3ab1a561)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: details distributed processing for opencog with gearman\nMessages: 4\nDate range: 2015-09-21 to 2015-09-23\nSource: opencog@googlegroups.com\nThread ID: 14feee1c3ab1a561\n\n============================================================\n\n--- Message 1/4 ---\nFrom: mandeep bhatia\nDate: 2015-09-21\n\nHi, I completed the distributed processing functionality with gearman. The functionality seems scalable from multiple threads to multiple machines. Code is in my atomspace github fork branch 'dev2'.\n\n--- Message 2/4 ---\nFrom: Ben Goertzel\nDate: 2015-09-21\n\nThat's cool, Mandeep, thanks!\n\nAs a detail point: I suggest you make the test case before the pull request...\n\n--- Message 3/4 ---\nFrom: mandeep bhatia\nDate: 2015-09-23\n\nHi Ben, I made the test, cleaned the code, added gearman dependency, wrote a description, and then I have made a pull request.\n\n--- Message 4/4 ---\nFrom: Linas Vepstas\nDate: 2015-09-23\n\nThe attached document sounds like good material for a README in the same directory as the code.\n\n--linas\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Discussion thread (large) (149d8b8dc86bf49c)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Discussion thread (large)\nMessages: 1\nDate range: 2014-12-01 to 2014-12-01\nSource: opencog@googlegroups.com\nThread ID: 149d8b8dc86bf49c\n\n============================================================\n\n--- Message 1/1 ---\nFrom: Linas Vepstas\nDate: 2014-12-01\n\nLarge discussion thread - content saved as raw Gmail JSON for later processing.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Distributional TV (150d7628746f5232)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Distributional TV\nMessages: 7\nDate range: 2015-11-05 to 2015-11-06\nSource: opencog@googlegroups.com\nThread ID: 150d7628746f5232\n\n============================================================\n\n--- Message 1/7 ---\nFrom: 'Nil Geisweiller' via opencog\nDate: 2015-11-05\n\nWe ultimately need distributional TV. The naive approach of using simple TV for ImplicationLink fails: if P has confidence 0 and Q has confidence 1, the implication should be almost surely true, but naive formula gives confidence 0. To overcome this one needs distributional TVs. I need distributional TVs today so I can remove all hacks from the AGI-15 demo.\n\n--- Message 2/7 ---\nFrom: 'Nil Geisweiller' via opencog\nDate: 2015-11-05\n\nMaybe one can derive a good and cheap formula using indefinite TV instead of simple TV in that case... So far we have only ever used simple TV and simple count TV.\n\n--- Message 3/7 ---\nFrom: Ben Goertzel\nDate: 2015-11-06\n\nIn general, if A with TV type T1 and B with TV type T2 are combined using an inference rule R to yield C, the rule is to project both T1 and T2 into the simplest form of TV for which there is a formula corresponding to rule R. We had indefinite TV in a version of Novamente Cognition engine, some code for it is still around, but it is very slow.\n\n--- Message 4/7 ---\nFrom: Ben Goertzel\nDate: 2015-11-06\n\nAfter some reflection, I concluded it would be better perhaps to skip indefinite TV and just go straight for distributional TV. This is because for applications involving numerical data we actually want distributions not just intervals. The simplest way is to consider step function distributions discretized into say, 10 bins. For the deduction rule, the independence-based TV formula here is just matrix multiplication.\n\n--- Message 5/7 ---\nFrom: 'Nil Geisweiller' via opencog\nDate: 2015-11-06\n\nSo if T1 is simple and T2 is indefinite, and R has 2 formulae, it would project T2 to simple TV and use the simple TV formula.\n\n--- Message 6/7 ---\nFrom: 'Nil Geisweiller' via opencog\nDate: 2015-11-06\n\nGot it. Yes, it feels to me going straight for distributional TV might just be more fruitful.\n\n--- Message 7/7 ---\nFrom: Ben Goertzel\nDate: 2015-11-06\n\nYeah. You got my suggestion...\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+docker file broken due to ocpkg (14ff2e0c3aec5e38)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: docker file broken due to ocpkg\nMessages: 2\nDate range: 21 Sep 2015 to 22 Sep 2015\nSource: opencog@googlegroups.com\nThread ID: 14ff2e0c3aec5e38\n\n============================================================\n\n--- Message 1/2 ---\nFrom: Fredy\nDate: 21 Sep 2015\n\nI tried building opencog through docker and it seems that the docker file is pointing to an old path for ocpkg. The ocpkg was moved to its own repository at opencog/ocpkg/ocpkg.\n\n--- Message 2/2 ---\nFrom: Amen Belayneh\nDate: 22 Sep 2015\n\nAll the dockerfiles for the sub-projects can be found in https://github.com/opencog/docker/. You can use docker-compose. I have updated that Dockerfile reported. Thanks for reporting it.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Draft designs for Perception Synthesis, Action Generation (14e9a54846e57a63)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Draft designs for Perception Synthesis, Action Generation\nMessages: 2\nDate range: 2015-07-17 to 2015-07-22\nSource: opencog@googlegroups.com\nThread ID: 14e9a54846e57a63\n\n============================================================\n\n--- Message 1/2 ---\nFrom: Ben Goertzel\nDate: 2015-07-17\n\nHere are draft designs for two OpenCog components, written mainly with\n\nrobotics applications in mind (but also to potentially be useful for\n\nvideo-game and other applications):\n\n\n\nPerception synthesis:\n\n\n\nhttp://wiki.hansonrobotics.com/w/Perception_synthesizer\n\n\n\nAction generation:\n\n\n\nhttp://wiki.hansonrobotics.com/w/High-Level_Design_for_Action_Generation\n\n\n\nlinked from\n\n\n\nhttp://wiki.hansonrobotics.com/w/Action_orchestrator\n\n\n\n\n\n...\n\n\n\nsome of the particulars are fairly tuned to the Hanson Robotics\n\napplication, but the overall architecture/dynamics proposals are\n\nintended to be of general applicability...\n\n\n\n-- Ben\n\n--- Message 2/2 ---\nFrom: Ean Schuessler\nDate: 2015-07-22\n\nThanks for the acknowledgement. <- SNARK!\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+embodiment installation mishap (14ea97fc6565dbf7)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: embodiment installation mishap\nMessages: 3\nDate range: 19 Jul 2015 to 2015-07-27\nSource: opencog@googlegroups.com\nThread ID: 14ea97fc6565dbf7\n\n============================================================\n\n--- Message 1/3 ---\nFrom: Gavriel Loria\nDate: 19 Jul 2015\n\nHi, I decided to try installing embodiment and Unity3D. I got this error: cp: cannot stat 'router': No such file or directory\n\n--- Message 2/3 ---\nFrom: Ricardo Ferrari\nDate: 21 Jul 2015\n\nHi. I had the same error. After running install-dependencies-trusty, a lot of download errors (file not found) are occurring.\n\n--- Message 3/3 ---\nFrom: 'Nil Geisweiller' via opencog\nDate: 2015-07-27\n\nGuys, thanks for reporting that problem. I think the current embodiment hasn't been tested for a while, we're in the midst of re-implementing it. You may try again after a few months. I've added a note in opencog's scripts/README.\n\nNil\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Errata PLN book (151698c5a77bd447)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Errata PLN book\nMessages: 6\nDate range: 2015-12-03 to 2015-12-03\nSource: opencog@googlegroups.com\nThread ID: 151698c5a77bd447\n\n============================================================\n\n--- Message 1/6 ---\nFrom: 'Nil Geisweiller' via opencog\nDate: 2015-12-03\n\nI think I found an error in the PLN book. First page of Chapter 6: the probability mass should be (1-b_i)/2 instead of b_i/2.\n\n--- Message 2/6 ---\nFrom: Matt Ikle\nDate: 2015-12-03\n\nI think that the b_i/2 are the tails and that 1-b_i is the center of the distribution. I.E. b=.05 would mean each tail would have area .025.\n\n--- Message 3/6 ---\nFrom: Ben Goertzel\nDate: 2015-12-03\n\nb is the frequency of possible worlds in which the observed frequency will lie in the interval [L, U]. So, it would be b=.95 typically, not b=.05. Wow, I haven't thought about this in eons... cool to see it getting used though.\n\n--- Message 4/6 ---\nFrom: Ben Goertzel\nDate: 2015-12-03\n\nNil, I think you are right... it seems when Matt wrote that he may have gotten temporarily confused as to whether we were using b=.95 or b=.05 as the convention...\n\n--- Message 5/6 ---\nFrom: Matthew Ikle\nDate: 2015-12-03\n\nLooking over the page now, I see the issue. Nil's interpretation works correctly and would be the easiest fix. Though I was probably trying to say the same thing using b = 0.05 but failed.\n\n--- Message 6/6 ---\nFrom: 'Nil Geisweiller' via opencog\nDate: 2015-12-03\n\nFixed on the wiki page, thanks.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Error while building opencog (14bf2cfd18c41568)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Error while building opencog\nMessages: 2\nDate range: 2015-03-07 to 2015-03-07\nSource: opencog@googlegroups.com\nThread ID: 14bf2cfd18c41568\n\n============================================================\n\n--- Message 1/2 ---\nFrom: sanuj sharma\nDate: 2015-03-07\n\nI got the following error while building opencog\n[ 65%] Built target PrimitiveExample\nLinking CXX shared library libpy-shell.so\n/usr/bin/ld: cannot find -lPythonEval\n\nI installed cython by using pip.\n\n--- Message 2/2 ---\nFrom: sanuj sharma\nDate: 2015-03-07\n\nAlright, built it and ran the tests successfully by running it as super user.\nsudo make\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Error while using octool to build opencog in Ubuntu 14.04 (14bfd3ce30877ef0)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Error while using octool to build opencog in Ubuntu 14.04\nMessages: 3\nDate range: 8 Mar 2015 to 9 Mar 2015\nSource: opencog@googlegroups.com\nThread ID: 14bfd3ce30877ef0\n\n============================================================\n\n--- Message 1/3 ---\nFrom: Chitrank Dixit\nDate: 8 Mar 2015\n\nHello OpenCog developers, I am trying to install OpenCog using octool. When I run ./octool -b I get: CMake Error: Invalid line in atom_types.script file: [MST_Connector <- LINK]\n\n--- Message 2/3 ---\nFrom: William Ma\nDate: 9 Mar 2015\n\nA recent pull request broke the build. Hopefully it will be fixed soon. In the mean time, you can edit the atom_types.script and capitalize MST_CONNECTOR to fix locally.\n\n--- Message 3/3 ---\nFrom: Amen Belayneh\nDate: 9 Mar 2015\n\nHi, I see your fork is a few commits behind, so it can't be the recent commit. If you are using a virtual machine make sure you have at least 2GB memory and follow steps at http://wiki.opencog.org/w/Building_OpenCog_on_Ubuntu\n",
+      "fetch_or_initialize": true
+    }
+  ]
+}

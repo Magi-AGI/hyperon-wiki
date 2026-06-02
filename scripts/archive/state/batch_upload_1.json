@@ -1,0 +1,144 @@
+{
+  "operations": [
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Befuddling bug working with LG dictionary (14fe8a5ac55841d7)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Befuddling bug working with LG dictionary\nMessages: 6\nDate range: 2015-09-19 to 2015-09-24\nSource: opencog@googlegroups.com\nThread ID: 14fe8a5ac55841d7\n\n============================================================\n\n--- Message 1/6 ---\nFrom: Gavriel Loria\nDate: 2015-09-19\n\nBy running my function wg-list, I appear to be changing what lg-get-dict-entry returns for a given WordNode. I am pretty confused how this could be.\n\n--- Message 2/6 ---\nFrom: Linas Vepstas\nDate: 2015-09-23\n\nWhat you are seeing is a rather wonky behavior. It returns all connector sets for a word; since you added a new one without deleting the old one you get all. Some words appear in the LG dict as nouns and as verbs; thus you get multiple sets. When you create the new definition, you should forcibly delete the old one.\n\n--- Message 3/6 ---\nFrom: William Ma\nDate: 2015-09-23\n\nYou should not use LgWordCset to temporary store the connector. What you added is just a subset. Use a different atom type to wrap them. Otherwise you are just corrupting the disjuncts list.\n\n--- Message 4/6 ---\nFrom: Gavriel Loria\nDate: 2015-09-24\n\nDo you have simple instructions for creating a new atom type?\n\n--- Message 5/6 ---\nFrom: Linas Vepstas\nDate: 2015-09-24\n\nEdit this file: /opencog/nlp/types/atom_types.script add stuff to the bottom, and recompile and reinstall. It should all just work.\n\n--- Message 6/6 ---\nFrom: Linas Vepstas\nDate: 2015-09-24\n\nAlso, please be aware that conceptually MyNewLinkType with Atoms is equivalent to an EvaluationLink with PredicateNode MyNewLinkType and ListLink. The first is less verbose but means the same thing.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+benevolent ai grant (14cb98d8efd8920d)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: benevolent ai grant\nMessages: 2\nDate range: 2015-04-14 to 2015-04-15\nSource: opencog@googlegroups.com\nThread ID: 14cb98d8efd8920d\n\n============================================================\n\n--- Message 1/2 ---\nFrom: mjsduncan\nDate: 2015-04-14\n\ncan we get some of this?\nhttp://www.theverge.com/2015/1/15/7551687/elon-musk-donates-10-million-to-prevent-killer-ai\n\n--- Message 2/2 ---\nFrom: Ben Goertzel\nDate: 2015-04-15\n\nI'm applying ... my application passed the first round of filtering but there's another (more difficult) round to come...\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+BFD not found while building cogutils (14d32177326b6098)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: BFD not found while building cogutils\nMessages: 3\nDate range: 7 May 2015 to 2015-05-08\nSource: opencog@googlegroups.com\nThread ID: 14d32177326b6098\n\n============================================================\n\n--- Message 1/3 ---\nFrom: Ainish Dave\nDate: 7 May 2015\n\nI am trying to build cogutils, but it gives me: BFD not found, binutils-dev not installed. Though binutils-dev is installed and up-to-date.\n\n--- Message 2/3 ---\nFrom: Misgana Bayetta\nDate: 2015-05-08\n\nHi, this has been discussed here https://github.com/opencog/cogutils/issues/1\n\n--- Message 3/3 ---\nFrom: Linas Vepstas\nDate: 2015-05-08\n\nAinish, just ignore it. The stuff that you will be doing should not result in cogserver crashes, so this is not critical for you.\n\n--linas\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Binding language inter-operation (14fda3824d23f61c)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Binding language inter-operation\nMessages: 2\nDate range: 2015-09-17 to 2015-09-17\nSource: opencog@googlegroups.com\nThread ID: 14fda3824d23f61c\n\n============================================================\n\n--- Message 1/2 ---\nFrom: 'Nil Geisweiller' via opencog\nDate: 2015-09-17\n\nHi, I'd like to 1. Load PLN rules coded in Scheme in the AtomSpace, 2. Play with them in Haskell. Is there a way to do that today without using the cogserver?\n\nNil\n\n--- Message 2/2 ---\nFrom: Linas Vepstas\nDate: 2015-09-17\n\nEasiest way to solve this would be to write a haskell wrapper for the scheme eval function, and just call that. Just wrap the C++ eval_scheme function in haskell. Then you'd say: scheme_eval(\"(load-from-path \\\"pln.rule.whatever\\\")\")\n\nProviding the inverse would be cool too, allowing arbitrary haskell code to be invoked from scheme.\n\n--linas\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Buildbot Maintenance (14bdb2bd62955146)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Buildbot Maintenance\nMessages: 2\nDate range: 2 Mar 2015 to 2 Mar 2015\nSource: opencog@googlegroups.com\nThread ID: 14bdb2bd62955146\n\n============================================================\n\n--- Message 1/2 ---\nFrom: Amen Belayneh\nDate: 2 Mar 2015\n\nHi all,\n\nThe buildbot will be down for the next 30 minutes. Sorry for the inconvenience.\n\n--- Message 2/2 ---\nFrom: Amen Belayneh\nDate: 2 Mar 2015\n\nBuildbot is back up.\nhttp://buildbot.opencog.org:8010/waterfall\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Building OpenCog (14c395a384122279)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Building OpenCog\nMessages: 6\nDate range: 2015-03-20 to 2015-04-23\nSource: opencog@googlegroups.com\nThread ID: 14c395a384122279\n\n============================================================\n\n--- Message 1/6 ---\nFrom: Tim Schwab\nDate: 2015-03-20\n\nI installed Ubuntu 14.04 fresh. The install-dependencies-trusty script fails with unmet dependencies for libcheese-gtk23 and libclutter. Universe repositories are enabled.\n\n--- Message 2/6 ---\nFrom: Linas Vepstas\nDate: 2015-03-20\n\nAfter installing ubuntu, you should say apt-get update then apt-get upgrade. These errors have nothing to do with opencog. Try uninstalling gstreamer1.0-clutter or libcheese-gtk23 and then run apt-get -f a few times. I am guessing some archaic version of cheese is screwing things up. Last time I was bit, it was by nvidia.\n\n--- Message 3/6 ---\nFrom: Tim Schwab\nDate: 2015-03-20\n\nYeah, I had done that as well. I did it again just to make sure, and got the same error message.\n\n--- Message 4/6 ---\nFrom: Linas Vepstas\nDate: 2015-03-21\n\nDid you enable universe as the error message suggests? These errors only occur for a few rare reasons: a badly built package, or a package maintainer mistake. Try uninstalling the problematic packages.\n\n--- Message 5/6 ---\nFrom: Tim Schwab\nDate: 2015-03-21\n\nThanks so much, I was able to download the dependencies and build it after I removed both of those.\n\n--- Message 6/6 ---\nFrom: Felix Velazquez\nDate: 2015-04-23\n\nIt also worked for me after installing the NVIDIA drivers for my graphics card, so I guess that is the right explanation.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Build Errors (14ddea61d8d026fe)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Build Errors\nMessages: 13\nDate range: 10 Jun 2015 to 13 Jun 2015\nSource: opencog@googlegroups.com\nThread ID: 14ddea61d8d026fe\n\n============================================================\n\n--- Message 1/13 ---\nFrom: Roman Treutlein\nDate: 10 Jun 2015\n\nHello,\n\ni am currently trying to build OpenCog with the goal of eventually creating \nAUR (Arch User Repository) Packages.\n\nWhile building Moses I had 2 Errors where the != Operater had clashing \noverloads defined in .../boost/variant.hpp and \n.../moses/moses/comboreduct/combo/vertex.h\n\n [...]\n\n--- Message 2/13 ---\nFrom: 'Nil Geisweiller' via opencog\nDate: 2015-06-11\n\nHi,\n\nI have boost 1.54, I'm unable to reproduce that, could be a too new \nversion of boost indeed. Note that you don't need to compile MOSES in \norder to compile/use opencog. The subset that depends on MOSES would \nsimply not be compiled.\n\nNil\n\n--- Message 3/13 ---\nFrom: Roman Treutlein\nDate: 11 Jun 2015\n\nHey,\n\nyea that seems to have fixed that error. Also now i get the following:\n\n../libcomboreduct.so: undefined reference to \n`opencog::combo::operator>>(std::istream&, \nopencog::tree<boost::variant<double, opencog::combo::enum_t, \nopencog::combo::id::builtin, opencog::combo::id::wild_card, \n [...]\n\n--- Message 4/13 ---\nFrom: Roman Treutlein\nDate: 11 Jun 2015\n\nOkay got it to work fine on Ubuntu.\n\nI was trying test the unity3d World a bit but unfortunately it fails with:\n\n\"[ERROR] OAC is not available, dying gracefully.\"\n\nThis is the output on the Embodiment Side after connecting.\n\nZeroMQ publish end point is: tcp://127.0.0.1:18002\nstd::exception\n [...]\n\n--- Message 5/13 ---\nFrom: Linas Vepstas\nDate: 2015-06-11\n\nOn Thu, Jun 11, 2015 at 6:45 AM, Roman Treutlein <lordmord94@gmail.com>\nwrote:\n\nDon't know.  is cxxtest version 4 not compatible with version 3? Anyway,\nall the various compatibility bugs should be tracked down and fixed.\n\n--linas\n\n--- Message 6/13 ---\nFrom: Roman Treutlein\nDate: 11 Jun 2015\n\nWell in the readme files it says that opencog requires version 3 and is not \ncompatible with version 4.\n\nI guess that is just outdated since it seems to work fine with version 4.\n\nif you want i can create a pull requests with the readmes changed. This \n [...]\n\n--- Message 7/13 ---\nFrom: Linas Vepstas\nDate: 2015-06-11\n\nIf it actually works, then, yes, I guess the readme's are out of date.\nYes, please send a pull request!\n\nI have this:\n\n$ cxxtestgen --version\nThis is CxxTest version 4.3.\n\nand it works for me...\n\n--linas\n\nOn Thu, Jun 11, 2015 at 3:09 PM, Roman Treutlein <lordmord94@gmail.com>\nwrote:\n\n--- Message 8/13 ---\nFrom: Roman Treutlein\nDate: 11 Jun 2015\n\nYea in my fresh install i also have version 4.3\n\nPull requests sent.\n\nregards\n/roman\n\n--- Message 9/13 ---\nFrom: Amen Belayneh\nDate: 11 Jun 2015\n\nHi,\n\nhave you \ntried https://github.com/opencog/opencog/blob/master/scripts/install-archlinux-dependencies.sh?\n\n--- Message 10/13 ---\nFrom: Roman Treutlein\nDate: 12 Jun 2015\n\nHi Amen,\n \n\nyes and it does install most of the dependencies but fails with some. In \nthe end my build problems remain. Ill probably try to work it out next week.\nAlso the script seems to be meant for 32bit systems and not 64bit which is \nwhat i am using..\n\nregards\n/Roman\n\n--- Message 11/13 ---\nFrom: Amen Belayneh\nDate: 13 Jun 2015\n\nactually I tried it in a docker container which runs only on 64 bit system. \nWhat made you think it is for 32 bit sytem?\n\n--- Message 12/13 ---\nFrom: Roman Treutlein\nDate: 13 Jun 2015\n\nThe script tried to install gcc from multilib meaning the 32bit version \nwhich clashed with the 64bit version i already have installed. Also it says \nsomething about 32bit in the Comments of the Script.\n\n--- Message 13/13 ---\nFrom: Amen Belayneh\nDate: 13 Jun 2015\n\nOh yap\n\nIf you have any improvements that will make it work seamlessly on both 32 \nand 64 bit systems please don't hesitate to make a pull request. \n\nThanks:-)\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+cant build opencog (14c83cd72c3b655a)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: cant build opencog\nMessages: 3\nDate range: 4 Apr 2015 to 6 Apr 2015\nSource: opencog@googlegroups.com\nThread ID: 14c83cd72c3b655a\n\n============================================================\n\n--- Message 1/3 ---\nFrom: Aswin Raj\nDate: 4 Apr 2015\n\nThis is the error when trying to build opencog in ubuntu 14.10\n\nAtomUtils.cc:133:25: error: converting to 'opencog::UnorderedHandleSet' from initializer list would use explicit constructor\n\n--- Message 2/3 ---\nFrom: Curtis M. Faith\nDate: 4 Apr 2015\n\nI don't get that error. Did you pull the latest off master? What version of gcc are you using?\n\n--- Message 3/3 ---\nFrom: Aswin Raj\nDate: 6 Apr 2015\n\nI have pastebinned the entire thing and posted below. Gcc version is 4.9.1. Yep I pulled the latest master branch.\nhttp://pastebin.com/mLVgz5Ju\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Can't match simple AndLink (151109da608fd6ed)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Can't match simple AndLink\nMessages: 2\nDate range: 2015-11-16 to 2015-11-16\nSource: opencog@googlegroups.com\nThread ID: 151109da608fd6ed\n\n============================================================\n\n--- Message 1/2 ---\nFrom: Nil Geisweiller\nDate: 2015-11-16\n\nHi, I'm trying to match a very simple AndLink A B. I tried PresentLink and extraneous AndLink wrappers but nothing works. What am I doing wrong?\n\nNil\n\n--- Message 2/2 ---\nFrom: Nil Geisweiller\nDate: 2015-11-16\n\nThe log looks suspicious I'm pretty sure it's a bug, I'll create a unit test and github issue for it...\n\nNil\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Can't run opencog on lubuntu 14.04.03 (150c0be3afc951d7)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Can't run opencog on lubuntu 14.04.03\nMessages: 3\nDate range: 31 Oct 2015 to 31 Oct 2015\nSource: opencog@googlegroups.com\nThread ID: 150c0be3afc951d7\n\n============================================================\n\n--- Message 1/3 ---\nFrom: Kendrick Tan\nDate: 31 Oct 2015\n\nHi all, i've successfully built opencog on lubuntu 14.04.03, however upon running cogserver it throws up this error: symbol lookup error: libPersistZmqModule.so: undefined symbol\n\n--- Message 2/3 ---\nFrom: Amen Belayneh\nDate: 31 Oct 2015\n\nHi, as suggested in https://github.com/opencog/opencog/issues/1843 just remove the PersistZmqModule line from the opencog.conf file in your opencog/build/lib directory.\n\n--- Message 3/3 ---\nFrom: Kendrick Tan\nDate: 31 Oct 2015\n\nOops, i somehow missed that, anyhow thank you amen, you've been a great help!\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+CircleCI is down, with a haskell build error (1505f23722ef96b0)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: CircleCI is down, with a haskell build error\nMessages: 4\nDate range: 2015-10-12 to 2015-10-15\nSource: opencog@googlegroups.com\nThread ID: 1505f23722ef96b0\n\n============================================================\n\n--- Message 1/4 ---\nFrom: Linas Vepstas\nDate: 2015-10-12\n\nI am seeing this build error on circleCI: Process exited with code: ExitFailure (-9) (THIS MAY INDICATE OUT OF MEMORY). Could this please be fixed?\n\n--linas\n\n--- Message 2/4 ---\nFrom: 'Nil Geisweiller' via opencog\nDate: 2015-10-13\n\nHi, I bet this is related to Roman's Stack LTS version change. I tried to revert it but now I'm getting another problem.\n\nNil\n\n--- Message 3/4 ---\nFrom: Roman Treutlein\nDate: 14 Oct 2015\n\nHey, there is some special handling for the VariableNode so that it can be used everywhere. And the introduction of the Glob_Node resulted in an infinite loop. I'll fix that code and create a pull request.\n\n--- Message 4/4 ---\nFrom: 'Nil Geisweiller' via opencog\nDate: 2015-10-15\n\nOh, great you found the problem!\n\nNil\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+CLion Cplusplus IDE (1489372350ae8bde)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: CLion Cplusplus IDE\nMessages: 3\nDate range: 2014-09-20 to 2015-05-26\nSource: opencog@googlegroups.com\nThread ID: 1489372350ae8bde\n\n============================================================\n\n--- Message 1/3 ---\nFrom: Keyvan Mir Mohammad Sadeghi\nDate: 2014-09-20\n\nHi all, I just came around a new C++ IDE from Jetbrains, check it out: http://www.jetbrains.com/clion/\n\nWe already use IntelliJ IDEA and PyCharm in our project, so a brand new IDE for C++ from Jetbrains with built-in CMake integration seems shiny to me.\n\n--- Message 2/3 ---\nFrom: David Hart\nDate: 2014-09-23\n\nCan the JetBrains environment be dockerized? We already have a C++ development environment that is dockerized; it is not as pretty as the JetBrains IDE, but docker is a far more useful and productive tool for this type of work.\n\n--- Message 3/3 ---\nFrom: Nil Geisweiller\nDate: 2015-05-26\n\nLast time I looked at it (a few months ago) C++11 wasn't supported by cygwin. For that reason (amongst others), opencog cannot currently get compiled under cygwin.\n\nNil\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+cog-get-pred examples or documentation (14b84866348901dd)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: cog-get-pred examples or documentation\nMessages: 7\nDate range: 2015-02-13 to 2015-02-17\nSource: opencog@googlegroups.com\nThread ID: 14b84866348901dd\n\n============================================================\n\n--- Message 1/7 ---\nFrom: Jim Rutt\nDate: 2015-02-13\n\nThe cog-get-pred scheme procedure sounds useful but the description doesn't provide much on how to use it.\n\n--- Message 2/7 ---\nFrom: Linas Vepstas\nDate: 2015-02-13\n\nI just pushed a fix enabling documentation for all functions in utilities.scm. cog-get-pred returns a list of predicates of the given type that an instance participates in via EvaluationLinks.\n\n--- Message 3/7 ---\nFrom: Jim Rutt\nDate: 2015-02-17\n\nDocs are helpful, but calling them up from the guile prompt doesn't seem to work, I get a syntax error.\n\n--- Message 4/7 ---\nFrom: Jim Rutt\nDate: 2015-02-17\n\nAlso, the documentation isn't quite clear enough. cog-get-pred with a specific PredicateNode returns an empty list.\n\n--- Message 5/7 ---\nFrom: Linas Vepstas\nDate: 2015-02-17\n\nThe shell at port 17001 does not support the meta-commands, such as ,describe. You would have to use either the repl shell at 18001 or use guile directly.\n\n--- Message 6/7 ---\nFrom: Linas Vepstas\nDate: 2015-02-17\n\nThe intended use is: (cog-get-pred (ConceptNode \"Dog\") 'PredicateNode). Most utilities are very short, typically 5-10 lines of code, and documentation tends to exceed the code length.\n\n--- Message 7/7 ---\nFrom: Jim Rutt\nDate: 2015-02-17\n\nOk, that worked. Close to enough to what I need at this time.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Cogserver fails to load python atomspace module on fresh build (14d3088ce7b87179)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Cogserver fails to load python atomspace module on fresh build\nMessages: 1\nDate range: 2015-05-08 to 2015-05-08\nSource: opencog@googlegroups.com\nThread ID: 14d3088ce7b87179\n\n============================================================\n\n--- Message 1/1 ---\nFrom: Curtis M. Faith\nDate: 2015-05-08\n\nCogserver fails to load python atomspace module on fresh build. The error is related to PythonModule import.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Compile check as you type with emacs (14f01fb997971e9f)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Compile check as you type with emacs\nMessages: 2\nDate range: 2015-08-06 to 6 Aug 2015\nSource: opencog@googlegroups.com\nThread ID: 14f01fb997971e9f\n\n============================================================\n\n--- Message 1/2 ---\nFrom: 'Nil Geisweiller' via opencog\nDate: 2015-08-06\n\nHi guys,\n\n\n\njust a little notice for the emacs users out there, I've recently \n\nreplaced the semi dis-functioning flymake by flycheck in my personal \n\nemacs config, I describe the process here\n\n\n\nhttp://wiki.opencog.org/w/Flycheck_help\n\n\n\nultra simple as you may see. It works like a charm! I've already managed \n\nto catch a few errors without having to fire the compiler after just 20 \n\nminutes of use.\n\n\n\nIt supports pretty much any language out there, not just C/C++.\n\n\n\nHave fun!\n\nNil\n\n--- Message 2/2 ---\nFrom: Yi-Shan Chen\nDate: 6 Aug 2015\n\nThanks Nil! That's really useful.\n\n\n\nI just found flycheck two days ago occasionally, but I didn't install it at \n\nthat time.\n\nThen I saw this post today :-)\n\n\n\nYiShan\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Concerning 'Opencog for Noobs' (14ea53d3b1070a3f)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Concerning 'Opencog for Noobs'\nMessages: 3\nDate range: 19 Jul 2015 to 2015-07-19\nSource: opencog@googlegroups.com\nThread ID: 14ea53d3b1070a3f\n\n============================================================\n\n--- Message 1/3 ---\nFrom: Daniel Selvon\nDate: 19 Jul 2015\n\nThe tutorial helps you compile opencog but once the server is up, what next? How do I send information to opencog? How do I program it to process information the way I want?\n\n--- Message 2/3 ---\nFrom: Linas Vepstas\nDate: 2015-07-19\n\nProbably the most interesting thing to do with opencog in the near future will be to play with the chatbot. However, it is currently almost non-functional. We hope to hook it up to a virtual hanson robotics head.\n\nThere is no way to have it automagically crunch weather data. There is a genetic program learner, but its never been used on extended spatial data.\n\n--linas\n\n--- Message 3/3 ---\nFrom: Linas Vepstas\nDate: 2015-07-19\n\nTo use moses, you'd have to organize your data into tabular form: lots of rows, lots of columns, trying to predict one column as a function of the others. Moses works well and has been applied in various places, including medical data: predicting patient behavior based on unstructured text.\n\nPLN is something completely different; it is a way of making probabilistic logical inferences.\n\n--linas\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Continuing work on the Simplified Word Grammar Parser (14f49c4acbfd3f7c)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Continuing work on the Simplified Word Grammar Parser\nMessages: 2\nDate range: 19 Aug 2015 to 2015-08-20\nSource: opencog@googlegroups.com\nThread ID: 14f49c4acbfd3f7c\n\n============================================================\n\n--- Message 1/2 ---\nFrom: Gavriel Loria\nDate: 19 Aug 2015\n\nHi, I am writing this post as an update about my GSoC project. I'm currently fixing some last bugs parsing artificially created sentences before moving on to testing real sentences. [...]\n\n--- Message 2/2 ---\nFrom: Linas Vepstas\nDate: 2015-08-20\n\nYou should always be pushing your latest code to your github repo. If nothing else, it serves as a backup copy, so that you don't lose the code if your system crashes, your laptop gets stolen, etc. It also gives others a chance to review, discuss, etc.\n\n--linas\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Contirbuting to Opencog - December 2015 (151677ede3b9359a)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Contirbuting to Opencog - December 2015\nMessages: 4\nDate range: 2015-12-03 to 2015-12-04\nSource: opencog@googlegroups.com\nThread ID: 151677ede3b9359a\n\n============================================================\n\n--- Message 1/4 ---\nFrom: Nitesh Bhutani\nDate: 2015-12-03\n\nI am a recent graduate interested in AI. I have installed opencog and started playing with Python bindings. I am interested in MOSES for Reinforcement Learning, DeSTIN redesign, and Deep Learning perception.\n\n--- Message 2/4 ---\nFrom: Ben Goertzel\nDate: 2015-12-03\n\nIt would be great to have you work on MOSES RL but now the best thing would be to do this in Minecraft not Unity3D, we have Minecraft hooks for OpenCog now. Nil Geisweiller can guide you. DeSTIN Redesign is pretty much obsolete. I am in the middle of writing a document clarifying Deep Learning perception.\n\n--- Message 3/4 ---\nFrom: 'Nil Geisweiller' via opencog\nDate: 2015-12-03\n\nThat is an ambitious project that would require you to study MOSES and the embodiment code in depth. I am not very familiar with the new embodiment code, but I can certainly guide you through MOSES. Feel free to ping me on Slack.\n\n--- Message 4/4 ---\nFrom: Ben Goertzel\nDate: 2015-12-04\n\nEmbodiment is reimplemented now, and the new version is what is used by the Minecraft bridge. A lot may be doable in deep learning via connecting existing python deep learning libraries to OpenCog appropriately.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Contribute to Opencog (14c0fc9b47bc2fc4)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Contribute to Opencog\nMessages: 6\nDate range: 2015-03-12 to 2015-03-15\nSource: opencog@googlegroups.com\nThread ID: 14c0fc9b47bc2fc4\n\n============================================================\n\n--- Message 1/6 ---\nFrom: BITTU KUMAR\nDate: 2015-03-12\n\nYou suggested me two GSoC topics: Concept Creation from Predicates and Web UI for OpenCog NLP pipeline. I went through the wiki pages but still don't have the complete idea.\n\n--- Message 2/6 ---\nFrom: Amen Belayneh\nDate: 2015-03-12\n\nWith regards to the NLP web UI first play around following the steps at Running Relex2Logic with OpenCog and Atomspace visualizer.\n\n--- Message 3/6 ---\nFrom: BITTU KUMAR\nDate: 2015-03-13\n\nI am having problem understanding how the components are interlinked.\n\n--- Message 4/6 ---\nFrom: Amen Belayneh\nDate: 2015-03-13\n\nRead the Relex and Relex2logic wiki pages to get an overview.\n\n--- Message 5/6 ---\nFrom: BITTU KUMAR\nDate: 2015-03-13\n\nI have got much idea about the system now, thanks to the OpenCogPrime section of wiki.\n\n--- Message 6/6 ---\nFrom: Amen Belayneh\nDate: 2015-03-15\n\nNot to relex but to opencog.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+Contributing to MOSES and the embodiment module (14c22297f0d52579)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: Contributing to MOSES and the embodiment module\nMessages: 2\nDate range: 13 Mar 2015 to 2015-03-16\nSource: opencog@googlegroups.com\nThread ID: 14c22297f0d52579\n\n============================================================\n\n--- Message 1/2 ---\nFrom: Tapiawala Sahil\nDate: 13 Mar 2015\n\nI understood why the need for the shift from 3dspaceMaps to octomaps, but am having no headway with its implementation in code. Could you please guide me? Also Could you please elaborate on the scope of improving the hBOA algorithm?\n\n--- Message 2/2 ---\nFrom: Linas Vepstas\nDate: 2015-03-16\n\nThanks! I am hoping that perhaps Nil can provide a more detailed response...\n\nThe best way to understand what is needed for the 3d/octo space map is to understand how it is going to be used. Unfortunately, I don't know this myself...\n\nthe hBOA problem is very different, and requires understanding how MOSES works.\n\n--linas\n",
+      "fetch_or_initialize": true
+    }
+  ]
+}

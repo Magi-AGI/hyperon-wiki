@@ -1,0 +1,1017 @@
+================================================================
+MeTTa runtime cluster pilot — Source 4 brief
+F1R3FLY-io/MeTTaIL + Adam-Vandervorst/FormalMeTTa
+================================================================
+
+REVIEWER DISPATCH FRAMING — PACKAGED REVIEW + EXTRACTION RELAY
+--------------------------------------------------------------
+
+Per V3-PROTOCOL-1 ESCALATE-TO-(i)-BEFORE-S4 (promoted at MeTTa
+runtime S3 close 2026-05-13 per user OPTION 3 authorization
+2026-05-11; see `feedback_gemini_option_i_confirmation_only_
+mode.md`):
+
+This brief is delivered to Codex AND Gemini as a SINGLE PACKAGED
+RELAY. Brief-review feedback AND extraction begin in the same
+session. **Reviewers SHOULD NOT wait for a separate "Extraction
+Trigger" — review the brief, then proceed to extract under the
+protocol noted below.** This packaging supersedes the P10.23
+brief-review-then-trigger sequence used for S1-S3, addressing
+the 3-for-3 P10.23 recurrence observed in those sources.
+
+**Reviewer roles for S4**:
+
+  Codex (citation-grade primary):
+    - Independent extraction with file:line cites verified
+      against the actual source tree.
+    - Standard V3-PROTOCOL-2 verbatim cites for any benchmark
+      or numerical claim.
+    - All §6 questions with cite-grade evidence anchors.
+
+  Gemini (CONFIRMATION-ONLY MODE, per V3-PROTOCOL-1 / P10.24):
+    - Synthesis verdicts only — one §7-vocabulary tag per
+      question (single-label per V1-PROTOCOL-1 + V2-PROTOCOL-1
+      specificity).
+    - Cross-source forwards / cluster-narrative claims (high-
+      level only).
+    - **NO self-supplied file:line cites** — orchestrator will
+      not pre-verify them and they add noise.
+    - **NO V4-11 self-verification table** — V4-11 ARCHIVED
+      per S3 H.2 (100% self-fab observed; protocol no longer
+      reliable).
+    - P12 verbatim still applies for stats Gemini queries
+      directly, but the bar is "verbatim from actual command
+      output" not "re-stated from memory".
+
+  Orchestrator-Claude:
+    - Independent extraction (findings_claude.txt) with cite-
+      grade evidence anchors.
+    - Three-way reconciliation drafted from Codex + Claude
+      citation-grade evidence + Gemini synthesis-claim
+      adjudication.
+
+
+§0. SOURCE PIN + WORKSPACE INVENTORY
+====================================
+
+S4 covers two repos in the MeTTa-IL / formal-spec axis:
+
+  S4.A = F1R3FLY-io/MeTTaIL (active development)
+  S4.B = Adam-Vandervorst/FormalMeTTa (archival reference)
+
+These were originally bundled in the MeTTa runtime cluster
+pilot's 6-source split at S1 close (2026-05-08) as the "MeTTa-
+IL track / formal-spec track" axis. Two adjacent repos
+(F1R3FLY-io/mettail-rust, zariuq/mettail-rust) are OUT OF SCOPE
+for S4 — see §0.X.
+
+§0.A — S4.A MeTTaIL source pin
+------------------------------
+
+  Repo:     F1R3FLY-io/MeTTaIL
+  Origin:   https://github.com/F1R3FLY-io/MeTTaIL.git
+  Local:    E:\GitHub\hyperon reference\MeTTaIL\
+  Branch:   main (default)
+  HEAD:     3343fbea78af5543d2469d882dd5736e3ca983b2
+            (Lucius Meredith 2026-03-02 10:55:27 -0800
+             "fixing overzealous commit")
+
+  Tag history: NO TAGS at HEAD (orchestrator-pre-fetched via
+  `git tag --sort=-creatordate` returned empty).
+
+  Workspace shape (orchestrator inventory):
+
+    Root files:
+      AGENTS.md / CLAUDE.md / GEMINI.md (LLM-context docs)
+      LICENSE
+      README.md (17 lines — minimal prereqs+build+run)
+      WSL.txt
+      hypercube.md  (GSLT theory: GSLT → typed GSLT transform)
+      transformation.md (GSLT presentation theory — ω-order
+                         multisorted algebraic theory)
+      build / clean / install-env.sh / test (build scripts)
+
+    Sub-projects (4):
+      MeTTaIL/         — Scala+BNFC main IL implementation
+        src/, build.sbt, project/
+      GSLT/            — Graph-Structured Lambda Theory
+                         (foundational math, used by MeTTaIL/)
+        src/
+      MeTTaIL-Gillespie/ — Rust stochastic simulator + fuzzer
+        Cargo.toml, src/ (augmented_rule/fuzzer/gillespie/
+        language_ext/lib/quantum/rate_map/rate_value/
+        rhocalc_fuzzer/rhocalc_stochastic/simulator/
+        spatial_behavior)
+        session.vibe (LLM session file — unusual artifact)
+      MeTTaIL2Matrix/  — Rust compile-to-upper-triangular-
+                         matrices for GPU execution
+        Cargo.toml, README.md, src/ (automata/error/lib),
+        examples/ (dependency_analysis/rholang_sync_tree)
+      papers/
+        agents/        — agent-related papers
+        mqcalc/        — MQ-calculus paper (per Meredith's
+                         commit message 2026-03-02)
+      lib/             — auxiliary
+
+  Tracked-file inventory (orchestrator-verified):
+                78 files at HEAD `3343fbe`
+                  27 .scala
+                  17 .rs (split: 12 in MeTTaIL-Gillespie/
+                          + 5 in MeTTaIL2Matrix/)
+                   8 .module (GSLT example modules:
+                              Rholang.module + variants)
+                   4 .md (READMEs + design docs)
+                   2 .toml (Cargo for the two Rust sub-projs)
+                   2 .tex + 2 .pdf + 2 .bib (papers/)
+                   2 .sbt (Scala build)
+                   1 .zip + 1 .vibe + 1 .txt + 1 .test
+                   + 1 .sh + 1 .properties
+
+  Top-15 contributors by all-time commit count (pre-fetched
+  via `git shortlog -sn --all`):
+
+       136  SerhiiK-DevBrother      (cross-pilot S3 identity:
+                                     = Serhii Lypko per
+                                     S3 §0.B; testing
+                                     operators contributor;
+                                     combined S3 count: 128)
+       129  Mike Stay               (CROSS-PILOT identity:
+                                     = S3 R3.NEW-5 F1R3FLY-
+                                     io cofounder + S3
+                                     MeTTa-Compiler initial-
+                                     commit author
+                                     `9f03102 2025-09-03`)
+        36  Lucius Meredith         (CROSS-PILOT identity:
+                                     = S3 C3-1.E candidate;
+                                     F1R3FLY-io co-founder
+                                     per S3 brief §3 PA
+                                     framing; MeTTaIL
+                                     maintainer per S2 brief
+                                     metta-morph mentions)
+         2  MeTTa Developer         (alias account)
+         1  AndriiB-DevBrother
+         1  Heorhii Chyzhmak
+
+  Total all-time commits: ~305. Total contributors: 6.
+
+§0.B — S4.A MeTTaIL recent commits (HEAD~0..~7, pre-fetched)
+------------------------------------------------------------
+
+Pre-fetched via `git log -8 --format='%h %ci %an %s'`:
+
+    3343fbe  2026-03-02  Lucius Meredith  fixing overzealous commit
+    62892a1  2026-03-02  Lucius Meredith  small fix to mq-calculus paper;
+                                          added MeTTaIL2Matrix for compiling
+                                          MeTTaIL to upper triangular matrices
+                                          as a pathway to running on GPUs
+    47b9e01  2026-02-28  Lucius Meredith  transcript of interaction with Claude
+    7a498f9  2026-02-28  Lucius Meredith  added fuzzer prototype
+    36b18b6  2026-02-28  Lucius Meredith  prototype of Gillespie style simulator
+    8be698a  2026-02-28  Lucius Meredith  added conclusion
+    a6a6779  2026-02-26  Lucius Meredith  added a bibliography; wordsmithed
+                                          the final point in the Wigner's
+                                          friend section.
+    d31e86b  2026-02-26  Lucius Meredith  added a bibliography; wordsmithed
+                                          the final point in the Wigner's
+                                          friend section.
+
+Pattern: 2026-02-26 → 2026-03-02 is a burst of Meredith activity
+covering paper writing (mq-calculus + Wigner's friend section) +
+Gillespie simulator prototype + fuzzer prototype + MeTTaIL2Matrix
+GPU-compilation track. ~7 days of dense IL-track research +
+prototype work. NO subsequent main commits.
+
+§0.C — S4.A MeTTaIL branch activity (HEAD STALENESS CAVEAT)
+-----------------------------------------------------------
+
+Pre-fetched via `git for-each-ref --format='%(refname:short)
+%(committerdate:short)' refs/remotes/origin/`:
+
+    origin/frmlbytecode       2026-03-30  (28 days post-main)
+    origin/dev                2026-03-02  (at main HEAD date)
+    origin/main               2026-03-02  (HEAD anchor)
+    origin/replacements       2025-08-06
+    origin/mike               2025-07-24
+
+  frmlbytecode is the most-recent branch: suggests formal-
+  bytecode work continuing in branch after main went quiet.
+  Cross-link: similar pattern to MeTTaTron (S3) — main 2-month
+  stale at S4 brief drafting (2026-05-13), with branch work
+  continuing. Reviewers verdict §S4.A.Q6.
+
+  S4 extracts against `main` HEAD `3343fbe` ONLY. Branches
+  inform Q6 status verdict but do not change in-scope per-
+  question evidence.
+
+§0.D — S4.B FormalMeTTa source pin
+----------------------------------
+
+  Repo:     Adam-Vandervorst/FormalMeTTa
+  Origin:   https://github.com/Adam-Vandervorst/FormalMeTTa.git
+  Local:    E:\GitHub\hyperon reference\FormalMeTTa\
+  Branch:   master (default)
+  HEAD:     0448156b91841b63ef5d3b5637a713f5bb4a0f18
+            (Adam Vandervorst 2024-03-14 17:30:32 +0100
+             "Add Aunt KG example")
+
+  IMPORTANT — HEAD IS TWO YEARS STALE at S4 brief drafting
+  (2026-05-13). Last commit 2024-03-14; today 2026-05-13.
+  ~25 months without main-branch commits at S4 brief drafting.
+  This is genuinely archival; verdict candidates per §7 should
+  reflect `[FORMALMETTA-ARCHIVAL]` or similar.
+
+  Tag history: NO TAGS at HEAD.
+
+  Workspace shape:
+
+    Root: AGENTS.md / CLAUDE.md / GEMINI.md / LICENSE /
+          README.md (2 lines — points to leithaus/rho4u/.../
+          mops-short.pdf as the spec source) /
+          build.sbt / project/ / src/ / .gitignore
+
+  Tracked-file inventory:
+                17 files at HEAD `0448156`
+                  12 .scala (in src/)
+                   1 .sbt
+                   1 .properties
+                   1 .md (README)
+                   + .gitignore + LICENSE
+
+  Top contributors:
+        15  Adam-Vandervorst
+         7  Adam Vandervorst       (same person, different
+                                    alias)
+         1  Adam V                 (same person, different
+                                    alias)
+
+  Single-author repo. Total ~23 commits across 3 aliases.
+
+§0.E — S4.B FormalMeTTa recent commits
+--------------------------------------
+
+    0448156  2024-03-14  Add Aunt KG example
+    bc58f70  2024-02-16  Make substitute robust to identity
+                         bindings and use that to resolve
+                         holes to variables
+    2dbcdb4  2024-02-15  Add StackBased MeTTa example with
+                         parseAtoms
+    83514e8  2024-02-15  Add evaluation visualization
+    5126a95  2024-02-15  Add Vitaly's equality example
+    4c99571  2023-06-26  Update for poor case-insensitive
+                         file system users
+    9ef152c  2023-04-26  Create LICENSE
+    377161b  2023-04-26  Add tokenizer for FormalMeTTa
+
+Pattern: 2023-04 → 2024-03 development window (~11 months).
+No activity since 2024-03-14.
+
+§0.X — OUT-OF-SCOPE for S4 (separate audit candidates)
+------------------------------------------------------
+
+Two adjacent repos discovered in IL-track inventory at S4
+brief drafting time, NOT in S4 scope:
+
+  - F1R3FLY-io/mettail-rust at HEAD `d01cbdf` (post-pull
+    2026-05-14; pre-pull was `14cad3a` 2026-04-16; ~8+
+    commits behind at session start, pulled before S4).
+    README: "MeTTaIL: Language framework in Rust". Macro-
+    based DSL for specifying formal languages (rho-calculus
+    example). NOT a re-implementation of MeTTaIL (Scala).
+    Different scope class — a meta-framework for formal
+    language specification. Very active development.
+    DEFERRED to a separate future cluster source.
+
+  - zariuq/mettail-rust at HEAD `37f1604` 2026-02-11 (Zar
+    Goertzel fork). Branches: feature/lean-language-export-*
+    (Lean language export experiments), feature/eval-ir-
+    factorial (IR evaluation work). Cross-pilot identity
+    (Zar Goertzel = zariuq = Zarathustra Goertzel per
+    user-verified PLN cluster identity). DEFERRED to either
+    a separate audit or as a cross-pilot identity note in
+    the mettail-rust source above.
+
+These two should be audited together with a future cluster
+source — possibly as part of cross-org sweeps or as an S7+
+extension if the MeTTa runtime cluster pilot extends beyond
+the original 6-source split.
+
+
+§1. CROSS-PILOT IDENTITIES (CONFIRMED / EXTENDED AT S4)
+========================================================
+
+S4 reaffirms three cross-pilot identities established at
+S3 close (2026-05-13):
+
+  - **Mike Stay** (F1R3FLY-io cofounder, category theorist,
+    Baez co-author): S3 R3.NEW-5 initial-commit author of
+    MeTTa-Compiler (`9f03102 2025-09-03`); at S4 MeTTaIL,
+    129 commits (#2 contributor). Confirms F1R3FLY-io
+    leadership chain across MeTTa-Compiler + MeTTaIL.
+
+  - **Lucius Meredith** (F1R3FLY-io co-founder): S3 C3-1.E
+    candidate identity flagged for S4 verification; at S4
+    MeTTaIL, 36 commits (#3 contributor) including ALL of
+    the recent 2026-02..03 burst (paper writing + Gillespie
+    simulator + MeTTaIL2Matrix). MeTTaIL primary maintainer
+    confirmed.
+
+  - **Serhii Lypko / SerhiiK-DevBrother**: S3 #2 contributor
+    of MeTTa-Compiler (128 combined); at S4 MeTTaIL, 136
+    commits (#1 contributor). Cross-pilot identity confirmed:
+    same person works on both MeTTa-Compiler runtime AND
+    MeTTaIL IL.
+
+Plus one new identity surfaces at S4:
+
+  - **Adam Vandervorst** (sole FormalMeTTa author): NOT a
+    F1R3FLY-io contributor; independent. Cross-link to
+    HAA S4 [V4-COMPOSER-BLENDING-CATEGORY-THEORETIC-FOUR-
+    BRANCH] (concept-blending category-theoretic
+    `a_categorytheoretic_approach/` branch maintainer per
+    HAA close 2026-05-07 V4-X carry-forwards) — Adam
+    Vandervorst is the author of FormalMeTTa AND a
+    Hyperon concept-blending category-theoretic contributor.
+    Cross-pilot identity established at S4.
+
+
+§2. SUB-PROJECT STRUCTURE PER REPO (for §6 scope)
+==================================================
+
+S4.A MeTTaIL — 4 sub-projects (all in scope for S4 audit):
+
+  2.A.1  MeTTaIL/ (Scala+BNFC main IL implementation)
+    - 27 .scala files
+    - build.sbt for Scala 3 build
+    - BNFC grammar pipeline (per README prereqs: bnfc + ghc
+      + alex + happy)
+    - Compiles to `MeTTaIL/target/scala-3.4.1/mettail_
+      assembly.jar` and processes .module files
+    - Example invocation per README: `java -jar mettail_
+      assembly.jar GSLT/src/test/module/Rholang.module`
+
+  2.A.2  GSLT/ (Graph-Structured Lambda Theory foundation)
+    - Mathematical underpinning (per transformation.md +
+      hypercube.md design docs at repo root)
+    - Theory: ω-order multisorted algebraic theory in the
+      sense of Arkor and McDermott
+    - Distinguished shapes P, R; distinguished function
+      symbols src: R → P and tgt: R → P
+    - GSLT presentation describes operational semantics of
+      computational calculi (RHO calculus, MeTTa, etc.)
+    - 8 .module test files: Rholang.module + variants
+
+  2.A.3  MeTTaIL-Gillespie/ (Rust stochastic simulator +
+                              fuzzer)
+    - 12 .rs files: augmented_rule, fuzzer, gillespie,
+      language_ext, lib, quantum, rate_map, rate_value,
+      rhocalc_fuzzer, rhocalc_stochastic, simulator,
+      spatial_behavior
+    - Gillespie algorithm for stochastic simulation
+    - Quantum semantics (cross-link to mq-calculus paper)
+    - rho-calc fuzzer for property-based testing of the
+      rho-calculus specification
+
+  2.A.4  MeTTaIL2Matrix/ (Rust GPU compilation track)
+    - 5 .rs files: automata, error, lib + 2 examples
+      (dependency_analysis, rholang_sync_tree)
+    - Goal per Meredith commit 2026-03-02: "compiling
+      MeTTaIL to upper triangular matrices as a pathway to
+      running on GPUs"
+    - examples/ shows dependency analysis + Rholang sync
+      tree processing
+
+S4.B FormalMeTTa — single Scala src/ directory:
+
+  2.B.1  src/ (12 .scala files)
+    - Implements the leithaus/rho4u/.../mops-short.pdf
+      preliminary spec literally
+    - Includes tokenizer (per commit `377161b 2023-04-26`),
+      pattern matching, substitution (with identity-binding
+      robustness per commit `bc58f70 2024-02-16`),
+      stack-based evaluation example, evaluation
+      visualization, Aunt KG example, Vitaly's equality
+      example
+
+
+§3. LOCKED PRIOR ART (cumulative from S1 + S2 + S3)
+====================================================
+
+The following findings from S1-S3 close are LOCKED for S4
+reviewers. Reviewers do NOT re-derive these; they reference
+them in cross-source forwards.
+
+S1 hyperon-experimental (closed 2026-05-08):
+  PA1.  Reference Rust runtime at v0.2.10 / HEAD `3f76dc46`.
+        `[SMALL-STEP-INTERPRETER]` + `[NONDETERMINISTIC-
+        BRANCHING]` + `[DYNAMIC-CHECKED]` + `[HYBRID-RUST-
+        PLUS-METTA-STDLIB]`.
+  PA2.  `lib/src/metta/interpreter.rs:269/374` interpret_step
+        + interpret_stack stack-based reduction.
+  PA3.  Hyperon Space write API at `hyperon-space/src/lib.rs:
+        237/255/275`; observer pattern at :22-126.
+  PA4.  Phase 4 PATCH-1: pybind11 binding for `space_register
+        _observer` REQUIRED.
+  PA5.  Phase 4 PATCH-2: MeTTa-side `replace-atom!` grounded
+        op RECOMMENDED.
+  PA6.  C headers cbindgen-generated (V1-PROTOCOL-3 file-
+        cite discipline).
+  PA7.  v0.2.10 quirks (per `reference_hyperon_0210_quirks.md`):
+        Q-1 bind!+new-space CONFIRMED-AT-HEAD; Q-2 cond
+        FIXED-VIA-ABSENCE (operator removed at HEAD); Q-3
+        catchall multi-reduction CONFIRMED-AS-SEMANTICS
+        (nondeterministic by design, not a defect).
+
+S2 PeTTa + metta-morph (closed 2026-05-10):
+  PA8.  PeTTa "Smart Dispatch" concept EXISTS as
+        implementation feature (translator.pl:300-323), NOT
+        a branded feature name.
+  PA9.  Gitlink-vs-submodule discrimination (V2-PROTOCOL-2):
+        check `.gitmodules` exists before asserting submodule
+        status. Loose gitlinks (no .gitmodules) are
+        placeholders.
+  PA10. metta-morph FIXES S1 Q-1 within its Scheme subset
+        (R2.NEW-1; first cluster source to fix Q-1).
+
+S3 MeTTaTron (closed 2026-05-13):
+  PA11. F1R3FLY-io Rholang integration via shared-types
+        sibling-repo pattern (`models = path = "../f1r3node/
+        models"`). R3.NEW-5.
+  PA12. MeTTaTron filters rule matches to MOST-SPECIFIC ONLY
+        (eval/mod.rs:1023+), diverging from S1 Q-3 catchall
+        multi-reduction. R3.NEW-1 LOAD-BEARING.
+  PA13. Tree-sitter parsing path at HEAD (R3.NEW-2 — README
+        claim CONTRADICTED-AT-DEPENDENCY-LEVEL pattern).
+  PA14. README "compiler" framing overstates HEAD capability
+        when actual is parse-to-state + tree-walk interpreter
+        (V3-4 carry-forward + V3-12 [README-STALE-AT-
+        MULTIPLE-CLAIMS]).
+
+
+§4. CROSS-SOURCE FORWARDS (C-prefix, applied to S4)
+====================================================
+
+F1. **Compile-vs-interpret split** (V1-PROTOCOL-1 +
+    V3-1/V3-4): does the IL-track repo COMPILE to a target
+    language, or INTERPRET? At S4, MeTTaIL claims "compile to
+    upper triangular matrices" (MeTTaIL2Matrix) + BNFC-
+    generated parser (compile-time codegen for grammar) +
+    Gillespie simulator (interpreter-style stochastic eval).
+    Mixed paradigm.
+
+F2. **Sandbox tier** (V1-3 dual-API-layer rule): when
+    auditing IL stdlib / surface, grep BOTH Scala-side AND
+    Rust-side. MeTTaIL spans both (Scala main IL, Rust
+    sub-projects). Don't miss surface in either layer.
+
+F3. **Pickaxe-before-dead-code** (`feedback_pickaxe_for_dead_
+    code.md`): use `git log --all -S '<token>'` for any
+    "never implemented" / "dead enum" claim. Particularly
+    important for FormalMeTTa given 2-year stale state —
+    don't assume features are missing just because they
+    aren't visible in current code.
+
+F4. **README-drift audit** (V3-PROTOCOL-3 promoted at S3):
+    pre-extract README key claims for per-claim verdict.
+    Both S4 READMEs are minimal (MeTTaIL 17 lines + 7 prereq
+    bullets; FormalMeTTa 2 lines pointing to external pdf).
+    Sparse claim surface — see §5 README-claims table.
+
+F5. **Cross-pilot identity tracking** (R3.NEW-5 +
+    V3-11 + S4 identity reaffirmations):
+      - Mike Stay = S3 R3.NEW-5 = S4 MeTTaIL #2 contributor
+      - Lucius Meredith = S3 C3-1.E = S4 MeTTaIL primary
+        maintainer
+      - Serhii Lypko = SerhiiK-DevBrother = S3 testing
+        operator contributor (combined 128) = S4 MeTTaIL #1
+        contributor (136)
+      - Adam Vandervorst = HAA S4 [V4-COMPOSER-BLENDING-
+        CATEGORY-THEORETIC-FOUR-BRANCH] = S4 FormalMeTTa sole
+        author (cross-cluster identity confirmed)
+
+F6. **Wiki MCP server bugs** (`hyperon-wiki-mcp/SERVER-BUGS.md`):
+    `create_card` spurious-error, `restore_card` `+tag`
+    quirk, one-writer-only protocol. Apply at cluster-close
+    edit-batch time if any wiki writes are warranted.
+
+
+§5. README-DRIFT AUDIT TABLE (V3-PROTOCOL-3)
+=============================================
+
+Pre-extracted README key claims for per-claim verdict.
+
+S4.A MeTTaIL README key claims (only 1 substantive claim):
+
+  P-A-1. README claims MeTTaIL is "Meta Type Talk Intermediate
+         Language". Single line, no further architectural
+         claims. Reviewers may verdict `[P-CLAIM-VERIFIED]`
+         (this matches the build output `mettail_assembly.
+         jar` + GSLT module-file processing). No README-drift
+         risk at S4.A.
+
+  P-A-2. Prereqs: Scala 3 + BNFC + GHC + Alex + Happy.
+         These are dependency declarations, NOT architectural
+         claims. Reviewers note any divergence between
+         declared prereqs and what the actual build uses
+         (e.g., does build.sbt use ALL of these, or does it
+         skip some?).
+
+S4.B FormalMeTTa README key claims (only 1 substantive
+claim):
+
+  P-B-1. README claims FormalMeTTa is "A literal
+         implementation of the preliminary short MeTTa spec"
+         pointing to https://github.com/leithaus/rho4u/blob/
+         main/ai/mops-short/mops-short.pdf. Reviewers
+         verdict whether the 12 .scala files at HEAD ACTUALLY
+         implement that spec literally, OR whether the
+         implementation has drifted from the spec.
+
+  Implicit gap: the leithaus/rho4u repo is a SEPARATE Greg
+  Meredith repo (leithaus is the older domain handle for
+  Lucius Meredith — cross-link to F1R3FLY-io leadership chain
+  per F5). The pdf is a 2023-era preliminary spec. FormalMeTTa
+  was last updated 2024-03 and has been ARCHIVAL since.
+  Reviewers verdict whether FormalMeTTa was ever brought
+  in-line with subsequent MeTTa-spec evolutions (e.g.,
+  hyperon-experimental v0.2.10) or whether it remains pinned
+  to the 2023-2024 leithaus preliminary spec.
+
+  Recommend reviewers verdict `[P-CLAIM-CONTEMPORANEOUS-WITH-
+  2023-SPEC]` or similar to capture the time-pinning.
+
+
+§6. QUESTIONS FOR S4 REVIEWERS (12 total)
+==========================================
+
+Reviewers (Codex + Gemini + orchestrator-Claude, parallel and
+independent — option (i) for Gemini per protocol above)
+answer each S4.QN in the per-question format established by
+closed pilots. Each answer must include verdict tag from §7
+(single-label per question per V1-PROTOCOL-1 +
+V2-PROTOCOL-1).
+
+S4.A.Q1. MeTTaIL — GSLT IMPLEMENTATION STATUS
+         Read GSLT/src/. Per transformation.md + hypercube.md
+         design docs, GSLT is the mathematical foundation
+         (ω-order multisorted algebraic theory with src/tgt
+         shape morphisms). Specifically:
+           - Are the GSLT primitives (P shape, R shape, src/
+             tgt function symbols) implemented in the Scala
+             code, or only described in docs?
+           - Are the 8 .module files (Rholang.module +
+             variants) ACTUALLY interpretable by the IL, or
+             scaffolding/test fixtures only?
+           - Is the "ω-order multisorted algebraic theory in
+             the sense of Arkor and McDermott" claim
+             implementation-backed or paper-only?
+         Verdict tag from §7.
+
+S4.A.Q2. MeTTaIL — SCALA+BNFC+HASKELL BUILD PIPELINE
+         Read build.sbt + project/ + build script + BNFC
+         grammar files (if any in MeTTaIL/src/). Specifically:
+           - Which BNFC grammar is used to generate the parser?
+           - Where does GHC + Alex + Happy fit (Haskell code
+             for grammar-generation tooling? Or runtime
+             component?)
+           - Does the assembled jar `mettail_assembly.jar`
+             ACTUALLY include the BNFC-generated parser?
+         Verdict tag from §7.
+
+S4.A.Q3. MeTTaIL — GILLESPIE SIMULATOR + FUZZER
+         Read MeTTaIL-Gillespie/src/. Specifically:
+           - Is the Gillespie stochastic algorithm
+             implemented or scaffolded?
+           - What does the rho-calc fuzzer test?
+           - Is `quantum.rs` actually quantum simulation, or
+             classical with quantum framing?
+           - How does this connect to the main MeTTaIL IL
+             pipeline (does it use the same GSLT shapes, or
+             a parallel reimplementation in Rust?)
+         Verdict tag from §7.
+
+S4.A.Q4. MeTTaIL — MeTTaIL2Matrix GPU COMPILATION TRACK
+         Read MeTTaIL2Matrix/src/ + examples/. Specifically:
+           - Is "compile to upper triangular matrices for GPU"
+             functional or scaffolding?
+           - What's the relationship between the matrix
+             representation and MeTTaIL/GSLT terms?
+           - Are the dependency_analysis + rholang_sync_tree
+             examples runnable?
+           - Cross-link to S3 V3-4 [METTATRON-COMPILE-IS-
+             PARSE-NOT-COMPILE]: does MeTTaIL2Matrix have
+             the same "compile-claims-vs-actual-codegen" gap?
+         Verdict tag from §7.
+
+S4.A.Q5. MeTTaIL — MeTTaIL→MeTTa RELATIONSHIP
+         How does MeTTaIL (the IL) relate to MeTTa (the
+         surface language)?
+           - Is MeTTaIL a compilation TARGET for MeTTa source?
+             (i.e., MeTTa source → MeTTaIL terms)
+           - Or is MeTTaIL a parallel formalism that
+             specifies MeTTa's operational semantics? (i.e.,
+             MeTTaIL terms describe MeTTa reductions)
+           - Cross-link to existing wiki claim (card 7161
+             before S3 close): "MeTTa-IL — Intermediate
+             representation derived from Graph-Structured
+             Lambda Theory (GSLT) for compilation and
+             optimization. Targets multiple backends (MORK,
+             Rholang, JAX, Rust kernels)." Verify against
+             HEAD code.
+           - Cross-link to S3 V3-5 [METTATRON-RHOLANG-DIRECT-
+             RUST-INTEGRATION]: is the wiki's "Targets
+             multiple backends (MORK, Rholang, JAX, Rust
+             kernels)" claim BACKED at HEAD or aspirational?
+         Verdict tag from §7.
+
+S4.A.Q6. MeTTaIL — PROJECT STATUS
+         At HEAD `3343fbe` (2026-03-02), main is 2-months
+         stale at S4 brief drafting (2026-05-13). However
+         frmlbytecode branch shows 2026-03-30 activity.
+         Cross-link to S3 V3-10 [METTATRON-MAIN-STAGNANT-
+         BRANCHES-ACTIVE] verdict pattern. Reviewers verdict:
+           - Same pattern as MeTTaTron (stagnant main +
+             branches active)?
+           - Different pattern (truly stale)?
+         Verdict tag from §7.
+
+S4.B.Q1. FormalMeTTa — PRELIMINARY-SPEC FAITHFULNESS
+         Read src/*.scala + the README-referenced spec
+         (leithaus/rho4u/blob/main/ai/mops-short/mops-
+         short.pdf — fetch if available locally; otherwise
+         verdict on code alone). Specifically:
+           - Does FormalMeTTa implement the spec LITERALLY
+             as the README claims?
+           - Which spec features are covered vs absent?
+           - What evolutions of MeTTa have happened since
+             2024-03-14 that FormalMeTTa does NOT reflect?
+         Verdict tag from §7.
+
+S4.B.Q2. FormalMeTTa — SCALA IMPLEMENTATION DEPTH
+         Read all 12 .scala files in src/. Specifically:
+           - Is FormalMeTTa runnable as a library, CLI, or
+             only as a Scala test corpus?
+           - Are the example KGs (Aunt KG, Vitaly's equality)
+             demonstration-grade or research-grade?
+           - Tokenizer + pattern matching + substitution +
+             evaluation visualization + stack-based MeTTa
+             — which features have functional code and which
+             are illustrative?
+         Verdict tag from §7.
+
+S4.B.Q3. FormalMeTTa — PROJECT STATUS
+         HEAD `0448156` 2024-03-14, 2 years stale, single
+         author. Verdict candidates per §7:
+           `[FORMALMETTA-ARCHIVAL]` (likely correct);
+           `[FORMALMETTA-ABANDONED]` (stronger claim, requires
+             evidence beyond age);
+           `[FORMALMETTA-FUNCTIONAL-REFERENCE]` (if the code
+             still builds and runs against current Scala).
+
+S4.X.Q1. MeTTaIL-vs-FormalMeTTa RELATIONSHIP
+         Do MeTTaIL and FormalMeTTa share code, theory, or
+         lineage?
+           - Does MeTTaIL reference FormalMeTTa or its spec?
+           - Is FormalMeTTa subsumed by MeTTaIL at HEAD, or
+             do they pursue distinct formalizations?
+           - The leithaus/rho4u/.../mops-short.pdf is the
+             spec FormalMeTTa implements. Is that spec the
+             precursor to MeTTaIL's GSLT formalization, or
+             a parallel/incompatible track?
+         Verdict tag from §7.
+
+S4.X.Q2. MeTTaIL-vs-FormalMeTTa 0.2.x QUIRKS (per PA7
+         + C1-8 cross-source forward)
+         Both repos are formal-spec / IL-track repos, NOT
+         runtimes. Quirk reproduction may be N/A for both —
+         but reviewers should verdict explicitly:
+           Q-1 bind!+new-space: does the IL/spec define this
+               operator at all? If so, with what semantics?
+           Q-2 cond: same.
+           Q-3 catchall multi-reduction: does the IL/spec
+               define multi-result semantics, or single-
+               result? Cross-link to S3 R3.NEW-1
+               [METTATRON-Q-3-DIVERGENT-SEMANTICS] — does
+               MeTTaIL's GSLT formalization commit to
+               catchall+specific multi-reduction (matches S1)
+               or specificity-filter (matches S3 MeTTaTron)
+               or a different choice?
+
+S4.X.Q3. CLUSTER-NARRATIVE PLACEMENT
+         Where do MeTTaIL + FormalMeTTa sit in the MeTTa
+         runtime cluster taxonomy?
+           - MeTTaIL is the COMPILATION-TARGET-IL / formal-
+             semantics-IL track (as opposed to surface-
+             language interpreter tracks like S1, S2, S3).
+           - FormalMeTTa is the SPEC-REFERENCE track.
+           - Both are paradigm-distinct from the runtime
+             implementations.
+         Reviewers verdict whether `[IL-TRACK-FORMAL-
+         SEMANTICS]` + `[SPEC-REFERENCE-IMPLEMENTATION]` are
+         the right §7 categories for these two sources.
+
+
+§7. VERDICT VOCABULARY (single-label per question)
+====================================================
+
+Reviewers MUST use EXACTLY ONE tag from the matching set per
+question. Per V2-PROTOCOL-1, pick the MOST SPECIFIC tag in
+the set that captures the evidence.
+
+GSLT implementation (S4.A.Q1):
+  [GSLT-PRIMITIVES-IMPLEMENTED]
+  [GSLT-SCAFFOLDING-DOCS-ONLY]
+  [GSLT-PARTIAL-IMPLEMENTATION]
+  [GSLT-PAPER-ONLY-FORMAL]
+
+Build pipeline (S4.A.Q2):
+  [BUILD-BNFC-FULL]
+  [BUILD-BNFC-PARTIAL]
+  [BUILD-NO-BNFC-AT-HEAD]
+  [BUILD-CUSTOM-GRAMMAR]
+
+Gillespie simulator (S4.A.Q3):
+  [GILLESPIE-FUNCTIONAL]
+  [GILLESPIE-PROTOTYPE]
+  [GILLESPIE-SCAFFOLDING]
+
+GPU compilation track (S4.A.Q4):
+  [MATRIX-COMPILATION-FUNCTIONAL]
+  [MATRIX-COMPILATION-PROTOTYPE]
+  [MATRIX-COMPILATION-SCAFFOLDING]
+  [MATRIX-COMPILE-CLAIMS-OVERSTATE-HEAD]  (matches S3 V3-4
+                                            pattern)
+
+MeTTaIL→MeTTa relationship (S4.A.Q5):
+  [METTAIL-COMPILATION-TARGET-FOR-METTA]
+  [METTAIL-PARALLEL-FORMAL-SEMANTICS]
+  [METTAIL-HYBRID-BOTH]
+  [METTAIL-ASPIRATIONAL-NOT-WIRED]
+
+MeTTaIL project status (S4.A.Q6):
+  [METTAIL-STABLE-LOW-ACTIVITY]
+  [METTAIL-STAGNANT-MAIN-WITH-BRANCH-WORK]
+  [METTAIL-ACTIVE-ON-FRMLBYTECODE-BRANCH]
+  [METTAIL-ABANDONED]
+
+FormalMeTTa preliminary-spec faithfulness (S4.B.Q1):
+  [FORMALMETTA-FAITHFUL-TO-2023-SPEC]
+  [FORMALMETTA-SPEC-DRIFT]
+  [FORMALMETTA-PARTIAL-COVERAGE]
+
+FormalMeTTa implementation depth (S4.B.Q2):
+  [FORMALMETTA-RESEARCH-GRADE]
+  [FORMALMETTA-DEMO-GRADE]
+  [FORMALMETTA-LIBRARY-USABLE]
+
+FormalMeTTa project status (S4.B.Q3):
+  [FORMALMETTA-ARCHIVAL]
+  [FORMALMETTA-ABANDONED]
+  [FORMALMETTA-FUNCTIONAL-REFERENCE]
+
+MeTTaIL-vs-FormalMeTTa relationship (S4.X.Q1):
+  [SHARED-LINEAGE-LEITHAUS-SPEC]
+  [PARALLEL-TRACKS-NO-OVERLAP]
+  [FORMALMETTA-PRECURSOR-TO-METTAIL]
+  [METTAIL-SUBSUMES-FORMALMETTA]
+
+Quirks (S4.X.Q2 per-quirk):
+  [QUIRK-REPRODUCED]
+  [QUIRK-FIXED]
+  [QUIRK-DIVERGENT-SEMANTICS]
+  [QUIRK-NOT-APPLICABLE]
+  [QUIRK-SPEC-DEFINES-NEITHER]   (new at S4 — formal-spec
+                                  repos may simply not
+                                  commit to a Q-3 choice)
+
+Cluster-narrative placement (S4.X.Q3):
+  [IL-TRACK-FORMAL-SEMANTICS]
+  [SPEC-REFERENCE-IMPLEMENTATION]
+  [HYBRID-IL-AND-RUNTIME]
+  [PARADIGM-DISTINCT-FROM-RUNTIME-CLUSTER]
+
+
+§8. REQUIRED GREP TARGETS
+==========================
+
+Reviewers run these repo-wide (NOT README-only).
+
+S4.A.Q1 (GSLT):
+  In MeTTaIL/GSLT/src/: `GSLT|shape|sort|src|tgt|reduction|
+  algebra|theory`.
+
+S4.A.Q2 (Build):
+  In MeTTaIL/MeTTaIL/build.sbt + project/: `bnfc|scala|
+  alex|happy|ghc`.
+  `cat MeTTaIL/build` (the top-level build script).
+
+S4.A.Q3 (Gillespie):
+  In MeTTaIL/MeTTaIL-Gillespie/src/: `gillespie|stochastic|
+  rate|quantum|fuzz`.
+  `cat MeTTaIL/MeTTaIL-Gillespie/Cargo.toml`.
+
+S4.A.Q4 (Matrix):
+  In MeTTaIL/MeTTaIL2Matrix/src/ + examples/: `matrix|
+  upper.triangular|automata|gpu|cuda`.
+  `cat MeTTaIL/MeTTaIL2Matrix/Cargo.toml`.
+
+S4.A.Q5 (MeTTa relationship):
+  Grep `metta|MeTTa` in MeTTaIL/MeTTaIL/src/ — does the
+  source EVER reference MeTTa as a compilation target?
+  Search for `compile|compiler|target|backend` in src/.
+
+S4.A.Q6 (Project status):
+  `git log --since='2026-01-01' --all --oneline | wc -l`
+  for cross-branch activity count.
+
+S4.B.Q1 (Faithfulness to spec):
+  `cat FormalMeTTa/src/*.scala` for tokenizer + substitution
+  + evaluation primitives.
+  Pickaxe `git log --all -S 'mops-short'` if available.
+
+S4.B.Q2 (Implementation depth):
+  Inventory all 12 .scala files: which are tests, which are
+  library code, which are demo/example.
+
+S4.B.Q3 (Status):
+  `git log --all --oneline | wc -l` → total commit count.
+
+S4.X.Q1 (Relationship):
+  Cross-grep `formalmetta|FormalMeTTa|adam-vandervorst|
+  Adam Vandervorst` in MeTTaIL/.
+  Cross-grep `metta-il|MeTTaIL|f1r3fly|F1R3FLY` in
+  FormalMeTTa/.
+
+S4.X.Q2 (Quirks):
+  Per repo, search for `bind!|cond|catchall|specificity|
+  multi-reduction|nondeterministic`.
+
+S4.X.Q3 (Cluster narrative):
+  Synthesis question — no specific grep, judged from §6
+  answers.
+
+
+§10. STANDING PROTOCOLS
+========================
+
+Carried forward from S1+S2+S3, with S4-specific additions:
+
+P10.1   V1-PROTOCOL-1: brief-vocab single-label enforcement.
+P10.2   V1-PROTOCOL-2: byte-vs-line discrimination in
+        citations.
+P10.3   V1-PROTOCOL-3: cbindgen-generated headers (do not
+        cite source-tree paths for auto-generated C headers).
+P10.4   V2-PROTOCOL-1: brief-vocab specificity-within-set.
+P10.5   V2-PROTOCOL-2: gitlink-vs-submodule via .gitmodules
+        check.
+P10.6   V2-PROTOCOL-3: smart-dispatch / branded-feature-name
+        discrimination.
+P10.7   V2-PROTOCOL-4: per-repo verdict granularity.
+P10.8   V3-PROTOCOL-2: benchmark-file-cite-must-be-verbatim.
+P10.9   V3-PROTOCOL-3: README-drift-audit-table-in-briefs
+        (this brief implements it in §5).
+P10.10  V3-PROTOCOL-4: HEAD-vs-commit file-existence-check.
+P10.11  P12 verbatim numerical protocol (still applies for
+        any stat directly queried).
+P10.12  Pickaxe-before-dead-code (`feedback_pickaxe_for_dead_
+        code.md`): use `git log --all -S '<token>'` for any
+        "never implemented" claim.
+P10.13  Dual-API-layer rule (`feedback_ecan_audit_token_
+        list.md`): grep both layers for any token with
+        multiple surfaces.
+P10.14  CF5.6 file-existence verification.
+P10.15  Cross-pilot identity tracking (per F5 above).
+P10.16  Wiki MCP one-writer-only protocol (per F6).
+P10.17  Verify HTTP status / redirect path for external
+        URLs immediately before citing in wiki edits
+        (`feedback_webfetch_verify_external_urls.md`).
+P10.18  Wiki audits must query Draft + Markdown + Published
+        cardtypes (`feedback_query_all_cardtypes_in_audits.md`).
+P10.19  Sandra-spec port re-check before wiki batch
+        (`feedback_sandra_spec_port_recheck_before_batch.md`).
+P10.20  Verify model "Verified" claims (`feedback_attribution_
+        verify_against_git.md`).
+P10.21  Bidirectional fork-divergence + staleness
+        (`feedback_bidirectional_fork_divergence.md`).
+P10.22  Parallel-Claude handoff (`feedback_parallel_claude_
+        handoff.md`).
+
+S4-specific protocol additions:
+
+P10.23 (ARCHIVED at S3): "REVIEW ONLY UNTIL EXPLICIT
+       EXTRACTION TRIGGER" — superseded by P10.24 (this
+       brief packages review + extraction together).
+
+P10.24  V3-PROTOCOL-1 / GEMINI-CONFIRMATION-ONLY-MODE
+        (promoted at S3 close 2026-05-13). For S4 onwards:
+          - Brief-review and extraction-trigger are
+            PACKAGED in the same relay (this brief).
+          - Reviewers extract under this brief from the
+            same session.
+          - Gemini's deliverable is RESTRICTED to:
+            * Synthesis verdicts only (one §7 tag per
+              question).
+            * Cross-source forwards / cluster-narrative
+              claims (high-level only).
+            * Acknowledgement of Codex's citation-grade
+              evidence chain.
+          - Gemini's deliverable must NOT include:
+            * Self-supplied file:line cites (orchestrator
+              will not pre-verify them and they add noise).
+            * V4-11 self-verification tables (ARCHIVED per
+              S3 H.2; 100% self-fab observed).
+            * P12 verbatim blocks for stats not directly
+              queried by Gemini.
+          - Codex is PRIMARY citation-grade evidence source.
+          - Reconciliation drafted from Codex + Claude
+            independent extraction; Gemini's verdicts
+            adjudicated against Codex's evidence chain.
+
+P10.25  V4-11 ARCHIVAL (promoted at S3 close 2026-05-13;
+        formal archival announcement at S4 brief). The V4-11
+        [GEMINI-INTERPRETATION-VERIFICATION] protocol
+        promoted at HAA S4 close 2026-05-07 (file + grep
+        pattern + line number for every "implemented via X"
+        claim) is ARCHIVED for S4+. Reason: at MeTTa runtime
+        S3, Gemini's V4-11 self-verification table was 100%
+        fabricated PASS (all 5 rows verifiably failed at
+        orchestrator filesystem check). V4-11 self-discipline
+        is no longer reliable. Orchestrator performs cite-
+        verification at extraction return; V4-11 self-table
+        is removed from Gemini deliverable template.
+
+
+§11. AT-EXTRACTION-RETURN SEQUENCE
+====================================
+
+Per option (i) / P10.24 / V3-PROTOCOL-1, the sequence at
+extraction-return time is SIMPLER than option (ii):
+
+  1. Orchestrator collects findings_codex.txt + Gemini
+     synthesis-claim relay + findings_claude.txt (own
+     independent extraction).
+
+  2. Orchestrator runs NO full cite-by-cite verification
+     log on Gemini's deliverable (since Gemini supplies no
+     cite-by-cite claims under P10.24). Synthesis claims
+     are NOT subject to cite verification per
+     `feedback_gemini_pre_verification_protocol.md`.
+
+  3. Orchestrator may SPOT-CHECK Gemini's high-level claims
+     against Codex's evidence chain at reconciliation time
+     (e.g., if Gemini says "MeTTaIL has GPU compilation
+     functional at HEAD", orchestrator verifies against
+     MeTTaIL2Matrix/src/lib.rs without requiring Gemini to
+     supply the cite).
+
+  4. Reconciliation drafted from Codex + Claude citation-
+     grade evidence; Gemini verdicts adjudicated against
+     Codex's evidence chain.
+
+  5. Cite-verification log NOT appended to reconciliation
+     for S4 (since no Gemini-cite-by-cite layer exists).
+     Replaced by: short "Gemini synthesis claims adjudication"
+     section recording where Gemini agreed/disagreed with
+     Codex + Claude on each verdict.
+
+  6. Three-way sign-off recorded as usual.
+
+
+§12. RE-EVALUATION GATE FOR S5
+================================
+
+Per `feedback_gemini_option_i_confirmation_only_mode.md`:
+
+  - **<80% Gemini synthesis-claim alignment over 3 consecutive
+    sources** → escalate to option (0) Gemini-EXCLUDED mode
+    (unprecedented; would require user authorization).
+
+  - **100% Gemini synthesis-claim alignment over 3 consecutive
+    sources** → consider retrying option (ii) with P10.24 +
+    V4-11-archival retained. Suggests confirmation-only mode
+    is reducing load on the failing layer.
+
+  - **Anywhere between 80-99%** → stay on option (i).
+
+S4 is the first source under option (i). Tracking begins
+here.
+
+
+§13. ARCHIVE LOCATIONS (post-extraction)
+==========================================
+
+Reviewers save findings to:
+
+  scripts/archive/metta_runtime_pilot/source4_mettail_
+    formalmetta/findings_codex.txt
+  scripts/archive/metta_runtime_pilot/source4_mettail_
+    formalmetta/findings_gemini.txt
+  scripts/archive/metta_runtime_pilot/source4_mettail_
+    formalmetta/findings_claude.txt
+  scripts/archive/metta_runtime_pilot/source4_mettail_
+    formalmetta/findings_reconciled_crossmodel.txt
+    (orchestrator draft, post-reconciliation)
+
+
+================================================================
+END source4_mettail_formalmetta_brief.txt
+================================================================

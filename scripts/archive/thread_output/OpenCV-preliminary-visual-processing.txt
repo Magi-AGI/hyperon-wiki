@@ -1,0 +1,286 @@
+OpenCog Mailing List Thread: OpenCV for preliminary visual processing?
+Messages: 17
+Date range: Fri, 16 Sep 2016 11:25:18 -0500 to Sat, 21 Jan 2017 23:21:10 +0800
+Source: opencog@googlegroups.com
+
+============================================================
+
+--- Message 1/17 ---
+From: Linas Vepstas
+Date: Fri, 16 Sep 2016 11:25:18 -0500
+
+Hi Noah,
+
+Sounds like a good idea!  We currently do not have any clear-cut plans, but
+let me tell you a little about what has been done so far.   Currently, the
+main visual interface is in the repo
+https://github.com/opencog/ros-behavior-scripting/ ... and its pretty
+pathetic as vision goes.   It does use OpenCV, but only as input into a
+hacked version of pi_vision, and that is used to detect human faces, and
+map them to 3D locations.  Actually, I think that the pi_vision has been
+replaced by the CMT tracker, recently, which seems to work a bit better,
+maybe.  The ID's of the faces are placed as atoms into the atomspace.  Its
+super-simple, and super-low-bandwidth: basically a handful of atoms that
+say "I can see face 42 now".... and that's it. The 3D locations of the
+
+[... truncated]
+
+--- Message 2/17 ---
+From: Noah Bliss
+Date: Sat, 17 Sep 2016 01:41:11 +0000
+
+Thank you for the info Linas,
+
+I'll look at the current code and see if I can get a more complete
+implementation of OpenCV started. You mentioned another dev's overly simple
+integration which, while better than nothing, hardly fulfills our goal or
+utilizes the full potential of OpenCV.
+
+
+[... truncated]
+
+--- Message 3/17 ---
+From: Linas Vepstas
+Date: Fri, 16 Sep 2016 20:54:18 -0500
+
+I think the "saliency detector" code is buried somewhere in here:
+https://github.com/hansonrobotics/HEAD -- building and running that is
+probably the easiest way to get a working end-to-end demo.
+
+Thanks again! I'll report back any major advances, otherwise check the pull
+Only if you actually turn that on. Otherwise everything is in RAM.
+
+
+netcat does that.  The python snippet with netcat was an example.
+
+For everything else, we use ROS. There's a bit of a learning curve for ROS,
+but its the ideal way for running multi-machine, distributed processing.
+
+--linas
+
+--- Message 4/17 ---
+From: Ben Goertzel
+Date: Sat, 17 Sep 2016 13:06:35 +0800
+
+Noah,
+
+OpenCV, as you know, is basically a toolkit, not an integrated system....
+
+Right now, indeed, the vision processing we have hooked up to OpenCog
+is restricted to
+
+-- face detection, face tracking, face recognition
+-- visual saliency identification
+-- luminance-change detection
+
+which is all pretty simple...
+
+We have previously experimented with using kinfu to make a 3D map of a
+robot's surroundings.... OpenCog's TimeSpaceMap is well-suited to
+represent the output of kinfu (or similar) in a way that's integrated
+with the Atomspace...
+
+We have also played a bit with Region-CNNs, as a way of identifying
+what objects are where in a visual scene (initially from a closed
+class of objects)
+
+So if I were going to integrate additional external vision tools with
+
+[... truncated]
+
+--- Message 5/17 ---
+From: Noah Bliss
+Date: Sat, 17 Sep 2016 15:18:00 +0000
+
+The concept of building a 3d map of the environment in atomspace certainly
+would be a better goal of there had to be a choice between the two. I'll
+definitely read up on kinfu before starting any sort of work.
+
+A few simple examples of information gained through a more mature OpenCV
+
+[... truncated]
+
+--- Message 6/17 ---
+From: Ben Goertzel
+Date: Sat, 17 Sep 2016 23:22:32 +0800
+
+Ah, OK, I get it....  Yeah, having openCog know the size and color and
+direction of blobs would be nice... I'm not quite sure what to do with
+it immediately though...
+
+I mean, for the "deep learning vision in OpenCog" direction we're
+gonna feed fine-grained visual data (pixels, voxels) into neural nets
+wrapped in Grounded SchemaNodes associated with RegionNodes in the
+TimeSpaceMap...
+
+OTOH, for hand-coding simple response rules for a robot or avatar
+controlled by OpenCog, you kinda need to know what you're seeing not
+just that you're seeing a red blob in a certain position, moving
+toward a blue blob...
+
+So one could argue that knowing where blobs of various colors are and
+where they're moving is
+
+-- too low-level for hand-coding response rules for an opencog agent
+
+
+[... truncated]
+
+--- Message 7/17 ---
+From: Linas Vepstas
+Date: Sat, 17 Sep 2016 17:48:20 -0500
+
+I do.  One could wave something around in front of the webcam, and ask
+"what do you see?" and the robot should be able to respond:  "I see
+something red moving around".
+
+This is, in principle, a demo that is achievable in the short-term:  poke
+some moving-things atoms in the atomspace, and wire up the NL pipeline to
+be able to ask questions about moving things.  Getting the color right is
+certainly a nice touch.
+
+I imagine that the NN crowd would be quite unimpressed by this, but what it
+does provide is an authentic demo of symbolic manipulation of sensory
+data.  I think this is an important milestone/demo for us.
+
+Oh, I see that you implied this, already:
+ -- too low-level for hand-coding response rules for an opencog agent
+
+Nah.
+[... truncated]
+
+--- Message 8/17 ---
+From: Andi
+Date: Mon, 19 Sep 2016 15:02:10 -0700 (PDT)
+
+i am just dreaming - reading this thread. But i want to share the dream :)
+
+I love watching Snooker.
+And I love watching RonnyOSullivan playing in his top form!
+
+Just imagine Nao becoming a world champion of Snooker :)
+
+Maybe 2030 we will remember this thread, where it begun.
+
+--- Message 9/17 ---
+From: Noah Bliss
+Date: Tue, 20 Sep 2016 20:07:36 -0700 (PDT)
+
+I was reflecting on your email Ben... I agree, arbitrarily segmenting a 
+blob into predefined sections for processing may not be the best focus of 
+this long-term. Perhaps for a small region this would be useful. (e.g. 
+"What color is the object I am holding?" Then it would be able to set an 
+
+[... truncated]
+
+--- Message 10/17 ---
+From: Noah Bliss
+Date: Tue, 20 Sep 2016 20:15:49 -0700 (PDT)
+
+Afterthought:
+
+Checked out Kinfu, looks to do something quite similar. I am somewhat 
+concerned about the resolution currently offered though. I'll see if there 
+is a way to scale it down to simpler objects for easier atomspace digging 
+and verification. Otherwise I do understand the draw of Kinfu.
+[... truncated]
+
+--- Message 11/17 ---
+From: Noah Bliss
+Date: Wed, 18 Jan 2017 14:15:28 -0800 (PST)
+
+College has kept me busy but I finally took the time to go through the 
+pivision code on the hansonrobotics github. Correct me if I am wrong, but I 
+saw no integration of visual information being fed into opencog, at least 
+not directly.
+[... truncated]
+
+--- Message 12/17 ---
+From: Ben Goertzel
+Date: Thu, 19 Jan 2017 12:21:25 +0800
+
+Ralf Mayet in HK is working on an approach such as you describe... help
+would be valued ... more later...
+
+--- Message 13/17 ---
+From: Ben Goertzel
+Date: Fri, 20 Jan 2017 10:09:28 -0700
+
+Noah,
+
+What Ralf is working on is making a "DeStin-like" visual processing
+hierarchy in Tensorflow, probably using InfoGAN as a key ingredient
+(within each "DESTIN-like node"), and then integrating this hierarchy
+with OpenCog so that OpenCog can be used to recognize semantic
+patterns in the state of the visual processing hierarchy, and these
+semantic patterns can be fed back to the visual processing hierarchy
+as additional features at various levels of the hierarchy
+
+This is a lot of work, it's original research, and it will probably
+take about 4-6 more months to lead to useful results....  If you would
+like to get involved Ralf can help  you get up to speed
+
+thanks
+ben
+
+--- Message 14/17 ---
+From: Noah Bliss
+Date: Fri, 20 Jan 2017 20:17:43 +0000
+
+Ben,
+
+Sounds good, I would definitely be interested. Seems pretty ambitious but
+no one ever achieved great things by aiming low. I noticed Ralf was CC'd in
+this topic so if he could reach out I am available on all major platforms
+
+[... truncated]
+
+--- Message 15/17 ---
+From: Linas Vepstas
+Date: Fri, 20 Jan 2017 19:53:23 -0600
+
+I don't think I ever spoke very carefully to Ralf about this, nor am I
+sure that the seed I tried to plant ever germinated in Ben's head, so
+let me restart from scratch.   Perhaps this is something Noah could
+work on?
+
+For simplicity, let me work with sound, because its 1D (as a time
+series) not 2D like vision, so maybe simpler.  Here's the idea:
+
+step 0) get some audio framework, that tells you instantaneous
+loudness (aka total power), frequencies (i.e. power in different
+frequency bands).
+
+step 1) randomly create a few dozen or a few hundred or thousand
+simple sound filters, composed from above. Each filter outputs either
+true or false -- it either triggered or it didn't
+
+For example, one  random filter might be "if there was a loud sharp
+
+[... truncated]
+
+--- Message 16/17 ---
+From: Ralf M.
+Date: Sat, 21 Jan 2017 13:11:43 +0800
+
+Hey Noah,
+
+built in
+our
+as Ben had mentioned, I am currently working towards creating a "vision
+processor" that should hopefully exactly do what you describe. The core
+goal of this system is to extract and generate states (patterns) from the
+
+[... truncated]
+
+--- Message 17/17 ---
+From: Ben Goertzel
+Date: Sat, 21 Jan 2017 23:21:10 +0800
+
+Hmm, I'll think about this, thx...
+
+In a way, I wonder if this is related to what InfoGAN does, with its
+latent variables that need to have high mutual information with the
+state of the NN modeling the data..
+
+more later...

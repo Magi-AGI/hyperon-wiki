@@ -109,3 +109,9 @@ temp/
 # Mattermost exports (large files, upload to wiki separately)
 mattermost_exports/
 mattermost_config.json
+
+# Local caches / data dumps (weekly cleanup)
+__pycache__/
+*.pyc
+/raw_data_exports/
+/publication_texts/

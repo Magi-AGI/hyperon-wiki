@@ -1,0 +1,123 @@
+OpenCog Mailing List Thread: Analysis of ECAN data: integrated information, strange attractors, etc.
+Messages: 8
+Date range: Tue, 23 May 2017 17:52:07 +0800 to Fri, 16 Jun 2017 15:07:32 -0500
+Source: opencog@googlegroups.com
+
+============================================================
+
+--- Message 1/8 ---
+From: Ben Goertzel
+Date: Tue, 23 May 2017 17:52:07 +0800
+
+Matt,
+
+Thinking about how to analyze time-series data from ECAN, I thought it
+might be cool to look for interactions between IIT (Phi) and strange
+attractor structure in the attentional focus...
+
+I found this code which lets us analyze data using Integrated
+Information Theory (Tononi's Phi)
+
+https://figshare.com/articles/phi_toolbox_zip/3203326
+
+This has gotten some acceptance as a "measure of consciousness", so if
+we could show that some ECAN parameters or aspects correlate with
+"degree of consciousness" as measured by Phi, this would let us
+publish a wizzy and popular paper....   For instance, what if the
+system was more conscious (higher Phi) when it connected a sentence
+with background knowledge, than when it parsed a sentence but was
+unable to connect it with background knowledge...
+
+
+[... truncated]
+
+--- Message 2/8 ---
+From: Matthew Ikle
+Date: Tue, 23 May 2017 10:15:00 -0600
+
+Yes all of this makes a lot of sense and could be exciting, especially the connection to Phi. Could be an extremely interesting paper — but a lot will depend upon parameter tuning as well as creating an appropriate experiment. 
+
+
+[... truncated]
+
+--- Message 3/8 ---
+From: Ben Goertzel
+Date: Wed, 24 May 2017 00:18:08 +0800
+
+Yes, agreed...
+
+--- Message 4/8 ---
+From: Matt Ikle
+Date: Thu, 15 Jun 2017 10:54:02 -0600
+
+Hi Ben,
+
+I've been thinking a lot about how to actually create experiments for connecting ECAN with Phi.
+
+It seems to me that a simple pre-experiment we could run builds upon the insecticide experiment as follows.
+[... truncated]
+
+--- Message 5/8 ---
+From: Ben Goertzel
+Date: Fri, 16 Jun 2017 11:19:11 +0800
+
+Yes, that would be a meaningful experiment to start with, though
+obviously not a substitute for an experiment that gauges the
+integrated information of the dynamics more broadly...
+
+--- Message 6/8 ---
+From: Matthew Ikle
+Date: Fri, 16 Jun 2017 06:02:22 -0600
+
+Of course — that is why I called it a pre-experiment. There are some subtle mechanics (distribution determination, system partitioning) that we need to work out in the actual calculations for phi (or phi*) and the approach I outline will allow us to concentrate on figuring these out.
+[... truncated]
+
+--- Message 7/8 ---
+From: Linas Vepstas
+Date: Fri, 16 Jun 2017 14:17:43 -0500
+
+Matt, Ben,
+FYI,
+
+I've been developing a suite of tools/API's that might be useful for this.
+Getting tonini phi is "easy" .. or hard depending on what exactly you
+want.  So...
+
+at the core, there's an API to expose a portion of the atomspace as a
+matrix.  You can think of it as a correlation matrix, covariance matrix,
+adjacency matrix of a graph, etc.
+
+The "adjacency matrix of a graph" is the viewpoint you want for IIT.
+
+A set of stuff you can do with the matrix, including computing it's
+entropy, MI,various RMS deviations.  Doing PCA to it. Also, cutting it in
+various aways: Currently, I'm using the cuts to filter out noise and junk
+data, but you could use the cuts to perform the tonini cuts.
+
+The "hard part" is that computing entropy for a 30K x 30K matrix can take
+hours...
+[... truncated]
+
+--- Message 8/8 ---
+From: Linas Vepstas
+Date: Fri, 16 Jun 2017 15:07:32 -0500
+
+Also:
+
+if you just want a single number out of curiosity: here's what i've got:
+for just-plain word pairs, I get an entropy of about 18, an MI of -2
+(that's a minus sign there) and a sparsity of about 15 (i.e. only 1 in 2^15
+entries in the adjacency matrix are non-zero)    I don't yet know what
+these numbers will be like, when I cut out the noise; I have to fix a few
+bugs first.
+
+For the word-disjunct datasets, I get entropies around 21 and MI of minus
+4. and similar sparsities.
+
+doubling the size of the dataset has very little effect on these numbers:
+they might rise by maybe 0.1 or 0.2, but that's it.  Fixing bugs that lead
+to low quality data had the biggest effect: e.g handling punctuation marks
+correctly helped increase both entropy and MI.
+
+p.s.
+[... truncated]

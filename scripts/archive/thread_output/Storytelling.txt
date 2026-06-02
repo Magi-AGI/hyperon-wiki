@@ -1,0 +1,152 @@
+OpenCog Mailing List Thread: Storytelling
+Messages: 10
+Date range: Tue, 26 Sep 2017 13:21:23 -0700 (PDT) to Mon, 2 Oct 2017 13:12:03 -0400
+Source: opencog@googlegroups.com
+
+============================================================
+
+--- Message 1/10 ---
+From: wtaylorjr2001@gmail.com
+Date: Tue, 26 Sep 2017 13:21:23 -0700 (PDT)
+
+Is it possible to use opencog to input stories and break them apart, 
+distort them, and then assemble them in new ways to create "new" stories?
+
+--- Message 2/10 ---
+From: Linas Vepstas
+Date: Sun, 1 Oct 2017 20:34:23 +0800
+
+Not at this time. We have ideas about this, but no code. --linas
+
+On Wed, Sep 27, 2017 at 4:21 AM, wtaylorjr2001@gmail.com <
+wtaylorjr2001@gmail.com> wrote:
+
+--- Message 3/10 ---
+From: William Taylor
+Date: Sun, 1 Oct 2017 09:50:04 -0400
+
+Thank you for responding. If you can give me some ideas, I may be able
+to create the code myself, or help create it. I am not the greatest
+programmer but I can learn and improve. I would like to use this for
+my termination project for my Masters at Binghamton University in New
+York.
+
+--- Message 4/10 ---
+From: Linas Vepstas
+Date: Sun, 1 Oct 2017 22:44:30 +0800
+
+Ooof dah.  A master's thesis is not much time, so at best I can suggest
+only quick hacks.  And you probably mostly would not need opencog to
+implement them.
+
+One quick hack would be to try to discover which bundles or groups of words
+dominate nearby paragraphs, and which groups of words recur throughout the
+story.  You can then replace those words by other words.  Alternately, if
+two paragraphs are closely tied to one-another, but weakly tied to the rest
+of the text, you can cut them out entirely, and replace them by some other
+paragraphs from elsewhere (after adjusting word-content).
+
+By "words", I really mean nouns and entity names, and all the pronouns that
+refer to them (he, she, it ...)  just try to see which ones are near to
+
+[... truncated]
+
+--- Message 5/10 ---
+From: William Taylor
+Date: Sun, 1 Oct 2017 11:25:48 -0400
+
+Please excuse the double post. I have an idea that I would like to try
+out. I would like to design modalities, sight sound taste touch and
+smell and general. Each of these are in turn broken into
+submodalities, For example sight has shape, color, position. Shape can
+
+[... truncated]
+
+--- Message 6/10 ---
+From: Linas Vepstas
+Date: Mon, 2 Oct 2017 00:08:53 +0800
+
+On Sun, Oct 1, 2017 at 11:25 PM, William Taylor <wtaylorjr2001@gmail.com>
+wrote:
+
+
+Sure, we do some of this already, for the robots. The code is here:
+
+https://github.com/opencog/ros-behavior-scripting/tree/master/sensors
+
+See for example, "room brightness" or "sound track".  Its pretty stupid,
+but it works and gets used,
+
+
+
+Sure.  There's a write up for how do do this here:
+
+
+https://github.com/opencog/opencog/blob/master/opencog/eva/architecture/embodiment.pdf
+
+Some of it is implemented; its crude.
+
+
+On a higher level is the idea that this
+Sure, but this is where the problem gets hard.
+
+
+So does everyone. Easy to say, hard to do. You can implement quick cheesy
+hacks in a few months or a few years.  You can spend ten or 20 yeas after
+that, and still not get even close.
+[... truncated]
+
+--- Message 7/10 ---
+From: William Taylor
+Date: Sun, 1 Oct 2017 21:29:47 -0400
+
+"So does everyone. Easy to say, hard to do. You can implement quick
+cheesy hacks in a few months or a few years.  You can spend ten or 20
+yeas after that, and still not get even close.  Many, many many have
+tried, no one has been successful yet.  Not even partly-successful."
+
+
+[... truncated]
+
+--- Message 8/10 ---
+From: Linas Vepstas
+Date: Mon, 2 Oct 2017 10:02:15 +0800
+
+You might enjoy the AGI mailing list. If you cast your net more widely,
+there's the extropians, the trans-humanists, the life-extensionists,
+certain classes of economists, and much much more. There are TED talks
+about unemployment caused by AI/AGI.  Ray Kurzweil has written half a dozen
+books, there are others before him, and our very own Ben Geortzel just
+published his sixth or seventh maybe a few months ago or so, this latest
+one is non-technical, general readership.
+
+And of course, the original Star Trek series was set in a post-scarcity
+economy.  You would name whatever you wanted, and the replicator would just
+create it, for nothing, for free.  Earl Grey tea. The recent Star Trek
+reboots completely lost sight of this utopia, and replaced it by pointless
+stupid action-adventure.
+
+
+[... truncated]
+
+--- Message 9/10 ---
+From: Murilo Saraiva de Queiroz
+Date: Mon, 2 Oct 2017 12:33:58 -0300
+
+About post-scarcity economy, uploads and such: the new book from Cory
+Doctorow, Walkaway, is pretty interesting! I didnt' finish it yet, but I'm
+enjoying a lot of stuff there.
+
+On Sun, Oct 1, 2017 at 11:02 PM, Linas Vepstas <linasvepstas@gmail.com>
+wrote:
+
+--- Message 10/10 ---
+From: William Taylor
+Date: Mon, 2 Oct 2017 13:12:03 -0400
+
+Thank you all for the information you have shared. I have
+Probabilistic Logic Networks, and Engineering General Intelligence 1
+and 2, and Hidden Pattern. I am reviewing c++ and python. I don't have
+a working version of opencog on my computer yet though. I am working
+
+[... truncated]

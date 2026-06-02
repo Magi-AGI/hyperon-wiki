@@ -1,0 +1,144 @@
+{
+  "operations": [
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSOC 2015",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSOC 2015\nMessages: 3\nDate range: 1 Feb 2015 to 3 Feb 2015\nSource: opencog@googlegroups.com\nThread ID: 14b493f0a166d8fe\n\n============================================================\n\n--- Message 1/3 ---\nFrom: anil kumar\nDate: 1 Feb 2015\n\nHi, My name is anil kumar. I am pursuing Mtech in Artificial intelligence from university of hyderabad. I know Machine Learning, Data Mining, Computational Intelligence and C, C++, Python, matlab, haskell.\n\n--- Message 2/3 ---\nFrom: Linas Vepstas\nDate: 2015-02-02\n\nLook over the http://wiki.opencog.org/w/Ideas wiki page\n\n--linas\n\n--- Message 3/3 ---\nFrom: sonawane.abhishek12@gmail.com\nDate: 3 Feb 2015\n\nHello all, My name is Abhishek Sonawane. I have experience in NLP and Machine Learning. I am interested in the Word Grammar Parsing idea. What kind of background would be required?\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSoC 2015 - Mentors",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSoC 2015 - Mentors\nMessages: 3\nDate range: 27 Apr 2015 to 2015-04-28\nSource: opencog@googlegroups.com\nThread ID: 14cfc686436d8ac5\n\n============================================================\n\n--- Message 1/3 ---\nFrom: Arley Ristar\nDate: 27 Apr 2015\n\nCongratulations to all approved! Some questions: 1. How do we know who are the mentors for each accepted project? 2. Should we be discussing the Community Bonding Period here or in private with the mentor?\n\n--- Message 2/3 ---\nFrom: Gavriel Loria\nDate: 27 Apr 2015\n\nThe accepted students page says who your mentor(s) should be: http://www.google-melange.com/gsoc/projects/list/google/gsoc2015\nIt looks like yours is mike duncan.\n\n--- Message 3/3 ---\nFrom: Ben Goertzel\nDate: 2015-04-28\n\nYi-Shan,\n\nFor the Minecraft projects that were accepted, the mentor is Lake Watkins, <nemquae@gmail.com>\n\nIt's generally better to keep discussions on this email list, or on the OpenCog Slack team which is about to be launched. Because for most projects there are many OpenCoggers besides the mentor who may have useful feedback.\n\n-- Ben\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSoC 2015 - Natural Language Processing.",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSoC 2015 - Natural Language Processing.\nMessages: 3\nDate range: 15 Mar 2015 to 2015-03-15\nSource: opencog@googlegroups.com\nThread ID: 14c1d37b1c2daa8d\n\n============================================================\n\n--- Message 1/3 ---\nFrom: Ashish Bedi\nDate: 15 Mar 2015\n\nSir, This is Ashish Kumar Bedi, a 2nd year undergraduate CS student at IIT Mandi, India. I am interested in contributing to opencog in NLP, specifically implementing simplified Word grammar parsing in Atomspace.\n\n--- Message 2/3 ---\nFrom: Ben Goertzel\nDate: 2015-03-16\n\nHi Ashish,\n\nGiven your math background, I wonder if you might consider this project:\nhttp://wiki.opencog.org/w/GSoC_2015_Project_Ideas#Implement_and_integrate_Imprecise_Probability_truth_value_math\n\nBasically this involves some Monte Carlo integration coding, and would entail you learning about probabilistic logic and imprecise probabilities.\n\nI'm just thinking you may not have the right linguistics background for the Word Grammar project.\n\n-- Ben\n\n--- Message 3/3 ---\nFrom: Ashish Bedi\nDate: 2015-03-15\n\nSir, This is Ashish Kumar Bedi. I am interested in contributing to opencog in NLP project and specificaly in implementing simplified Word grammar parsing in Atomspace.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSOC 2015 (14b0bb2ae7fcbc60)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSOC 2015\nMessages: 2\nDate range: 21 Jan 2015 to 2015-01-21\nSource: opencog@googlegroups.com\nThread ID: 14b0bb2ae7fcbc60\n\n============================================================\n\n--- Message 1/2 ---\nFrom: bhavikpatel.aha@gmail.com\nDate: 21 Jan 2015\n\nHi, i wanna participate in GSOC 2015 in your organization. will you propose your project this time. if yes, i would like to contribute in it\n\n--- Message 2/2 ---\nFrom: Linas Vepstas\nDate: 2015-01-21\n\nSee http://wiki.opencog.org/w/Ideas\n\n--linas\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSOC 2015 (14b19ace61412b0a)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSOC 2015\nMessages: 2\nDate range: 2015-01-24 to 2015-01-24\nSource: opencog@googlegroups.com\nThread ID: 14b19ace61412b0a\n\n============================================================\n\n--- Message 1/2 ---\nFrom: supraja reddy\nDate: 2015-01-24\n\nHello, I am interested to work with your organisation as a part of GSOC 2015. I would like to know if opencog will be participating this year.\n\n--- Message 2/2 ---\nFrom: Ben Goertzel\nDate: 2015-01-24\n\nHi,\n\nWe intend to apply for participation as a member organization in GSoC 2015. I am hopeful we will be accepted but this isn't guaranteed as it's Google's decision.\n\nthx\nBen G\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSOC 2015 (14b54ed3f2c399a9)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSOC 2015\nMessages: 7\nDate range: 2015-02-04 to 2015-02-07\nSource: opencog@googlegroups.com\nThread ID: 14b54ed3f2c399a9\n\n============================================================\n\n--- Message 1/7 ---\nFrom: sonawane.abhishek12@gmail.com\nDate: 2015-02-04\n\nI am a final year CS student interested in Machine Learning and NLP. I am interested in the Word Grammar Parsing project. What kind of background would be required?\n\n--- Message 2/7 ---\nFrom: Linas Vepstas\nDate: 2015-02-04\n\nYes, possibly. There are two things that make this difficult: this requires modification of the internals of link-grammar, and actually, I do not really understand the project. Ben, can you explain how the Word Grammar thing would work?\n\n--- Message 3/7 ---\nFrom: Ben Goertzel\nDate: 2015-02-04\n\nYeah, I'll answer this thread early next week at latest. I'm having Internet issues here in Ethiopia so am being sluggish answering emails...\n\n--- Message 4/7 ---\nFrom: sonawane.abhishek12@gmail.com\nDate: 2015-02-05\n\nWhat about Statistically similar expressions for question answering? Can I work on it?\n\n--- Message 5/7 ---\nFrom: Ben Goertzel\nDate: 2015-02-05\n\nI think that would be a fine GSoC project. Regarding Word Grammar, I think the initial project is to implement a Word Grammar parser, since none exist.... My idea is to implement a Word Grammar parser utilizing the link grammar dictionary, but the Word Grammar parsing algorithm....\n\n--- Message 6/7 ---\nFrom: Abhishek Sonawane\nDate: 2015-02-07\n\nHow would I go about Statistically similar expressions for question answering? What background would I need? I also liked the idea of Natural Language Generation.\n\n--- Message 7/7 ---\nFrom: Linas Vepstas\nDate: 2015-02-07\n\nWe are using several related approaches to finding statistically similar expressions. The simplest way to explain is by Dekang Lin's DIRT paper for finding synonyms. It is generalized by Poon and Domings Unsupervised language learning. I would like to see the second one replicated in opencog. With a minor twist, I think it could be used for basic question answering.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSOC 2015 (14bc047348910a44)",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSOC 2015\nMessages: 2\nDate range: 25 Feb 2015 to 25 Feb 2015\nSource: opencog@googlegroups.com\nThread ID: 14bc047348910a44\n\n============================================================\n\n--- Message 1/2 ---\nFrom: Rrubaa Panchendrarajan\nDate: 25 Feb 2015\n\nHI, I am a computer science and engineering student from University of Moratuwa. I would like to do my GSOC project this year in opencog. I am interested in Artificial Intelligence but new to opencog. Can anyone please guide me to start with it?\n\n--- Message 2/2 ---\nFrom: Tejas Khot\nDate: 25 Feb 2015\n\nHello Rrubaa, I am a GSOC applicant too. You can start by looking up here: http://wiki.opencog.org/w/Ideas\nThis page will help you get started. There are discussions on many of the topics in this group.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSOC 2015 Applicant",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSOC 2015 Applicant\nMessages: 2\nDate range: 5 Feb 2015 to 2015-02-05\nSource: opencog@googlegroups.com\nThread ID: 14b5b976be7eaf81\n\n============================================================\n\n--- Message 1/2 ---\nFrom: Akshita Jha\nDate: 5 Feb 2015\n\nHi, I am a 3rd year Computer Science B.Tech student with background in C, C++, Java, Python, NLP and linguistics. I am interested in Improved Reference Resolution.\n\n--- Message 2/2 ---\nFrom: Linas Vepstas\nDate: 2015-02-05\n\nI believe the reference resolution project is done. We have not yet updated the GSOC tags from last year.\n\nA good way to get started is to go through the bug list, and see if there is a bug that you can fix...\n\n--linas\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSOC 2015 applicant for OpenCog project",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSOC 2015 applicant for OpenCog project\nMessages: 2\nDate range: 8 Mar 2015 to 9 Mar 2015\nSource: opencog@googlegroups.com\nThread ID: 14bfd3ce685be098\n\n============================================================\n\n--- Message 1/2 ---\nFrom: Chitrank Dixit\nDate: 8 Mar 2015\n\nHello developers, I am Chitrank Dixit pursuing my Master of Computer Applications from IIPS-DAVV, India. I am building from the octool but I am facing problems with the Setup as build fails at [ 15%] Built target TangentBug. Please if anyone has succeeded with resolving this help me\n\n--- Message 2/2 ---\nFrom: Amen Belayneh\nDate: 9 Mar 2015\n\nHi :-)\nuse https://github.com/opencog/opencog/blob/master/scripts/install-dependencies-trusty instead\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSoC 2015 application of intelligent agents to Human-Computer Interaction",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSoC 2015 application of intelligent agents to Human-Computer Interaction\nMessages: 4\nDate range: 11 Mar 2015 to 12 Mar 2015\nSource: opencog@googlegroups.com\nThread ID: 14c0cbcdf6661126\n\n============================================================\n\n--- Message 1/4 ---\nFrom: Kirill Mishchenko\nDate: 11 Mar 2015\n\nHello, My name is Kirill. I'm a PhD student in computer science. I'm interested in contributing to the clustering and microplanning tasks. Can you give comments on the microplanning task?\n\n--- Message 2/4 ---\nFrom: Ben Goertzel\nDate: 2015-03-12\n\nHey William, If we were to have a GSoC student working on microplanning, what would you suggest they focus on?\n\nben\n\n--- Message 3/4 ---\nFrom: William Ma\nDate: 12 Mar 2015\n\nThat's a difficult question. Options include: 1. Remove SuReal dependency, 2. Port to C++/Python, 3. Remove Sentence Form rules file usage, 5. Rewrite the whole thing with completely new algorithm. The microplanning code is at https://github.com/opencog/opencog/tree/master/opencog/nlp/microplanning\n\n--- Message 4/4 ---\nFrom: Kirill Mishchenko\nDate: 12 Mar 2015\n\nOk. Thanks for the ideas. I will investigate them.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSoC 2015 Enable openCOG to control EVA Robot",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSoC 2015 Enable openCOG to control EVA Robot\nMessages: 3\nDate range: 10 Mar 2015 to 2015-03-13\nSource: opencog@googlegroups.com\nThread ID: 14c064de9714d0f8\n\n============================================================\n\n--- Message 1/3 ---\nFrom: Sahil Tapiawala\nDate: 10 Mar 2015\n\nHi. I am interested in Robotics and AI. Looking at the projects, I think I could contribute by enabling openCOG to control the EVA robot and also by modifying the hBOA algorithm for MOSES.\n\n--- Message 2/3 ---\nFrom: Ben Goertzel\nDate: 2015-03-11\n\nHi Sahil, This seems like a good option. We could use help in getting the new Embodiment module working. One possible focus could be replacing the innards of the current 3DSpaceMap with OctoMap.\n\n- Ben\n\n--- Message 3/3 ---\nFrom: Ben Goertzel\nDate: 2015-03-13\n\nSorry about that -- Google Groups spam filter is acting funny these last weeks. Each day I've been logging in and accepting all non-spam messages noted as Pending.\n\nben\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSOC 2015 Final Evaluation",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSOC 2015 Final Evaluation\nMessages: 2\nDate range: 2015-08-22 to 25 Aug 2015\nSource: opencog@googlegroups.com\nThread ID: 14f548b4fabfc278\n\n============================================================\n\n--- Message 1/2 ---\nFrom: Amen Belayneh\nDate: 2015-08-22\n\nHi, This is a friendly reminder that final evaluations are now open and must be submitted by 19:00 UTC on Friday, 28 August.\n\n--- Message 2/2 ---\nFrom: Michael Duncan\nDate: 25 Aug 2015\n\nfinal eval submitted for Arley Ristar: Improving MOSES Population Modeling With Particle Swarm Optimization\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSOC_2015_FLAG -- Haskell Bindings for OpenCog",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSOC_2015_FLAG -- Haskell Bindings for OpenCog\nMessages: 5\nDate range: 2015-03-03 to 2015-03-09\nSource: opencog@googlegroups.com\nThread ID: 14be8c366052ec1d\n\n============================================================\n\n--- Message 1/5 ---\nFrom: Kaivan Shah\nDate: 2015-03-03\n\nI am a sophomore at Texas A&M University, interested in the Haskell bindings project. My competency in C++ and Haskell is intermediate.\n\n--- Message 2/5 ---\nFrom: Nil Geisweiller\nDate: 2015-03-05\n\nYou would need to study the AtomSpace and its API, drawing inspiration from existing binding languages like Scheme. You need to demonstrate in your proposal that you understand the task and sketch a step by step plan. It looks like I would be the main mentor, but Ben and Linas would help as well.\n\n--- Message 3/5 ---\nFrom: Ben Goertzel\nDate: 2015-03-08\n\nI have looked over your example Haskell code, and it is reasonably clean and elegant. My sense is that making Haskell bindings to OpenCog might end up being a bit much for you. I think it might be a better fit to make a prototype exploring Haskell-based evolutionary learning of complex programmatic constructs using fold and GenProg, which could be inserted into MOSES as an alternative for what happens inside a deme.\n\n--- Message 4/5 ---\nFrom: Nil Geisweiller\nDate: 2015-03-09\n\nA full binding is probably too big indeed, but we could aim at a simplified binding, it would still be useful. Ben, if you think you can handle most of the mentoring for the GenProg project, I am happy to help for the MOSES binding part.\n\n--- Message 5/5 ---\nFrom: Ben Goertzel\nDate: 2015-03-09\n\nI can personally mentor a GenProg project, but probably not a Haskell-bindings project. I think you would be better for the latter.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSoC 2015 Haskell Bindings for OpenCog",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSoC 2015 Haskell Bindings for OpenCog\nMessages: 2\nDate range: 25 Mar 2015 to 2015-03-26\nSource: opencog@googlegroups.com\nThread ID: 14c517cb2d5000e9\n\n============================================================\n\n--- Message 1/2 ---\nFrom: Adrian Borucki\nDate: 25 Mar 2015\n\nHello, I am a Computer Science student from Warsaw University. I found about your interest in having Haskell bindings for core OpenCog libraries. I know C++, Python and Haskell.\n\nHaskell supports interacting with code written in C natively. I think starting with AtomSpace is a good idea. [...]\n\n--- Message 2/2 ---\nFrom: Nil Geisweiller\nDate: 2015-03-26\n\nHi Adrian,\n\nplease submit a proposal to melange, the deadline is pretty soon I think. The discussion can take place there.\n\nNil\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSoC 2015 Haskell Bindings for OpenCog and Haskell projects",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSoC 2015 Haskell Bindings for OpenCog and Haskell projects\nMessages: 4\nDate range: 2015-03-09 to 2015-03-12\nSource: opencog@googlegroups.com\nThread ID: 14c0176e3a874ea0\n\n============================================================\n\n--- Message 1/4 ---\nFrom: Ezequiel Postan\nDate: 2015-03-09\n\nHello, my name is Ezequiel, a computer science student at National University of Rosario, Argentina. I have Haskell knowledge including folds, functors and monads. I am interested in the Haskell related projects.\n\n--- Message 2/4 ---\nFrom: Ben Goertzel\nDate: 2015-03-10\n\nYour experience sounds good for the Haskell projects we have -- perhaps best for the GenProg project (as that is pure Haskell), but I think you could also handle the bindings project.\n\nben\n\n--- Message 3/4 ---\nFrom: Nil Geisweiller\nDate: 2015-03-10\n\nAs explained on the wiki, you may choose to avoid the C++ interfacing by translating into Scheme or Python.\n\nNil\n\n--- Message 4/4 ---\nFrom: Ezequiel Postan\nDate: 2015-03-12\n\nExcuse my delay, I will start reading more about the projects and keep in touch if I find any question.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSOC 2015 Language Learning , PLN Inference on extracted semantic relationships",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSOC 2015 Language Learning , PLN Inference on extracted semantic relationships\nMessages: 2\nDate range: 4 Mar 2015 to 2015-03-05\nSource: opencog@googlegroups.com\nThread ID: 14be8c1cef79cfee\n\n============================================================\n\n--- Message 1/2 ---\nFrom: Rohit Jain\nDate: 4 Mar 2015\n\nHi guys, I am a 4th year undergrad student at IIIT-H pursuing B.Tech in Computer Science and M.S in Computational Linguistics. I am interested in Language Learning (especially the morphology task) and PLN Inference on extracted semantic relationships.\n\n--- Message 2/2 ---\nFrom: Ben Goertzel\nDate: 2015-03-05\n\nI'd be happy to mentor or co-mentor a good student working on PLN inference on extracted semantic relationships...\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSOC 2015 NLP",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSOC 2015 NLP\nMessages: 6\nDate range: 2015-03-03 to 2015-03-07\nSource: opencog@googlegroups.com\nThread ID: 14be8c4730893b97\n\n============================================================\n\n--- Message 1/6 ---\nFrom: Darshan agarwal\nDate: 2015-03-03\n\nI am a 3rd year CS student interested in NLP. I am interested in the Reference Resolution project. Can I know which projects in NLP can be opted for GSoC 2015?\n\n--- Message 2/6 ---\nFrom: Ben Goertzel\nDate: 2015-03-05\n\nSee the shiny new up to date GSoC 2015 Ideas page.\n\n--- Message 3/6 ---\nFrom: Darshan agarwal\nDate: 2015-03-07\n\nI want to contribute on the project Unsupervised Language Learning. I am particularly interested in Morphology and Disjunct extraction, parse ranking.\n\n--- Message 4/6 ---\nFrom: Linas Vepstas\nDate: 2015-03-07\n\nWhat languages do you know well enough to read and write? Well enough to understand their morphology?\n\n--- Message 5/6 ---\nFrom: Darshan agarwal\nDate: 2015-03-08\n\nI know English and Hindi well enough.\n\n--- Message 6/6 ---\nFrom: Linas Vepstas\nDate: 2015-03-07\n\nWe have someone else working on the syntax-learning pieces, but no one working on morphology learning. English morphology is not really worth pursuing. In order to determine if the morphology work is going well, you would have to actually look at it, and see if what it is generating matches what it should be.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSoC 2015 Performance Measurement Suite",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSoC 2015 Performance Measurement Suite\nMessages: 3\nDate range: 17 Mar 2015 to 18 Mar 2015\nSource: opencog@googlegroups.com\nThread ID: 14c295e8fe3ba139\n\n============================================================\n\n--- Message 1/3 ---\nFrom: Tim Schwab\nDate: 17 Mar 2015\n\nHello, my name is Tim Schwab. I've decided to write my GSoC proposal on an overarching performance measurement suite of OpenCog, an extension of the AtomSpace benchmark by Joel Pitt.\n\n--- Message 2/3 ---\nFrom: Ben Goertzel\nDate: 2015-03-18\n\nTim, The proposal looks OK, though it's pretty high level. Can you point to any other specific performance measurement suites out there? Also, if you have time to submit some patch to the OpenCog codebase, that would increase your odds of acceptance.\n\nthanks\nBen\n\n--- Message 3/3 ---\nFrom: tschwab@g.clemson.edu\nDate: 18 Mar 2015\n\nThanks for the tips, I was a bit worried its too high level. I'll try to refine it a bit more.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSoC 2015 Proposal for PLN Inference on extracted semantic relationships",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSoC 2015 Proposal for PLN Inference on extracted semantic relationships\nMessages: 6\nDate range: 2015-03-23 to 2015-03-27\nSource: opencog@googlegroups.com\nThread ID: 14c436ee2ce48b17\n\n============================================================\n\n--- Message 1/6 ---\nFrom: Prateek Saxena\nDate: 2015-03-23\n\nThanks for all your guidance in introducing me to opencog. I have begun writing my GSoC 2015 application for PLN inference on extracted semantic relationships. I need more information about specific tasks and expected timelines.\n\n--- Message 2/6 ---\nFrom: Prateek Saxena\nDate: 2015-03-25\n\nI have been working on my proposal and am close to getting it finished. The sections I am working on are regarding specific tasks and timelines.\n\n--- Message 3/6 ---\nFrom: Amen Belayneh\nDate: 2015-03-25\n\nThe main tasks will involve porting the different rules and examples associated with them. It is hard to get a timeline for individual tasks. Make it up as you judge fit. Just submit your proposal on GSoC site and let us know here.\n\n--- Message 4/6 ---\nFrom: Prateek Saxena\nDate: 2015-03-26\n\nI have submitted the first draft of my proposal on the GSoC website. Could you have a look at it?\n\n--- Message 5/6 ---\nFrom: Amen Belayneh\nDate: 2015-03-27\n\nYour proposal is clear, nothing much to be added, as far as I can tell. Good Luck.\n\n--- Message 6/6 ---\nFrom: Prateek Saxena\nDate: 2015-03-27\n\nThank you for getting back so quickly.\n",
+      "fetch_or_initialize": true
+    },
+    {
+      "action": "create",
+      "name": "RawData+opencog-ml+GSoC Clustering Idea; What to implement",
+      "type": "RawData",
+      "content": "OpenCog Mailing List Thread: GSoC Clustering Idea; What to implement\nMessages: 3\nDate range: 19 Mar 2015 to 2015-03-20\nSource: opencog@googlegroups.com\nThread ID: 14c33855b070de27\n\n============================================================\n\n--- Message 1/3 ---\nFrom: Islam Faisal\nDate: 19 Mar 2015\n\nHello, I am an undergraduate student in computer science and mathematics. I found this clustering http://wiki.opencog.org/w/Clustering project and am really interested to work on it during the upcoming summer.\n\n--- Message 2/3 ---\nFrom: Aaron Nitzkin\nDate: 2015-03-20\n\nI've been experimenting with the clustering outside the atomspace, using Python, and we are learning some important things. I believe the real work will be done in C++. Linas currently has a GSoC mentee working on atomspace data representations for the clustering.\n\n--- Message 3/3 ---\nFrom: Ben Goertzel\nDate: 2015-03-20\n\nWe haven't made any progress on implementing clustering in the Atomspace, but definitely would like to see this done! It could be done in C++, python or Scheme, actually\n\n-- Ben\n",
+      "fetch_or_initialize": true
+    }
+  ]
+}

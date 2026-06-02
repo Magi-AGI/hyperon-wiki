@@ -1,0 +1,162 @@
+OpenCog Mailing List Thread: Learner
+Messages: 11
+Date range: Sun, 23 Apr 2017 00:05:29 -0700 (PDT) to Tue, 25 Apr 2017 10:47:54 +0500
+Source: opencog@googlegroups.com
+
+============================================================
+
+--- Message 1/11 ---
+From: Nageen Naeem
+Date: Sun, 23 Apr 2017 00:05:29 -0700 (PDT)
+
+Hi,
+
+I am Nageen, a computer science student.I am new to this field and new to 
+OpenCog also, I understand the base concept of OpenCog first now I am 
+trying to use it I install it using instruction give on the following page 
+"http://wiki.opencog.
+[... truncated]
+
+--- Message 2/11 ---
+From: Nil Geisweiller' via opencog
+Date: Sun, 23 Apr 2017 10:34:33 +0300
+
+Hi,
+
+there are tutorials on the wiki
+
+http://wiki.opencog.org/w/Category:Tutorials
+
+I recommend you take a look at examples in the atomspace repo
+
+<ATOMSPACE_REPO>/examples
+
+first the pattern matcher, then rule-engine, etc.
+
+then the opencog repo
+
+<OPENCOG_REPO>/examples
+
+Nil
+
+--- Message 3/11 ---
+From: Nageen Naeem
+Date: Sun, 23 Apr 2017 13:05:12 +0500
+
+can you guide me in detail?
+Thanks
+
+Regards
+Nageen
+
+On Sun, Apr 23, 2017 at 12:34 PM, 'Nil Geisweiller' via opencog <
+opencog@googlegroups.com> wrote:
+
+--- Message 4/11 ---
+From: Nil Geisweiller' via opencog
+Date: Sun, 23 Apr 2017 13:23:26 +0300
+
+I have barely looked at the tutorials myself, so if I have to guide you 
+I would tell you to start with
+
+https://github.com/opencog/atomspace/blob/master/examples/pattern-matcher/README.md
+
+Nil
+
+--- Message 5/11 ---
+From: Nageen Naeem
+Date: Sun, 23 Apr 2017 16:31:46 +0500
+
+Sir, can you guide me how started and at what stage you are?
+
+On Sun, Apr 23, 2017 at 3:23 PM, 'Nil Geisweiller' via opencog <
+opencog@googlegroups.com> wrote:
+
+--- Message 6/11 ---
+From: Nil Geisweiller' via opencog
+Date: Mon, 24 Apr 2017 09:30:13 +0300
+
+These days I'm mainly focused on the URE
+
+http://wiki.opencog.org/w/Unified_rule_engine
+
+I recommend starting with the pattern matcher because it is such an 
+essential component and much of opencog is built upon it. If you're 
+interested in reasoning, I would start with that, reading
+
+http://wiki.opencog.org/w/Pattern_matching
+
+and the README I pointed to you earlier. Then look at the URE.
+
+If you're more interested in program learning, have a look at
+
+http://wiki.opencog.org/w/Meta-Optimizing_Semantic_Evolutionary_Search
+
+If you're more interested in natural language processing
+
+http://wiki.opencog.org/w/Natural_language_processing
+
+Nil
+
+--- Message 7/11 ---
+From: Nil Geisweiller' via opencog
+Date: Mon, 24 Apr 2017 09:33:49 +0300
+
+And for the action decision module, there is OpenPsi
+
+http://wiki.opencog.org/w/OpenPsi
+
+what OpenCog uses to control agents in real or virtual worlds.
+
+Nil
+
+--- Message 8/11 ---
+From: Nageen Naeem
+Date: Mon, 24 Apr 2017 13:29:02 +0500
+
+I'm interested in creating an agent in OpenCog and make some atomspace for
+that, is it possible, if possible then how to please guide me.
+Thanks
+Regards
+Nageen
+
+On Mon, Apr 24, 2017 at 11:30 AM, 'Nil Geisweiller' via opencog <
+opencog@googlegroups.com> wrote:
+
+--- Message 9/11 ---
+From: Nageen Naeem
+Date: Mon, 24 Apr 2017 17:18:06 +0500
+
+hey,
+as previously discuss that I build opencog and connected to the server, now
+I am trying to create mind agent following the tutorial and got to know
+that there is file difference in both link as followed.
+
+https://github.com/opencog/opencog
+https://github.
+[... truncated]
+
+--- Message 10/11 ---
+From: Linas Vepstas
+Date: Mon, 24 Apr 2017 22:15:13 -0500
+
+Don't bother with mindagents until you know what you think you might need
+them for.  Its easier to just write scripts to do what you need to do.
+
+--linas
+
+--- Message 11/11 ---
+From: Nageen Naeem
+Date: Tue, 25 Apr 2017 10:47:54 +0500
+
+Actually, i am new to OpenCog and this field so trying the tutorial and
+learning how to create an agent in OpenCog, as I have to create an agent in
+OpenCog and it's node concept that he can use.
+Guide me how to start for doing this
+Thanks
+
+Regards
+Nageen
+
+
+[... truncated]
