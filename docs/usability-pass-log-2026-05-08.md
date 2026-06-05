@@ -216,7 +216,283 @@ Started 2026-06-01. Card: `MeTTa Programming Language+Hyperon Experimental+Hyper
 
 ---
 
+## Batch 7 — OpenCog Legacy Full
+
+Started 2026-06-04. Junction: `About Hyperon+OpenCog Legacy+OpenCog Legacy Full` (ID 4409, **Published** — virtual junction with 4 RichText subcards). The lightest junction so far — these cards predate the cluster-pilot-heavy authoring, so no bracket leaks, no RawData, no cluster jargon. All 4 subcards verified `external-link` = 0 (the inventory's "OpenCog Legacy Status" auto-linker flag was render-time only; stored content clean).
+
+### Card 4409 — `OpenCog Legacy Full` (Published, junction parent)
+
+- **Walked**: 2026-06-04 · **Mechanism**: `+AI` Draft proposal
+- **Created**: `…+OpenCog Legacy Full+AI` (Draft, ID 7889) + `+AI+tag` (Pointer, ID 7890, `ai_generated`).
+- **Proposed changes**: lifted the TL;DR to the top (plain "OpenCog was the open-source AGI framework (2008–2021) that preceded Hyperon… documents history, not a living system"); added "On this page" TOC (4 entries) with `id="ocl-..."` anchors on the 4 H3s. Note: this parent uses Decko `[[...]]` link syntax (valid, renders fine) rather than the `{{...|view:link}}` form — **preserved as-is** to avoid churn.
+- **Self-corrected a copy error during authoring**: an intermediate version had collapsed the three maintained-repo github links (cogutil/cogserver/link-grammar) into one mislabeled internal link; restored the three external links via find_and_replace before finalizing.
+- **Verified**: parent renders "Review AI Draft → / Merge AI Draft → Parent" banner (next to "Approved by Ursula Addison 2026-05-05" seal).
+
+### Cards 7141 / 7143 / 7145 — Timeline / Why-Replaced / Maturity (RichText, children of 4409)
+
+- **Walked**: 2026-06-04 · **Mechanism**: no edit needed.
+- **Notes**: all three clean — 0 bracket leaks, 0 RawData, 0 external-link artifacts (verified). Diagram opportunities flagged in inventory (1995→2025 timeline, lessons-learned table) remain out of scope.
+
+### Card 7147 — `+Status and Resources` (RichText, child of 4409)
+
+- **Walked**: 2026-06-04 · **Mechanism**: `find_and_replace` (prepend) + `create_card`
+- **Changes**: created `…+Status and Resources+last_verified` (PlainText, ID 7888, `2026-06-04`), inlined via `{{+last_verified|core}}`. No jargon/RawData; github + arxiv links valid; `[[Publication Maps+...]]` links are reader-visible.
+
+---
+
+## Batch 8 — MeTTa Programming Language Full
+
+Started 2026-06-04. Junction: `MeTTa Programming Language+MeTTa Programming Language Full` (ID 4288, **Published** — virtual junction with 4 RichText subcards). Two clean subcards; the work was 2 dead RawData citations, one inline cluster-pilot ref (from the earlier MeTTaTron edit), a non-standard breadcrumb, and the missing TOC.
+
+### Card 4288 — `MeTTa Programming Language Full` (Published, junction parent)
+
+- **Walked**: 2026-06-04 · **Mechanism**: `+AI` Draft proposal
+- **Created**: `…+MeTTa Programming Language Full+AI` (Draft, ID 7892) + `+AI+tag` (Pointer, ID 7893, `ai_generated`).
+- **Proposed changes**: replaced the non-standard `← Back to` line with the standard `{{Home}} / {{MeTTa Programming Language}} / MeTTa Programming Language Full` breadcrumb; lifted the TL;DR to the top; added "On this page" TOC (4 entries) with `id="mtl-..."` anchors on the 4 H3s. Kept the existing per-section one-line descriptors and the full-path `{{...|content}}` inclusions.
+- **Verified**: parent renders "Review AI Draft → / Merge AI Draft → Parent" banner (next to "Approved by Ursula Addison 2026-05-07" seal).
+
+### Cards 7157 / 7159 — Core Mechanisms / Formal Foundations (RichText, children of 4288)
+
+- **Walked**: 2026-06-04 · **Mechanism**: no edit needed (verified `external-link` = 0; no leaks/RawData).
+
+### Card 7161 — `+Language Stack and Implementations` (RichText, child of 4288)
+
+- **Walked**: 2026-06-04 · **Mechanism**: `find_and_replace`
+- **Changes**: reworded the one inline cluster-pilot provenance note "(MeTTa runtime cluster pilot Source 3, closed 2026-05-13.)" → "(per a 2026-05-13 source-code review.)" — left over from the MeTTaTron paragraph added during that review. 7 github links intact (verified `external-link` = 0).
+
+### Card 7162 — `+Status and Resources` (RichText, child of 4288)
+
+- **Walked**: 2026-06-04 · **Mechanism**: `find_and_replace` ×3 + `create_card`
+- **Changes**: de-linked 2 dead RawData citations (`MeTTa Specification`, `Meta-MeTTa: an operational semantics for MeTTa` — both 403; titled uselessly "RawData"; lossless since the Meta-MeTTa arxiv link and citation text remain). Created `…+Status and Resources+last_verified` (PlainText, ID 7891, `2026-06-04`), inlined. The inventory's `http://crates.io` pseudo-URL was render-time only — stored content has "crates.io" as plain text ("analogous to PyPI/crates.io"), nothing to fix. `Publication Maps+Meta-MeTTa Paper` link is reader-visible, kept.
+- **Verified**: `RawData+Publications` = 0.
+
+---
+
+## Batch 9 — HAA bracket-leak trio (NACE / AI-DSL / MeTTa-NARS Full)
+
+Started 2026-06-04. Three single cards from the Non-clustered HAA cluster — the highest bracket-leak concentration in the inventory after Hyperon Experimental. All three were Draft at inventory but are now **Published** (Ursula Addison approved them ~2026-05-14), so each went through a `+AI` Draft proposal. In all three the inventory's filename pseudo-URLs were render-time only — stored content already had plain `<code>` file refs (verified `external-link`-free in passing). The shared problem profile: each opened cold on a `<h3>Source Verdict</h3>` block full of `[ALL-CAPS]` tags, with "HAA cluster pilot Source N / V5-x" process jargon woven throughout, no breadcrumb, no TL;DR, no TOC.
+
+### Card 7765 — `NACE Full` (Published, single card)
+
+- **Walked**: 2026-06-04 · **Mechanism**: `+AI` proposal (7896) + `+AI+tag` (7897, ai_generated) + `+last_verified` (7898, 2026-06-04)
+- **Changes**: added standard breadcrumb + plain TL;DR (NACE = a pure-Python AIRIS-extending causal-learning agent by Patrick Hammer); dropped the "Source Verdict" tag block, folding the four verdicts (`[IMPLEMENTATION-BACKED-CORE]` / `[AIRIS-DERIVED-NAL-ADJACENT]` / `[NACE-NOT-AIRIS]` / `[PARTIALLY-INTEGRATED-VIA-METTA-BRIDGE]`) into prose; reworded the V1-3/V1-4/V1-5 carry-forward tags and "Per HAA cluster pilot Source 5 close" / "rejected at S5 close (V5-1)" process jargon to reader-facing language; added "On this page" TOC + `id` anchors; reworded the provenance footer. All `nace.py:NN` file-line evidence preserved.
+- **Verified**: +AI has 0 `[IMPLEMENTATION-BACKED` / 0 `S5 close`; parent shows merge banner.
+
+### Card 7768 — `AI-DSL Full` (Published, single card)
+
+- **Walked**: 2026-06-04 · **Mechanism**: `+AI` proposal (7899) + `+AI+tag` (7900, ai_generated) + `+last_verified` (7901, 2026-06-04)
+- **Changes**: breadcrumb + TL;DR (AI-DSL = a SingularityNET service-composition DSL, dual Idris + MeTTa tracks, marketplace tooling not a core cognitive algorithm); dropped `[ACTIVE-IDRIS-DSL]` / `[AI-DSL-DUAL-CITIZEN]` tags into prose; cleaned heading collision (two "Implementation Surface" → "Implementation: Two Tracks" + "Repository"); reworded the "(V5-rejected pre-cluster-pilot reviewer cite)" note on the `src/Composition.idr` correction and the provenance footer; TOC + anchors. Idris/MeTTa file inventories + cross-grep evidence preserved.
+- **Verified**: +AI has 0 `[AI-DSL-DUAL`; parent shows merge banner ("Approved by Ursula Addison 2026-05-14").
+
+### Card 7771 — `MeTTa-NARS Full` (Published, single card)
+
+- **Walked**: 2026-06-04 · **Mechanism**: `+AI` proposal (7902) + `+AI+tag` (7903, ai_generated) + `+last_verified` (7904, 2026-06-04)
+- **Changes**: breadcrumb + TL;DR (MeTTa-NARS = Hammer's MeTTa port of NARS/ONA, NAL-1..5, paradigm-distinct from PLN); dropped `[IMPLEMENTATION-BACKED-NAL1-5]` / `[METTA-NARS-NOT-PLN]` / `[MOTTO-POC-INTEROP]` / `[PAPER-NOT-IMPLEMENTED-IN-METTA-NARS]` tags into prose; reworded "Mirror of S1 V1-4 [AIRIS-CONFIDENCE-NOT-PLN-TV]", "per closed S2 reconciliation", "(V5-14 narrative-guard at S5 close)" jargon; kept the important GPT-o1-hallucination-warning caveat on the Goertzel PLN-vs-NARS Mattermost paper (reworded to reader-facing). TOC + anchors. Renamed "Cluster-Narrative Position — Paradigm Boundaries" → "How MeTTa-NARS Relates to Its Neighbors".
+- **Verified**: +AI has 0 `[METTA-NARS` / 0 `S5 close`; parent (checked via sibling pattern) carries merge banner.
+
+---
+
+## Batch 10 — MOSES Full
+
+Started 2026-06-05. Junction: `Hyperon AI Algorithms+MOSES (Meta-Optimizing Semantic Evolutionary Search)+MOSES Full` (ID 4399, **Published** — virtual junction with 4 RichText subcards). Heavy fork-divergence bracket-tag load (~22 tags across 2 subcards), plus raw `git rev-list` output (`0\t107`, `7\t165`) that's opaque to non-developers.
+
+### Card 4399 — `MOSES Full` (Published, junction parent)
+
+- **Walked**: 2026-06-05 · **Mechanism**: `+AI` proposal (7934) + `+AI+tag` (7935, ai_generated)
+- **Changes**: lifted the TL;DR to the top; added "On this page" TOC (4 entries) with `id="moses-..."` anchors on the 4 H3s. Breadcrumb/intro/status already good.
+
+### Card 7128 — `+Core Mechanisms and Scoring` (RichText, child of 4399)
+
+- **Walked**: 2026-06-05 · **Mechanism**: no edit needed (verified `external-link` = 0; no bracket leaks).
+
+### Card 7130 — `+Mathematical Foundations and MORK` (RichText, child of 4399)
+
+- **Walked**: 2026-06-05 · **Mechanism**: direct `update_card`
+- **Changes**: dropped the `[MORK-MOSES-PARTIAL-SCAFFOLD-OPEN-RESEARCH-LINE]` tag + "Per HAA cluster pilot Source 5 close" line into prose ("aspirational architecture, not current implementation — a partial scaffold and open research line"); softened the raw `git ls-tree`/`grep -ri` commands into reader-facing descriptions of the same evidence; reworded the V5-10 provenance footer. All proposal-vs-implemented framing preserved.
+
+### Card 7132 — `+Implementation Eras and Design History` (RichText, child of 4399)
+
+- **Walked**: 2026-06-05 · **Mechanism**: direct `update_card`
+- **Changes**: the heaviest card — converted ~12 fork-verdict bracket tags (`[ACTIVE-METTA-PRIMARY]`, `[VEPSTAS-MIRROR-SAME-SHA]`, `[STRICT-FORK-STALE]`, `[STRICT-FORK-STALE-MERGED-UPSTREAM]`, `[STRICT-FORK-DIVERGED-LEGACY-FIXES]`, `[STANDALONE-EXPERIMENT-NOT-FORK]`, `[ACTIVE-CPP-ATOMSPACE-BASELINE]`, `[SUPERSEDED-BY-METTA-MOSES]`, `[ARCHIVAL-PARADIGM-PREDECESSOR]`, `[MORK-MOSES-PARTIAL-SCAFFOLD-OPEN-RESEARCH-LINE]`) into plain prose; converted the raw `git rev-list --left-right --count` output (`0\t0`, `0\t107`, `7\t165`, `19\t23`) into readable "N ahead / M behind" phrasing; dropped "Per HAA Source 5 / P12 verbatim / same pattern as S3 singnet-miner" process jargon. All repo URLs, file-line evidence (`deme/*.metta`, `scoring/*.metta`), mailing-list citations, and HEAD SHAs preserved.
+- **Verified**: `[STRICT-FORK` = 0.
+
+### Card 7133 — `+Status and Resources` (RichText, child of 4399)
+
+- **Walked**: 2026-06-05 · **Mechanism**: direct `update_card` ×2 + `create_card`
+- **Changes**: converted ~10 status bracket tags to prose; dropped "(V5-9 lump)" and "P12-verified" jargon; reworded the provenance footer. Created `…+Status and Resources+last_verified` (PlainText, ID 7933, `2026-06-05`), inlined. (Fixed a dead `#` placeholder anchor I briefly introduced → plain-text cross-reference.)
+- **Verified**: `[ACTIVE-METTA` = 0.
+
+---
+
+## Batch 11 — MetaMo Full
+
+Started 2026-06-05. Junction: `Hyperon AI Algorithms+MetaMo (Motivational Framework)+MetaMo Full` (ID 4278, **Published** — virtual junction with 3 RichText subcards; was Draft at inventory, since approved). The last of the moderate bracket-leak cards (~9 across 2 subcards). RawData (2) confirmed 403; the inventory's filename pseudo-URLs were render-time only (stored content clean — verified `external-link` = 0 on the lineage subcard).
+
+### Card 4278 — `MetaMo Full` (Published, junction parent)
+
+- **Walked**: 2026-06-05 · **Mechanism**: `+AI` proposal (7937) + `+AI+tag` (7938, ai_generated)
+- **Changes**: lifted TL;DR to the top; added "On this page" TOC (3 entries) with `id="metamo-..."` anchors. Breadcrumb/intro/status already good.
+
+### Card 7135 — `+Core Mechanisms and Formalism` (RichText, child of 4278)
+
+- **Walked**: 2026-06-05 · **Mechanism**: `find_and_replace` ×5
+- **Changes**: the formalism sections (motivational state, pseudo-bimonad, stability, five principles) were already clean. Reworded the "Implementation Backing" block: dropped `[PAPER-LEANING-HYBRID]` / `[IMPLEMENTATION-BACKED-CORE]` / `[REFERENCE-IMPLEMENTATION-NOT-PRODUCTION]` / `[FORMAL-LAWS-PAPER-ONLY]` / `[SKELETON-IMPLEMENTATION]` tags into prose; reworded "Non-clustered HAA cluster pilot Source 2 ... extracted a verdict" → "A 2026-05-06 source-code review ... assessed"; reworded the provenance footer. All `core/*.py:NN` / `category/*.py:NN` file-line citations preserved.
+- **Verified**: `[IMPLEMENTATION-BACKED` = 0.
+
+### Card 7137 — `+Historical Lineage` (RichText, child of 4278)
+
+- **Walked**: 2026-06-05 · **Mechanism**: no edit needed (verified `external-link` = 0; no bracket leaks per inventory).
+
+### Card 7139 — `+Status and Resources` (RichText, child of 4278)
+
+- **Walked**: 2026-06-05 · **Mechanism**: direct `update_card` + `create_card`
+- **Changes**: reworded the "Implementation Anchors (cluster-pilot trilateral classification, Source 2 close)" heading + intro to plain "three distinct roles"; dropped `[IMPLEMENTATION-BACKED-CORE]` / `[FORMAL-LAWS-PAPER-ONLY]` / `[HEURISTIC-PROTOTYPE]` / `[OPENPSI-PREDECESSOR-SUBSTRATE]` tags into prose; de-linked 2 dead RawData citations (AGI 25 METAMO One, OpenPsi Cognitive Model — both 403; the AGI-2025 + OpenPsi-2011 citation text remains); dropped "V2-1..V2-7 carry-forwards" footer; created `…+Status and Resources+last_verified` (PlainText, ID 7936, `2026-06-05`), inlined.
+- **Verified**: `RawData+Publications` = 0.
+
+---
+
+## Batch 12 — PRIMUS Full
+
+Started 2026-06-05. Junction: `Cognitive Architectures+PRIMUS (formerly CogPrime)+PRIMUS Full` (ID 4192, **Draft** — virtual junction with 4 RichText subcards). First fully leak-free cluster in the tail: all 4 subcards have zero bracket leaks / RawData / cluster jargon (verified `external-link` = 0 on all). Parent is **Draft**, so edited directly (live), unlike the recent Published parents.
+
+### Card 4192 — `PRIMUS Full` (Draft, junction parent — edited directly)
+
+- **Walked**: 2026-06-05 · **Mechanism**: direct `update_card`
+- **Changes**: replaced the non-standard `← Back to` line with the standard `{{Home}} / {{Cognitive Architectures}} / {{PRIMUS}} / PRIMUS Full` breadcrumb; lifted the TL;DR to the top; added "On this page" TOC (4 entries) with `id="primus-..."` anchors on the 4 H3s. Kept the existing per-section descriptors and full-path inclusions.
+
+### Cards 7164 / 7166 / 7167 — Architecture / Components / Cognitive Synergy (RichText, children of 4192)
+
+- **Walked**: 2026-06-05 · **Mechanism**: no edit needed (all verified `external-link` = 0; no bracket leaks per inventory).
+
+### Card 7169 — `+Status and Resources` (RichText, child of 4192)
+
+- **Walked**: 2026-06-05 · **Mechanism**: `find_and_replace` ×2 + `create_card`
+- **Changes**: upgraded the `wiki.opencog.org` provenance link `http://` → `https://` (single anchor in storage — the inventory's "double-nested" was render-time; link is live). Created `…+Status and Resources+last_verified` (PlainText, ID 7994, `2026-06-05`), inlined under the first heading. github + arxiv links valid.
+
+---
+
+## Batch 13 — Semantic Parsing Full
+
+Started 2026-06-05. Junction: `Hyperon AI Algorithms+Semantic Parsing (LLM/NLP)+Semantic Parsing Full` (ID 4419, **Published** — virtual junction with 4 RichText subcards). Fully leak-free per inventory (all 4 subcards verified `external-link` = 0; no RawData, no jargon). Pure structural pass.
+
+- **4419 (Published parent)** — `+AI` proposal (7995) + `+AI+tag` (7996): lifted TL;DR + "On this page" TOC (4 entries) with `id="sp-..."` anchors. Breadcrumb/intro/status already good.
+- **7120 / 7122 / 7124** (Legacy Pipeline / Hyperon-Era Approaches / Symbolic Heads) — no edit needed (verified clean).
+- **7126 (Status)** — `+last_verified` (PlainText, ID 7997, `2026-06-05`) created + inlined.
+
+---
+
+## Batch 14 — Magi Full
+
+Started 2026-06-05. Junction: `Ecosystem+Magi+Magi Full` (ID 7180, **Published** — virtual junction with 4 RichText subcards). Leak-free; the work was bare-http `magi-agi.org` host references + one RawData link.
+
+- **7180 (Published parent)** — `+AI` proposal (7999) + `+AI+tag` (8000): standard breadcrumb (replacing `← Back to`), lifted TL;DR, "On this page" TOC (4 entries) with `id="magi-..."` anchors.
+- **7182 / 7186** (MAGUS Framework / Partnerships and Applications) — no edit needed (clean).
+- **7184 (Tools and Assistants)** — converted plain-text `wiki.magi-agi.org` to an explicit `https://` anchor (host 301s http→https; was render-time auto-linked to bare http).
+- **7187 (Status)** — converted `wiki.magi-agi.org` + `mcp.magi-agi.org` plain-text mentions to explicit `https://` anchors; de-linked the `{{RawData|view:link}}` pointer (reader-inaccessible) to plain text ("held in the Hyperon Wiki raw-source archive"); created `…+Status and Resources+last_verified` (PlainText, ID 7998, `2026-06-05`), inlined.
+
+---
+
+## Batch 15 — Final single cards (AIRIS / ASI Chain / TransWeave / WILLIAM / Self-Modification and Safety)
+
+Started 2026-06-05. The last five inventory slots, all **single cards** (no subcards), all now **Published** (several were Draft at inventory; since approved). `+last_verified` attaches directly to each Full card. All five via `+AI` proposals.
+
+### Card 7495 — `AIRIS Full` (Published, single card)
+- `+AI` (8001) + `+AI+tag` (8002) + `+last_verified` (8003, 2026-06-05). The one substantive card: dropped `[IMPLEMENTATION-BACKED-CORE]` tags and the V1-1..V1-5 carry-forward refs into prose; fixed genuine stored auto-linker artifacts (`airis_<a href="http://stable.py">stable.py</a>` → plain `airis_stable.py`; same for `airis.py`); removed the internal "Wiki attribution corrections (V1-1)" / CF5.6.E bookkeeping paragraph (kept a one-line reader-useful note on the canonical repo); lifted TL;DR; added TOC + anchors. All paper-cite + file-line + empirical content preserved. Verified `[IMPLEMENTATION-BACKED` = 0, `http://stable.py` = 0.
+
+### Card 4292 — `ASI Chain Runtime Environment Full` (Published, single card)
+- `+AI` (8004) + `+AI+tag` (8005) + `+last_verified` (8006, 2026-06-05). Collapsed a **9-deep** `docs.asichain.io` nested anchor → single clean https; standard breadcrumb (replacing `← Back to`); lifted TL;DR; TOC + anchors; de-linked the dead RawData Meta-MeTTa citation (arxiv link retained); renamed trailing "Status and Resources" → "Primary Sources" (a separate "Current Status" section already existed). Verified `http://docs.asichain.io` = 0, `RawData+Publications` = 0.
+
+### Card 6295 — `TransWeave Full` (Published, single card)
+- `+AI` (8007) + `+AI+tag` (8008) + `+last_verified` (8009, 2026-06-05). Clean content; structural only — standard breadcrumb, lifted TL;DR, TOC + anchors. Body verbatim.
+
+### Card 6298 — `WILLIAM Full` (Published, single card)
+- `+AI` (8010) + `+AI+tag` (8011) + `+last_verified` (8012, 2026-06-05). Clean; structural only — breadcrumb, TL;DR, TOC + anchors. Body verbatim.
+
+### Card 6301 — `Self-Modification and Safety Full` (Published, single card)
+- `+AI` (8013) + `+AI+tag` (8014) + `+last_verified` (8015, 2026-06-05). Clean; structural only — breadcrumb, TL;DR, TOC + anchors. Body verbatim.
+
+---
+
 ## Hand-off batches
+
+### Batch 15 — Final single cards (ready for Anna review)
+
+- 5 Published single cards: AIRIS (7495→+AI 8001), ASI Chain (4292→+AI 8004), TransWeave (6295→+AI 8007), WILLIAM (6298→+AI 8010), Self-Mod (6301→+AI 8013), each with a new `+last_verified`.
+- All five need Anna's merge (the `+AI` Drafts carry breadcrumb + TL;DR + TOC; AIRIS + ASI Chain also carry the de-bracketing / nested-anchor / RawData cleanups). The `+last_verified` siblings are live.
+- URLs: AIRIS, ASI Chain Runtime Environment, TransWeave, WILLIAM, Self-Modification and Safety — all under their respective Full paths on wiki.hyperon.dev.
+
+---
+
+## ✅ Card-walk complete — all 21 inventory junctions done (2026-06-05)
+
+All 21 "Foo Full" junctions from `docs/usability-inventory-2026-05-08.md` have been walked across Batches 1–15:
+
+ECAN · PLN · MORK · DAS · AtomSpace · Hyperon Experimental · OpenCog Legacy · MeTTa Programming Language · NACE · AI-DSL · MeTTa-NARS · MOSES · MetaMo · PRIMUS · Semantic Parsing · Magi · AIRIS · ASI Chain Runtime · TransWeave · WILLIAM · Self-Modification and Safety.
+
+**Totals:** ~64 substantive cards walked; 21 `+last_verified` siblings created; 16 `+AI` Draft proposals raised on Published/approved parents; the rest direct edits on Draft cards/subcards.
+
+**Consistent treatment applied to every card:** breadcrumb normalized (standard `Home / … / Foo Full` form, replacing `← Back to` where present); plain-English TL;DR lifted to the top; per-card "On this page" TOC with intra-page `id` anchors; cluster-pilot `[ALL-CAPS]` bracket tags + `V-N-X` / `HAA Source N` / `R4.x` process jargon reworded into prose; auto-linker nested-anchor / filename-pseudo-URL artifacts cleaned (stored-content ones fixed; render-time ones covered by the deployed mod); dead `RawData+Publications` citations de-linked (403 for readers; verified, no reader-visible equivalents); live `wiki.opencog.org` / `docs.asichain.io` / `magi-agi.org` links collapsed/upgraded to single https anchors; `+last_verified` Status dates added.
+
+**Open follow-ups (NOT done in this pass — flagged for editors / future work):**
+1. **Anna's merges** — 16 `+AI` proposals on Published parents await human review + merge.
+2. **RawData reader-visibility policy** — many cards cite World-Model-line / MORK-theory / MeTTa-spec drafts that exist *only* as RawData (403 for readers). De-linked per checklist; a standing decision is needed on whether to synthesize reader-facing `Publications+…` cards or relax the read-rule.
+3. **Diagrams** — the inventory flagged ~33 high-value diagram opportunities (taxonomies, lineages, pipelines, state machines). Out of scope here pending a rendering-mechanism decision (Mermaid vs SVG vs uploaded image).
+4. **Two AIRIS / Hyperon-Experimental judgment calls** (removed reviewer-scaffolding sections; tag deletions) — reversible from the `+AI` diffs if editors disagree.
+
+### Batch 14 — Magi Full (ready for Anna review)
+
+- 5 cards walked: 7180 (Published parent — via `+AI` 7999/8000), 7182, 7184, 7186, 7187 + new sibling 7998. 2 subcards needed no edit.
+- Parent needs Anna's merge (breadcrumb + TL;DR + TOC); the 7184/7187 link edits are live.
+- URL: https://wiki.hyperon.dev/Ecosystem+Magi+Magi_Full
+- Note: the magi-agi.org hosts (the separate Magi Archive wiki + its MCP) are intentional external references; upgraded to https, kept as links.
+
+### Batch 13 — Semantic Parsing Full (ready for Anna review)
+
+- 4 cards walked: 4419 (Published parent — via `+AI` 7995/7996), 7120, 7122, 7124, 7126 + new sibling 7997. 3 subcards needed no edit.
+- Parent needs Anna's merge (TOC + TL;DR); 7126 last_verified is live.
+- URL: https://wiki.hyperon.dev/Hyperon_AI_Algorithms+Semantic_Parsing_(LLM/NLP)+Semantic_Parsing_Full
+
+### Batch 12 — PRIMUS Full (ready for Anna review)
+
+- 5 cards walked: 4192 (Draft parent — edited directly, live), 7164, 7166, 7167, 7169 plus new sibling 7994 (`+last_verified`). 3 subcards needed no edit.
+- **No `+AI` proposal** — Draft parent, so the breadcrumb + TL;DR + TOC are already live. Only the wiki.opencog.org https upgrade + last_verified touched a subcard.
+- URL to review: https://wiki.hyperon.dev/Cognitive_Architectures+PRIMUS_(formerly_CogPrime)+PRIMUS_Full
+
+### Batch 11 — MetaMo Full (ready for Anna review)
+
+- 4 cards walked: 4278 (Published parent — via `+AI` proposal 7937/7938), 7135, 7137, 7139 plus new sibling 7936 (`+last_verified`). 1 subcard needed no edit.
+- **Parent requires Anna's merge** (the `+AI` Draft 7937 carries the TL;DR + TOC). The 2 subcard rewrites (7135, 7139) are already live.
+- URL to review: https://wiki.hyperon.dev/Hyperon_AI_Algorithms+MetaMo_(Motivational_Framework)+MetaMo_Full
+
+### Batch 10 — MOSES Full (ready for Anna review)
+
+- 5 cards walked: 4399 (Published parent — via `+AI` proposal 7934/7935), 7128, 7130, 7132, 7133 plus new sibling 7933 (`+last_verified`). 1 subcard needed no edit.
+- **Parent requires Anna's merge** (the `+AI` Draft 7934 carries the TL;DR + TOC). The 3 subcard rewrites (7130, 7132, 7133) are already live.
+- URL to review: https://wiki.hyperon.dev/Hyperon_AI_Algorithms+MOSES_(Meta-Optimizing_Semantic_Evolutionary_Search)+MOSES_Full
+- Notable: 7132 is the best example so far of converting raw git-divergence output + verdict tags into readable prose; worth showing editors as a pattern for the remaining fork-heavy cards (e.g. Pattern Mining, Concept Blending).
+
+### Batch 9 — HAA bracket-leak trio (ready for Anna review)
+
+- 3 Published single cards: NACE (7765 → +AI 7896), AI-DSL (7768 → +AI 7899), MeTTa-NARS (7771 → +AI 7902), each with a new `+last_verified` (7898 / 7901 / 7904).
+- **All three require Anna's merge** (the `+AI` Drafts carry the de-bracketed + reworded + breadcrumb/TOC content). Nothing is live yet on these three parents except the new `+last_verified` siblings.
+- URLs to review:
+  - https://wiki.hyperon.dev/Hyperon_AI_Algorithms+NACE_(Non-Axiomatic_Causal_Explorer)+NACE_Full
+  - https://wiki.hyperon.dev/Hyperon_AI_Algorithms+AI-DSL+AI-DSL_Full
+  - https://wiki.hyperon.dev/Hyperon_AI_Algorithms+MeTTa-NARS_(Non-Axiomatic_Reasoning_System)+MeTTa-NARS_Full
+- These were the cards most directly matching Anna's bracket-label complaint; good high-visibility wins once merged.
+
+### Batch 8 — MeTTa Programming Language Full (ready for Anna review)
+
+- 4 cards walked: 4288 (Published parent — via `+AI` proposal 7892/7893), 7157, 7159, 7161, 7162 plus new sibling 7891 (`+last_verified`). 2 subcards needed no edit.
+- **Parent requires Anna's merge** (the `+AI` Draft 7892 carries the breadcrumb + TL;DR + TOC). Subcard edits (7161, 7162) are already live.
+- URL to review: https://wiki.hyperon.dev/MeTTa_Programming_Language+MeTTa_Programming_Language_Full
+
+### Batch 7 — OpenCog Legacy Full (ready for Anna review)
+
+- 4 cards walked: 4409 (Published parent — via `+AI` proposal 7889/7890), 7141, 7143, 7145, 7147 plus new sibling 7888 (`+last_verified`). 3 subcards needed no edit.
+- **Parent requires Anna's merge** (the `+AI` Draft 7889 carries the TOC + lifted TL;DR). Subcard 7147 edit is already live.
+- URL to review: https://wiki.hyperon.dev/About_Hyperon+OpenCog_Legacy+OpenCog_Legacy_Full
+- Lightest batch — mostly a TOC + `+last_verified` addition; the content was already in good shape.
 
 ### Batch 6 — Hyperon Experimental Full (ready for Anna review)
 
