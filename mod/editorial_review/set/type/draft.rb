@@ -4,7 +4,7 @@
 
 format :html do
   view :core, cache: :never do
-    output [render_draft_banner, super()]
+    output [render_draft_banner, render_page_tags, super()]
   end
 
   view :draft_banner do

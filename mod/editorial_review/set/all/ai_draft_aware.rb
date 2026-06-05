@@ -39,4 +39,26 @@ format :html do
       [review_link, merge_button].compact.join(" ")
     end
   end
+
+  # Renders the card's +tag pointer as a pill row at the top of the page.
+  #
+  # WHY here: Draft / Published cardtypes have no `+*type+*structure` rule
+  # (unlike IndexSubtopic / IndexSection, whose structures render `{{+tag}}`),
+  # so a Draft/Published card viewed on its own URL would show no tags. This
+  # view is invoked via `render_page_tags` from the Draft `view :core`
+  # (set/type/draft.rb) and the Published core (Abstract::EditoriallyReviewed)
+  # so those pages get the same top-of-page tag pills as the index pages.
+  #
+  # Wrapped in `.wiki-page-tags`, which the Skin (sandra ui styles) styles into
+  # the same rounded grey/blue pills as the index-page tag slots. Returns ""
+  # when the card has no +tag pointer or it is empty.
+  view :page_tags, cache: :never do
+    tag_card = Card.fetch("#{card.name}+tag")
+    return "" unless tag_card && tag_card.type_id == Card::PointerID
+    return "" if tag_card.item_names.blank?
+
+    wrap_with(:div, class: "wiki-page-tags") do
+      nest(tag_card, view: :content)
+    end
+  end
 end

@@ -12,7 +12,8 @@ format :html do
   view :core, cache: :never do
     seal = render_approval_indicator
     ai_link = render_ai_draft_link
-    output([seal, ai_link, super()].compact.reject(&:blank?))
+    tags = render_page_tags
+    output([seal, ai_link, tags, super()].compact.reject(&:blank?))
   end
 
   # NOTE: the implementation of view :ai_draft_link lives in
