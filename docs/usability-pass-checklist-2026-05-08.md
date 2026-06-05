@@ -35,6 +35,13 @@ For each Full card (and the Published parent if it carries body content), confir
 - [ ] **External URLs verified**. Every `http(s)://` URL in the card returns 200 (or a sensible redirect chain). Hallucinated URLs (`http://atomdbsingleton.cc/`, auto-linked filename pseudo-URLs like `http://airis.py`) removed or replaced. Per `feedback_webfetch_verify_external_urls.md`, cite the WebFetch verification in the edit notes.
 - [ ] **Cross-references to sibling Full cards** present where the card discusses a related subject (e.g., MetaMo Full referencing OpenPsi Full and ECAN Full where it discusses motivation/attention coupling).
 
+### Glossary & term linking
+
+- [ ] **First-occurrence link of jargon & technology terms.** On a term's first meaningful occurrence in the body, wrap it as a Decko link so it gets the hover tooltip: `[[Glossary+TERM|word]]` for a jargon concept, or `[[CARD-LINK-NAME|word]]` for one of the 28 technology cards (e.g. `[[Glossary+Metagraph|metagraph]]`, `[[MeTTa Programming Language+PeTTa|PeTTa]]`). Both render as `a.known-card`, so the deployed tooltip handler shows the term's `+definition` on hover and the link navigates to its page.
+- [ ] **First occurrence only**, per card — don't link every repetition (avoids underline-soup). Skip terms inside code blocks, headings, and the opening TL;DR sentence.
+- [ ] **New term with no glossary entry → add it** (this is also how the pass grows the glossary). Recipe: create `Glossary+TERM+definition` (a one-sentence, ≤200-char gloss), create `Glossary+TERM` (parent content `{{Glossary+TERM+definition|core}}` + a back-link to /Glossary), and add one list item to the Glossary page's "Concepts & Terminology" section — then link the occurrence. Batchable via `batch_cards`.
+- [ ] **Reuse, don't duplicate.** A term's `+definition` is the single source for both the hover tooltip and the Glossary page entry — edit it in one place; never paste the definition text inline.
+
 ### Visuals
 
 - [ ] **Diagrams added where the inventory flagged an opportunity** — taxonomies, lineages, comparison tables, multi-component architectures, process flows. See `docs/usability-inventory-2026-05-08.md` per-card diagram-opportunity flags. Rendering mechanism per task #3 is open (Mermaid if Decko renders it; inline SVG; uploaded image). Pick once and stay consistent.
@@ -76,5 +83,5 @@ When a batch of cards is ready for re-review:
 - Not a content rewrite from scratch — preserve technically-correct material; transform the framing only.
 - Not a Sandra-spec migration (the per-field IndexPublished/IndexSection sibling structure is separate; tracked under the existing port work).
 - Not a Magi/MAGUS separation pass (still deferred per Lake's earlier prioritization).
-- Not the auto-glossary tooltip build (separate seed at `project_glossary_tooltip_design.md`).
+- Not the *auto*-glossary tooltip scanner (declined as brittle) — but manual first-occurrence glossary linking IS part of this pass; see "Glossary & term linking" above. (Background seed: `project_glossary_tooltip_design.md`.)
 - Not the upstream-commit watcher build (separate seed at `project_upstream_commit_watcher_design.md`).
