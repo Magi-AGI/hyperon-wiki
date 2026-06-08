@@ -22,6 +22,7 @@ module Api
 
       def clear_mcp_thread_flag
         Thread.current[:mcp_api_request] = nil
+        Card::Auth.current_id = nil
       end
 
       def auth_endpoint?
@@ -38,7 +39,12 @@ module Api
         @current_mcp_role = @current_mcp_payload["role"]
         @current_mcp_account = find_mcp_account(@current_mcp_payload)
 
-        render_unauthorized("Account not found") unless @current_mcp_account
+        return render_unauthorized("Account not found") unless @current_mcp_account
+
+        # Attribute acts to the authenticated account; an MCP request carries no
+        # Decko session, so without setting current the act actor defaults to
+        # Anonymous (Card::Auth.as only scopes permissions, not act actor).
+        Card::Auth.current_id = @current_mcp_account.id
       end
 
       def extract_token_from_header
