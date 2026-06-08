@@ -1,0 +1,333 @@
+================================================================
+MeTTa runtime cluster pilot — Source 6 RECONCILIATION (FINAL SOURCE)
+trueagi-io/jetta (JeTTa) + opencog/atomspace-metta
++ 6-SOURCE CLUSTER-FINAL SYNTHESIS
+Three-way: Codex (citation-grade) + Claude (orchestrator) + Gemini (synthesis, option (i))
+2026-06-08
+================================================================
+
+METHOD
+------
+Drafted from Codex findings_codex.txt (565 lines, citation-grade) +
+orchestrator-Claude findings_claude.txt (independent) + Gemini
+synthesis-only relay (option (i) / P10.24 — no cites, no counts, with
+S6 guards G-A + G-B). Pins: jetta origin/main `e3849120` (default
+symbolic-ref verified; NO tags); atomspace-metta origin/master
+`119c17f` (Vepstas, all commits 2023-05-11, ~3yr stale, NO tags).
+
+THIS IS THE FINAL SOURCE — its close takes the MeTTa runtime cluster
+pilot to 6/6 and triggers the option-(0) Gemini-exclusion decision
+(§D). The 6-source cluster-final synthesis is in §F.
+
+
+§A. FINAL RECONCILED VERDICT TABLE
+==================================
+
+| Q | Reconciled verdict | Source of record |
+|---|---|---|
+| S6.A.Q1 jetta frontend | [JETTA-ANTLR-GENERATED-PARSER] | Codex+Claude+Gemini ALIGN |
+| S6.A.Q2 jetta backend | [JETTA-ASM-JVM-BYTECODE-PARTIAL] | Codex+Claude+Gemini ALIGN (real codegen, partial language coverage) |
+| S6.A.Q3 jetta exec | [JETTA-COMPILE-PLUS-EVAL-EMERGING] | Codex+Claude (Gemini [AOT-COMPILE-AND-RUN] narrower) |
+| S6.A.Q4 jetta space | [JETTA-SPACE-PERCALL-BINDINGS-EXTENDED] | Codex+Claude+Gemini ALIGN |
+| S6.A.Q5 jetta types/stdlib | [JETTA-TYPES-GRADUAL] + [JETTA-STDLIB-KOTLIN-HOSTED] | Codex (Gemini DYNAMIC/MINIMAL less-specific) |
+| S6.A.Q6 jetta branch | [JETTA-MAIN-RELEASE-KHUDDEV-ACTIVE-EDGE] | Codex+Claude+Gemini ALIGN (G-B clean) |
+| S6.A.Q7 Q-1 bind!+new-space | [QUIRK-NOT-APPLICABLE] | Codex+Claude (Gemini [REPRODUCED] REJECTED) |
+| S6.A.Q7 Q-2 cond | [QUIRK-FIXED] (no live cond; if/comparison) | Codex+Claude (Gemini [REPRODUCED] REJECTED) |
+| S6.A.Q7 Q-3 catchall | [QUIRK-REPRODUCED] | Codex+Claude+Gemini ALIGN |
+| S6.A.Q8 jetta status | [JETTA-ACTIVE-PRE-RELEASE] | Codex+Claude+Gemini ALIGN |
+| S6.B.Q1 asmetta scope | [ASMETTA-FUNCTION-DECL-IMPORT-ONLY] | Codex+Claude+Gemini ALIGN |
+| S6.B.Q2 asmetta gaps | [ASMETTA-CORE-SEMANTICS-UNIMPLEMENTED-CONFIRMED] | Codex+Claude+Gemini ALIGN (pickaxe) |
+| S6.B.Q3 asmetta placement | [ASMETTA-CLASSICAL-ATOMSPACE-BRIDGE-ARCHIVAL] | Codex+Claude+Gemini ALIGN |
+| S6.X.Q1 cluster | jetta [JVM-BYTECODE-COMPILED-RUNTIME] / asmetta [CLASSICAL-ATOMSPACE-BRIDGE-STUB] | Codex+Claude+Gemini ALIGN |
+
+Bottom line (all three concur on placement): jetta = the cluster's
+FIRST JVM-bytecode-compiled MeTTa runtime (ANTLR + ASM; active;
+compile-and-run + REPL on main, eval-as-runtime emerging on khud/dev).
+atomspace-metta = an archival 2023 classical-AtomSpace bridge STUB
+(Vepstas; function-decl import only; core semantics never implemented).
+
+
+§B. PER-QUESTION EVIDENCE (Codex-anchored)
+==========================================
+
+Q1 [JETTA-ANTLR-GENERATED-PARSER] — `frontend/antlr/Jetta.g4` ANTLR v4;
+   lexer/parser generated at build.
+
+Q2 [JETTA-ASM-JVM-BYTECODE-PARTIAL] — backend/ uses org.objectweb.asm
+   (ClassWriter/MethodVisitor) to emit real .class bytecode from the
+   AST (FunctionGenerator.kt / Generator.kt / LambdaGenerator.kt).
+   "Partial" separates BACKEND REALITY (generator is real) from MeTTa
+   LANGUAGE COVERAGE (subset; lambdas emerging) — Codex R1. First
+   JVM-bytecode codegen in the cluster.
+
+Q3 [JETTA-COMPILE-PLUS-EVAL-EMERGING] — main has compile-load-invoke
+   REPL eval (`compiler/.../repl/Repl.kt` + `ReplImpl.kt`) + runtime
+   (`runtime/.../JettaProgram.kt`, `Matcher.kt`, space/); khud/dev
+   `d2cd57c` 2026-06-06 "Phase A eval-as-runtime" extends it. Codex R2
+   prefers the combined main+khud/dev wording; Gemini's [AOT-COMPILE-
+   AND-RUN] is the strict-main-HEAD-only view (defensible-narrower,
+   acknowledges emerging). ADOPTED Codex.
+
+Q4 [JETTA-SPACE-PERCALL-BINDINGS-EXTENDED] — runtime/Matcher.kt +
+   SpaceImpl + enablePerCallBindings + stack-foliation per-call
+   bindings (map?/flat-map?) + assert* ground fns + bang(!)-eval.
+
+Q5 [JETTA-TYPES-GRADUAL] + [JETTA-STDLIB-KOTLIN-HOSTED] — Codex cite-
+   grade: types carried/gradual; stdlib is Kotlin-hosted runtime
+   primitives (runtime/ functions) + a few examples/*.metta, not a
+   full S1 stdlib.metta port. ADOPTED Codex (more specific than
+   Gemini's [TYPES-DYNAMIC]/[STDLIB-MINIMAL] and than Claude's
+   preliminary lean — both reconciled up to Codex's tags).
+
+Q6 [JETTA-MAIN-RELEASE-KHUDDEV-ACTIVE-EDGE] — `git rev-list --left-
+   right --count origin/main...origin/khud/dev` = 1 / 32 (Codex P12 +
+   Claude); merge-base EXISTS (shared history). main = stable v0.5
+   release line; khud/dev = active eval-as-runtime edge (2026-06-06).
+   G-B satisfied (Gemini direction-only, no counts, correct).
+
+Q7 QUIRKS (jetta; G-A) — Codex EVIDENCE-BASED; Gemini G-A-default
+   Q-1/Q-2 REJECTED:
+   Q-1 → [QUIRK-NOT-APPLICABLE]: `git grep bind!|new-space` across
+     jetta = ZERO hits; no operator surface, so the S1 Q-1 quirk has
+     nothing to apply to. Gemini [QUIRK-REPRODUCED] REJECTED (cannot
+     reproduce an absent operator; G-A default does not cover the
+     NOT-APPLICABLE case).
+   Q-2 → [QUIRK-FIXED]: the only `cond` in jetta is the Kotlin AST
+     if-branch condition FIELD (`FunctionGenerator.kt:418/483/791
+     branch.cond`), NOT a MeTTa `cond` builtin. No live cond surface;
+     if/comparison used instead (Codex R3 caveat). Gemini [QUIRK-
+     REPRODUCED] REJECTED.
+   Q-3 → [QUIRK-REPRODUCED]: MultivaluedFunctionTest.kt + Canonical
+     FormRewriter.kt + Matcher.kt → multivalued/Cartesian results =
+     multi-reduction; stays on S1's side. ALL THREE ALIGN.
+   ⇒ jetta quirk row: Q-1 NOT-APPLICABLE / Q-2 FIXED / Q-3 REPRODUCED.
+
+Q8 [JETTA-ACTIVE-PRE-RELEASE] — v0.5, no tags/releases; khud/dev
+   active to 2026-06-06; khud primary + Potapov.
+
+B.Q1 [ASMETTA-FUNCTION-DECL-IMPORT-ONLY] — MettaAST.cc + Decode/Encode
+   MeTTa.cc import function declarations onto classical AtomSpace Atoms
+   via ForeignAST; no execution. ([ASMETTA-FOREIGNAST-ENCODE-DECODE]
+   is also true as a mechanism label per Codex R4, but the implemented-
+   scope verdict is FUNCTION-DECL-IMPORT-ONLY.)
+
+B.Q2 [ASMETTA-CORE-SEMANTICS-UNIMPLEMENTED-CONFIRMED] — PICKAXE
+   (orchestrator): `git log --all -S "match("` = EMPTY (never
+   implemented in any commit); grep match/ground/unify implementations
+   in opencog/**/*.cc (excl. TODO/comments) = none. README TODO
+   CONFIRMED-ABSENT at HEAD, not README-stale. ALL THREE ALIGN.
+
+B.Q3 [ASMETTA-CLASSICAL-ATOMSPACE-BRIDGE-ARCHIVAL] — classical C++/
+   Scheme AtomSpace (ForeignAST + metta.scm), NOT Hyperon Space.
+   Vepstas; all commits 2023-05-11 (~3yr stale). Perception cross-
+   pilot two-stack: this is the AtomSpace-Scheme side. ALL THREE ALIGN.
+
+X.Q1 — jetta [JVM-BYTECODE-COMPILED-RUNTIME] / atomspace-metta
+   [CLASSICAL-ATOMSPACE-BRIDGE-STUB]. ALL THREE ALIGN.
+
+
+§C. QUIRK MATRIX (cluster-final)
+================================
+
+| Quirk | S1 hyp-exp | S2.A PeTTa | S2.B m-morph | S3 MeTTaTron | S4 MeTTaIL | S4 FormalMeTTa | S5 MeTTaLog | S6 jetta | S6 atomspace-metta |
+|---|---|---|---|---|---|---|---|---|---|
+| Q-1 bind!+new-space | CONFIRMED | DIVERGENT | FIXED | NOT-APPL | NOT-APPL | SPEC-NEITHER | REPRODUCED* | NOT-APPL | NOT-APPL |
+| Q-2 cond | FIXED-ABS | REPRODUCED | REPRODUCED | FIXED | NOT-APPL | SPEC-NEITHER | FIXED | FIXED | NOT-APPL |
+| Q-3 catchall | SEMANTICS | REPRODUCED | REPRODUCED | **DIVERGENT** | NOT-APPL | SPEC-NEITHER | REPRODUCED | REPRODUCED | NOT-APPL |
+
+S3 MeTTaTron is the LONE cluster source to diverge on Q-3 catchall
+(most-specific filter). atomspace-metta is all NOT-APPLICABLE (no
+eval/match runtime — Codex C6-4: exclude-or-N/A). jetta Q-1 NOT-APPL
+(no bind!/new-space surface). *S5 MeTTaLog Q-1 REPRODUCED carries the
+substrate-divergence + behavioral-test-pending caveat.
+
+
+§D. GEMINI SYNTHESIS-CLAIM ALIGNMENT + OPTION-(0) DECISION
+=========================================================
+(option (i), S6 = source 3 of 3 in the re-evaluation window)
+
+  Clean-aligned (12): Q1, Q2, Q4, Q6, Q8, B.Q1, B.Q2, B.Q3, X.Q1 = 9.
+  Defensible-less-specific: Q3 (AOT-vs-emerging scope), Q5 (DYNAMIC/
+    MINIMAL vs GRADUAL/KOTLIN-HOSTED).
+  Real dissent: Q7 quirks — Q-1 + Q-2 REJECTED (G-A over-default on
+    absent operators); Q-3 aligned.
+  → S6 alignment ≈ 9/12 exact ≈ 75% (≈ 10-11/12 ≈ 83-92% crediting
+    the two defensible-narrower tags). **UP sharply from S5 (~50-67%).**
+
+  GUARD OUTCOMES (decisive for the decision):
+    - G-B WORKED CLEANLY: Gemini respected merge-base / direction-only
+      on jetta main↔khud/dev — NO fabricated counts, correct direction.
+      The S5 ngeiswei-class failure did NOT recur.
+    - G-A PARTIALLY WORKED: prevented the S5 optimistic-[QUIRK-FIXED]
+      fabrication, BUT produced a blanket-[QUIRK-REPRODUCED] that is
+      wrong for ABSENT operators (Q-1 N/A, Q-2 FIXED). LESSON (R6.NEW-4
+      / V6-5): under option (i) Gemini CANNOT verify operator presence/
+      absence, so its quirk-APPLICABILITY verdicts are structurally
+      unreliable → the quirk matrix is CODEX-AUTHORITATIVE. This SCOPES
+      Gemini's role; it is NOT an exclusion argument.
+    - ZERO fabricated cites / counts in S6 (consistent across S4+S5+S6
+      — the failure modes option (i) was created to suppress are gone).
+
+  3-SOURCE WINDOW (S4/S5/S6): S4≈67% + S5≈50-67% + S6≈75-83% →
+    mean ≈ 67-72%. By the LITERAL "<80% mean → option (0) Gemini-
+    EXCLUDED" gate, the option-(0) DECISION is formally TRIGGERED.
+
+  ★ ORCHESTRATOR RECOMMENDATION (USER DECISION — surfaced at close) ★
+    KEEP Gemini on option (i), with role SCOPED. Rationale:
+      1. TREND is up (S5→S6 +~15-25pts); the tightened guards worked.
+      2. Across all 3 sources under option (i): ZERO fabricated cites,
+         ZERO fabricated counts. The literal <80% mean is driven by
+         SPECIFICITY/OPTIMISM dissents, NOT the fabrication the gate
+         was designed to catch.
+      3. Gemini's aligned surfaces (architecture, cross-pilot identity,
+         classical-vs-Hyperon framing, pickaxe concurrence) are a
+         genuine cross-check.
+    SCOPING (the standing rule going into cross-org sweeps):
+      - TRUST Gemini for synthesis / architecture / identity / paradigm-
+        placement verdicts.
+      - TREAT AS CODEX-AUTHORITATIVE (Gemini non-binding): quirk-
+        applicability, branch/fork divergence counts, any file:line.
+    ALTERNATIVE (if user prefers the literal gate): option (0) Gemini-
+    EXCLUDED for cross-org sweeps; Codex remains sole citation-grade
+    with orchestrator-Claude independent extraction. This loses a non-
+    fabricating cross-check but simplifies adjudication.
+    → DECISION DEFERRED TO USER at cluster close.
+
+
+§E. R6.NEW + V6-X CARRY-FORWARDS
+================================
+R6.NEW-1 / V6-1 [JETTA-JVM-BYTECODE-COMPILED-RUNTIME]: cluster's first
+  JVM-bytecode codegen (ANTLR Jetta.g4 + ASM); compile-and-run + REPL
+  on main; eval-as-runtime emerging on khud/dev (V6-3).
+R6.NEW-2 / V6-4/V6-5/V6-6 jetta quirks Q-1 NOT-APPLICABLE (no bind!/
+  new-space, V6-5) / Q-2 FIXED (cond absent, if present, V6-6) / Q-3
+  REPRODUCED (V6-4). MeTTaTron remains the lone Q-3 divergence cluster-
+  wide.
+R6.NEW-3 / V6-8/V6-9/V6-10 atomspace-metta = classical-AtomSpace bridge
+  STUB; function-decl import only (V6-8); match/ground/multivalue
+  pickaxe-confirmed never implemented (V6-9); classical lineage, not
+  Hyperon (V6-10). Paradigm-distinct from the runtime axis.
+R6.NEW-4 / V6-5(process): under option (i), Gemini quirk-applicability
+  verdicts are structurally unreliable (no presence/absence
+  verification) → Codex-authoritative on the quirk matrix.
+R6.NEW-5 (cross-pilot): Vitaly Khudobakhshov (khud) = jetta primary,
+  NEW cluster lineage; Alexey Potapov = jetta contributor + Hyperon
+  neural-symbolic lead; Linas Vepstas = atomspace-metta = AtomSpace-
+  Scheme portfolio (Perception cross-pilot).
+V6-2 [JETTA-REPL-COMPILE-LOAD-INVOKE] — main REPL eval is compile-
+  load-invoke, not tree-walk.
+V6-7 [JETTA-SPACE-PERCALL-BINDINGS] — extended per-call bindings.
+
+
+§F. 6-SOURCE CLUSTER-FINAL SYNTHESIS (MeTTa runtime cluster pilot)
+=================================================================
+The MeTTa runtime cluster pilot is CLOSED at 6/6. Two axes emerged:
+
+  RUNTIME AXIS (executes MeTTa):
+    S1 hyperon-experimental — Rust REFERENCE runtime (small-step
+       interpreter; v0.2.10; defines the 0.2.x quirk baseline).
+    S2.A PeTTa — Prolog nondeterministic interpreter/compiler hybrid
+       (Treutlein; tabling; Smart Dispatch).
+    S2.B metta-morph — Chicken-Scheme macro translator (subset; FIRST
+       to FIX Q-1 within its subset).
+    S3 MeTTaTron (F1R3FLY) — Rust tree-walk runtime despite the
+       "MeTTa-Compiler" name; PathMap/HashMap hybrid; tree-sitter; the
+       LONE Q-3 most-specific-filter DIVERGENCE; Rholang integration.
+    S5 MeTTaLog (metta-wam) — Prolog-native FULL dual interpreter+
+       compiler (Miles/logicmoo); most feature-complete non-Rust;
+       WAM-via-SWI-host; optional hyperonpy bridge.
+    S6 jetta — JVM-bytecode-COMPILED runtime (Khudobakhshov/Potapov;
+       ANTLR + ASM); compile-and-run + REPL; eval-as-runtime emerging.
+
+  FORMAL / IL / BRIDGE AXIS (NOT full runtimes):
+    S4 MeTTaIL — BNFC-generated IL/GSLT interpreter (formal-semantics
+       track; Meredith/Stay; F1R3FLY).
+    S4 FormalMeTTa — demo-grade Scala spec reference (Vandervorst;
+       partial; archival).
+    S6 atomspace-metta — classical-AtomSpace bridge STUB (Vepstas
+       2023; function-decl import only; archival).
+
+  PARADIGM SPREAD: Rust (S1, S3) · Prolog/SWI (S2.A PeTTa, S5 MeTTaLog)
+    · Scheme (S2.B metta-morph) · Scala/BNFC (S4) · JVM/Kotlin+ASM
+    (S6 jetta) · C++/classical-AtomSpace (S6 atomspace-metta).
+
+  Q-3 CATCHALL is the cluster's sharpest discriminator: ALL runtime
+    sources REPRODUCE S1's multi-reduction EXCEPT S3 MeTTaTron, which
+    filters to most-specific — the single behavioral divergence found
+    across the entire cluster. Q-1 (bind!/new-space reset) and Q-2
+    (cond) vary by substrate; metta-morph alone truly FIXES Q-1.
+
+  HYPERON SPACE WRITE/OBSERVER (Phase 4 PATCH-1/PATCH-2) is an UPSTREAM
+    hyperon-experimental (S1) concern; no downstream runtime "satisfies"
+    it by having its own replace-atom (S5 V5-13 category guard).
+
+  STANDING METHODOLOGY locked across the cluster: V1-PROTOCOL-1/2/3
+    (brief-vocab, byte-vs-line, cbindgen headers); V2-PROTOCOL-1/2/3/4
+    (specificity, gitlink-vs-submodule, smart-dispatch-vs-branded,
+    per-repo granularity); V3-PROTOCOL-1/2/3/4 (option (i) escalation,
+    benchmark-verbatim, README-drift-table, HEAD-vs-commit existence);
+    V4-1 symbolic-ref default-branch verification; S6 guards G-A
+    (quirk-default + applicability-is-cite-grade) + G-B (merge-base-
+    before-direction). Cross-pilot identity map: Stay/Meredith
+    (F1R3FLY), Treutlein (PeTTa/semantic-parsing), Miles=logicmoo=
+    TeamSPoon (MeTTaLog), Khudobakhshov+Potapov (jetta), Vepstas
+    (atomspace-metta/AtomSpace-Scheme), zariuq=Zar Goertzel, ngeiswei=
+    Geisweiller.
+
+
+§G. C6-X CLUSTER-CLOSE EDIT CANDIDATES (Plan B)
+===============================================
+C6-1 Card 4632 `Implementation Families+MeTTa Implementations` — add/
+  refine a jetta row: [JVM-BYTECODE-COMPILED-RUNTIME]; main e3849120 +
+  khud/dev active edge d2cd57c; ANTLR parser + ASM JVM backend; REPL
+  compile-load-invoke; quirk Q-3 reproduced; pre-1.0. Confirm/refine
+  the existing atomspace-metta row as [CLASSICAL-ATOMSPACE-BRIDGE-STUB]
+  (function-decl import only; match/ground/multivalue absent; archival).
+C6-2 Card 7161 `Language Stack and Implementations` — add a JeTTa
+  Implementation Anchor distinguishing it from MeTTaTron (jetta = REAL
+  JVM bytecode codegen; MeTTaTron = tree-walk despite "compiler" name);
+  note main-vs-khud/dev eval-as-runtime; jetta quirk row.
+C6-3 Card 7268 `Reference+GitHub Repositories` — expand trueagi-io/
+  jetta (vnamed... no: main + khud/dev branch nuance + verdict tags);
+  add/confirm opencog/atomspace-metta as archival classical bridge stub
+  with [CLASSICAL-ATOMSPACE-BRIDGE-STUB] + Vepstas + 2023.
+C6-4 HYPERON_CLUSTER_FINDINGS.md — header 5/6 → 6/6 (CLUSTER CLOSED);
+  new S6 section; quirk matrix extended with jetta + atomspace-metta
+  columns (§C); add the 6-source cluster-final synthesis (§F).
+C6-5 Docs/memory: CLAUDE.md status table 5/6 → 6/6 CLOSED + S6 audit
+  subsection + What's-next (cluster closed → cross-org sweeps next);
+  memory project_metta_runtime_pilot_source6_2026_06_08.md + a cluster-
+  close summary; record the Gemini option-(0) DECISION outcome (per
+  user). Commit on main (worktree if parallel session still holds the
+  shared tree).
+
+
+§H. RECONCILIATION SIGN-OFF
+===========================
+Codex:               Citation-grade findings_codex.txt (565 lines);
+                     12 verdicts + V6-1..V6-10 + C6-1..C6-5 + R1-R5
+                     reconciliation notes; P12 verbatim git facts.
+Gemini:              Synthesis-only (option (i) / P10.24 + guards G-A/
+                     G-B); NO cites, NO counts. Alignment ~9/12 exact
+                     (~75%, up from S5); G-B clean, G-A prevented
+                     fabrication but over-defaulted quirks (Q-1/Q-2
+                     rejected). Awaiting sign-off relay.
+Orchestrator Claude: Independent findings_claude.txt; reconciliation +
+                     6-source cluster-final synthesis drafted
+                     2026-06-08; one self-correction (Q5 reconciled up
+                     to Codex's more-specific GRADUAL/KOTLIN-HOSTED).
+                     Awaiting Codex + Gemini sign-off relay.
+
+OPEN ITEMS for reviewer sign-off:
+  1. Confirm jetta Q3 [JETTA-COMPILE-PLUS-EVAL-EMERGING] (combined
+     main+khud/dev wording) over strict-main [AOT-COMPILE-AND-RUN]
+     (Codex R2 — Codex prefers combined; Gemini's narrower is noted).
+  2. Confirm jetta quirk row Q-1 NOT-APPLICABLE / Q-2 FIXED (Gemini's
+     G-A-default REPRODUCED rejected on evidence).
+  3. **USER DECISION**: Gemini option-(0) at cluster close — orchestrator
+     recommends KEEP-with-scoped-role (§D); literal-gate alternative is
+     EXCLUDE. Codex + Gemini may comment; the call is the user's.
+
+================================================================
+END findings_reconciled_crossmodel.txt (S6 — FINAL SOURCE)
+================================================================

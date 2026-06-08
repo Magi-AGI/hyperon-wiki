@@ -1,0 +1,565 @@
+Codex findings - MeTTa runtime pilot Source 6
+Source: trueagi-io/jetta + opencog/atomspace-metta
+Date: 2026-06-08
+Reviewer: Codex
+
+Scope and method
+================
+
+This is an independent extraction against:
+
+- `E:\GitHub\hyperon reference\jetta`
+- `E:\GitHub\hyperon reference\atomspace-metta`
+
+I did not read any S6 Gemini or Claude findings. I treated the S6 brief as the active packaged review+extraction relay and answered the 12 S6 questions using the brief vocabulary.
+
+Summary table
+=============
+
+S6.A.Q1 jetta frontend/parser:
+  [JETTA-ANTLR-GENERATED-PARSER]
+
+S6.A.Q2 jetta backend/bytecode:
+  [JETTA-ASM-JVM-BYTECODE-PARTIAL]
+
+S6.A.Q3 jetta execution model:
+  [JETTA-COMPILE-PLUS-EVAL-EMERGING]
+
+S6.A.Q4 jetta space/matcher/bindings:
+  [JETTA-SPACE-PERCALL-BINDINGS-EXTENDED]
+
+S6.A.Q5 jetta types + stdlib:
+  stdlib [JETTA-STDLIB-KOTLIN-HOSTED]
+  types  [JETTA-TYPES-GRADUAL]
+
+S6.A.Q6 jetta branch activity:
+  [JETTA-MAIN-RELEASE-KHUDDEV-ACTIVE-EDGE]
+
+S6.A.Q7 jetta quirks:
+  Q-1 bind!+new-space: [QUIRK-NOT-APPLICABLE]
+  Q-2 cond:             [QUIRK-FIXED]
+  Q-3 catchall:         [QUIRK-REPRODUCED]
+
+S6.A.Q8 jetta project status:
+  [JETTA-ACTIVE-PRE-RELEASE]
+
+S6.B.Q1 atomspace-metta implemented scope:
+  [ASMETTA-FUNCTION-DECL-IMPORT-ONLY]
+
+S6.B.Q2 atomspace-metta unimplemented core:
+  [ASMETTA-CORE-SEMANTICS-UNIMPLEMENTED-CONFIRMED]
+
+S6.B.Q3 atomspace-metta placement:
+  [ASMETTA-CLASSICAL-ATOMSPACE-BRIDGE-ARCHIVAL]
+
+S6.X.Q1 cluster placement:
+  jetta  [JVM-BYTECODE-COMPILED-RUNTIME]
+  asmetta [CLASSICAL-ATOMSPACE-BRIDGE-STUB]
+
+P12 / numeric facts
+===================
+
+jetta repository identity:
+
+```
+git rev-parse HEAD
+e3849120a93056c34ba4400e3fe669e97c874eee
+
+git branch --show-current
+main
+
+git symbolic-ref refs/remotes/origin/HEAD
+refs/remotes/origin/main
+
+git status --short
+?? AGENTS.md
+?? CLAUDE.md
+?? GEMINI.md
+```
+
+jetta branch divergence:
+
+```
+git show -s --format='%H %ci %an %s' HEAD origin/main origin/khud/dev
+e3849120a93056c34ba4400e3fe669e97c874eee 2026-03-17 08:51:07 +0000 Vitaly Khudobakhshov Merge pull request #21 from trueagi-io/khud/dev
+e3849120a93056c34ba4400e3fe669e97c874eee 2026-03-17 08:51:07 +0000 Vitaly Khudobakhshov Merge pull request #21 from trueagi-io/khud/dev
+d2cd57cc0cd7e0b0e3e8549a2cffcf9da1e97f65 2026-06-06 10:30:00 +0100 khud Implement Phase A eval-as-runtime; b1_equal_chain now PASS
+
+git rev-list --left-right --count origin/main...origin/khud/dev
+1    32
+```
+
+The `1 32` output means `origin/main` is 1 commit ahead of `origin/khud/dev`, and `origin/khud/dev` is 32 commits ahead of `origin/main`. This supports the verdict "main release line, khud/dev active edge."
+
+jetta tracked file surface:
+
+```
+git ls-files count: 204
+git ls-files '*.kt': 166
+git ls-files '*.g4': 1
+git ls-files '*.metta': 6
+git ls-files '*.md': 0
+```
+
+atomspace-metta repository identity:
+
+```
+git rev-parse HEAD
+119c17f90e39e7ada53691cf9e30b82e8bcebe34
+
+git branch --show-current
+master
+
+git symbolic-ref refs/remotes/origin/HEAD
+refs/remotes/origin/master
+
+git status --short
+?? AGENTS.md
+?? CLAUDE.md
+?? GEMINI.md
+```
+
+atomspace-metta tracked file surface:
+
+```
+git ls-files count: 22
+git ls-files '*.cc': 4
+git ls-files '*.h': 2
+git ls-files '*.scm': 3
+git ls-files '*.md': 1
+```
+
+atomspace-metta commit identity:
+
+```
+git show -s --format='%H %ci %an %s' HEAD origin/master
+119c17f90e39e7ada53691cf9e30b82e8bcebe34 2023-05-11 22:59:39 -0500 Linas Vepstas Re-arrange all initializations to work
+119c17f90e39e7ada53691cf9e30b82e8bcebe34 2023-05-11 22:59:39 -0500 Linas Vepstas Re-arrange all initializations to work
+```
+
+S6.A.Q1 - jetta frontend / parser
+=================================
+
+Verdict: [JETTA-ANTLR-GENERATED-PARSER]
+
+jetta has a hand-written ANTLR grammar, but the parser used by the compiler is generated through the ANTLR Kotlin toolchain, so the best single label is generated-parser rather than custom-parser.
+
+Evidence:
+
+- `frontend/build.gradle.kts:6` applies `id("com.strumenta.antlr-kotlin") version "1.0.0-RC2"`.
+- `frontend/build.gradle.kts:22` depends on `com.strumenta:antlr-kotlin-runtime`.
+- `frontend/build.gradle.kts:44-49` configures the grammar source directory and generated package.
+- `frontend/antlr/Jetta.g4:1` declares `grammar Jetta`.
+- `frontend/antlr/Jetta.g4:3-14` defines the program/statement/run grammar, including `!` evaluation syntax.
+- `frontend/antlr/Jetta.g4:154-156` parses MeTTa-style variables as `DOLLAR identifier`.
+- `frontend/antlr/Jetta.g4:262-267` has `if` and `import` tokens; there is no grammar token for `cond`, `bind!`, or `new-space` at main HEAD.
+- `frontend/src/main/kotlin/net/singularity/jetta/compiler/parser/antlr/AntlrParserFacadeImpl.kt:3-4` imports generated `JettaLexer` and `JettaParser`.
+- `AntlrParserFacadeImpl.kt:15-24` builds `CharStreams`, `CommonTokenStream`, calls `parser.program()`, and visits the generated parse tree.
+- `compiler/src/main/kotlin/net/singularity/jetta/compiler/Compiler.kt:18` imports `AntlrParserFacadeImpl`.
+- `Compiler.kt:63-70` constructs the parser facade and parses each source.
+- `Compiler.kt:99` returns `AntlrParserFacadeImpl()` as the compiler parser facade.
+
+Variable-prefix nuance:
+
+The grammar accepts `$identifier` directly (`Jetta.g4:154-156`). Many Kotlin tests write `_x` and then call `.replace('_', '$')`, so test sources use `_` as a string-literal convenience, not as the source grammar.
+
+S6.A.Q2 - jetta backend / JVM bytecode
+======================================
+
+Verdict: [JETTA-ASM-JVM-BYTECODE-PARTIAL]
+
+jetta is a real JVM bytecode code generator using ASM. I mark it partial, not full, because it covers a substantial MeTTa subset but not full Hyperon MeTTa parity; the khud/dev branch is still actively adding eval/import/runtime semantics.
+
+Evidence:
+
+- `backend/build.gradle.kts:18-20` depends on `org.ow2.asm:asm`, `asm-commons`, and `asm-util`.
+- `compiler/build.gradle.kts:20-22` also depends on ASM.
+- `backend/src/main/kotlin/net/singularity/jetta/compiler/backend/Generator.kt:9-14` imports `ClassWriter`, `Opcodes`, `Type`, and `LocalVariablesSorter`.
+- `Generator.kt:21-31` creates a `ClassWriter`, visits the class header, and records source metadata.
+- `Generator.kt:40-66` emits public static JVM methods for each `FunctionDefinition`.
+- `Generator.kt:67-82` emits a JVM `main` method when `generateMain` is enabled.
+- `Generator.kt:88` returns `CompilationResult(className, cw.toByteArray())`.
+- `compiler/src/main/kotlin/net/singularity/jetta/compiler/Compiler.kt:91-94` constructs `Generator(generateMain = true)` and generates compiled classes.
+- `Compiler.kt:101-105` writes each `CompilationResult` byte array to a `.class` file.
+- `backend/src/main/kotlin/net/singularity/jetta/compiler/backend/FunctionGenerator.kt:31-57` wraps generated function bodies with `Matcher.push()` / `Matcher.pop()` bytecode and emits return.
+- `FunctionGenerator.kt:535-541` emits `INVOKESTATIC` calls to compiled/resolved function symbols.
+- `FunctionGenerator.kt:569-589` emits typed JVM return instructions.
+
+Partiality evidence:
+
+- `backend/src/main/kotlin/net/singularity/jetta/compiler/backend/Generator.kt:85` still has `TODO("Not implemented yet")` for non-`FunctionDefinition` top-level nodes after rewriting.
+- `backend/src/main/kotlin/net/singularity/jetta/compiler/backend/FunctionGenerator.kt:80`, `:106`, and `:588` still have `TODO` paths for unsupported atom/value/type cases.
+- `origin/khud/dev` contains active compatibility work such as `Implement Phase A eval-as-runtime`, `Resolve (import! &self M) at compile time`, and `Track the MeTTa compatibility test corpus`, showing the mainline subset is not complete.
+
+S6.A.Q3 - jetta execution model + eval-as-runtime
+=================================================
+
+Verdict: [JETTA-COMPILE-PLUS-EVAL-EMERGING]
+
+At main HEAD, jetta is compile/load/run, not interpreter-primary. Its REPL `eval` is implemented by compiling the input into byte arrays, loading a JVM class, and invoking the generated `__main` method. The khud/dev branch is actively evolving toward "eval-as-runtime"; this should be recorded as forward signal, not as mainline behavior.
+
+Main HEAD evidence:
+
+- `compiler/src/main/kotlin/net/singularity/jetta/repl/ReplImpl.kt:32-39` defines `eval(code)` and calls a private `compile(filename, code)`.
+- `ReplImpl.kt:40-53` writes compiled files, adds generated bytecode to `ByteArrayReplClassLoader`, loads the generated class, and invokes `FunctionRewriter.MAIN`.
+- `ReplImpl.kt:61-76` parses, rewrites, resolves, constructs `Generator()`, and returns generated bytecode.
+- `ReplImpl.kt:81` uses `AntlrParserFacadeImpl()`.
+- `compiler/src/test/kotlin/net/singularity/jetta/repl/ReplTest.kt:10-21` tests REPL `eval` with a function definition and `!(foo 1 2)`.
+- `ReplTest.kt:24-40` tests REPL context preservation across multiple eval calls.
+
+khud/dev forward signal:
+
+```
+git log --oneline --decorate --max-count=40 origin/main..origin/khud/dev
+d2cd57c (origin/khud/dev) Implement Phase A eval-as-runtime; b1_equal_chain now PASS
+...
+893535d Add JettaCallSite runtime dispatcher for JIT-eval
+...
+1c0293c Resolve `(import! &self M)` at compile time
+...
+743a2ed Track the MeTTa compatibility test corpus
+```
+
+Conclusion: main is compile-load-run with a REPL facade; khud/dev is active eval-as-runtime branch work.
+
+S6.A.Q4 - jetta space / matcher / bindings
+===========================================
+
+Verdict: [JETTA-SPACE-PERCALL-BINDINGS-EXTENDED]
+
+jetta has a real space/matcher implementation with multivalued matching, persistent-ish serialized spaces, and per-call binding propagation. It is closer to a real runtime than a compiler-only project, but the binding model is an extension, not straightforward Hyperon Space parity.
+
+Evidence:
+
+- `runtime/src/main/kotlin/net/singularity/jetta/runtime/space/SpaceImpl.kt:13-16` defines an in-memory store and pattern indexer map.
+- `SpaceImpl.kt:18-23` documents `enablePerCallBindings`, which wraps match results in `BoundAtom` snapshots for "stack foliation".
+- `SpaceImpl.kt:25-27` adds expressions to space.
+- `SpaceImpl.kt:41-74` implements `match`: creates/uses an `IndexerImpl`, resolves every packed match, substitutes variables into the template, optionally wraps results in `BoundAtom`, and returns a `List<Atom>`.
+- `SpaceImpl.kt:85-99` writes resolved bindings into the global `Matcher` binding stack.
+- `runtime/src/main/kotlin/net/singularity/jetta/runtime/Matcher.kt:12-16` uses `ThreadLocal` binding stack and depth.
+- `Matcher.kt:20-33` pushes a binding frame; `Matcher.kt:36-57` pops and propagates child-frame bindings to the parent.
+- `Matcher.kt:63-66` sets a binding; `Matcher.kt:71-85` resolves `BoundAtom` and variables by searching the stack.
+- `Matcher.kt:88-89` delegates `Matcher.match` to `Space.match`.
+- `backend/src/main/kotlin/net/singularity/jetta/compiler/backend/Externals.kt:70-90` registers `match` and `matchEval` as multivalued system functions returning list/sequence types.
+- `backend/src/test/kotlin/net/singularity/jetta/compiler/backend/PerCallBindingTest.kt:15-26` documents the core per-call binding expectation.
+- `PerCallBindingTest.kt:28-57` tests `(lookup $x) (match &self (Color $x) $x)` returning both `red` and `blue` when invoked with a variable.
+- `PerCallBindingTest.kt:405-443` tests propagated bindings through `(findAll) (ift (check $x) $x)`.
+
+Faithfulness caveat:
+
+The result shape and binding propagation are deliberately "stack foliation" / per-call binding semantics, not a direct claim of Hyperon Space API compatibility. The `SpaceImpl.kt:45` comment says there is no save/restore because bindings must remain visible after `match` returns; that is an implementation choice that should be recorded as extended semantics.
+
+S6.A.Q5 - jetta types + stdlib
+==============================
+
+Verdict:
+
+- stdlib [JETTA-STDLIB-KOTLIN-HOSTED]
+- types [JETTA-TYPES-GRADUAL]
+
+Types:
+
+jetta has explicit type declarations and inference. It supports `ArrowType`, grounded types, typed variables, compatibility checks, and fallback-to-Atom behavior for unresolved/dynamic symbolic cases. "Gradual" is the best brief vocabulary label.
+
+Evidence:
+
+- `frontend-api/src/main/kotlin/net/singularity/jetta/compiler/frontend/ir/GroundedType.kt:3-15` defines built-in grounded types: `Int`, `Long`, `Boolean`, `Double`, `String`, `Any`, `Unit`, `Space`, `Atom`, `Expression`, `List`, `Nothing`.
+- `frontend/src/main/kotlin/net/singularity/jetta/compiler/frontend/resolve/Context.kt:131-155` infers expression, variable, grounded, and symbol types.
+- `Context.kt:641-660` fills missing parameter types with `Atom` after deriving body type.
+- `Context.kt:710-730` resolves function definitions and infers arrow types when absent.
+- `Context.kt:736-739` implements assignability with `Any` as top-like compatibility.
+- `Context.kt:757-775` resolves variables and defaults unscoped match-time variables to `Atom`.
+- `frontend/src/test/kotlin/net/singularity/jetta/compiler/frontend/TypeInferenceTest.kt:14-30` tests return-type inference.
+- `TypeInferenceTest.kt:32-48` tests parameter-type inference.
+- `TypeInferenceTest.kt:111-129` tests inference through a recursive factorial definition.
+- `TypeInferenceTest.kt:131-158` is ignored and documents unresolved strict-mode work.
+
+Stdlib:
+
+There are six tracked `.metta` example/test files, not a Hyperon-style `.metta` stdlib tree. The executable builtins/stdlib-like surface is Kotlin-hosted through registered system functions.
+
+Evidence:
+
+```
+git ls-files '*.metta'
+examples\b2backchain\BackchainWho.metta
+examples\b2backchain\BackchainDeduction.metta
+examples\tests\a1_symbols.metta
+examples\intro\Println.metta
+examples\intro\Hello.metta
+examples\intro\F.metta
+```
+
+- `backend/src/main/kotlin/net/singularity/jetta/compiler/backend/Externals.kt:16-28` registers random/seed host functions.
+- `Externals.kt:29-38` registers multivalued `generate`.
+- `Externals.kt:39-47` registers host `println`.
+- `Externals.kt:48-69` registers assertion functions.
+- `Externals.kt:70-90` registers `match` and `matchEval`.
+- `runtime/src/main/kotlin/net/singularity/jetta/runtime/Assertions.kt:9-90` implements assertion helpers in Kotlin.
+- `runtime/src/main/kotlin/net/singularity/jetta/runtime/IO.kt:3-7` implements `println` in Kotlin.
+
+S6.A.Q6 - jetta branch activity
+================================
+
+Verdict: [JETTA-MAIN-RELEASE-KHUDDEV-ACTIVE-EDGE]
+
+Main HEAD is the default branch and reflects the v0.5 line. `khud/dev` is the active edge with 2026-06-06 work and 32 commits ahead. It is not merged to main, so khud/dev findings must be forward-looking only.
+
+Evidence:
+
+```
+git symbolic-ref refs/remotes/origin/HEAD
+refs/remotes/origin/main
+
+git rev-list --left-right --count origin/main...origin/khud/dev
+1    32
+```
+
+Top khud/dev commits include:
+
+- `d2cd57c Implement Phase A eval-as-runtime; b1_equal_chain now PASS`
+- `893535d Add JettaCallSite runtime dispatcher for JIT-eval`
+- `1c0293c Resolve (import! &self M) at compile time`
+- `f4024d8 Add SpaceId and SpaceRegistry; route JettaProgram through them`
+- `743a2ed Track the MeTTa compatibility test corpus`
+
+Contributors:
+
+```
+git shortlog -sn HEAD
+77  khud
+7   Alexey Potapov
+3   Vitaly Khudobakhshov
+```
+
+This is active, mostly khud-led work with Potapov involvement. Main should be treated as the current release/stable line; khud/dev as active edge.
+
+S6.A.Q7 - jetta quirks
+======================
+
+Q-1 bind! + new-space
+---------------------
+
+Verdict: [QUIRK-NOT-APPLICABLE]
+
+I do not find `bind!` or `new-space` at main HEAD in grammar, predefined tokens, runtime, backend, examples, or tests. This is not a confirmed fix of Hyperon v0.2.10 reset semantics; it is absent from jetta's source surface.
+
+Evidence:
+
+- `frontend/antlr/Jetta.g4:56-76` lists grammar specials and has no `bind!` or `new-space`.
+- `frontend-api/src/main/kotlin/net/singularity/jetta/compiler/frontend/ir/Predefined.kt:4-37` lists predefined special symbols and has no `bind!` or `new-space`.
+- `rg -n "bind!|new-space" -S .` finds no implementation hits in jetta source.
+
+Because the operators are absent, the G-A default `[QUIRK-REPRODUCED]` is overridden by cite-confirmed non-applicability.
+
+Q-2 cond
+--------
+
+Verdict: [QUIRK-FIXED]
+
+The Hyperon `cond` operator surface is absent. jetta supports `if` plus explicit comparison/boolean operators instead. This is the same "fixed via absence/replacement, not semantic repair of cond" style as previous reconciliations.
+
+Evidence:
+
+- `frontend/antlr/Jetta.g4:56-76` lists specials; there is `if` and comparison tokens but no `cond`.
+- `frontend/antlr/Jetta.g4:142-148` maps `if` and `import`.
+- `frontend/antlr/Jetta.g4:262-263` defines `IF : 'if'`.
+- `frontend-api/src/main/kotlin/net/singularity/jetta/compiler/frontend/ir/Predefined.kt:13-19` defines `==`, `!=`, comparison ops, and `IF`.
+- `frontend/src/main/kotlin/net/singularity/jetta/compiler/parser/antlr/JettaVisitorImpl.kt:117-137` maps `if` and comparison parser contexts into predefined specials.
+- `frontend/src/main/kotlin/net/singularity/jetta/compiler/frontend/resolve/Context.kt:906-913` resolves `Predefined.IF`.
+- `compiler/src/test/kotlin/net/singularity/jetta/repl/ReplTest.kt:221-229` tests an `if` recursion example in the REPL.
+
+Q-3 catchall multi-reduction
+----------------------------
+
+Verdict: [QUIRK-REPRODUCED]
+
+jetta is on the Hyperon/MeTTaLog side of the S3 divergence, not the MeTTaTron most-specific-rule side. Multiple definitions of the same function are rewritten into `Match` branches, marked multivalued, and all matching branches contribute results. Specific + fallback patterns can both fire.
+
+Evidence:
+
+- `frontend/src/main/kotlin/net/singularity/jetta/compiler/frontend/rewrite/FunctionRewriter.kt:181-213` groups multiple patterns for one function into a single `FunctionDefinition` with a `Match` body.
+- `FunctionRewriter.kt:196-218` enforces a `multivalued` annotation for multi-pattern functions.
+- `FunctionRewriter.kt:159-178` builds branch conditions only for constants/expressions; fallback variable-only patterns have no condition.
+- `backend/src/main/kotlin/net/singularity/jetta/compiler/backend/FunctionGenerator.kt:398-413` generates a `List` result for a `Match`, iterates all branches, and returns the accumulated list.
+- `FunctionGenerator.kt:466-477` adds branch results to the result list, using `addAll` for `SeqType` and `add` otherwise.
+- `backend/src/test/kotlin/net/singularity/jetta/compiler/backend/MatchGeneratorTest.kt:15-31` tests two zero-arg definitions returning `listOf(0, 1)`.
+- `MatchGeneratorTest.kt:34-50` tests a specific pattern plus fallback: `(foo 10)` returns `listOf(0, 11)`.
+- `MatchGeneratorTest.kt:141-148` documents that both destructured and fallback branches match `(And X Y)`.
+- `MatchGeneratorTest.kt:315-322` documents branch 1 plus fallback behavior in a nested example.
+
+This is the important final-source quirk finding: MeTTaTron remains the lone closed-cluster source with a most-specific filter; jetta reproduces the multi-branch/catchall behavior.
+
+S6.A.Q8 - jetta project status
+==============================
+
+Verdict: [JETTA-ACTIVE-PRE-RELEASE]
+
+jetta is active and pre-release/maturing. Main is v0.5-era; khud/dev is current as of 2026-06-06. There are no Git tags pointing at main HEAD.
+
+Evidence:
+
+- `git tag --points-at HEAD` returned no tag.
+- `origin/main` HEAD is `e3849120` on 2026-03-17, "Merge pull request #21 from trueagi-io/khud/dev".
+- `origin/khud/dev` HEAD is `d2cd57c` on 2026-06-06, "Implement Phase A eval-as-runtime; b1_equal_chain now PASS".
+- `git rev-list --left-right --count origin/main...origin/khud/dev` returns `1 32`.
+- `git shortlog -sn HEAD` shows khud as dominant contributor, with Potapov participation.
+
+S6.B.Q1 - atomspace-metta implemented scope
+===========================================
+
+Verdict: [ASMETTA-FUNCTION-DECL-IMPORT-ONLY]
+
+atomspace-metta implements a small MeTTa-ish import/encode/decode layer over the classical AtomSpace ForeignAST machinery. It parses simple expressions, maps definitions into `DefineLink` / `LambdaLink`, maps function applications to `ExecutionOutputLink`, and has a Scheme demo/test. It does not implement a full MeTTa runtime.
+
+Evidence:
+
+- `README.md:7-14` states version 0.0.1, proof of concept, and "only the simplest mapping is done: the declaration of functions."
+- `README.md:19-23` states the architecture uses ForeignAST in the base AtomSpace.
+- `opencog/atoms/metta-types/atom_types.script:6` defines `METTA_AST <- SEXPR_AST "MeTTa"`.
+- `opencog/atoms/metta/MettaAST.cc:52-62` constructs a `MettaAST` by parsing a string and wrapping simple tokens if parsing leaves no outgoing atoms.
+- `MettaAST.cc:65-68` delegates expression parsing to `MeTTa::next_expr`.
+- `MettaAST.cc:111-121` converts existing AtomSpace handles into `MettaAST`, using `MeTTa::prt_metta` for non-leaf handles.
+- `MettaAST.cc:125-127` registers `METTA_AST` with the classserver factory.
+- `opencog/persist/metta/DecodeMeTTa.cc:36-73` maps arithmetic, boolean, `if`, and generic function expressions into Atomese links.
+- `DecodeMeTTa.cc:171-234` maps `(= name body)` and `(= (fun args...) body)` into `DefineLink` / `LambdaLink`.
+- `DecodeMeTTa.cc:237-250` describes and implements top-level support for definitions and function application.
+- `opencog/persist/metta/EncodeMeTTa.cc:34-103` prints Atomese back into MeTTa-style strings for `METTA_AST`, `DefineLink`, `LambdaLink`, arithmetic/boolean, `ExecutionOutputLink`, and `ListLink`.
+- `examples/metta-lisp.scm:9-19` demonstrates factorial definition/application and named numeric value application through `cog-execute!`.
+- `tests/atoms/metta/metta-basic-test.scm:13-32` tests the factorial and named-value cases.
+
+S6.B.Q2 - atomspace-metta unimplemented core
+============================================
+
+Verdict: [ASMETTA-CORE-SEMANTICS-UNIMPLEMENTED-CONFIRMED]
+
+The README TODO is still current at HEAD: `match`, `ground`, and multivalued propagation are not implemented in the repo source. They appear as README TODO text and related comments/tests, not as implemented MeTTa operations.
+
+Evidence:
+
+- `README.md:25-44` explicitly says TODO: implement `match`, `ground`, and multivalued propagation, then describes intended semantics.
+- `rg -n "match|ground|Ground|multival|Multival|Unify|MeetLink|lib:" -S opencog examples tests README.md` finds implementation-relevant hits only in:
+  - `README.md:26-44` TODO text.
+  - `tests/atoms/metta/metta-basic-test.scm:3` comment "matching `metta-lisp.scm` example demo" (not match implementation).
+  - `examples` / `tests` factorial application via `cog-execute!`.
+- The same grep finds no `match` implementation in `opencog/atoms/metta` or `opencog/persist/metta`.
+- `DecodeMeTTa.cc:36-73` has arithmetic/boolean/generic application mappings but no `match`, `ground`, multivalued, unifier, or `lib:` branch.
+- `DecodeMeTTa.cc:237-250` limits top-level supported forms to definitions and function application.
+
+Pickaxe note:
+
+Given the repo has only 22 tracked files and all commits are from 2023-05-11, the absence is not a later README drift; there is no hidden later implementation at HEAD. I did not rely on README alone.
+
+S6.B.Q3 - atomspace-metta classical AtomSpace vs Hyperon
+========================================================
+
+Verdict: [ASMETTA-CLASSICAL-ATOMSPACE-BRIDGE-ARCHIVAL]
+
+This is a classical C++/Scheme AtomSpace extension by Linas Vepstas. It targets the OpenCog AtomSpace CMake/Guile module stack and ForeignAST mechanism, not Hyperon Space or the Rust/Python Hyperon runtime.
+
+Evidence:
+
+- `CMakeLists.txt:23` sets `PROJECT(atomspace-metta)`.
+- `CMakeLists.txt:82-89` requires `AtomSpace 5.0.3`.
+- `README.md:2-5` frames the work as "MeTTa on the AtomSpace" and a proof-of-concept.
+- `README.md:19-23` points to base AtomSpace ForeignAST.
+- `opencog/atoms/metta.scm:4-14` defines the `(opencog metta)` Guile module and loads the `libmetta-ast` extension.
+- `opencog/atoms/metta/MettaAST.cc:130-139` exposes `opencog_metta_init` for the Scheme module and initializes MeTTa atom types.
+- `tests/atoms/metta/metta-basic-test.scm:5-7` imports `(opencog)`, `(opencog exec)`, `(opencog metta)`, and `(opencog test-runner)`.
+- `git show -s` has HEAD at `119c17f` on 2023-05-11 by Linas Vepstas.
+- `git shortlog -sn HEAD` shows all substantive authorship under Linas Vepstas variants, plus one root commit.
+
+There is no Hyperon Space API, no Rust crate, no Python binding, and no relationship to the Phase 4 Hyperon Space write/observer substrate except as historical/classical-AtomSpace context.
+
+S6.X.Q1 - cluster-narrative placement
+=====================================
+
+jetta verdict: [JVM-BYTECODE-COMPILED-RUNTIME]
+
+jetta should be added as the cluster's JVM-bytecode runtime. It is the strongest contrast to:
+
+- S1 hyperon-experimental: Rust reference runtime / interpreter stack.
+- S2 PeTTa/metta-morph: Prolog/Scheme alternative semantics.
+- S3 MeTTaTron: named "compiler" but reconciled as tree-walk interpreter/runtime, not bytecode compiler.
+- S4 MeTTaIL/FormalMeTTa: IL/formal semantics, not MeTTa runtime.
+- S5 MeTTaLog: Prolog-native full runtime.
+
+jetta adds genuine ANTLR + ASM JVM class generation, a compile-load-eval REPL, active khud/dev runtime evolution, Kotlin-hosted stdlib functions, and a real Space/Matcher subsystem.
+
+atomspace-metta verdict: [CLASSICAL-ATOMSPACE-BRIDGE-STUB]
+
+atomspace-metta should be recorded as an archival bridge stub for the classical AtomSpace stack, not a MeTTa runtime competitor. It belongs beside the AtomSpace-Scheme / Vepstas classical lineage findings, not beside Hyperon Space or the active runtime axis.
+
+Final-source synthesis notes
+============================
+
+V6-1 [JETTA-JVM-BYTECODE-RUNTIME]
+  jetta is the only closed MeTTa runtime source so far that truly emits JVM bytecode from MeTTa definitions. This should update the MeTTa implementation table as "JVM bytecode compiled runtime", not merely "Kotlin implementation."
+
+V6-2 [JETTA-REPL-COMPILE-LOAD-INVOKE]
+  jetta's REPL eval compiles snippets to bytecode, loads the generated class, and invokes `__main`. It is not interpreter-primary at main HEAD.
+
+V6-3 [JETTA-KHUDDEV-ACTIVE-EVAL-RUNTIME]
+  khud/dev is active edge (1/32 divergence from main) and includes "Phase A eval-as-runtime" plus JIT/import/space-registry work. Cluster-close docs should mention this as forward signal but not as mainline HEAD behavior.
+
+V6-4 [JETTA-Q3-CATCHALL-REPRODUCED]
+  jetta reproduces multi-branch/catchall behavior: specific + fallback branches both contribute results. This preserves MeTTaTron as the lone most-specific-filter outlier in the quirk table.
+
+V6-5 [JETTA-BIND-NEWSPACE-ABSENT]
+  `bind!` and `new-space` are absent, so Q-1 is not applicable rather than fixed. Do not claim jetta repairs the Hyperon bind/new-space reset quirk.
+
+V6-6 [JETTA-COND-ABSENT-IF-PRESENT]
+  `cond` is absent; `if` and comparison operators are implemented. This matches the "fixed via absence/replacement" pattern, not a direct cond implementation.
+
+V6-7 [JETTA-SPACE-PERCALL-BINDINGS]
+  jetta's Space/Matcher layer is real and important, especially per-call `BoundAtom` snapshots and binding-stack propagation. It is extended semantics, not plain Hyperon Space parity.
+
+V6-8 [ASMETTA-FUNCTION-DECL-ONLY]
+  atomspace-metta's actual implemented scope is declaration/application mapping through classical Atomese. Function declaration import is the right wiki phrase; "MeTTa runtime" is too strong.
+
+V6-9 [ASMETTA-TODOS-STILL-HEAD]
+  match, ground, and multivalue remain TODO at HEAD. README is current on the core gaps.
+
+V6-10 [ASMETTA-CLASSICAL-ATOMSPACE-LINEAGE]
+  atomspace-metta should cross-link to classical AtomSpace / Vepstas lineage and the AtomSpace-Scheme stack distinction, not to Hyperon Space write API work.
+
+Potential close-batch edits
+===========================
+
+C6-1 - `Implementation Families+MeTTa Implementations` (likely card 4632):
+  Add/refine jetta row as [JVM-BYTECODE-COMPILED-RUNTIME], main `e3849120`, khud/dev active edge `d2cd57c`, ANTLR parser, ASM JVM backend, REPL compile-load-invoke, catchall reproduced.
+
+C6-2 - `MeTTa Programming Language Full+Language Stack and Implementations` (likely card 7161):
+  Add final Source 6 paragraph distinguishing jetta from MeTTaTron: jetta is real JVM bytecode codegen; MeTTaTron was tree-walk/runtime despite name.
+
+C6-3 - `Reference+GitHub Repositories` (card 7268):
+  Add/expand trueagi-io/jetta with branch nuance. Add/keep opencog/atomspace-metta as archival classical bridge stub, with [CLASSICAL-ATOMSPACE-BRIDGE-STUB] tag.
+
+C6-4 - Quirk table in `HYPERON_CLUSTER_FINDINGS.md`:
+  Add jetta row:
+  Q-1 [QUIRK-NOT-APPLICABLE]; Q-2 [QUIRK-FIXED]; Q-3 [QUIRK-REPRODUCED].
+  atomspace-metta should either be excluded from runtime-quirk table or marked all [QUIRK-NOT-APPLICABLE] because it lacks a real eval/match runtime.
+
+C6-5 - Cluster synthesis:
+  State final runtime-cluster axis as:
+  hyperon-experimental = Rust reference runtime;
+  PeTTa = Prolog nondeterministic evaluator;
+  metta-morph = Scheme macro/subset;
+  MeTTaTron = F1R3FLY runtime/interpreter with parser/PathMap/HashMap findings;
+  MeTTaIL/FormalMeTTa = formal/IL non-runtime axis;
+  MeTTaLog = Prolog-native full runtime;
+  jetta = JVM-bytecode compiled runtime;
+  atomspace-metta = classical AtomSpace bridge stub.
+
+Open questions / risks for reconciliation
+=========================================
+
+R1. jetta backend label: I chose `[JETTA-ASM-JVM-BYTECODE-PARTIAL]`, not FULL. If another reviewer chooses FULL because the bytecode generator is real, reconcile by separating "backend reality" from "MeTTa language coverage." The generator is real; the language subset is partial.
+
+R2. jetta Q3 label: I chose `[JETTA-COMPILE-PLUS-EVAL-EMERGING]` because main has compile-load-invoke REPL eval and khud/dev has explicit eval-as-runtime branch work. If the reconciliation wants labels strictly against main HEAD only, `[JETTA-AOT-COMPILE-AND-RUN]` is defensible, with khud/dev as a note. I prefer the brief's combined main+khud/dev question wording.
+
+R3. jetta Q-2 cond: `[QUIRK-FIXED]` means "no live cond surface; replaced by if/comparison," not "cond bug fixed in place." Preserve that caveat.
+
+R4. atomspace-metta Q1 label: `[ASMETTA-FOREIGNAST-ENCODE-DECODE]` is also true as a mechanism label, but `[ASMETTA-FUNCTION-DECL-IMPORT-ONLY]` is the better implemented-scope verdict.
+
+R5. I did not run builds/tests because source repos are outside the writable workspace and tests would generate build artifacts. Findings are based on source, tests, branch metadata, and grep/pickaxe-style absence checks.

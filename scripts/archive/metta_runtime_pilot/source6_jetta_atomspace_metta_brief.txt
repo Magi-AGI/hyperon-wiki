@@ -1,0 +1,497 @@
+================================================================
+MeTTa runtime cluster pilot — Source 6 brief (FINAL SOURCE)
+trueagi-io/jetta (JeTTa) + opencog/atomspace-metta
+================================================================
+
+REVIEWER DISPATCH FRAMING — PACKAGED REVIEW + EXTRACTION RELAY
+--------------------------------------------------------------
+
+Per V3-PROTOCOL-1 option (i) Gemini-confirmation-only mode (promoted
+S3 close; validated S4 CLEAN; S5 declining-but-no-fabrication). This
+brief is a SINGLE PACKAGED RELAY to Codex AND Gemini — review the
+brief, then proceed to extract; no separate "Extraction Trigger".
+
+**S6 IS THE FINAL SOURCE of the MeTTa runtime cluster pilot.** Its
+close takes the cluster to 6/6 and triggers the **option-(0)
+Gemini-exclusion DECISION** (3rd of 3 sources in the re-evaluation
+window S4/S5/S6; see §9). That decision is a USER call, surfaced at
+close — NOT an S6 extraction concern.
+
+**Reviewer roles for S6**:
+
+  Codex (citation-grade primary):
+    - Independent extraction with file:line cites verified against
+      the actual source tree.
+    - V3-PROTOCOL-2 verbatim cites for any benchmark/numerical claim.
+    - All §5 questions with cite-grade evidence anchors.
+
+  Gemini (CONFIRMATION-ONLY MODE, per V3-PROTOCOL-1 / P10.24):
+    - Synthesis verdicts only — one §6-vocabulary tag per question
+      (single-label per V1-PROTOCOL-1 + V2-PROTOCOL-1 specificity).
+    - NO self-supplied file:line cites; NO V4-11 self-verification
+      table; NO branch/commit divergence numbers (orchestrator
+      pre-computed in §0; Codex verifies citation-grade).
+    - **TWO TIGHTENED S6 GUARDS (Gemini committed at S5 sign-off)**:
+        (G-A) QUIRK verdicts DEFAULT to [QUIRK-REPRODUCED] unless a
+              fix/divergence is CITE-CONFIRMED. Do NOT optimistically
+              claim [QUIRK-FIXED]/[QUIRK-DIVERGENT] without evidence.
+              (S5 Q-1 [QUIRK-FIXED] fabrication is the trigger.)
+        (G-B) BRANCH/fork verdicts require MERGE-BASE / divergence-
+              direction status BEFORE any ahead/behind interpretation.
+              (S5 ngeiswei no-merge-base + HAA S3 direction-reversal.)
+
+  Orchestrator-Claude:
+    - Independent extraction (findings_claude.txt) BEFORE adopting
+      reviewer verdicts (S3 workflow correction).
+    - All git facts pre-computed in §0 (feedback_git_history_in_brief).
+    - Three-way reconciliation; Gemini verdicts adjudicated against
+      the Codex+Claude evidence chain.
+
+
+§0. SOURCE PINS + WORKSPACE INVENTORY
+=====================================
+
+S6 closes the cluster with two paradigm-OPPOSITE "MeTTa runtime"
+candidates:
+
+  S6.A = trueagi-io/jetta (JeTTa) — ACTIVE JVM/Kotlin MeTTa COMPILER
+         (ANTLR frontend + ASM JVM-bytecode backend). First JVM/
+         bytecode runtime in the cluster.
+  S6.B = opencog/atomspace-metta — ARCHIVAL C++/Scheme proof-of-
+         concept bridging a FRACTION of MeTTa onto the CLASSICAL
+         AtomSpace via ForeignAST. Not a Hyperon-MeTTa runtime.
+
+§0.A — S6.A jetta source pin
+----------------------------
+  Repo:     trueagi-io/jetta  (JeTTa; package net.singularity.jetta)
+  Origin:   https://github.com/trueagi-io/jetta.git
+  Local:    E:\GitHub\hyperon reference\jetta\
+  Default branch: main  (orchestrator-VERIFIED via `git symbolic-ref
+                  refs/remotes/origin/HEAD` → refs/remotes/origin/main;
+                  V4-1 lesson applied).
+  HEAD (origin/main):
+            e3849120a93056c34ba4400e3fe669e97c874eee
+            (Vitaly Khudobakhshov 2026-03-17 "Merge PR #21 from
+             khud/dev"; version bumped to 0.5)
+  Fetch: orchestrator `git fetch` 2026-06-08; local main == origin/
+         main (0/0). NO TAGS.
+
+  ⚠ ACTIVE-BRANCH-WORK SIGNAL (like S3 MeTTaTron + S4 MeTTaIL2Matrix):
+    `origin/khud/dev` is the active development head.
+    `git rev-list --left-right --count origin/main...origin/khud/dev`
+    = 1 / 32 → khud/dev is **32 commits AHEAD of main**.
+    khud/dev HEAD: d2cd57c 2026-06-06 (khud) "Implement Phase A
+    eval-as-runtime; b1_equal_chain now PASS" — i.e. jetta is
+    EVOLVING from pure-compiler toward an eval/runtime mode on
+    khud/dev, just 2 days before this brief. Reviewers: pin findings
+    to `main` HEAD e3849120 (the cluster default) BUT explicitly note
+    the khud/dev eval-as-runtime evolution as a forward signal. Do
+    NOT cite khud/dev paths as if they were main (V4-1 / branch
+    discipline). Also `origin/khud/lambdas` exists.
+
+  Module structure (Gradle Kotlin DSL, 166 .kt files):
+    frontend/         — ANTLR grammar `frontend/antlr/Jetta.g4` + parser
+    frontend-api/
+    compiler/         — compiler core
+    backend/          — ASM JVM-bytecode generation
+        backend/src/main/kotlin/net/singularity/jetta/compiler/backend/
+        Generator.kt / FunctionGenerator.kt / LambdaGenerator.kt /
+        Constants.kt / Externals.kt / Utils.kt (uses org.ow2.asm)
+    runtime/          — runtime support
+    server/           — server mode
+    logger/           — logging module
+    examples/ (6 .metta files), docs/, bin/
+    AGENTS.md / CLAUDE.md / GEMINI.md (jetta ships its own agent docs;
+      NO README.md at HEAD)
+
+  Tracked language mix: 166 .kt, 11 .xml, 8 .kts, 6 .metta, 1 .g4.
+
+  Top authors (origin/main shortlog):
+    77  khud              ┐ Vitaly Khudobakhshov (primary; "khud" +
+     3  Vitaly Khudobakhshov ┘ "Vitaly Khudobakhshov" = same person)
+     7  Alexey Potapov    ← cross-pilot: SingularityNET Director of
+                            Research, Hyperon neural-symbolic lead,
+                            "Hyperon" book co-author.
+
+  Recent main commits (semantic signals):
+    e384912 2026-03-17 Merge PR #21 (v0.5)
+    7b3cee7 2026-03-17 Bump v0.5; "bang" semantics in examples
+    6c8ae09 2026-03-16 Proper support assert* ground functions
+    4872b9c 2026-03-15 MeTTa-like semantics: "bang for evaluation,
+                       put into space otherwise"
+    e56d988 2026-03-03 enablePerCallBindings flag in SpaceImpl
+    d3fc4a9 2026-03-02 Stack foliation for per-call bindings (map?/
+                       flat-map? iterations)
+    → jetta has real MeTTa semantics: Space, Matcher, per-call
+      bindings, assert*/ground functions, bang(!)-evaluation.
+
+§0.B — S6.B atomspace-metta source pin
+--------------------------------------
+  Repo:     opencog/atomspace-metta  ("MeTTa on the AtomSpace")
+  Origin:   https://github.com/opencog/atomspace-metta.git
+  Local:    E:\GitHub\hyperon reference\atomspace-metta\
+  Default branch: master (symbolic-ref verified). NO TAGS.
+  HEAD (origin/master):
+            119c17f90e39e7ada53691cf9e30b82e8bcebe34
+            (Linas Vepstas 2026... NO — 2023-05-11 22:59:39 -0500
+             "Re-arrange all initializations to work")
+  Fetch: local == origin (0/0). ⚠ ALL 16+ commits are dated
+         2023-05-11 (a single day); HEAD is ~3 YEARS STALE. Sole
+         author Linas Vepstas.
+
+  Structure (22 tracked files; C++ 4 .cc + 2 .h, Scheme 3 .scm):
+    opencog/atoms/metta/MettaAST.cc + .h   — the MeTTa AST (ForeignAST)
+    opencog/atoms/metta-types/MeTTaTypes.cc + atom_types.script
+    opencog/persist/metta/DecodeMeTTa.cc + EncodeMeTTa.cc + MeTTa.h
+    opencog/atoms/metta.scm + metta.scm     — Scheme bindings
+    examples/metta-lisp.scm                 — working demo
+    CMakeLists.txt, README.md, AGENTS/CLAUDE/GEMINI.md
+
+  README key claims (verbatim, V3-PROTOCOL-3 — see §4):
+    - "The MeTTa concept can be implemented on top of the AtomSpace.
+      This repo contains a proof-of-concept." Version 0.0.1.
+    - "A fraction of the MeTTa language can be easily imported as
+      Atomese. ... only the simplest mapping is done: the declaration
+      of functions."
+    - Architecture: uses "Foreign Abstract Syntax Trees" (ForeignAST)
+      in the base AtomSpace (opencog/atoms/foreign).
+    - TODO (EXPLICITLY UNIMPLEMENTED): `match` (unification),
+      `ground` (grounded functions), and multivalued propagation
+      (Cartesian product). These are the CORE MeTTa semantics — so at
+      HEAD only function-declaration import works.
+
+§0.X — CROSS-PILOT IDENTITIES (S6)
+----------------------------------
+  - Vitaly Khudobakhshov (khud) = jetta primary author. NEW cluster
+    lineage (not an S1-S5 author).
+  - Alexey Potapov = jetta contributor; SingularityNET Director of
+    Research; major Hyperon neural-symbolic figure. Cross-ecosystem.
+  - **Linas Vepstas = atomspace-metta sole author = the AtomSpace-
+    Scheme stack figure** from the Perception cluster pilot (2026-05-01:
+    Vepstas Hyperon-era portfolio sensory/agents/motor/evidence/
+    atomese-simd). atomspace-metta is part of his CLASSICAL-AtomSpace-
+    Scheme portfolio — the Perception pilot's "AtomSpace-Scheme vs
+    MeTTa-runtime two-stack" distinction is DIRECTLY load-bearing here
+    (S6.B.Q3).
+
+  OUT OF SCOPE: base opencog/atomspace (ForeignAST lives there; cite
+  by reference only, do NOT extract it); opencog/unify (named in the
+  TODO as the unifier the match-gap would use — reference only).
+
+
+§1. LOCKED PRIOR ART (cumulative S1-S5)
+=======================================
+Reviewers reference, do NOT re-derive.
+
+  PA1.  S1 hyperon-experimental v0.2.10 = reference Rust runtime.
+        Quirks (PA7): Q-1 bind!+new-space CONFIRMED-no-reset; Q-2
+        cond FIXED-VIA-ABSENCE; Q-3 catchall multi-reduction
+        CONFIRMED-AS-SEMANTICS.
+  PA12. S3 MeTTaTron filters rule matches to MOST-SPECIFIC only
+        (the LONE Q-3 divergence). S5 MeTTaLog REPRODUCES catchall —
+        so as of S5, only MeTTaTron diverges on Q-3.
+  PA14. README "compiler" framing can overstate HEAD capability
+        (V3-12). → S6 jetta: it genuinely IS a compiler (ASM
+        bytecode), but verify the runtime/eval status (khud/dev
+        Phase A eval-as-runtime is NOT yet on main).
+  PA15. S4 MeTTaIL/FormalMeTTa = formal-semantics/IL axis, NOT runtime
+        peers. S6.B atomspace-metta is similarly a BRIDGE/STUB, not a
+        full runtime — likely [PARADIGM-DISTINCT] again.
+  PA16. ALWAYS verify default branch via `git symbolic-ref` (V4-1).
+        APPLIED at S6 (jetta=main, atomspace-metta=master).
+  PA17. Active dev can live OFF the default branch (S3 branches, S4
+        frmlbytecode). → S6 jetta khud/dev (32 ahead, eval-as-runtime).
+  PA18. S5 MeTTaLog = Prolog-native dual interpreter+compiler; quirks
+        Q-1 REPRODUCED*/Q-2 FIXED/Q-3 REPRODUCED; WAM-via-SWI-host;
+        independent reimpl (hyperonpy bridge optional). Two
+        orchestrator self-corrections (Python optional; bridge=
+        hyperonpy not vspace). ngeiswei no-merge-base.
+
+
+§2. CROSS-SOURCE FORWARDS (applied to S6)
+==========================================
+F1. **Compile-vs-interpret / runtime status** (V1-PROTOCOL-1):
+    jetta COMPILES MeTTa→JVM bytecode (ASM). The headline question:
+    is jetta an AOT compiler that EXECUTES (compile-then-run on JVM),
+    and what is the eval/runtime story on main vs the khud/dev
+    "eval-as-runtime Phase A"? (S6.A.Q2 + S6.A.Q3.)
+F2. **Pickaxe-before-dead-code** (feedback_pickaxe_for_dead_code):
+    MANDATORY for atomspace-metta's match/ground/multivalue "TODO".
+    `git log --all -S 'match'` / grep MettaAST.cc + the persist/
+    metta encoders — verify these are TRULY absent at HEAD, not
+    implemented-but-undocumented (the README is 2023-era). (S6.B.Q2.)
+F3. **Two-stack discipline** (Perception 2026-05-01): atomspace-metta
+    is CLASSICAL-AtomSpace (C++/Scheme), NOT the Hyperon MeTTa runtime.
+    Do NOT conflate "MeTTa on the classical AtomSpace" with the
+    Hyperon Space/MeTTa stack. (S6.B.Q3.)
+F4. **README-drift audit** (V3-PROTOCOL-3): §4. jetta has NO README
+    (agent docs only); atomspace-metta README is 2023-era and may
+    overstate/understate HEAD.
+F5. **Branch discipline** (V4-1 / PA17): jetta main vs khud/dev — pin
+    to main, note khud/dev as forward signal; do not cite khud/dev as
+    HEAD. (Guard G-B applies to the main↔khud/dev divergence read.)
+F6. **Quirk-default guard G-A**: jetta is a real runtime → Q-1/Q-2/Q-3
+    testable; DEFAULT to REPRODUCED unless a fix/divergence is cite-
+    confirmed. atomspace-metta is a stub → quirks likely [QUIRK-NOT-
+    APPLICABLE] or [QUIRK-SPEC-DEFINES-NEITHER] (it implements no
+    eval/match, so bind!/cond/catchall have no surface). (S6.A.Q7 +
+    S6.X.Q1.)
+F7. **Wiki MCP server bugs** (hyperon-wiki-mcp/SERVER-BUGS.md): apply
+    at close. Existing wiki coverage: jetta appears in cards 4632/
+    7161/7268 (JeTTa rows); atomspace-metta appears in 4632/7268 —
+    reviewers note whether refine-vs-create.
+
+
+§3. (reserved)
+
+
+§4. README-DRIFT AUDIT TABLE (V3-PROTOCOL-3)
+=============================================
+  jetta:
+    P-A-1. NO README.md at HEAD. Only AGENTS/CLAUDE/GEMINI.md +
+           docs/. Reviewers note what docs/ claims vs what backend/
+           compiler implement; no README-claim surface to verdict.
+  atomspace-metta:
+    P-B-1. "proof-of-concept ... only the simplest mapping is done:
+           the declaration of functions." → verdict whether HEAD
+           matches this (function-decl-only) or has progressed.
+    P-B-2. TODO: match/ground/multivalued NOT implemented. → pickaxe-
+           verify ABSENCE at HEAD (F2). Candidate: [CORE-SEMANTICS-
+           UNIMPLEMENTED-CONFIRMED] vs [PARTIALLY-IMPLEMENTED-SINCE-
+           README].
+    P-B-3. "uses ForeignAST in the base AtomSpace" — verdict the
+           mechanism (MettaAST.cc as a ForeignAST node type) and that
+           it targets the CLASSICAL AtomSpace, not Hyperon Space.
+
+
+§5. QUESTIONS FOR S6 REVIEWERS (12 total)
+==========================================
+
+S6.A.Q1. jetta FRONTEND / PARSER
+  ANTLR grammar `frontend/antlr/Jetta.g4` → parser. Hand-tuned ANTLR
+  or generated? S-expression vs custom syntax? How are MeTTa variable
+  prefixes handled? Cite the grammar + parse entry points.
+  §6 set: JETTA-FRONTEND.
+
+S6.A.Q2. jetta BACKEND / BYTECODE  (HEADLINE)
+  backend/ uses ASM (org.ow2.asm) — Generator.kt / FunctionGenerator.
+  kt / LambdaGenerator.kt. Does jetta emit REAL JVM bytecode (.class)
+  for MeTTa definitions, and what subset compiles? Lambdas/closures?
+  Is this genuine JVM-bytecode codegen (first in the cluster) or
+  partial? Cite the ClassWriter/MethodVisitor sites.
+  §6 set: JETTA-BACKEND.
+
+S6.A.Q3. jetta EXECUTION MODEL + eval-as-runtime evolution
+  At main HEAD e3849120: is jetta AOT-compile-then-run on the JVM, or
+  does it also interpret/eval? The khud/dev HEAD d2cd57c (2026-06-06)
+  "Phase A eval-as-runtime" suggests an eval mode is being ADDED.
+  Characterize main's model AND note (per F5) the khud/dev forward
+  direction WITHOUT citing khud/dev as main.
+  §6 set: JETTA-EXEC.
+
+S6.A.Q4. jetta SPACE / MATCHER / BINDINGS semantics
+  SpaceImpl, Matcher, enablePerCallBindings, "stack foliation for
+  per-call bindings" (map?/flat-map?), assert* ground functions,
+  bang(!)-evaluation ("bang for evaluation, put into space
+  otherwise"). How faithful to Hyperon Space/match semantics? Cite.
+  §6 set: JETTA-SPACE.
+
+S6.A.Q5. jetta TYPES + STDLIB
+  Type system (dynamic? gradual?) + standard-library surface (the 6
+  .metta files? a Kotlin-hosted stdlib?). Parity vs S1. Cite.
+  §6 set: JETTA-STDLIB.
+
+S6.A.Q6. jetta BRANCH ACTIVITY (main vs khud/dev)  (Guard G-B)
+  main e3849120 (v0.5, 2026-03-17) vs khud/dev d2cd57c (32 ahead,
+  2026-06-06). Codex: confirm the 1/32 divergence + characterize the
+  32 khud/dev commits (eval-as-runtime track). Gemini: direction
+  verdict only, NO counts. Is main the stable release line and
+  khud/dev the active edge?
+  §6 set: JETTA-BRANCH.
+
+S6.A.Q7. jetta 0.2.x QUIRKS (per-quirk; Guard G-A — DEFAULT REPRODUCED)
+  jetta is a real runtime, so Q-1/Q-2/Q-3 are testable AT main HEAD:
+    Q-1 bind!+new-space (reset semantics?)
+    Q-2 cond (a builtin?)
+    Q-3 catchall multi-reduction vs most-specific filter (which side
+        of the S3 MeTTaTron divergence?)
+  DEFAULT each to [QUIRK-REPRODUCED] unless a fix/divergence is cite-
+  confirmed.
+  §6 set: QUIRKS (per-quirk).
+
+S6.A.Q8. jetta PROJECT STATUS
+  v0.5 on main; khud/dev very active to 2026-06-06; khud primary +
+  Potapov. No tags/releases. Maturity/activity verdict.
+  §6 set: JETTA-STATUS.
+
+S6.B.Q1. atomspace-metta IMPLEMENTED SCOPE
+  MettaAST.cc / MeTTaTypes.cc / Decode+EncodeMeTTa.cc. What actually
+  works at HEAD — confirm "function-declaration import via ForeignAST"
+  and characterize the encode/decode path onto classical AtomSpace
+  Atoms. Cite.
+  §6 set: ASMETTA-SCOPE.
+
+S6.B.Q2. atomspace-metta UNIMPLEMENTED CORE  (F2 pickaxe)
+  match (unification) / ground / multivalued propagation are README-
+  TODO. PICKAXE-VERIFY they are truly absent at HEAD (not implemented-
+  but-undocumented). `git log --all -S 'match'` / grep MettaAST +
+  persist/metta. Cite the absence (or presence).
+  §6 set: ASMETTA-GAPS.
+
+S6.B.Q3. atomspace-metta CLASSICAL-ATOMSPACE-vs-HYPERON  (F3 two-stack)
+  Confirm this targets the CLASSICAL C++/Scheme AtomSpace (ForeignAST),
+  NOT the Hyperon MeTTa runtime/Space. Tie to Vepstas's AtomSpace-
+  Scheme portfolio (Perception cross-pilot). Status: 2023 archival
+  proof-of-concept. Cite + identity.
+  §6 set: ASMETTA-PLACEMENT.
+
+S6.X.Q1. CLUSTER-NARRATIVE PLACEMENT  (FINAL-SOURCE SYNTHESIS)
+  Place both in the closed 6-source runtime cluster: jetta = first
+  JVM-bytecode-compiled MeTTa runtime (active); atomspace-metta =
+  classical-AtomSpace bridge stub (archival). Quirk applicability:
+  jetta gets a real quirk row; atomspace-metta likely [QUIRK-NOT-
+  APPLICABLE] (no eval/match surface). How do they sit vs the runtime
+  axis (S1/S2/S3/S5) and the IL/formal axis (S4)?
+  §6 set: CLUSTER-PLACEMENT.
+
+
+§6. VERDICT VOCABULARY (single-label per question)
+====================================================
+
+JETTA-FRONTEND (S6.A.Q1):
+  [JETTA-ANTLR-GENERATED-PARSER]
+  [JETTA-ANTLR-HANDTUNED-GRAMMAR]
+  [JETTA-CUSTOM-PARSER]
+
+JETTA-BACKEND (S6.A.Q2):
+  [JETTA-ASM-JVM-BYTECODE-FULL]
+  [JETTA-ASM-JVM-BYTECODE-PARTIAL]
+  [JETTA-BYTECODE-SCAFFOLDING]
+  [JETTA-NO-CODEGEN-AT-HEAD]
+
+JETTA-EXEC (S6.A.Q3):
+  [JETTA-AOT-COMPILE-AND-RUN]
+  [JETTA-COMPILE-ONLY-NO-EVAL]
+  [JETTA-COMPILE-PLUS-EVAL-EMERGING]   (eval-as-runtime on khud/dev,
+                                        not yet on main)
+  [JETTA-INTERPRETER-PRIMARY]
+
+JETTA-SPACE (S6.A.Q4):
+  [JETTA-SPACE-MATCHER-FAITHFUL]
+  [JETTA-SPACE-PARTIAL]
+  [JETTA-SPACE-PERCALL-BINDINGS-EXTENDED]
+  [JETTA-SPACE-DIVERGENT]
+
+JETTA-STDLIB (S6.A.Q5):
+  [JETTA-STDLIB-KOTLIN-HOSTED]
+  [JETTA-STDLIB-METTA-FILES]
+  [JETTA-STDLIB-MINIMAL]
+  [JETTA-TYPES-DYNAMIC] / [JETTA-TYPES-GRADUAL]  (note types separately)
+
+JETTA-BRANCH (S6.A.Q6):
+  [JETTA-MAIN-RELEASE-KHUDDEV-ACTIVE-EDGE]
+  [JETTA-MAIN-STABLE-LOW-ACTIVITY]
+  [JETTA-MAIN-STAGNANT-BRANCH-WORK]
+
+QUIRKS (S6.A.Q7 per-quirk; G-A default REPRODUCED):
+  [QUIRK-REPRODUCED]
+  [QUIRK-FIXED]
+  [QUIRK-DIVERGENT-SEMANTICS]
+  [QUIRK-NOT-APPLICABLE]
+
+JETTA-STATUS (S6.A.Q8):
+  [JETTA-ACTIVE-PRE-RELEASE]
+  [JETTA-ACTIVE-SINGLE-MAINTAINER]
+  [JETTA-STABLE-LOW-ACTIVITY]
+
+ASMETTA-SCOPE (S6.B.Q1):
+  [ASMETTA-FUNCTION-DECL-IMPORT-ONLY]
+  [ASMETTA-PARTIAL-BEYOND-DECL]
+  [ASMETTA-FOREIGNAST-ENCODE-DECODE]
+
+ASMETTA-GAPS (S6.B.Q2):
+  [ASMETTA-CORE-SEMANTICS-UNIMPLEMENTED-CONFIRMED]   (match/ground/
+                                                      multivalue absent)
+  [ASMETTA-PARTIALLY-IMPLEMENTED-SINCE-README]
+  [ASMETTA-MATCH-VIA-EXTERNAL-UNIFY]
+
+ASMETTA-PLACEMENT (S6.B.Q3):
+  [ASMETTA-CLASSICAL-ATOMSPACE-BRIDGE-ARCHIVAL]
+  [ASMETTA-CLASSICAL-ATOMSPACE-BRIDGE-ACTIVE]
+  [ASMETTA-HYPERON-ADJACENT]   (reject if it targets classical AS)
+
+CLUSTER-PLACEMENT (S6.X.Q1, per-repo):
+  jetta:  [JVM-BYTECODE-COMPILED-RUNTIME] / [PARADIGM-DISTINCT-JVM]
+  asmetta:[CLASSICAL-ATOMSPACE-BRIDGE-STUB] / [PARADIGM-DISTINCT-
+           CLASSICAL-AS]
+
+
+§7. REQUIRED GREP TARGETS (repo-wide; exclude .Attic if any)
+============================================================
+  jetta:
+    Q1 frontend: frontend/antlr/Jetta.g4 ; frontend/src `parse|lexer|
+       Parser|visit`
+    Q2 backend:  backend/src `ClassWriter|MethodVisitor|visitMethod|
+       org.objectweb.asm|emit|toByteArray`
+    Q3 exec:     runtime/ + server/ `eval|interpret|run|main(` ;
+       compare to khud/dev "eval-as-runtime" (note, don't cite as main)
+    Q4 space:    `SpaceImpl|Matcher|PerCallBindings|assert|bang|addAtom|
+       match`
+    Q5 stdlib:   examples/*.metta ; `stdlib|builtin|grounded`
+    Q7 quirks:   `bind|new-space|cond|catchall|superpose` (G-A default
+       REPRODUCED unless cite-confirmed otherwise)
+    Q6 branch:   `git rev-list --left-right --count origin/main...
+       origin/khud/dev` (Codex verbatim; Gemini direction only)
+  atomspace-metta:
+    Q1 scope:    opencog/atoms/metta/MettaAST.cc + .h ;
+       opencog/persist/metta/DecodeMeTTa.cc + EncodeMeTTa.cc `ForeignAST|
+       MettaAST|declare|FunctionLink|encode|decode`
+    Q2 gaps:     `git log --all -S 'match'` ; grep `match|ground|
+       multivalue|unify` across opencog/ (PICKAXE; verify absence)
+    Q3 placement:`AtomSpace|Atomese|Handle|createLink` (classical AS
+       types, NOT Hyperon Space) ; metta.scm bindings
+
+
+§8. AT-EXTRACTION-RETURN SEQUENCE (option (i) / P10.24)
+=======================================================
+  1. Collect findings_codex.txt + Gemini synthesis relay +
+     findings_claude.txt (orchestrator-independent).
+  2. NO cite-by-cite verification log on Gemini (no cites under (i)).
+  3. SPOT-CHECK Gemini's high-level verdicts vs Codex's evidence —
+     ESPECIALLY S6.A.Q7 quirks (G-A) and S6.B.Q2 gaps (pickaxe).
+  4. Reconciliation from Codex + Claude cite-grade evidence.
+  5. Short "Gemini synthesis-claim adjudication" section per verdict;
+     compute S6 alignment for the §9 gate.
+  6. Three-way sign-off.
+
+
+§9. RE-EVALUATION GATE — DECISION AT S6 CLOSE (3rd of 3 sources)
+===============================================================
+S6 is the THIRD source in the option-(i) re-evaluation window
+(S4/S5/S6). Per feedback_gemini_option_i_confirmation_only_mode.md:
+  - S4 ≈ 67% ; S5 ≈ 50-67% ; S6 = TBD.
+  - <80% mean over the 3 → option (0) Gemini-EXCLUDED (requires USER
+    authorization).
+  - 100% over 3 → consider retrying option (ii).
+  - 80-99% → stay on option (i).
+At S6 close the orchestrator will compute the 3-source mean and
+SURFACE THE DECISION TO THE USER with a recommendation. Note the
+qualitative counterweight already on record: under option (i) Gemini
+has produced ZERO fabricated cites/counts across S4+S5 (the failure
+modes (i) was created to suppress); residual dissents are specificity/
+optimism. Guards G-A + G-B target the two S5 error classes directly;
+S6 alignment under those guards is the key datapoint.
+
+
+§10. ARCHIVE LOCATIONS (post-extraction)
+=========================================
+  scripts/archive/metta_runtime_pilot/source6_jetta_atomspace_metta/
+    findings_codex.txt
+    findings_gemini.txt
+    findings_claude.txt
+    findings_reconciled_crossmodel.txt   (orchestrator draft)
+
+
+================================================================
+END source6_jetta_atomspace_metta_brief.txt
+================================================================
