@@ -17,6 +17,18 @@ module Api
         # Build safe query with enforced constraints
         safe_query = build_safe_query(query_params, limit, offset)
 
+        # T7: reject queries that produced no real filter (e.g. unrecognized keys,
+        # or raw CQL strings like "name ~ 'x'"). Without this guard the query
+        # degrades to Card.search(limit/offset) and silently returns EVERY card.
+        filter_keys = safe_query.keys.map(&:to_s) & %w[name type content updated_at created_at]
+        if filter_keys.empty?
+          return render_error(
+            "validation_error",
+            "Query must include at least one recognized filter (name, type, content, " \
+            "updated_at, or created_at). Raw CQL strings are not supported; pass e.g. {\"name\": \"synthesis\"}."
+          )
+        end
+
         # Execute query
         results = execute_safe_query(safe_query, limit, offset)
         total = count_query_results(safe_query)
