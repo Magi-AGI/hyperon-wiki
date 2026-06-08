@@ -1,0 +1,332 @@
+================================================================
+MeTTa runtime cluster pilot — Source 5 findings (Orchestrator-Claude)
+trueagi-io/metta-wam (MeTTaLog) + fork landscape
+Independent extraction — compressed-sequence (adjudication-focused)
+2026-06-08
+================================================================
+
+METHOD NOTE
+-----------
+Per the S3 workflow correction (orchestrator extracts independently
+BEFORE adopting reviewer verdicts), this file records orchestrator-
+Claude's own cite-grade verification against the source tree at
+trueagi-io/metta-wam origin/vnamed HEAD `74dbe9b8`. Because the user
+relayed both Codex and Gemini findings together (compressed S5
+sequence, as at S4), this extraction is FOCUSED on (a) independently
+verifying every Codex-vs-Gemini DISAGREEMENT and (b) every load-
+bearing / fabrication-risk Gemini synthesis claim, rather than
+re-deriving the aligned points. All cites below were run by the
+orchestrator directly (git grep / git ls-files / git merge-base /
+sed on the local clone), NOT taken from either reviewer.
+
+Exclusions applied to all greps: `.Attic/` (archived snapshots) and
+`libraries/swicli/` (vendored .NET bridge) per brief §0.B.
+
+
+§A. SOURCE PIN (orchestrator-verified)
+======================================
+Repo:    trueagi-io/metta-wam (MeTTaLog)
+Default: vnamed (symbolic-ref verified; NOT master/main)
+HEAD:    74dbe9b8873adab46904f8e480d32650d0f28497
+         (TeamSPoon 2025-11-22; fetch 0/0, stable)
+Tag:     mettalog-0.6.6.0 (single)
+master:  93dc17bc 2025-08-04 (diverged 56/51 vs vnamed; frozen)
+Author:  Douglas Miles = logicmoo = TeamSPoon (~2240 commits)
+
+
+§B. PER-QUESTION VERDICTS (orchestrator-independent)
+====================================================
+
+S5.Q1 EVALUATOR  →  [EVAL-PROLOG-BACKTRACKING-NONDET]
+  Evidence: metta_eval.pl uses findall/findall_eval (l.831, 1470-
+  1492) + native Prolog backtracking to realize MeTTa non-
+  determinism; no explicit hand-rolled work-stack like S1/S3.
+  Codex [INTERPRETER-COMPILER-DUAL-RUNTIME] (overall) + Gemini
+  [EVAL-PROLOG-BACKTRACKING-NONDET] both ALIGN. ADOPTED.
+
+S5.Q2 COMPILER  →  [COMPILER-OPTIN-INTERPRETER-DEFAULT]
+  Evidence (cite-grade): `mettalog:26 need_compile=0`;
+  `metta_interp.pl:1269 option_value_name_default_type_help(
+  'compile','false',['false','true','hybrid','full'],...)`;
+  `metta_interp.pl:1317 type_value(compile_mode,'false'). %
+  Compilation is disabled`; `mettalog:602 -c metta-file ... to
+  compile into executable` (explicit opt-in flag). The compiler
+  (metta_compiler.pl 5251L + _douglas/_roy/_mizer variants) is
+  REAL and substantial but default-OFF; interpreter (metta_eval.pl)
+  is the default run path. Codex + Gemini both [COMPILER-OPTIN-
+  INTERPRETER-DEFAULT]. ALIGNED. ADOPTED.
+  Overall runtime tag: [INTERPRETER-COMPILER-DUAL-RUNTIME] (Codex).
+
+S5.Q3 PARSER  →  [PARSER-HANDWRITTEN-PROLOG-READER]
+  Evidence: metta_parser.pl (1644L) hand-written S-expression
+  reader. Both reviewers ALIGN. ADOPTED.
+
+S5.Q4 TYPES  →  [TYPES-DYNAMIC-CHECKED]
+  Evidence: get_type / get_vtype dynamic dispatch (metta_eval.pl:
+  1144 get_vtype via findall over get_type_each). Type info carried
+  on terms, checked at eval. Consistent with S1 PA1 dynamic-checked.
+  Both reviewers ALIGN. ADOPTED.
+
+S5.Q5 STDLIB  →  [STDLIB-CORELIB-PROLOG-HOSTED]  (orchestrator
+                  reconciliation; DISSENT vs Gemini's
+                  [STDLIB-FULL-PARITY-PLUS-EXTENSIONS])
+  Evidence:
+    - `corelib.metta` = 9 lines (seed only).
+    - **`corelib.metta.pl` is NOT TRACKED at HEAD** (git ls-files
+      --error-unmatch fails). Codex CORRECT to flag it; Gemini's
+      synthesis cited corelib.metta.pl as the stdlib home — that is
+      an UNTRACKED-FILE citation, should not be HEAD evidence.
+    - The REAL tracked stdlib lives in metta_compiler_lib*.pl +
+      operator decls in metta_compiler.pl (e.g. l.1412 decl_
+      functional_predicate_arg('new-space',1,1)) + space ops in
+      metta_space.pl + grounded eval clauses in metta_eval.pl.
+    - `replace-atom` IS PRESENT (tracked): metta_space.pl:501
+      `'replace-atom'(DynSpace, Atom, New) :-`; documented at
+      metta_ontology.pfc.pl:479; exercised metta_testing.pl:1805-
+      1928. ⚠ But a /4 arity warning at metta_compiler.pl:5181
+      ("'replace-atom'/4, which is referenced by") suggests partial
+      wiring. **CATEGORY-ERROR GUARD**: Gemini's "replace-atom!
+      ... satisfying the Phase 4 PATCH-2 expectation" is WRONG —
+      Phase 4 PATCH-2 is an UPSTREAM hyperon-experimental (S1) patch
+      for a MeTTa-side replace-atom! grounded op; MeTTaLog having
+      its OWN replace-atom does not satisfy a patch scoped to S1.
+    - `bind!` + `new-space` present (examples + builtin_mods + @doc
+      + compiled special-case metta_compiler_douglas.pl:1945).
+  Reconciliation: the stdlib is genuinely rich and Prolog-HOSTED,
+  but Gemini's [FULL-PARITY-PLUS-EXTENSIONS] overstates: "near-
+  complete parity with S1" + "CLP(FD) extensions" are UNVERIFIED
+  embellishments, and the supporting evidence (corelib.metta.pl)
+  is untracked. Most-specific accurate tag = [STDLIB-CORELIB-
+  PROLOG-HOSTED] (captures Prolog-hosted reality without the
+  unverified parity claim). Codex to confirm parity scope cite-
+  grade; if Codex confirms broad parity, [STDLIB-PARTIAL-PARITY]
+  acceptable. NOT [FULL-PARITY-PLUS-EXTENSIONS] without CLP(FD)
+  cite.
+
+S5.Q6 PYTHON  →  [PYTHON-CORE-REQUIRED-JANUS]  (orchestrator sides
+                  with Gemini over Codex's "optional bridge" summary)
+  Evidence (cite-grade):
+    - `mettalog:280` launcher HARD-REFUSES to start if
+      `swipl -g "use_module(library(janus)),halt(0)."` fails.
+    - `metta_corelib.pl:74` (a CORE file) loads janus at MODULE
+      INIT: `:- module_property(janus,file(_)) -> true; janus:
+      ensure_loaded(library(janus)).` Same at metta_python.pl:113.
+    - INSTALL.sh:490/529 + scripts/mettalog-python:132 all hard-
+      check janus.
+  → janus is a HARD STARTUP/LOAD dependency, not an optional add-on.
+  Gemini [PYTHON-CORE-REQUIRED-JANUS] is BETTER SUPPORTED than
+  Codex's relay-summary "optional bridge, not core runtime."
+  NUANCE for reconciliation: janus is required to LAUNCH/LOAD;
+  whether a pure-MeTTa reduction with zero py-atom calls invokes
+  Python is a separate point. But operationally MeTTaLog will not
+  run without janus → [PYTHON-CORE-REQUIRED-JANUS]. Will check
+  Codex's full findings_codex.txt for the nuanced position; if
+  Codex meant "Python-the-language is optional for a given eval"
+  that's compatible, but the §7 tag is [PYTHON-CORE-REQUIRED-JANUS].
+
+S5.Q7 SPACE  →  [SPACE-MULTI-VIA-PROLOG-MODULES]
+  Evidence: spaces as Prolog dynamic predicates/modules; &self
+  resolution; persistence via metta_persists.pl. Both reviewers
+  ALIGN on tag. (Gemini's "SQL/file-store shims" specific is an
+  unverified embellishment — tag adopted, embellishment NOT
+  carried.) ADOPTED tag.
+
+S5.Q8 HYPERON-COUPLING  →  [HYPERON-INDEPENDENT-REIMPL]
+                  (orchestrator; DISSENT vs Gemini's "active
+                  bidirectional vspace bridge" justification)
+  Evidence:
+    - NO active (non-Attic) vspace bridge module: git grep "vspace"
+      in tracked non-Attic/non-swicli files returns only incidental
+      hits (.dockerignore, README, .vpj, unrelated logicmoo_utils,
+      notebooks). The vspace shim `mettalog_vspace.py` exists ONLY
+      in `.Attic/mettalog/` (archived) — NOT active.
+    - Active hyperon link = `prolog/metta_lang/metta_python_hyperon.py`
+      (janus → Python `hyperon` pip pkg), used as a TEST/COMPAT
+      oracle (README P-2: hyperon installed "for running
+      compatibility tests").
+    - mettalog-vspace is an EXTERNAL optional pip package (README
+      P-3: "Allows Rust MeTTa use extra functionality found in
+      mettalog" — direction is Rust→MeTTaLog, optional).
+  → MeTTaLog is a STANDALONE Prolog re-implementation; hyperon is a
+  TEST ORACLE + optional external bridge, NOT embedded at runtime.
+  Gemini's tag [HYPERON-OPTIONAL-VSPACE-BRIDGE] is borderline-OK but
+  its JUSTIFICATION ("sophisticated bidirectional Janus-based vspace
+  bridge ... active") is REJECTED — the in-repo vspace is archived.
+  Orchestrator prefers [HYPERON-INDEPENDENT-REIMPL] for the cluster-
+  load-bearing truth (MeTTaLog is its own runtime, NOT a Prolog
+  front-end over Rust hyperon). Codex relay ("optional bridge, not
+  core") aligns with independent-reimpl. Reconcile to [HYPERON-
+  INDEPENDENT-REIMPL] (primary) noting test-oracle usage + optional
+  external vspace.
+
+S5.Q9 QUIRKS (per-quirk, runtime axis resumes per PA17):
+  Q-1 bind!+new-space  →  [QUIRK-REPRODUCED]
+    Evidence: `@doc bind!` (docs/chatgpt_knowledge_doc.txt:1306):
+    "Registers a new token which is replaced with an atom during
+    the parsing of the rest of the program." = TOKEN-REGISTRATION,
+    EXACTLY S1's bind! semantics (no reset). Eval at metta_eval.pl:
+    2846 registers token. → MeTTaLog REPRODUCES S1's no-reset Q-1.
+    **Gemini's [QUIRK-FIXED] ("bind! correctly resets/shadows
+    spaces, new-space safely clears") is REJECTED — the @doc
+    directly contradicts a reset semantics. This is an optimistic-
+    guess FABRICATION (no cite, contradicted by source).**
+  Q-2 cond  →  [QUIRK-FIXED] (absent)
+    Evidence: NO `eval_20(...,['cond',...])` clause; cond appears
+    only in metta_printer.pl:1161 as a pretty-print layout symbol.
+    Not an evaluable builtin → S1-faithful FIXED-VIA-ABSENCE.
+    Gemini CORRECT.
+  Q-3 catchall multi-reduction  →  [QUIRK-REPRODUCED]
+    Evidence: metta_eval.pl collects all matching equations via
+    findall/findall_eval (l.831, 1470-1492) + Prolog backtracking;
+    NO specificity-filter (grep most_specific/specific → none in
+    metta_eval.pl). → MeTTaLog MULTI-REDUCES (S1 semantics), does
+    NOT adopt MeTTaTron's S3 most-specific filter. Gemini CORRECT.
+  ⇒ S5 MeTTaLog quirk row: Q-1 REPRODUCED / Q-2 FIXED / Q-3
+    REPRODUCED. MeTTaLog stays on S1's side of the S3 Q-3 divergence.
+
+S5.Q10 FORK DIVERGENCE (orchestrator CF5.6-verified):
+  patham9/metta-wam  →  [FORK-STALE-FULLY-BEHIND]
+    merge-base EXISTS (f3ab678b); vnamed 311 ahead / 0 behind.
+    Both reviewers ALIGN. ADOPTED.
+  zariuq/metta-wam  →  [FORK-STALE-FULLY-BEHIND]
+    merge-base EXISTS (41a5b282); vnamed 720 ahead / 0 behind.
+    Both reviewers ALIGN. ADOPTED. (zariuq = Zar Goertzel snapshot.)
+  ngeiswei/metta-wam  →  [FORK-REBASED-HISTORY-ARTIFACT]
+    **`git merge-base origin/vnamed refs/temp/ngeiswei_main` returns
+    NO MERGE BASE — the histories are UNRELATED.** Therefore the
+    "3105/1604" left-right count is MEANINGLESS (you cannot be
+    "1604 ahead" of a branch you share no ancestor with — the count
+    reflects two disjoint import lineages). Codex CORRECT ("no merge
+    base ... stale history artifact"). **Gemini's [FORK-MAINTAINER-
+    MERGED-BEHIND] ("Staged work from Nil has been merged into
+    upstream vnamed") is REJECTED — with NO merge base you cannot
+    assert graph-level merge-into-upstream; it is an unsupported
+    narrative.** This is the 3rd consecutive ngeiswei fork-mis-
+    classification by Gemini across pilots (HAA S3 direction-
+    reversed; here merge-claim-without-merge-base). The brief's
+    pre-emptive guard (Gemini supplies direction tag only, NO
+    counts) CONTAINED the damage — no fabricated numbers this time,
+    only a wrong direction tag. ADOPTED: [FORK-REBASED-HISTORY-
+    ARTIFACT].
+
+S5.Q11 STATUS  →  [ACTIVE-SINGLE-MAINTAINER-PLUS-CONTRIBUTORS]
+  Evidence: Miles ~2240 commits primary; iCog-dev burst (Nama21yo,
+  yabets) Aug-Nov 2025; last commit 2025-11-22. Both reviewers
+  ALIGN. ADOPTED.
+
+S5.Q12 CLUSTER-PLACEMENT  →  [PROLOG-NATIVE-FULL-RUNTIME] +
+                              [INTERPRETER-COMPILER-DUAL-RUNTIME]
+  Evidence: most feature-complete non-Rust MeTTa; Prolog-native
+  interpreter+compiler dual runtime; paradigm-distinct from S2 PeTTa
+  (PeTTa = Treutlein translator.pl; MeTTaLog = Miles metta_interp.pl
+  + opt-in WAM/Prolog compiler — independent codebases, both SWI-
+  Prolog). External test-suite caveat: coverage lives in logicmoo/
+  metta-testsuite (NOT audited at S5). Both reviewers ALIGN. ADOPTED.
+
+README-DRIFT (V3-PROTOCOL-3):
+  P-1 "WAM" → [WAM-VIA-SWI-PROLOG-HOST] (compiles to SWI-Prolog
+      clauses run on SWI's WAM engine; does NOT emit raw WAM
+      bytecode). Gemini ALIGNED.
+  P-2 hyperon prereq → test-oracle. ALIGNED (see Q8).
+  P-3 mettalog-vspace → external optional pip pkg; in-repo shim
+      ARCHIVED (.Attic). Gemini's [P-CLAIM-VERIFIED] "active
+      bidirectional" is OVERSTATED (see Q8). Reconcile to
+      "optional/external, in-repo archived".
+  P-4 janus hard-required → [P-CLAIM-VERIFIED] (Q6). ALIGNED.
+  P-5 master doc-links stale → [README-LINKS-STALE-MASTER].
+      ALIGNED.
+
+
+§C. GEMINI SYNTHESIS-CLAIM ALIGNMENT (option (i), S5 = source 2 of 3)
+====================================================================
+Per-question alignment with the reconciled (Codex+Claude cite-grade)
+positions:
+
+  Q1  EVALUATOR           ALIGNED
+  Q2  COMPILER            ALIGNED
+  Q3  PARSER              ALIGNED
+  Q4  TYPES               ALIGNED
+  Q5  STDLIB              DISSENT — overstated [FULL-PARITY-PLUS-
+                          EXTENSIONS] + untracked corelib.metta.pl
+                          cite + PATCH-2 category error + unverified
+                          CLP(FD). Reconcile to [STDLIB-CORELIB-
+                          PROLOG-HOSTED].
+  Q6  PYTHON              ALIGNED (Gemini > Codex-summary here)
+  Q7  SPACE               ALIGNED (tag; embellishment dropped)
+  Q8  HYPERON-COUPLING    DISSENT-on-justification — "active
+                          bidirectional vspace" rejected (archived);
+                          reconcile to [HYPERON-INDEPENDENT-REIMPL].
+  Q9  QUIRKS              2/3: Q-2 + Q-3 ALIGNED; Q-1 REJECTED
+                          ([QUIRK-FIXED] fabrication → REPRODUCED).
+  Q10 FORK               2/3: patham9 + zariuq ALIGNED; ngeiswei
+                          REJECTED ([MERGED-BEHIND] → [REBASED-
+                          HISTORY-ARTIFACT], no merge base).
+  Q11 STATUS             ALIGNED
+  Q12 CLUSTER-PLACEMENT  ALIGNED
+
+  Clean-aligned main questions: 8/12 ≈ 67% (Q1,Q2,Q3,Q4,Q6,Q7,
+  Q11,Q12). Dissents: Q5, Q8, plus sub-claim rejections in Q9 (Q-1)
+  and Q10 (ngeiswei).
+  → Same band as S4 (8/12). Within 60-99% → STAY ON OPTION (i)
+  per §9 gate. Two-source running mean (S4 67% + S5 67%) ≈ 67%.
+
+  PATTERN: Gemini's failures clustered on the EXACT load-bearing
+  surfaces the brief pre-flagged — (1) ngeiswei fork (3rd-pilot
+  recurrence) and (2) an optimistic quirk-FIX fabrication (Q-1).
+  The option-(i) guards worked: no fabricated fork COUNTS, no
+  fabricated file:line cites. The remaining failure mode is
+  OPTIMISTIC-DIRECTION synthesis (claiming FIXED/MERGED where the
+  source shows REPRODUCED/UNRELATED). Recommend S6 brief keep the
+  "no fork counts" + add an explicit "quirk verdicts: default to
+  REPRODUCED unless a reset/fix is cite-confirmed" guard.
+
+
+§D. R5.NEW CANDIDATE FINDINGS (for reconciliation)
+==================================================
+  R5.NEW-1: MeTTaLog is [INTERPRETER-COMPILER-DUAL-RUNTIME] with
+    compile DEFAULT-OFF (metta_interp.pl:1269 'compile'='false';
+    mettalog:26 need_compile=0). The "WAM" in the repo title =
+    [WAM-VIA-SWI-PROLOG-HOST], not direct bytecode emission.
+  R5.NEW-2 (LOAD-BEARING): MeTTaLog stays on S1's side of the S3
+    Q-3 divergence — multi-reduces catchall via findall/backtracking
+    (metta_eval.pl), does NOT adopt MeTTaTron's most-specific filter.
+    So the cluster Q-3 split is now: S1 REPRODUCED-AS-SEMANTICS /
+    S2 REPRODUCED / S3 DIVERGENT(most-specific) / S5 REPRODUCED.
+    MeTTaTron remains the lone Q-3 divergence.
+  R5.NEW-3: corelib.metta.pl is UNTRACKED — the canonical tracked
+    stdlib is Prolog-hosted (metta_compiler_lib*.pl + metta_space.pl
+    + operator decls). Citation discipline: do not cite corelib.
+    metta.pl as HEAD (parallels S3 V3-PROTOCOL-4 commit-only-file).
+  R5.NEW-4: ngeiswei/metta-wam shares NO MERGE BASE with vnamed
+    (unrelated import histories) — fork left-right counts are
+    meaningless; classify [FORK-REBASED-HISTORY-ARTIFACT]. 3rd-pilot
+    Gemini ngeiswei misclassification (HAA S3 + here).
+  R5.NEW-5: hyperon-experimental coupling is TEST-ORACLE + optional
+    external mettalog-vspace pip pkg; the in-repo vspace shim is
+    ARCHIVED (.Attic). MeTTaLog is [HYPERON-INDEPENDENT-REIMPL], NOT
+    a Prolog front-end over Rust hyperon.
+  R5.NEW-6: janus (Python-in-SWI) is a HARD STARTUP requirement
+    (launcher refuses without it; metta_corelib.pl loads at init) —
+    [PYTHON-CORE-REQUIRED-JANUS], distinct from S1's optional Python
+    grounded-atom layer.
+
+  CARRY-FORWARD candidates for S6: V5-1 [WAM-VIA-SWI-PROLOG-HOST];
+  V5-2 [METTALOG-Q3-REPRODUCED-NOT-MOSTSPECIFIC]; V5-3 [CORELIB-PL-
+  UNTRACKED-CITE-DISCIPLINE]; V5-4 [NGEISWEI-NO-MERGE-BASE]; V5-5
+  [METTALOG-HYPERON-INDEPENDENT-TEST-ORACLE]; V5-6 [METTALOG-JANUS-
+  CORE-REQUIRED].
+
+
+§E. CROSS-PILOT IDENTITIES CONFIRMED AT S5
+==========================================
+  Douglas Miles = logicmoo = TeamSPoon = MeTTaLog primary (~2240).
+  Roy Ward = 2nd core (metta_compiler_roy.pl).
+  Nil Geisweiller = ngeiswei (fork; HAA S3 cross-pilot).
+  zariuq = Zarathustra Goertzel (fork; user-verified).
+  patham9 = Patrick Hammer (S2 PeTTa author; ALSO a metta-wam fork
+    owner — distinct artifacts).
+
+
+================================================================
+END findings_claude.txt (orchestrator-independent, S5)
+================================================================

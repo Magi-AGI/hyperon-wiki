@@ -1,0 +1,757 @@
+================================================================
+MeTTa runtime cluster pilot — Source 5 brief
+trueagi-io/metta-wam (MeTTaLog) + fork landscape
+================================================================
+
+REVIEWER DISPATCH FRAMING — PACKAGED REVIEW + EXTRACTION RELAY
+--------------------------------------------------------------
+
+Per V3-PROTOCOL-1 ESCALATE-TO-(i)-BEFORE-S4 (promoted at MeTTa
+runtime S3 close 2026-05-13 per user OPTION 3 authorization
+2026-05-11; see `feedback_gemini_option_i_confirmation_only_
+mode.md`) and validated CLEAN at S4 (Gemini 4/4 P10.24
+compliance):
+
+This brief is delivered to Codex AND Gemini as a SINGLE PACKAGED
+RELAY. Brief-review feedback AND extraction begin in the same
+session. **Reviewers SHOULD NOT wait for a separate "Extraction
+Trigger" — review the brief, then proceed to extract under the
+protocol noted below.** This packaging superseded the P10.23
+brief-review-then-trigger sequence at S4 and held (no early-
+extraction P10.23 recurrence observed at S4). Retained for S5.
+
+**Reviewer roles for S5**:
+
+  Codex (citation-grade primary):
+    - Independent extraction with file:line cites verified
+      against the actual source tree.
+    - V3-PROTOCOL-2 verbatim cites for any benchmark/numerical
+      claim AND for every fork-divergence count (S5 is a
+      multi-fork source — see §0.X + S5.Q10).
+    - All §6 questions with cite-grade evidence anchors.
+
+  Gemini (CONFIRMATION-ONLY MODE, per V3-PROTOCOL-1 / P10.24):
+    - Synthesis verdicts only — one §7-vocabulary tag per
+      question (single-label per V1-PROTOCOL-1 + V2-PROTOCOL-1
+      specificity).
+    - Cross-source forwards / cluster-narrative claims (high-
+      level only).
+    - **NO self-supplied file:line cites** — orchestrator will
+      not pre-verify them and they add noise.
+    - **NO V4-11 self-verification table** — V4-11 ARCHIVED
+      per S3 H.2 (100% self-fab observed; protocol no longer
+      reliable).
+    - **NO fork-divergence numbers.** S5 fork divergence is
+      load-bearing (see §0.X) AND a historically Gemini-
+      fabricated metric (HAA S3 ngeiswei DIRECTION-REVERSED;
+      HAA S5 entire fork block synthesized). Under option (i),
+      Gemini supplies a one-tag DIRECTION verdict per fork
+      ([FORK-STALE-FULLY-BEHIND] / [FORK-DIVERGED-AHEAD] /
+      [FORK-MAINTAINER-MERGED-BEHIND]) but NOT counts.
+      Orchestrator has pre-computed the counts (§0.X);
+      Codex verifies them citation-grade.
+
+  Orchestrator-Claude:
+    - Independent extraction (findings_claude.txt) with cite-
+      grade evidence anchors.
+    - Pre-computed all git facts in §0 (commits/branches/tags/
+      authors/fork divergence) so reviewers READ, not re-run
+      (`feedback_git_history_in_brief.md`).
+    - Three-way reconciliation drafted from Codex + Claude
+      citation-grade evidence + Gemini synthesis-claim
+      adjudication.
+
+
+§0. SOURCE PIN + WORKSPACE INVENTORY
+====================================
+
+S5 covers the MeTTaLog / metta-wam family — a MeTTa
+implementation designed to run on the Warren Abstract Machine
+(WAM) via SWI-Prolog. This is the cluster's FIRST Prolog-native
+full-runtime audit and the most feature-complete non-Rust MeTTa
+runtime encountered so far (interpreter + compiler + LSP +
+Python bridge + corelib stdlib).
+
+  S5.A = trueagi-io/metta-wam (MeTTaLog) — PRIMARY, full audit
+  S5.X = fork landscape (patham9 / ngeiswei / zariuq) — DIRECTION
+         verdicts + divergence (§0.X + S5.Q10)
+
+§0.A — S5.A MeTTaLog source pin
+-------------------------------
+
+  Repo:     trueagi-io/metta-wam  (a.k.a. MeTTaLog)
+  Origin:   https://github.com/trueagi-io/metta-wam.git
+  Local:    E:\GitHub\hyperon reference\metta-wam\
+  Default branch:  vnamed   ← NOT master, NOT main.
+                   Orchestrator-VERIFIED via
+                   `git symbolic-ref refs/remotes/origin/HEAD`
+                   → refs/remotes/origin/vnamed.
+                   (V4-1 LESSON APPLIED: the S4 brief assumed
+                   `main` and was wrong; for S5 the default
+                   branch was symbolic-ref-verified BEFORE
+                   drafting. "vnamed" is the literal branch
+                   name, not a placeholder.)
+  HEAD (origin/vnamed):
+            74dbe9b8873adab46904f8e480d32650d0f28497
+            (TeamSPoon 2025-11-22 04:36:30 +0700
+             "fixed an issue preveing mettalog startup")
+  Fetch status: orchestrator `git fetch origin` 2026-06-08
+            returned local vnamed == origin/vnamed (0 ahead /
+            0 behind). HEAD stable since clone; no movement.
+
+  Tag history: ONE tag — `mettalog-0.6.6.0`. Reviewers note
+  whether HEAD `74dbe9b8` is at/after that tag and what the
+  tag-vs-HEAD commit delta is (S3 VERSION-VS-TAG discipline).
+
+  Remote branches (7):
+    origin/HEAD -> origin/vnamed   (default)
+    origin/vnamed                  (active; HEAD 2025-11-22)
+    origin/master                  (DIVERGED — see §0.C)
+    origin/constraints
+    origin/dependabot/... (×3, npm/yarn for lsp_server_metta
+                           VSCode extension)
+
+§0.B — S5.A top-level structure (orchestrator inventory)
+--------------------------------------------------------
+
+  Root: README.md, INSTALL.sh / INSTALL.BAT, Dockerfile,
+        AGENTS.md / CLAUDE.md / GEMINI.md (the repo ships its
+        OWN multi-agent context docs — distinct from this
+        cluster pilot's docs), mettalog (launcher),
+        requirements.txt, setup.py, pack.pl, settings.metta,
+        docs/, examples/, libraries/, notebooks/, prolog/,
+        python/, scripts/, tests/
+
+  CORE SOURCE = prolog/metta_lang/  (NOT a src/ dir):
+    metta_interp.pl       7584 lines  — interpreter core
+    metta_compiler.pl     5251 lines  — compiler core
+    metta_eval.pl         5093 lines  — evaluator
+    metta_repl.pl         2199 lines  — REPL
+    metta_parser.pl       1644 lines  — hand-written reader/parser
+    corelib.metta            9 lines  — ⚠ NEARLY EMPTY (drift trap)
+    corelib.metta.pl                  — the REAL corelib (Prolog form)
+    metta_compiler_lib*.pl            — stdlib operators (douglas/
+                                         roy/stdlib variants)
+    metta_compiler_douglas.pl / _roy.pl / _mizer.pl — compiler
+                                         variants by author
+    metta_loader.pl, metta_server.pl, metta_persists.pl,
+    metta_python.pl, metta_python_hyperon.py (hyperon bridge),
+    metta_ontology.pfc.pl, metta_proof.pl, metta_printer.pl,
+    metta_debug.pl, ...
+
+  ⚠ STDLIB DRIFT TRAP: `corelib.metta` is 9 lines at HEAD.
+  Reviewers MUST NOT conclude "no stdlib" from that file. The
+  actual standard library lives in `corelib.metta.pl` (compiled
+  Prolog clauses) + the `metta_compiler_lib*.pl` operator
+  definitions. Grep BOTH (F2 dual-layer rule, here Prolog-side
+  vs .metta-side).
+
+  Tracked-file inventory (orchestrator-verified, vnamed HEAD):
+    2597 total tracked files
+      803 .cs   ⚠ ALL in libraries/swicli/ — OUT OF SCOPE
+                  (vendored legacy SWI↔.NET CLI bridge with
+                  Mono.Cecil; NOT MeTTaLog core; pre-empt any
+                  "MeTTaLog has a C# layer" hallucination)
+      717 .pl   ← Prolog source (core + libraries + tests)
+      172 .py   ← Python integration + tests
+      160 .metta ← examples, tests, builtin_mods, corelib seed
+       51 .sh, 45 .svg, 38 .dll, 37 .md, 27 .ipynb (notebooks)
+
+  ⚠ `.Attic/` DIRECTORY = archived old snapshots (master-0.6.1,
+  vnamed, mettalog, metta_lang_GOAL_CODE, metta_lang_ACP).
+  OUT OF SCOPE. Do NOT cite `.Attic/...` paths as HEAD
+  (V3-PROTOCOL-4 HEAD-vs-archived discipline; e.g.
+  `.Attic/mettalog/mettalog_vspace.py` is an OLD vspace shim,
+  NOT the active bridge — the active hyperon bridge is
+  `prolog/metta_lang/metta_python_hyperon.py`).
+
+§0.C — S5.A branch activity (vnamed vs master)
+----------------------------------------------
+
+  origin/vnamed:  HEAD 74dbe9b8 2025-11-22 (ACTIVE default)
+  origin/master:  HEAD 93dc17bc 2025-08-04 (Douglas R. Miles
+                  "Create Contrbuting.md #111")
+  Divergence (orchestrator `git rev-list --left-right --count
+  origin/vnamed...origin/master`):  56  51
+    → vnamed is 56 ahead, master is 51 ahead. They FORKED:
+      master frozen ~2025-08-04, vnamed continued to 2025-11-22.
+  Reviewers: confirm vnamed is the live development head and
+  master is a stale parallel branch. Note that the README's
+  in-text links point to `.../blob/master/docs/OVERVIEW.md`
+  (master) even though vnamed is default — a potential README-
+  drift / doc-staleness signal (see §5).
+
+§0.D — S5.A author landscape (vnamed, all-time shortlog)
+--------------------------------------------------------
+
+  Pre-fetched `git shortlog -sn origin/vnamed` (top):
+    1123  logicmoo            ┐
+     558  Douglas R Miles     │ SAME PERSON (Douglas Miles):
+     330  TeamSPoon           │ logicmoo / TeamSPoon / Douglas
+     229  Douglas R. Miles    ┘ R Miles / Douglas R. Miles
+                                = combined ~2240 commits, the
+                                overwhelming primary author.
+       4  logicmoo (aider)    ← Miles using the aider LLM tool
+     275  Roy Ward            ← 2nd core (Roy compiler variant)
+     214  MikeArchbold        ┐ SAME PERSON: Mike Archbold
+      41  Mike Archbold       ┘ (~255 combined)
+     129  AdrickTench
+     127  James N. V. Cash
+      35  jazzbox35
+      10  StassaP
+       7  Nama21yo            ← recent iCog-Labs-era contributor
+       7  Nil Geisweiller     ← cross-pilot: ngeiswei (HAA S3
+                                pattern-mining maintainer-fork)
+     (recent 2025 PR authors: yabets, Nama21yo — iCog devs)
+
+  Cross-pilot identity (extends F5):
+    - Douglas Miles = logicmoo = TeamSPoon = MeTTaLog primary
+      author. NEW lineage for the cluster (not an S1-S4 author).
+    - Nil Geisweiller = ngeiswei (S5.X fork owner; HAA S3
+      ngeiswei/miner maintainer-fork — SAME direction-reversal
+      risk applies, see S5.Q10).
+    - zariuq = Zarathustra Goertzel (S5.X fork owner; user-
+      verified cross-pilot identity per
+      `project_zar_goertzel_cluster_contributor.md`).
+
+§0.E — S5.A recent commits (origin/vnamed HEAD~0..~19, pre-fetched)
+------------------------------------------------------------------
+
+  74dbe9b8 2025-11-22 TeamSPoon       fixed an issue preveing mettalog startup
+  e291ca99 2025-11-17 Douglas R Miles Merge PR #309 from yabuz87/main
+  401a5afe 2025-10-17 yabets          fix: numeric equality mixed int/float in eval_until_eq
+  606912d1 2025-09-18 Douglas R Miles Merge PR #307 superpose-generalization
+  5403b486 2025-09-18 Nama21yo        refactor: hyperpose using concurrent maplist
+  4d056398 2025-09-18 Nama21yo        refactor: trait-based checking
+  04d7b82c 2025-09-18 Nama21yo        refactor: trait-based superpose/hyperpose
+  cabf6bf4 2025-08-31 Douglas R Miles Merge PR #305 math-operations-random-generators
+  834b5446 2025-08-11 logicmoo        fix startup rebuild
+  8ca46f7b 2025-08-10 logicmoo        concurrent hyperpose
+  5a768c67 2025-08-06 Nama21yo        refactor: => into >= comparator
+  f66bfc87 2025-08-06 Nama21yo        fix: random number generators
+  617c817b 2025-08-05 Nama21yo        fix: trunc/isinf/innan-math
+  3f3d615a 2025-08-05 Nama21yo        fix: log-math edge cases
+  07084b7d 2025-08-04 logicmoo        Contrbuting.md
+  19345064 2025-08-04 logicmoo        slightly more examples in main
+  e017d309 2025-08-04 logicmoo        quieter file loading / return 0 on no test failures
+  6a070793 2025-08-04 logicmoo        vnamed catchup
+  4c9b2327 2025-07-21 logicmoo        fixed noeval loop
+  f44a97a1 2025-07-20 logicmoo        start of Atom return corrections
+
+  → Activity profile: steady through 2025; a burst of iCog-dev
+    (Nama21yo/yabets) math + superpose/hyperpose refactors
+    Aug-Oct 2025; last commit 2025-11-22. NOT stagnant; NOT
+    high-velocity. Reviewers verdict status per §7.
+
+§0.X — S5.X FORK LANDSCAPE (orchestrator-pre-computed divergence)
+----------------------------------------------------------------
+
+Three forks of metta-wam are cloned locally. Divergence
+pre-computed by orchestrator via local-path fetch + `git
+rev-list --left-right --count` (CF5.6 + bidirectional-fork-
+divergence protocol). **Codex must re-verify these counts
+verbatim (V3-PROTOCOL-2); Gemini supplies DIRECTION verdict
+only, NOT counts (HAA S3 + S5 fork-fabrication history).**
+
+  Baseline: origin/vnamed @ 74dbe9b8 (left) vs fork default (right)
+
+  (1) patham9/metta-wam   (local: metta-wam2)
+      Default: master   HEAD f3ab678b 2025-04-07
+               (Douglas R. Miles "Merge PR #289 from jazzbox35")
+      vnamed...patham9_master = 311 ahead / 0 behind
+      → patham9 is 0 commits ahead of vnamed; fully behind.
+        Candidate verdict: [FORK-STALE-FULLY-BEHIND].
+        (patham9 = PeTTa author Patrick Hammer's org; this
+        metta-wam fork is distinct from patham9/PeTTa S2.)
+
+  (2) ngeiswei/metta-wam  (local: metta-wam3)
+      Default: main     HEAD 352b2973 2024-12-03
+               (logicmoo "testing updates")
+      vnamed...ngeiswei_main = 3105 ahead / 1604 behind
+      ⚠ LOAD-BEARING / PICKAXE-REQUIRED: ngeiswei shows 1604
+        commits "ahead" of vnamed, YET ngeiswei HEAD is
+        2024-12-03 (OLDER than vnamed's 2025-11-22). An older-
+        HEAD fork cannot hold 1604 genuinely-novel forward
+        commits over a newer upstream — this strongly smells
+        like a HISTORY-REWRITE / REBASE / branch-lineage
+        artifact (the 1604 "ahead" are likely commits that
+        exist on a different lineage path, not novel feature
+        work). **DO NOT pre-conclude [FORK-DIVERGED-AHEAD].**
+        This is EXACTLY the HAA S3 ngeiswei/miner trap where
+        Gemini called direction-reversed [ACTIVE-MAINTAINER-
+        SCRATCH] and was REJECTED. Codex: run pickaxe /
+        `git log --left-right --oneline` on a sample of the
+        1604 to classify them (merge-sync metadata vs rebased-
+        upstream-history vs genuine novel commits) before any
+        verdict. Candidate verdicts: [FORK-MAINTAINER-MERGED-
+        BEHIND] (if the 1604 are rebased/duplicated upstream
+        history) vs [FORK-DIVERGED-AHEAD] (only if genuinely
+        novel work confirmed).
+
+  (3) zariuq/metta-wam    (local: metta-wam-zariuq)
+      Default: master   HEAD 41a5b282 2025-02-18
+               (logicmoo "debug_this_script=false")
+      vnamed...zariuq_master = 720 ahead / 0 behind
+      → zariuq is 0 commits ahead of vnamed; fully behind.
+        Candidate verdict: [FORK-STALE-FULLY-BEHIND].
+        (zariuq = Zarathustra Goertzel. A snapshot fork, last
+        2025-02-18; no novel forward commits over vnamed.)
+
+  Orchestrator temp refs (refs/temp/patham9_master,
+  ngeiswei_main, zariuq_master) created in the primary clone
+  for these counts; will be deleted at cluster close.
+
+  OUT OF SCOPE for S5 (separate audit candidates):
+    - logicmoo/metta-wam (the dev mirror named in README) —
+      same lineage as trueagi-io/vnamed; the README itself
+      says logicmoo is "Compiler/Interpreter/LSP/Examples
+      Development". Treat as the same codebase unless Codex
+      finds a material divergence; do NOT separately extract.
+    - logicmoo/metta-testsuite — the SEPARATE test-suite repo
+      (no testsuite files tracked in metta-wam itself). S5
+      test-coverage assessment (S5.Q12) must note coverage
+      lives in that external repo; do NOT clone/extract it
+      for S5.
+    - libraries/swicli/ (vendored .NET bridge) + .Attic/
+      (archived snapshots) — see §0.B.
+
+
+§1. CROSS-PILOT IDENTITIES (CONFIRMED / EXTENDED AT S5)
+=======================================================
+
+  - Douglas Miles = logicmoo = TeamSPoon = "Douglas R Miles" =
+    "Douglas R. Miles" — MeTTaLog primary author (~2240
+    commits across identities). NEW cluster lineage.
+  - Roy Ward — 2nd core MeTTaLog dev (owns a compiler-lib
+    variant `metta_compiler_lib_roy.pl` / `metta_compiler_roy.pl`).
+  - Mike Archbold = MikeArchbold (~255 commits).
+  - Nil Geisweiller = ngeiswei (S5.X fork; HAA S3 maintainer-
+    fork direction-reversal precedent).
+  - zariuq = Zarathustra Goertzel (S5.X fork; user-verified).
+  - Patrick Hammer / patham9 — S2 PeTTa author; ALSO owns a
+    metta-wam fork (S5.X). The two are DISTINCT artifacts.
+
+§2. LOCKED PRIOR ART (cumulative from S1 + S2 + S3 + S4)
+========================================================
+
+Reviewers do NOT re-derive these; reference in cross-source
+forwards.
+
+S1 hyperon-experimental (closed 2026-05-08):
+  PA1.  Reference Rust runtime v0.2.10 / HEAD `3f76dc46`.
+        `[SMALL-STEP-INTERPRETER]` + `[NONDETERMINISTIC-
+        BRANCHING]` + `[DYNAMIC-CHECKED]` + `[HYBRID-RUST-
+        PLUS-METTA-STDLIB]`.
+  PA2.  interpret_step / interpret_stack stack-based reduction
+        (`lib/src/metta/interpreter.rs:269/374`).
+  PA7.  v0.2.10 quirks (`reference_hyperon_0210_quirks.md`):
+        Q-1 bind!+new-space CONFIRMED-AT-HEAD (no reset);
+        Q-2 cond FIXED-VIA-ABSENCE (operator removed; use
+        if/case/match); Q-3 catchall multi-reduction
+        CONFIRMED-AS-SEMANTICS (nondeterministic by design).
+
+S2 PeTTa + metta-morph (closed 2026-05-10):
+  PA8.  PeTTa "Smart Dispatch" is a real implementation feature
+        (translator.pl:300-323), not a branded name.
+  PA10. metta-morph FIXES S1 Q-1 within its Scheme subset
+        (first cluster source to fix Q-1).
+  PA10b. PeTTa is the cluster's other Prolog-adjacent runtime
+        (SWI-Prolog backtracking + tabling). S5 MeTTaLog is
+        ALSO SWI-Prolog-based — reviewers should compare the
+        two Prolog approaches (PeTTa = Treutlein translator.pl;
+        MeTTaLog = Miles metta_interp.pl + WAM compiler) but
+        NOT conflate them; they are independent codebases.
+
+S3 MeTTaTron (closed 2026-05-13):
+  PA12. MeTTaTron filters rule matches to MOST-SPECIFIC ONLY
+        (eval/mod.rs:1023+), diverging from S1 Q-3 catchall.
+        R3.NEW-1 LOAD-BEARING. → S5 must record its own Q-3
+        choice (catchall multi-reduce vs most-specific-filter).
+  PA14. README "compiler" framing can overstate HEAD capability
+        (V3-12 [README-STALE-AT-MULTIPLE-CLAIMS]). → S5
+        MeTTaLog's "WAM compiler" claim needs the same scrutiny:
+        is it interpreter-with-optional-compile, or compile-by-
+        default to WAM/Prolog clauses?
+
+S4 MeTTaIL + FormalMeTTa (closed 2026-05-15):
+  PA15. MeTTaIL/FormalMeTTa are the formal-semantics / IL axis,
+        NOT runtime peers ([PARADIGM-DISTINCT-FROM-RUNTIME-
+        CLUSTER]). S5 returns to the RUNTIME axis (full
+        quirk-matrix participation resumes).
+  PA16. V4-1 [METTAIL-BRANCH-IDENTITY-DRIFT] — ALWAYS verify
+        default branch via `git symbolic-ref refs/remotes/
+        origin/HEAD` before pinning. APPLIED at S5 (default =
+        vnamed, verified §0.A).
+  PA17. V4-9 — formal-spec sources add NO runtime quirk point;
+        S5 (a real runtime) DOES, and must NOT cite S4 for
+        quirk evidence.
+
+
+§3. CROSS-SOURCE FORWARDS (applied to S5)
+==========================================
+
+F1. **Compile-vs-interpret split** (V1-PROTOCOL-1 + PA14):
+    MeTTaLog has BOTH metta_interp.pl (7584L interpreter) AND
+    metta_compiler.pl (5251L compiler). The headline question:
+    at HEAD, on the default run path, does `mettalog file.metta`
+    INTERPRET (metta_eval.pl reduction) or COMPILE-then-run
+    (metta_compiler.pl → Prolog/WAM clauses)? Is compilation
+    default, opt-in (a flag), or partial? Single most important
+    S5 finding (S5.Q1 + S5.Q2).
+
+F2. **Dual-layer stdlib/surface grep** (V1-3): MeTTaLog surface
+    spans .metta files (corelib.metta seed, builtin_mods/) AND
+    Prolog (corelib.metta.pl, metta_compiler_lib*.pl). Grep
+    BOTH. corelib.metta's 9 lines is a trap (§0.B).
+
+F3. **Pickaxe-before-dead-code** (`feedback_pickaxe_for_dead_
+    code.md`): mandatory for the ngeiswei 1604-ahead claim
+    (§0.X) AND any "feature X never implemented" claim in a
+    2240-commit codebase. `git log --all -S '<token>'`.
+
+F4. **README-drift audit** (V3-PROTOCOL-3): see §5. MeTTaLog's
+    README is large and link-heavy; several links point to
+    `master` (stale) and to external logicmoo.github.io report
+    pages. Per-claim verdicts in §5.
+
+F5. **Cross-pilot identity tracking**: §1. Note especially the
+    patham9 (S2 PeTTa author) and ngeiswei/zariuq (cross-pilot)
+    fork ownership.
+
+F6. **Wiki MCP server bugs** (`hyperon-wiki-mcp/SERVER-BUGS.md`):
+    apply at cluster-close edit-batch time if wiki writes are
+    warranted. (Existing wiki coverage of MeTTaLog: reviewers
+    note whether cards 4632 / 7161 / 7268 already carry a
+    MeTTaLog / metta-wam row — likely yes; S5 close refines.)
+
+
+§4. README-DRIFT AUDIT TABLE (V3-PROTOCOL-3)
+=============================================
+
+Pre-extracted README key claims for per-claim verdict.
+
+  P-1. "An Implementation of MeTTa designed to run on the
+       Warren Abstract Machine (WAM)" (title).
+       → Verdict whether MeTTaLog actually compiles to WAM
+       instructions, OR whether "WAM" is shorthand for "runs
+       on SWI-Prolog (which is a WAM engine)" i.e. the MeTTa
+       interpreter/compiler is Prolog-hosted but does not emit
+       WAM bytecode itself. Candidate: [WAM-VIA-SWI-PROLOG-HOST]
+       vs [WAM-DIRECT-CODEGEN]. (Mirrors S3 R3.NEW-2 README-
+       claim-vs-dependency-reality pattern.)
+
+  P-2. INSTALL.sh "Installs hyperon: Hyperon pip package needed
+       for running compatibility tests."
+       → Verdict the coupling to S1 hyperon-experimental: is
+       hyperon-experimental EMBEDDED/called at runtime, or only
+       a TEST-TIME compatibility oracle? (S5.Q8). Candidate:
+       [HYPERON-TEST-ORACLE-ONLY] vs [HYPERON-EMBEDDED-RUNTIME].
+
+  P-3. INSTALL.sh "Installs mettalog-vspace: Allows Rust MeTTa
+       use extra functionality found in mettalog."
+       → Verdict the vspace bridge direction: does Rust-MeTTa
+       (hyperon-experimental) call INTO MeTTaLog, or MeTTaLog
+       call Rust? Note `.Attic/mettalog/mettalog_vspace.py` is
+       archived; the active bridge is metta_python_hyperon.py.
+       Candidate: [VSPACE-RUST-CALLS-METTALOG] vs [VSPACE-
+       METTALOG-CALLS-RUST] vs [VSPACE-BIDIRECTIONAL-JANUS].
+
+  P-4. README requires "SWI-Prolog version 9.3.9 or higher" +
+       "janus" + "pyswip".
+       → Dependency declaration; verdict whether the runtime
+       hard-requires janus (Python-in-Prolog) for CORE
+       evaluation or only for the Python-interop subset.
+
+  P-5. README in-text doc links point to `.../blob/master/
+       docs/OVERVIEW.md` while default branch is `vnamed`.
+       → README doc-link staleness signal (master frozen
+       2025-08-04). Candidate: [README-LINKS-STALE-MASTER].
+
+  P-6. "10–200x" or other speed claims (S3 V3-PROTOCOL-2):
+       if any quantitative perf claim appears in README/docs,
+       Codex cites VERBATIM from the source and verifies the
+       benchmark file exists at HEAD (not .Attic/, not the
+       external testsuite repo).
+
+
+§5. QUESTIONS FOR S5 REVIEWERS (12 total)
+==========================================
+
+S5.Q1. EVALUATOR / INTERPRETER MODEL
+  metta_eval.pl (5093L) + metta_interp.pl (7584L). What is the
+  reduction strategy? Is nondeterminism realized via native
+  SWI-Prolog backtracking (like S2 PeTTa) or an explicit
+  work-stack (like S1/S3)? Is evaluation small-step or
+  big-step? Cite the core eval predicate(s).
+  §7 set: EVALUATOR.
+
+S5.Q2. COMPILER TRACK + WAM CLAIM  (HEADLINE, F1 + P-1)
+  metta_compiler.pl (5251L) + metta_compiler_douglas.pl /
+  _roy.pl / _mizer.pl + metta_compiler_lib*.pl. Does MeTTaLog
+  COMPILE MeTTa to Prolog/WAM clauses, and is that the DEFAULT
+  run path or opt-in? Is the compiler complete or partial vs
+  the interpreter? Does it emit WAM bytecode directly or rely
+  on SWI-Prolog to JIT Prolog clauses to WAM? Multiple compiler
+  variants (douglas/roy/mizer) — which is canonical at HEAD?
+  §7 set: COMPILER.
+
+S5.Q3. PARSER
+  metta_parser.pl (1644L). Hand-written Prolog reader, or
+  generated? S-expression reader semantics; how does it handle
+  the variable prefixes ($/&/') vs S3 [VARIABLES-MULTI-PREFIX-
+  EQUIVALENT]? Cite the read/tokenize predicates.
+  §7 set: PARSER.
+
+S5.Q4. TYPE SYSTEM
+  Dynamic-checked like S1 PA1? Is there gradual/optional typing,
+  type-decl handling (`:` declarations), or runtime type
+  dispatch? Cite where types are checked (or noted-but-not-
+  checked, S4 [TYPES-CARRIED-NOT-CHECKED] pattern).
+  §7 set: TYPES.
+
+S5.Q5. STDLIB / CORELIB  (F2, drift trap)
+  corelib.metta is 9 lines. Where is the real stdlib —
+  corelib.metta.pl + metta_compiler_lib*.pl? Assess parity vs
+  S1 hyperon-experimental stdlib (which operators present /
+  absent / extended). Is `replace-atom!` present (Phase 4
+  PATCH-2 oracle, cf. S3 absent)? Is `bind!` / `new-space`
+  present?
+  §7 set: STDLIB.
+
+S5.Q6. PYTHON INTEGRATION
+  janus (Python-in-SWI) + pyswip + metta_python.pl +
+  metta_python_hyperon.py. Bidirectional? Is Python interop
+  CORE (required for eval) or an optional grounded-atom bridge
+  (like S1's hyperon Python layer)? Cite the janus/py_call
+  surface.
+  §7 set: PYTHON.
+
+S5.Q7. SPACE / MODULE SYSTEM
+  Multi-space? `&self` resolution? Persistence (metta_persists.pl)?
+  metta_server.pl (a server mode?). How do spaces map onto
+  Prolog modules / dynamic predicates? Compare to S1 module
+  system (PA: module = Space + Tokenizer).
+  §7 set: SPACE.
+
+S5.Q8. HYPERON-EXPERIMENTAL COUPLING  (P-2 + P-3)
+  INSTALL.sh installs the hyperon pip package "for compatibility
+  tests"; metta_python_hyperon.py bridges to it; python/
+  hyperon_ref/ may vendor a hyperon reference. Is MeTTaLog an
+  INDEPENDENT re-implementation that uses hyperon-experimental
+  only as a TEST ORACLE, or does it EMBED/delegate to it at
+  runtime (vspace)? This determines whether MeTTaLog is a
+  standalone runtime or a Prolog front-end over Rust hyperon.
+  Cite the bridge call sites. (CRITICAL for cluster narrative.)
+  §7 set: HYPERON-COUPLING.
+
+S5.Q9. 0.2.x QUIRKS  (per-quirk, PA7 — back on runtime axis)
+  MeTTaLog is a full runtime, so Q-1/Q-2/Q-3 are DIRECTLY
+  testable (unlike S4). For each:
+    Q-1 bind!+new-space: does bind! reset / does new-space
+        clear? (S1 CONFIRMED no-reset; metta-morph FIXED;
+        PeTTa DIVERGENT.)
+    Q-2 cond: is `cond` a builtin? (S1 removed; most reproduce
+        absence.)
+    Q-3 catchall multi-reduction: does MeTTaLog multi-reduce
+        catchall+specific (S1 semantics) or filter to most-
+        specific (S3 MeTTaTron divergence)?  ← KEY: which side
+        of the S3 divergence is MeTTaLog on?
+  §7 set: QUIRKS (per-quirk).
+
+S5.Q10. FORK DIVERGENCE  (§0.X, LOAD-BEARING, pickaxe)
+  For each of patham9 / ngeiswei / zariuq: DIRECTION verdict.
+  Codex verifies the §0.X counts verbatim AND classifies the
+  ngeiswei 1604-"ahead" commits (rebased-upstream-history /
+  merge-sync metadata / genuine-novel) via pickaxe before any
+  [FORK-DIVERGED-AHEAD] verdict. Gemini: direction tag only,
+  NO counts. (HAA S3 ngeiswei direction-reversal precedent is
+  the explicit guard here.)
+  §7 set: FORK (per-fork).
+
+S5.Q11. PROJECT STATUS / ACTIVITY
+  vnamed active to 2025-11-22; master diverged/frozen 2025-08;
+  iCog-dev contribution burst Aug-Oct 2025. Single tag
+  mettalog-0.6.6.0. Verdict the maturity/activity profile.
+  §7 set: STATUS.
+
+S5.Q12. CLUSTER-NARRATIVE PLACEMENT + TEST-COVERAGE CAVEAT
+  Where does MeTTaLog sit in the runtime cluster (Prolog-native
+  full runtime; interpreter+compiler; most feature-complete
+  non-Rust)? Note the external test-suite repo (logicmoo/metta-
+  testsuite) — test-coverage claims must be qualified as
+  "coverage lives in a separate repo not audited at S5". How
+  does MeTTaLog relate to S2 PeTTa (the other SWI-Prolog
+  runtime)?
+  §7 set: CLUSTER-PLACEMENT.
+
+
+§6. VERDICT VOCABULARY (single-label per question)
+====================================================
+
+Pick EXACTLY ONE tag from the matching set (V2-PROTOCOL-1:
+most-specific that fits the evidence).
+
+EVALUATOR (S5.Q1):
+  [EVAL-PROLOG-BACKTRACKING-NONDET]
+  [EVAL-EXPLICIT-WORKSTACK-NONDET]
+  [EVAL-HYBRID-BACKTRACK-PLUS-STACK]
+  [EVAL-DETERMINISTIC-SINGLE-RESULT]
+
+COMPILER (S5.Q2):
+  [COMPILER-DEFAULT-TO-PROLOG-CLAUSES]
+  [COMPILER-OPTIN-INTERPRETER-DEFAULT]
+  [COMPILER-PARTIAL-INTERP-FALLBACK]
+  [COMPILER-SCAFFOLDING-INTERP-ONLY-AT-HEAD]
+
+PARSER (S5.Q3):
+  [PARSER-HANDWRITTEN-PROLOG-READER]
+  [PARSER-DCG-GRAMMAR]
+  [PARSER-GENERATED]
+
+TYPES (S5.Q4):
+  [TYPES-DYNAMIC-CHECKED]
+  [TYPES-CARRIED-NOT-CHECKED]
+  [TYPES-GRADUAL-OPTIONAL]
+  [TYPES-RUNTIME-DISPATCH-ONLY]
+
+STDLIB (S5.Q5):
+  [STDLIB-FULL-PARITY-PLUS-EXTENSIONS]
+  [STDLIB-PARTIAL-PARITY]
+  [STDLIB-CORELIB-PROLOG-HOSTED]
+  [STDLIB-MINIMAL]
+
+PYTHON (S5.Q6):
+  [PYTHON-CORE-REQUIRED-JANUS]
+  [PYTHON-OPTIONAL-GROUNDED-BRIDGE]
+  [PYTHON-BIDIRECTIONAL-FULL]
+  [PYTHON-ABSENT-AT-CORE]
+
+SPACE (S5.Q7):
+  [SPACE-MULTI-VIA-PROLOG-MODULES]
+  [SPACE-SINGLE-GLOBAL]
+  [SPACE-MULTI-WITH-PERSISTENCE]
+  [SPACE-PARTIAL]
+
+HYPERON-COUPLING (S5.Q8):  ← cluster-critical
+  [HYPERON-TEST-ORACLE-ONLY]
+  [HYPERON-EMBEDDED-RUNTIME]
+  [HYPERON-OPTIONAL-VSPACE-BRIDGE]
+  [HYPERON-INDEPENDENT-REIMPL]
+
+QUIRKS (S5.Q9, per-quirk):
+  [QUIRK-REPRODUCED]
+  [QUIRK-FIXED]
+  [QUIRK-DIVERGENT-SEMANTICS]
+  [QUIRK-NOT-APPLICABLE]
+
+FORK (S5.Q10, per-fork):
+  [FORK-STALE-FULLY-BEHIND]
+  [FORK-DIVERGED-AHEAD]
+  [FORK-MAINTAINER-MERGED-BEHIND]
+  [FORK-REBASED-HISTORY-ARTIFACT]
+
+STATUS (S5.Q11):
+  [ACTIVE-STEADY-MAINTAINED]
+  [ACTIVE-SINGLE-MAINTAINER-PLUS-CONTRIBUTORS]
+  [STAGNANT-DEFAULT-WITH-STALE-MASTER]
+  [LOW-ACTIVITY-STABLE]
+
+CLUSTER-PLACEMENT (S5.Q12):
+  [PROLOG-NATIVE-FULL-RUNTIME]
+  [PROLOG-FRONTEND-OVER-RUST-HYPERON]
+  [INTERPRETER-COMPILER-DUAL-RUNTIME]
+  [PARADIGM-DISTINCT-PROLOG-WAM]
+
+
+§7. REQUIRED GREP TARGETS (repo-wide, NOT README-only; exclude
+    .Attic/ and libraries/swicli/)
+================================================================
+
+  S5.Q1 eval:     prolog/metta_lang/metta_eval.pl,
+                  metta_interp.pl: `eval_args|eval_20|
+                  eval_until|metta_eval|interp|reduct`
+  S5.Q2 compiler: metta_compiler*.pl: `compile|compiled_clause|
+                  assertz|wam|emit|codegen|comp_term`
+  S5.Q3 parser:   metta_parser.pl: `read_metta|parse|tokenize|
+                  sexpr|read_sform`
+  S5.Q4 types:    `get_type|@doc|: ->|metta_type|check_type|
+                  nondet_type`
+  S5.Q5 stdlib:   corelib.metta.pl + metta_compiler_lib*.pl:
+                  `replace-atom|add-atom|remove-atom|bind!|
+                  new-space|superpose|collapse|match`
+  S5.Q6 python:   metta_python*.pl/.py: `py_call|janus|pyswip|
+                  py_func|hyperonpy`
+  S5.Q7 space:    metta_interp.pl, metta_persists.pl,
+                  metta_server.pl: `&self|create_space|
+                  add_to_space|asserted_metta|persist`
+  S5.Q8 hyperon:  metta_python_hyperon.py, python/hyperon_ref/:
+                  `import hyperon|from hyperon|MeTTa(|run_metta|
+                  compatibility`  (pickaxe `git log --all -S
+                  'import hyperon'` for embedded-vs-test-oracle)
+  S5.Q9 quirks:   `bind!` ; `new-space` ; `cond` (is it a
+                  builtin clause?) ; catchall: how multiple
+                  matching equations are collected (bagof/
+                  findall vs first-match) in metta_eval.pl
+  S5.Q10 forks:   per §0.X — Codex re-runs
+                  `git rev-list --left-right --count
+                  origin/vnamed...refs/temp/<fork>` AND
+                  `git log --left-right --oneline ...| head`
+                  to classify ngeiswei's 1604.
+  S5.Q11 status:  `git shortlog -sn origin/vnamed`,
+                  `git log -1 origin/vnamed`, tag delta.
+  S5.Q12:         synthesis (no single grep).
+
+
+§8. AT-EXTRACTION-RETURN SEQUENCE (option (i) / P10.24)
+========================================================
+
+  1. Orchestrator collects findings_codex.txt + Gemini
+     synthesis-claim relay + findings_claude.txt (own
+     independent extraction).
+  2. NO full cite-by-cite verification log on Gemini (no
+     cite-by-cite claims under P10.24). Synthesis claims NOT
+     cite-verified.
+  3. Orchestrator SPOT-CHECKS Gemini's high-level verdicts
+     against Codex's evidence chain — ESPECIALLY S5.Q10 fork
+     directions and S5.Q8 hyperon-coupling.
+  4. Reconciliation from Codex + Claude citation-grade evidence;
+     Gemini verdicts adjudicated against the evidence chain.
+  5. NO cite-verification log appended; instead a short
+     "Gemini synthesis-claim adjudication" section per verdict.
+  6. Three-way sign-off recorded.
+
+
+§9. RE-EVALUATION GATE (option (i) tracking — S5 is source 2 of 3)
+=================================================================
+
+Per `feedback_gemini_option_i_confirmation_only_mode.md`:
+  - S4 was source 1 of 3 under option (i): Gemini synthesis
+    alignment 8/12 ≈ 67% (within the 60-75% band; stay on (i)).
+  - S5 is source 2 of 3. Track synthesis-claim alignment again.
+  - GATES over the 3-source window (S4/S5/S6):
+      <80% mean alignment → escalate to option (0) Gemini-
+        EXCLUDED (requires user authorization).
+      100% over 3 consecutive → consider retrying option (ii).
+      80-99% → stay on option (i).
+  - NOTE: S5's fork-divergence direction verdicts (S5.Q10) are
+    a HIGH-RISK alignment surface given Gemini's HAA S3+S5
+    fork-fabrication history; weight them in the assessment.
+
+
+§10. ARCHIVE LOCATIONS (post-extraction)
+=========================================
+
+  scripts/archive/metta_runtime_pilot/source5_metta_wam_
+    mettalog/findings_codex.txt
+  scripts/archive/metta_runtime_pilot/source5_metta_wam_
+    mettalog/findings_gemini.txt
+  scripts/archive/metta_runtime_pilot/source5_metta_wam_
+    mettalog/findings_claude.txt
+  scripts/archive/metta_runtime_pilot/source5_metta_wam_
+    mettalog/findings_reconciled_crossmodel.txt
+    (orchestrator draft, post-reconciliation)
+
+
+================================================================
+END source5_metta_wam_mettalog_brief.txt
+================================================================

@@ -1,0 +1,460 @@
+Codex findings: MeTTa runtime pilot Source 5 - metta-wam / MeTTaLog
+Date: 2026-06-08
+Reviewer: Codex
+Brief: scripts/archive/metta_runtime_pilot/source5_metta_wam_mettalog_brief.txt
+Primary repo: E:\GitHub\hyperon reference\metta-wam
+
+0. Executive verdict table
+
+| Question | Verdict | Confidence |
+| --- | --- | --- |
+| S5.Q1 evaluator | [EVAL-PROLOG-BACKTRACKING-NONDET] | High |
+| S5.Q2 compiler | [COMPILER-OPTIN-INTERPRETER-DEFAULT] | High |
+| S5.Q3 parser | [PARSER-HANDWRITTEN-PROLOG-READER] | High |
+| S5.Q4 types | [TYPES-GRADUAL-OPTIONAL] | High |
+| S5.Q5 stdlib | [STDLIB-CORELIB-PROLOG-HOSTED] | High |
+| S5.Q6 Python | [PYTHON-OPTIONAL-GROUNDED-BRIDGE] | High |
+| S5.Q7 space | [SPACE-MULTI-WITH-PERSISTENCE] | High |
+| S5.Q8 Hyperon | [HYPERON-OPTIONAL-VSPACE-BRIDGE] | High |
+| S5.Q9 quirks | Q-1 [QUIRK-DIVERGENT-SEMANTICS] / Q-2 [QUIRK-FIXED] / Q-3 [QUIRK-REPRODUCED] | Medium-high |
+| S5.Q10 forks | patham9 [FORK-STALE-FULLY-BEHIND] / zariuq [FORK-STALE-FULLY-BEHIND] / ngeiswei [FORK-REBASED-HISTORY-ARTIFACT] | High |
+| S5.Q11 status | [ACTIVE-SINGLE-MAINTAINER-PLUS-CONTRIBUTORS] | High |
+| S5.Q12 placement | [INTERPRETER-COMPILER-DUAL-RUNTIME] | High |
+
+Bottom line: MeTTaLog is a Prolog-native full MeTTa runtime with both an interpreter and an opt-in compiler/transpiler to SWI-Prolog clauses. It is not a C# runtime, not a Rust Hyperon front-end, and not just a compatibility test harness. Its core execution surface is Prolog; Python/Janus and Hyperon/vspace are optional bridge layers.
+
+1. Source identity and inventory verification
+
+1.1 Pinned source state
+
+Commands run from E:\GitHub\hyperon reference\metta-wam:
+
+```
+git rev-parse HEAD
+git branch --show-current
+git symbolic-ref refs/remotes/origin/HEAD
+git status --short
+git tag --points-at HEAD
+git describe --tags --always --long
+```
+
+Observed:
+
+```
+74dbe9b8873adab46904f8e480d32650d0f28497
+vnamed
+refs/remotes/origin/vnamed
+?? AGENTS.md
+?? CLAUDE.md
+?? GEMINI.md
+?? prolog/metta_lang/corelib.metta.pl
+mettalog-0.6.6.0-91-g74dbe9b8
+```
+
+Interpretation:
+
+- The brief's extraction target is correct: current branch is `vnamed`, and origin/HEAD points to `origin/vnamed`.
+- HEAD is not tagged directly; it is 91 commits ahead of tag `mettalog-0.6.6.0`.
+- Working tree has untracked agent docs and one important untracked source-looking file: `prolog/metta_lang/corelib.metta.pl`. Do not treat that file as HEAD evidence.
+
+1.2 Branch status
+
+Command:
+
+```
+git show -s --format='%H %ci %an %s' origin/vnamed origin/master HEAD
+git rev-list --left-right --count origin/vnamed...origin/master
+```
+
+Observed:
+
+```
+74dbe9b8873adab46904f8e480d32650d0f28497 2025-11-22 04:36:30 +0700 TeamSPoon fixed an issue preveing mettalog startup
+93dc17... 2025-08-04 03:23:07 -0700 Douglas R. Miles Create Contrbuting.md #111
+56 51
+```
+
+`vnamed` is the active/default branch. `master` is a real divergent legacy branch, not the extraction target.
+
+1.3 File inventory and brief drift
+
+Tracked file counts:
+
+```
+git ls-files
+2597 tracked files
+717 .pl
+172 .py
+160 .metta
+803 .cs
+688 under .Attic/
+```
+
+All 803 tracked `.cs` files are under `libraries/swicli/`; this confirms the brief's "C# surface is vendored bridge/out-of-scope" warning.
+
+Tracked line counts observed with PowerShell `Measure-Object -Line`:
+
+```
+prolog/metta_lang/metta_interp.pl      6890
+prolog/metta_lang/metta_eval.pl        3954
+prolog/metta_lang/metta_compiler.pl    4252
+prolog/metta_lang/metta_space.pl       2177
+prolog/metta_lang/metta_python.pl      2213
+prolog/metta_lang/metta_corelib.pl     4023
+```
+
+This differs from the brief's early line-count examples for `metta_interp.pl` and `metta_compiler.pl`; archive reconciliation should use the tracked HEAD counts above.
+
+1.4 Corelib correction
+
+`git ls-files` confirms these tracked stdlib/core files:
+
+```
+prolog/metta_lang/corelib.metta
+prolog/metta_lang/metta_compiler_lib.pl
+prolog/metta_lang/metta_compiler_lib_douglas.pl
+prolog/metta_lang/metta_compiler_lib_roy.pl
+prolog/metta_lang/metta_compiler_lib_stdlib.pl
+prolog/metta_lang/metta_corelib.pl
+prolog/metta_lang/stdlib_mettalog.metta
+```
+
+`git status --short prolog/metta_lang/corelib.metta.pl` returns:
+
+```
+?? prolog/metta_lang/corelib.metta.pl
+```
+
+Reconciliation correction: `corelib.metta.pl` is not canonical HEAD evidence. The tracked seed `corelib.metta` imports `stdlib_mettalog.metta`; the Prolog-hosted core is in `metta_corelib.pl` and `metta_compiler_lib*.pl`.
+
+2. S5.Q1 evaluator - [EVAL-PROLOG-BACKTRACKING-NONDET]
+
+MeTTaLog evaluation is Prolog-native and nondeterministic. The direct evidence is not a separate explicit work-stack implementation; it is SWI-Prolog backtracking plus `findall`, `call_nth`, `member`, and predicate dispatch.
+
+Evidence:
+
+- `prolog/metta_lang/metta_eval.pl:528-535` routes evaluation through `eval_10`, with hybrid compiler hooks only when enabled.
+- `prolog/metta_lang/metta_eval.pl:559-561` uses `call_nth(eval_10(...), Nth)` for enumerating alternatives.
+- `prolog/metta_lang/metta_eval.pl:831` collects candidate definitions with `findall(guarded_defn(... metta_defn ...))`.
+- `prolog/metta_lang/metta_eval.pl:4484-4487` collects rule expansions with `findall((rule(...)), call_nth(get_defn_expansions(...), Nth), XXB0L)` and then evaluates the collected bodies.
+- `prolog/metta_lang/metta_compiler_lib.pl:929-932` implements `superpose` through `member/2`.
+- `prolog/metta_lang/metta_compiler_lib.pl:952-971` implements `collapse` through `findall`.
+
+Verdict rationale: The evaluator is fundamentally a Prolog backtracking engine with MeTTa-specific dispatch wrappers. The optional compiler path does not make this a Rust-like stepping interpreter or an explicit work-queue evaluator.
+
+3. S5.Q2 compiler - [COMPILER-OPTIN-INTERPRETER-DEFAULT]
+
+The compiler/transpiler is real, but not default.
+
+Evidence:
+
+- `prolog/metta_lang/metta_interp.pl:1269` defines compile option default as `'false'`, with allowed values `false`, `true`, `hybrid`, and `full`.
+- `prolog/metta_lang/metta_compiler.pl:2` describes "MeTTa to Prolog transpilation".
+- `prolog/metta_lang/metta_compiler.pl:47` routes assertions through `compiler_assertz`.
+- `prolog/metta_lang/metta_compiler.pl:201` says `option_value(compile, false)` selects `interp`.
+- `prolog/metta_lang/metta_compiler.pl:205` says `option_value(compile, full)` selects `compiler`.
+- `prolog/metta_lang/metta_compiler.pl:1593-1604` implements `compile_for_exec`.
+- `prolog/metta_lang/metta_compiler.pl:1619-1645` compiles MeTTa definitions into compiled predicate records and Prolog clauses.
+- `prolog/metta_lang/metta_compiler.pl:1867-1886` implements `compile_for_assert`.
+- `prolog/metta_lang/metta_eval.pl:523-527` treats `compile=hybrid` and `compile=true` as hybrid interpreter/compiler mode.
+
+Verdict rationale: MeTTaLog has a large compiler/transpiler surface, including WAM-ish `wam-body` handling, but the default option is interpreter mode.
+
+4. S5.Q3 parser - [PARSER-HANDWRITTEN-PROLOG-READER]
+
+The parser is a hand-written Prolog S-expression reader/parser, not a generated grammar.
+
+Evidence:
+
+- `prolog/metta_lang/metta_parser.pl:52-58` defines `read_metta/2` and routes to `parse_sexpr_untyped`.
+- `prolog/metta_lang/metta_parser.pl:92-107` implements `parse_sexpr` over streams/strings.
+- `prolog/metta_lang/metta_parser.pl:181-188` and `:231-247` normalize `$` variables and `$VAR(...)` forms.
+- `prolog/metta_lang/metta_parser.pl:1016-1107` handles S-expression continuation and delimiters directly.
+
+No BNFC/tree-sitter/generated grammar dependency was found in the active parser path.
+
+5. S5.Q4 types - [TYPES-GRADUAL-OPTIONAL]
+
+MeTTaLog carries and uses type information, but strict runtime checking is option-gated and mixed with dynamic inference/guessing.
+
+Evidence:
+
+- `prolog/metta_lang/metta_compiler_lib.pl:630-632` defines `get-type` and routes it to `get_type`.
+- `prolog/metta_lang/metta_types.pl:603` invokes `check_bad_type` only when `option_value('type-check', auto)`.
+- `prolog/metta_lang/metta_compiler_lib.pl:856-857` suppresses `check_type_error` unless `option_value(typecheck, true)`.
+- `prolog/metta_lang/metta_eval.pl:4888-4928` contains dynamic `check_non_arg_violation` and `get_type_or_guess` paths.
+- `prolog/metta_lang/metta_compiler_lib.pl:735-835` carries typed builtin signatures for arithmetic and boolean operators.
+
+Verdict rationale: Types are not merely comments, but enforcement is optional/gradual rather than uniformly strict.
+
+6. S5.Q5 stdlib - [STDLIB-CORELIB-PROLOG-HOSTED]
+
+The real stdlib surface is split across tracked MeTTa and Prolog files, with Prolog-hosted builtins doing most of the operational work.
+
+Evidence:
+
+- `prolog/metta_lang/corelib.metta:1` imports `stdlib_mettalog.metta`; the file itself is a small seed, not the whole stdlib.
+- `prolog/metta_lang/stdlib_mettalog.metta` declares the MeTTa-level core vocabulary, e.g. relation/type constructors and docs starting near line 1.
+- `prolog/metta_lang/metta_loader.pl:3144-3188` defines `use_corelib_file` and `really_use_corelib_file`, which load the core library and generate interpreter stubs.
+- `prolog/metta_lang/metta_compiler_lib.pl:638-676` implements `if` and related flow in Prolog.
+- `prolog/metta_lang/metta_compiler_lib.pl:735-835` implements arithmetic/comparison builtins.
+- `prolog/metta_lang/metta_compiler_lib.pl:841-887` implements list/atom operations and uniqueness.
+- `prolog/metta_lang/metta_compiler_lib.pl:929-999` implements `superpose`, `collapse`, `bind!`, `new-space`, `add-atom`, `remove-atom`, and `get-atoms`.
+- `prolog/metta_lang/metta_compiler_lib_stdlib.pl:27-74` provides additional generated/copied builtin signatures including `MettaMorph-If`, `switch`, doc helpers, atom set operations, and `get-type-space`.
+
+Verdict rationale: This is not minimal; it is also not proven full parity with Hyperon Experimental. The best label is Prolog-hosted corelib/stdlib.
+
+7. S5.Q6 Python bridge - [PYTHON-OPTIONAL-GROUNDED-BRIDGE]
+
+Python/Janus is a substantial optional bridge. It is not required for the Prolog evaluator itself, but it is enabled by default and supports grounded Python calls and HyperonPy conversions.
+
+Evidence:
+
+- `README.md:38-40` lists `janus`, `pyswip`, and `hyperon` as installed dependencies.
+- `requirements.txt:29-33` lists `janus-swi`, `pyswip`, and `hyperon`.
+- `prolog/metta_lang/metta_interp.pl:1275` sets option `python` default to true.
+- `prolog/metta_lang/metta_interp.pl:2922-2924` skips Python loading only when `option_value('python', false)`.
+- `prolog/metta_lang/metta_compiler_lib.pl:1320-1351` exposes `py-dot-call` / `py-dot` routes through `py_call_method_and_args_sig`.
+- `prolog/metta_lang/metta_eval.pl:882-895` and `:3737-3741` contain interpreter paths for `py-dot-call`, `py-dot`, `py-type`, and `py-eval`.
+- `prolog/metta_lang/metta_python.pl:398-426` implements `py_call_method_and_args_sig`.
+- `prolog/metta_lang/metta_corelib.pl:69-71` declares `lazy_load_python/0`.
+
+Verdict rationale: Python is a first-class bridge layer, not just examples, but the core interpreter/compiler is still Prolog-native.
+
+8. S5.Q7 space model - [SPACE-MULTI-WITH-PERSISTENCE]
+
+MeTTaLog has multiple space representations and operations, plus save/persistence scaffolding.
+
+Evidence:
+
+- `prolog/metta_lang/metta_eval.pl:1960-1970` defines `new-space` and dispatches space operations.
+- `prolog/metta_lang/metta_eval.pl:1981-2013` implements `add-atom`, `remove-atom`, `atom-count`, `atom-replace`, `get-atoms`, and `match` over spaces.
+- `prolog/metta_lang/metta_eval.pl:2938-2939` exposes `save-space!`.
+- `prolog/metta_lang/metta_space.pl:381-420` implements generic operation dispatch through `space_type_method`.
+- `prolog/metta_lang/metta_space.pl:720-786` distinguishes asserted and non-backtrackable spaces (`is_asserted_space`, `is_as_nb_space`).
+- `prolog/metta_lang/metta_space.pl:876-885` maps operations for `is_as_nb_space`.
+- `prolog/metta_lang/metta_space.pl:1215-1229` maps operations for `is_asserted_space`.
+- `prolog/metta_lang/metta_space.pl:1266-1334` implements asserted add/remove/replace.
+- `prolog/metta_lang/metta_persists.pl:14-36` imports SWI RDF persistency and defines `start_persistency`.
+
+Verdict rationale: "Multi-space" is real. Persistence exists as save-space and RDF persistency scaffolding; I did not verify production durability guarantees.
+
+9. S5.Q8 Hyperon coupling - [HYPERON-OPTIONAL-VSPACE-BRIDGE]
+
+MeTTaLog is not a Prolog front-end over the Rust Hyperon evaluator. It has optional Hyperon/Python bridge and vspace integration.
+
+Evidence:
+
+- `README.md:40` says Hyperon is needed for compatibility tests.
+- `README.md:43` says `mettalog-vspace` lets Rust MeTTa use extra functionality found in MeTTaLog.
+- `README.md:215` says a build of Hyperon Experimental is required.
+- `prolog/metta_lang/metta_corelib.pl:259-284` defines `override_hyperonpy` and `test_override_hyperonpy`.
+- `prolog/metta_lang/metta_corelib.pl:458-467` defines `load_hyperonpy`.
+- `prolog/metta_lang/metta_corelib.pl:573-739` declares a large `hyperonpy_prolog_translation` module surface including atom, space, tokenizer, runner, and interpreter functions.
+- `prolog/metta_lang/metta_python.pl:1436-1459` converts Prolog terms to Rust/Hyperon Python atoms.
+
+Verdict rationale: The bridge is broad and intentional, but Q1/Q2 evidence shows the evaluator and compiler are native Prolog/SWI-Prolog paths.
+
+10. S5.Q9 0.2.x quirks
+
+10.1 Q-1 bind! + new-space - [QUIRK-DIVERGENT-SEMANTICS]
+
+Evidence:
+
+- `prolog/metta_lang/metta_eval.pl:1960-1968` creates a new space through `oo_new('space', [], KB)`.
+- `prolog/metta_lang/metta_eval.pl:2846-2866` implements `bind!` by resolving the name and calling `nb_bind`.
+- `prolog/metta_lang/metta_compiler_lib.pl:979-983` defines compiler-library `bind!` and `new-space`.
+
+Interpretation: The operators exist, but the implementation is a Prolog object/NB-value model rather than Rust `GroundingSpace` semantics. I do not call this "fixed" without running a behavioral test, but it does not share the same substrate as the S1 Rust quirk.
+
+10.2 Q-2 cond - [QUIRK-FIXED]
+
+Evidence:
+
+- `git grep` for `cond` found no `cond` builtin in active `prolog/metta_lang/*.pl` or `*.metta`.
+- `prolog/metta_lang/metta_compiler_lib.pl:638-642` implements `if`.
+- `prolog/metta_lang/metta_compiler_lib.pl:688-730` implements `case`.
+- `prolog/metta_lang/metta_eval.pl:2100-2134` routes `switch` to `case` and implements case evaluation.
+- `prolog/metta_lang/metta_compiler_lib_stdlib.pl:36` declares `switch`.
+
+Interpretation: The exact `cond` surface is absent; MeTTaLog uses `if`/`case`/`switch`. This is "fixed via absence/replacement" in the same sense used for prior runtime sources.
+
+10.3 Q-3 catchall multi-reduction - [QUIRK-REPRODUCED]
+
+Evidence for reproduction:
+
+- `prolog/metta_lang/metta_eval.pl:4484-4487` collects all matching rule expansions with `findall` + `call_nth`.
+- `prolog/metta_lang/metta_eval.pl:4512-4517` then iterates `member(rule(...), XXB0L)`.
+- `prolog/metta_lang/metta_eval.pl:4560-4584` expands definitions through multiple `get_defn_expansions*` paths.
+- `prolog/metta_lang/metta_eval.pl:4490-4496` handles `metta_eq_def` by finding all matching `H->B0` pairs and then iterating through `member`.
+
+Countervailing evidence:
+
+- `prolog/metta_lang/metta_compiler_lib.pl:193-244` has a typed-function path that can score and order candidates by `OrderFittest`.
+- `prolog/metta_lang/metta_typed_functions.pl:177` has a nondeterministic fallback, and `:197` has default function types with `OrderFittest`.
+
+Interpretation: MeTTaLog has a most-specific typed-function subsystem, but the main interpreter definition path still enumerates all matching rule bodies. For the S1 catchall multi-reduction quirk, that is closer to reproduced than to MeTTaTron's [QUIRK-DIVERGENT-SEMANTICS] specificity-filter behavior.
+
+11. S5.Q10 fork landscape
+
+11.1 Verbatim P12 fork commands
+
+Commands:
+
+```
+git rev-list --left-right --count origin/vnamed...refs/temp/patham9_master
+git rev-list --left-right --count origin/vnamed...refs/temp/zariuq_master
+git rev-list --left-right --count origin/vnamed...refs/temp/ngeiswei_main
+git show -s --format='%H %ci %an %s' refs/temp/patham9_master refs/temp/zariuq_master refs/temp/ngeiswei_main
+git merge-base --all origin/vnamed refs/temp/patham9_master
+git merge-base --all origin/vnamed refs/temp/zariuq_master
+git merge-base --all origin/vnamed refs/temp/ngeiswei_main
+```
+
+Observed:
+
+```
+patham9: 311 0
+zariuq: 720 0
+ngeiswei: 3105 1604
+
+f3ab678b684b2a18d5a111f09c2bdd6587905c96 2025-04-07 16:08:35 -0700 Douglas R. Miles Merge pull request #289 from jazzbox35/master
+41a5b28233a1d399f52a4d07c5fdae11a12165d6 2025-02-18 05:09:36 -0800 logicmoo debug_this_script=false
+352b2973fafcd87d0448b176f40afa5f5cc35b63 2024-12-03 03:07:41 -0800 logicmoo testing updates
+
+patham9 merge base: f3ab678b684b2a18d5a111f09c2bdd6587905c96
+zariuq merge base: 41a5b28233a1d399f52a4d07c5fdae11a12165d6
+ngeiswei merge-base exit: 1 (no merge base)
+```
+
+11.2 Fork verdicts
+
+patham9: [FORK-STALE-FULLY-BEHIND]
+
+- It has zero fork-only commits relative to `origin/vnamed`.
+- Its HEAD is a direct merge base and dates to 2025-04-07.
+
+zariuq: [FORK-STALE-FULLY-BEHIND]
+
+- It has zero fork-only commits relative to `origin/vnamed`.
+- Its HEAD is a direct merge base and dates to 2025-02-18.
+
+ngeiswei: [FORK-REBASED-HISTORY-ARTIFACT]
+
+- Raw count is 3105 left / 1604 right, but there is no merge base.
+- Right-only commits stop before 2025: `git rev-list --right-only --count --since=2025-01-01 origin/vnamed...refs/temp/ngeiswei_main` returns `0`.
+- Recent canonical left-side commits include 2025-11-22, 2025-11-17, 2025-10-17, 2025-09-18, and 2025-08-31 activity.
+- The fork-side HEAD is 2024-12-03 and its visible top commits are test/transpiler-era commits from late 2024.
+
+Conclusion: ngeiswei is not an active maintainer fork in the HAA S3 sense. It is a stale no-merge-base history artifact with old fork-side work.
+
+12. S5.Q11 status - [ACTIVE-SINGLE-MAINTAINER-PLUS-CONTRIBUTORS]
+
+Evidence:
+
+- `git shortlog -sn origin/vnamed` is dominated by `logicmoo`, `Douglas R Miles`, and `TeamSPoon`, which appear to be the same Douglas Miles/logicmoo identity family.
+- Recent commits include TeamSPoon's 2025-11-22 startup fix, a 2025-11-17 merge from `yabuz87/main`, and 2025-09-18 / 2025-08-31 Nama21yo-related superpose/random fixes.
+- The default branch is active enough for late-2025 maintenance, while `master` is stale and divergent.
+
+Verdict rationale: More active than "low activity stable" or "stagnant"; still strongly centered on one maintainer identity with occasional contributors.
+
+13. S5.Q12 cluster placement - [INTERPRETER-COMPILER-DUAL-RUNTIME]
+
+MeTTaLog should be presented as the Prolog-native interpreter/compiler runtime in the MeTTa runtime cluster.
+
+Evidence summary:
+
+- Q1: nondeterministic Prolog evaluator.
+- Q2: opt-in compiler/transpiler to SWI-Prolog clauses.
+- Q3: hand-written Prolog parser.
+- Q5: Prolog-hosted stdlib.
+- Q6/Q8: optional Python/Hyperon bridge, not core delegation to Rust Hyperon.
+
+This source is the strongest non-Rust, non-formal-spec runtime in the MeTTa runtime cluster so far. It is not just "WAM concept notes"; the implementation is broad and concrete.
+
+14. V5-X carry-forwards proposed
+
+V5-1 [METTALOG-PROLOG-NATIVE-DUAL-RUNTIME]
+
+MeTTaLog is the cluster's Prolog-native interpreter/compiler runtime. Wiki rows should not reduce it to "Prolog WAM experiment" only.
+
+V5-2 [VNAMED-DEFAULT-BRANCH]
+
+`origin/HEAD -> origin/vnamed`; `master` is a divergent stale branch. Any wiki/repo citation must name `vnamed` and HEAD `74dbe9b8`.
+
+V5-3 [CS-SURFACE-VENDORED-SWICLI]
+
+All 803 `.cs` files are under `libraries/swicli/`; do not describe MeTTaLog as a C# runtime.
+
+V5-4 [CORELIB-METTA-PL-UNTRACKED]
+
+`prolog/metta_lang/corelib.metta.pl` is untracked in the local checkout. Canonical stdlib evidence must cite tracked `corelib.metta`, `stdlib_mettalog.metta`, `metta_corelib.pl`, and `metta_compiler_lib*.pl`.
+
+V5-5 [COMPILER-OPTIN-INTERPRETER-DEFAULT]
+
+The compiler/transpiler is real, but `compile` defaults to `false`; docs should avoid implying compiler-by-default.
+
+V5-6 [PYTHON-HYPERON-OPTIONAL-BRIDGE]
+
+Python/Janus/HyperonPy/vspace integration is a bridge layer, not proof that MeTTaLog delegates evaluation to Rust Hyperon.
+
+V5-7 [SPACE-MULTI-WITH-PERSISTENCE-SCAFFOLD]
+
+Space model includes NB and asserted spaces, replace, save-space, and RDF persistency scaffolding. Durability claims should be scoped unless tested.
+
+V5-8 [METTALOG-Q3-CATCHALL-REPRODUCED]
+
+Unlike MeTTaTron, MeTTaLog's main interpreter path still enumerates matching rules. The typed-function `OrderFittest` subsystem does not eliminate the catchall quirk at the interpreter-definition layer.
+
+V5-9 [NGEISWEI-METTA-WAM-NO-MERGE-BASE-STALE]
+
+ngeiswei/metta-wam has no merge base with `origin/vnamed`; raw ahead counts are not directly interpretable as active fork work.
+
+V5-10 [PATHAM9-ZARIUQ-METTA-WAM-FULLY-BEHIND]
+
+patham9 and zariuq fork refs are direct stale merge bases with zero fork-only commits.
+
+15. Cluster-close edit batch suggestions
+
+C5-1: Update `Implementation Families+MeTTa Implementations` / MeTTa runtime table with a MeTTaLog row:
+
+- branch `vnamed`, HEAD `74dbe9b8`
+- label [INTERPRETER-COMPILER-DUAL-RUNTIME]
+- note default interpreter mode and opt-in compiler/transpiler
+- note optional Python/Hyperon/vspace bridge
+
+C5-2: Update `MeTTa Programming Language Full+Language Stack and Implementations`:
+
+- add Prolog-native runtime paragraph
+- explicitly distinguish from PeTTa (Prolog MeTTa subset/dispatch work) and MeTTaTron (Rust tree-walk runtime despite compiler name)
+- include Q-1/Q-2/Q-3 quirk row for MeTTaLog.
+
+C5-3: Update `Reference+GitHub Repositories`:
+
+- trueagi-io/metta-wam: active/default `vnamed`, not `master`
+- do not enumerate patham9/zariuq/ngeiswei as active traditions
+- if mentioned, group stale forks in one sentence with the no-merge-base caveat for ngeiswei.
+
+C5-4: Update cluster findings / memory:
+
+- record `corelib.metta.pl` as untracked local drift
+- record all 803 `.cs` files as `libraries/swicli/` vendored bridge, out-of-scope
+- record `compile=false` default.
+
+16. Methodology notes
+
+M5-1 [BRIEF-LINE-COUNT-DRIFT]
+
+Brief line-count examples for `metta_interp.pl` and `metta_compiler.pl` should be treated as inventory hints, not authoritative evidence. Current tracked counts are 6890 and 4252 respectively.
+
+M5-2 [UNTRACKED-SOURCE-LOOKING-FILE]
+
+`corelib.metta.pl` is source-looking but untracked. Future briefs should run `git status --short <file>` for any surprising canonical-looking file before assigning it normative weight.
+
+M5-3 [NO-MERGE-BASE-FORK-COUNTS]
+
+When a fork has no merge base, `git rev-list --left-right --count` is still useful but not semantically equivalent to ordinary ahead/behind. Reconciliation should require merge-base status beside raw counts.
+
+17. Tests not run
+
+I did not run MeTTaLog's test suite. This extraction is a static, citation-grade code and git-history audit against the pinned `vnamed` HEAD. Running tests in the source repo would write outside the current hyperon-wiki workspace and was not needed to answer the brief's research questions.
