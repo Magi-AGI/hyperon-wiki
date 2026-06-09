@@ -21,6 +21,7 @@
 
 Rails.application.config.after_initialize do
   require_relative '../../mod/url_fixes/lib/card/content/chunk/uri_extensions'
+  require_relative '../../mod/url_fixes/lib/chunk_autolink_guards'
   # HTML linkifier (RichText rendering path)
   begin
     require_relative '../../mod/url_fixes/lib/url_linkifier'
@@ -32,6 +33,12 @@ Rails.application.config.after_initialize do
   if defined?(Card::Content::Chunk::Uri)
     Card::Content::Chunk::Uri.prepend(UriExtensions)
     Rails.logger.info "=== UriExtensions module prepended to Card::Content::Chunk::Uri"
+  end
+
+  # T9: guard the auto-linker against nested anchors + filename pseudo-URLs.
+  if defined?(Card::Content::Chunk::Uri) && defined?(ChunkAutolinkGuards)
+    Card::Content::Chunk::Uri.singleton_class.prepend(ChunkAutolinkGuards)
+    Rails.logger.info "[URLFIX] ChunkAutolinkGuards prepended to Card::Content::Chunk::Uri.singleton_class"
   end
 
   # Prepend HtmlFormat patch so RichText HTML output is post-processed
