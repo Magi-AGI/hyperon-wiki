@@ -88,7 +88,18 @@ module Api
 
         render json: card_full_json(card), status: :created
       rescue ActiveRecord::RecordInvalid => e
-        render_error("validation_error", "Card validation failed", { errors: e.record.errors.full_messages })
+        # T3: a uniqueness ("already exists") error can fire spuriously *after* the
+        # card was actually written (rare race / post-write validation pass). If a
+        # live card by this name now holds the content we intended, the create
+        # effectively succeeded -- return it as success instead of a misleading
+        # error. A name collision with *different* content is a real conflict and
+        # is still surfaced as a validation error.
+        existing = (Card.fetch(name) rescue nil)
+        if existing && !existing.trash && existing.db_content.to_s.strip == content.to_s.strip
+          render json: card_full_json(existing).merge("already_existed" => true), status: :created
+        else
+          render_error("validation_error", "Card validation failed", { errors: e.record.errors.full_messages })
+        end
       end
 
       # PATCH /api/mcp/cards/:name

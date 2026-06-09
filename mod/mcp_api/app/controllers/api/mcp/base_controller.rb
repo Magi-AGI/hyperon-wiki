@@ -122,7 +122,9 @@ module Api
         render_error(
           "internal_error",
           "An unexpected error occurred",
-          { exception: exception.class.name },
+          # T2: include the underlying message, not just the class, so callers can
+          # see what actually failed instead of a bare "Card::Error".
+          { exception: exception.class.name, exception_message: exception.message },
           status: :internal_server_error
         )
       end
