@@ -29,6 +29,9 @@ module Api
           )
         end
 
+        # T7: optional ordering (sort=name|created|updated, dir=asc|desc).
+        apply_sort!(safe_query, params[:sort], params[:dir])
+
         # Execute query
         results = execute_safe_query(safe_query, limit, offset)
         total = count_query_results(safe_query)
@@ -46,6 +49,16 @@ module Api
       end
 
       private
+
+      # T7: map a friendly sort/dir to Decko's Card.search ordering.
+      def apply_sort!(safe_query, sort, dir)
+        column = { "name" => "name", "created" => "create", "created_at" => "create",
+                   "updated" => "update", "updated_at" => "update" }[sort.to_s]
+        return unless column
+
+        safe_query[:sort] = column
+        safe_query[:dir] = (dir.to_s == "asc" ? "asc" : "desc")
+      end
 
       def build_safe_query(query_params, limit, offset)
         safe_query = {}
@@ -128,6 +141,8 @@ module Api
         count_query = query.dup
         count_query.delete(:limit)
         count_query.delete(:offset)
+        count_query.delete(:sort)
+        count_query.delete(:dir)
         count_query[:return] = "count"
 
         Card::Auth.as(current_account.name) do
