@@ -17,6 +17,21 @@ module Api
         # Build safe query with enforced constraints
         safe_query = build_safe_query(query_params, limit, offset)
 
+        # T7: reject queries that produced no real filter (e.g. unrecognized keys,
+        # or raw CQL strings like "name ~ 'x'"). Without this guard the query
+        # degrades to Card.search(limit/offset) and silently returns EVERY card.
+        filter_keys = safe_query.keys.map(&:to_s) & %w[name type content updated_at created_at]
+        if filter_keys.empty?
+          return render_error(
+            "validation_error",
+            "Query must include at least one recognized filter (name, type, content, " \
+            "updated_at, or created_at). Raw CQL strings are not supported; pass e.g. {\"name\": \"synthesis\"}."
+          )
+        end
+
+        # T7: optional ordering (sort=name|created|updated, dir=asc|desc).
+        apply_sort!(safe_query, params[:sort], params[:dir])
+
         # Execute query
         results = execute_safe_query(safe_query, limit, offset)
         total = count_query_results(safe_query)
@@ -34,6 +49,16 @@ module Api
       end
 
       private
+
+      # T7: map a friendly sort/dir to Decko's Card.search ordering.
+      def apply_sort!(safe_query, sort, dir)
+        column = { "name" => "name", "created" => "create", "created_at" => "create",
+                   "updated" => "update", "updated_at" => "update" }[sort.to_s]
+        return unless column
+
+        safe_query[:sort] = column
+        safe_query[:dir] = (dir.to_s == "asc" ? "asc" : "desc")
+      end
 
       def build_safe_query(query_params, limit, offset)
         safe_query = {}
@@ -116,6 +141,8 @@ module Api
         count_query = query.dup
         count_query.delete(:limit)
         count_query.delete(:offset)
+        count_query.delete(:sort)
+        count_query.delete(:dir)
         count_query[:return] = "count"
 
         Card::Auth.as(current_account.name) do

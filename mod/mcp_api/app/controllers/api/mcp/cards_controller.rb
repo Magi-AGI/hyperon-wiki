@@ -177,6 +177,9 @@ module Api
         children_cards = fetch_children(@card, depth: depth).select { |c| can_view_card?(c) }
         children_cards = children_cards.reject { |c| detect_virtual_card(c) } unless include_virtual
 
+        # T7: optional ordering (sort=name|created|updated, dir=asc|desc).
+        children_cards = sort_cards(children_cards, params[:sort], params[:dir])
+
         # Apply pagination
         total = children_cards.size
         paginated_children = children_cards.drop(offset).take(limit)
@@ -526,6 +529,19 @@ module Api
       end
 
       private
+
+      # T7: sort an array of cards by a friendly field/direction (used by list_children).
+      def sort_cards(cards, sort, dir)
+        key = case sort.to_s
+              when "name" then ->(c) { c.name.to_s.downcase }
+              when "created", "created_at" then ->(c) { c.created_at }
+              when "updated", "updated_at" then ->(c) { c.updated_at }
+              end
+        return cards unless key
+
+        sorted = cards.sort_by(&key)
+        dir.to_s == "asc" ? sorted : sorted.reverse
+      end
 
       def set_card
         name = params[:name]
