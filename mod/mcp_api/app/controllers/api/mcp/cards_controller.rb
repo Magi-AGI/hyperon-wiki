@@ -50,10 +50,11 @@ module Api
         return render_forbidden_content unless can_view_card?(@card)
 
         if params[:rendered] == "true" || params[:rendered] == true
-          # Use as_bot for rendering since we already verified can_view_card?
-          # above. The user account may lack permission on nested subcards that
-          # are included via {{...}} nests, but bot can resolve all inclusions.
-          rendered_content = Card::Auth.as_bot do
+          # Render as the requesting user so nested {{...}} inclusions the user
+          # is NOT permitted to read are not resolved into the output. (Was
+          # as_bot, which leaked restricted nested content regardless of the
+          # requester's permissions.)
+          rendered_content = Card::Auth.as(current_account.name) do
             @card.format(:html).render(:core)
           end
           render json: card_full_json(@card, rendered_content: rendered_content)
