@@ -1,3 +1,9 @@
+# DEPRECATED 2026-05-08:
+#   Both targets (`#sidebar-breadcrumb` left and `#sidebar-right` content) are
+#   no longer in the live layout — the breadcrumb div was removed from
+#   Left Sidebar Layout, and the right sidebar is currently empty by design.
+#   This script still loads but is a no-op. Safe to delete in cleanup commit.
+#
 # Client-side sidebar builder: left breadcrumb + right TOC.
 #
 # Left sidebar (#sidebar-breadcrumb): shows hierarchy path for compound-named

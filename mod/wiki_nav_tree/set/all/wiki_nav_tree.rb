@@ -1,5 +1,13 @@
 # frozen_string_literal: true
 
+# DEPRECATED 2026-05-08:
+#   The live left sidebar nav now lives in the `*sidebar` card (HTML cardtype)
+#   as an explicit Decko-native Sandra Prime-first hierarchy with `{{...|view:link}}`
+#   inclusions; styling is in the `sandra ui styles` CSS card. The
+#   `view:wiki_nav_tree` family below is no longer referenced by any wiki card.
+#   Kept in tree for now; safe to remove this whole `mod/wiki_nav_tree/` directory
+#   in a follow-up cleanup commit (along with the matching SCSS).
+
 # Right-side card names that are metadata/system fields, not content pages.
 # Normalized to lowercase with spaces (underscores and mixed-case are handled
 # at comparison time in ok_nav_card?).

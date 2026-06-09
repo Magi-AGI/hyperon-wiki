@@ -1,5 +1,13 @@
 # frozen_string_literal: true
 
+# DEPRECATED 2026-05-08:
+#   Sidebar nav moved to card data (`*sidebar`); breadcrumbs are no longer
+#   shown (`<div id="sidebar-breadcrumb">` removed from Left Sidebar Layout).
+#   The `view :page_toc` may be SALVAGEABLE for the upcoming inline-TOC
+#   feature (Sandra spec moves the TOC to the top of the article column);
+#   if so, extract the Nokogiri h2/h3/h4 logic into a small dedicated mod
+#   instead of resurrecting this file.
+
 # Right-sidebar views: breadcrumbs and page table of contents.
 # Both are composed into view :page_sidebar (defined in layouts.rb).
 
