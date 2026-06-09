@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require "digest"
 
 module Api
   module Mcp
@@ -17,16 +18,20 @@ module Api
           FileUtils.mkdir_p(backup_dir)
 
           timestamp = Time.current.strftime("%Y%m%d_%H%M%S")
-          backup_filename = "magi_archive_backup_#{timestamp}.sql"
+          backup_filename = "magi_archive_backup_#{timestamp}.sql.gz"
           backup_path = backup_dir.join(backup_filename)
 
-          # Perform database backup
+          # Perform database backup (gzip-compressed)
           perform_backup(backup_path)
+
+          # T8: expose a checksum so the client can verify the bytes landed intact.
+          response.set_header("X-Backup-SHA256", Digest::SHA256.file(backup_path).hexdigest)
+          response.set_header("X-Backup-Filename", backup_filename)
 
           # Send file to client
           send_file backup_path,
                     filename: backup_filename,
-                    type: "application/sql",
+                    type: "application/gzip",
                     disposition: "attachment"
 
           # Clean up old backups (keep last 5)
@@ -48,7 +53,7 @@ module Api
             return render json: { backups: [], total: 0 }
           end
 
-          backups = Dir.glob(backup_dir.join("*.sql")).map do |path|
+          backups = Dir.glob(backup_dir.join("*.{sql,sql.gz}")).map do |path|
             file = File.new(path)
             {
               filename: File.basename(path),
@@ -74,7 +79,7 @@ module Api
           filename = params[:filename]
 
           # Security: ensure filename doesn't contain path traversal
-          unless filename.match?(/\A[a-zA-Z0-9_\-]+\.sql\z/)
+          unless filename.match?(/\A[a-zA-Z0-9_\-]+\.sql(?:\.gz)?\z/)
             return render json: {
               error: "invalid_filename",
               message: "Invalid backup filename"
@@ -90,9 +95,12 @@ module Api
             }, status: :not_found
           end
 
+          # T8: expose a checksum so the client can verify the bytes landed intact.
+          response.set_header("X-Backup-SHA256", Digest::SHA256.file(backup_path).hexdigest)
+
           send_file backup_path,
                     filename: filename,
-                    type: "application/sql",
+                    type: (filename.end_with?(".gz") ? "application/gzip" : "application/sql"),
                     disposition: "attachment"
         end
 
@@ -103,7 +111,7 @@ module Api
           filename = params[:filename]
 
           # Security: ensure filename doesn't contain path traversal
-          unless filename.match?(/\A[a-zA-Z0-9_\-]+\.sql\z/)
+          unless filename.match?(/\A[a-zA-Z0-9_\-]+\.sql(?:\.gz)?\z/)
             return render json: {
               error: "invalid_filename",
               message: "Invalid backup filename"
@@ -133,16 +141,21 @@ module Api
           # Get database configuration
           config = ActiveRecord::Base.connection_db_config.configuration_hash
 
+          # backup_path ends in .sql.gz; dump to the plain .sql then gzip it (T8).
+          sql_path = backup_path.to_s.sub(/\.gz\z/, "")
           case config[:adapter]
           when "postgresql", "postgis"
-            perform_postgres_backup(config, backup_path)
+            perform_postgres_backup(config, sql_path)
           when "mysql2"
-            perform_mysql_backup(config, backup_path)
+            perform_mysql_backup(config, sql_path)
           when "sqlite3"
-            perform_sqlite_backup(config, backup_path)
+            perform_sqlite_backup(config, sql_path)
           else
             raise "Unsupported database adapter: #{config[:adapter]}"
           end
+
+          # gzip -f replaces sql_path with sql_path + ".gz" (== backup_path)
+          raise "gzip failed" unless system("gzip", "-f", sql_path)
         end
 
         def perform_postgres_backup(config, backup_path)
@@ -189,7 +202,7 @@ module Api
         end
 
         def cleanup_old_backups(backup_dir, keep_count = 5)
-          backups = Dir.glob(backup_dir.join("*.sql"))
+          backups = Dir.glob(backup_dir.join("*.{sql,sql.gz}"))
                       .map { |path| [path, File.mtime(path)] }
                       .sort_by { |_, mtime| mtime }
                       .reverse
