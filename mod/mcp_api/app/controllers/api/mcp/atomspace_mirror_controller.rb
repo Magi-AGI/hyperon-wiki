@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_dependency "atomspace/errors"
-require_dependency "atomspace/read_client"
-require_dependency "atomspace/read_consistency_port"
-require_dependency "atomspace/observability"
+require_relative "../../../../lib/atomspace/errors"
+require_relative "../../../../lib/atomspace/read_client"
+require_relative "../../../../lib/atomspace/read_consistency_port"
+require_relative "../../../../lib/atomspace/observability"
 
 module Api
   module Mcp

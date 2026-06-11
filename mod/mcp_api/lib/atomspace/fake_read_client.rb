@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_dependency "atomspace/read_client"
-require_dependency "atomspace/atom"
+require_relative "read_client"
+require_relative "atom"
 
 module Atomspace
   # TEST/DEV ONLY. Bound via config/initializers/atomspace_read_client.rb guarded by

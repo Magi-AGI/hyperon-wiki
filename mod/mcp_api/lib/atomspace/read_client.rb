@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_dependency "atomspace/errors"
-require_dependency "atomspace/atom"
+require_relative "errors"
+require_relative "atom"
 
 module Atomspace
   # Port to the sidecar Hyperon Space. The Phase 4 read-IPC verb(s) are undefined upstream
