@@ -555,34 +555,54 @@ module Api
         dir.to_s == "asc" ? sorted : sorted.reverse
       end
 
+      # Locate a trashed junction card (e.g. "X+tag") by its parts. Trashed
+      # junction cards have null name/key columns, so name-based lookups can't
+      # find them; resolve by left_id+right_id instead.
+      def find_trashed_junction(name)
+        cardname = name.to_name
+        return nil unless cardname.parts.size > 1
+
+        left  = Card.fetch(cardname.left_name.to_s)
+        right = Card.fetch(cardname.right_name.to_s)
+        return nil unless left && right
+
+        Card.where(left_id: left.id, right_id: right.id, trash: true).first
+      end
+
       def set_card
         name = params[:name]
         # Look in trash when restoring from trash
         look_in_trash = action_name == "restore" &&
                         (params[:from_trash] == true || params[:from_trash] == "true")
-        
-        # First check if card exists at all (as bot to bypass permissions)
-        card_exists = Card::Auth.as_bot do
-          Card.exists?(name) || (look_in_trash && Card.where(name: name, trash: true).exists?)
-        end
 
-        unless card_exists
-          return render_error("not_found", "Card '#{name}' not found", {}, status: :not_found)
-        end
-
-        # Now fetch with user's permissions
+        # Fetch with the user's permissions
         @card = Card::Auth.as(current_account.name) do
           Card.fetch(name, look_in_trash: look_in_trash)
         end
 
-        # If card exists but fetch returned nil, it's a permission issue
-        unless @card
+        # Trashed junction cards ("X+tag") have null name/key columns, so the
+        # name-based fetch above misses them; resolve by left_id+right_id.
+        if @card.nil? && look_in_trash
+          @card = Card::Auth.as_bot { find_trashed_junction(name) }
+        end
+
+        return if @card
+
+        # Distinguish "doesn't exist" from "exists but no permission".
+        exists = Card::Auth.as_bot do
+          Card.exists?(name) ||
+            (look_in_trash && (Card.where(name: name, trash: true).exists? ||
+                               !find_trashed_junction(name).nil?))
+        end
+        if exists
           render_error(
             "permission_denied",
             "You do not have permission to access '#{name}'",
             { hint: "This card exists but requires elevated permissions to view." },
             status: :forbidden
           )
+        else
+          render_error("not_found", "Card '#{name}' not found", {}, status: :not_found)
         end
       end
 
@@ -1258,6 +1278,10 @@ end
 
         @card.trash = false
         @card.save!
+        # Junction cards ("X+tag") only resolve by name again after their cache
+        # entry is cleared; without this the restored card stays unfetchable by
+        # name until the next reload.
+        @card.expire
 
         render json: {
           success: true,
