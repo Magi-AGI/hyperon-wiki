@@ -4,6 +4,9 @@ require_relative "../../../../lib/atomspace/errors"
 require_relative "../../../../lib/atomspace/read_client"
 require_relative "../../../../lib/atomspace/read_consistency_port"
 require_relative "../../../../lib/atomspace/observability"
+# Decko's routes.rb `require`s controllers at boot, before the mod's concerns autoload
+# resolves; load the concern explicitly so `include AtomspaceReadFilter` can't NameError.
+require_relative "../../concerns/atomspace_read_filter"
 
 module Api
   module Mcp
