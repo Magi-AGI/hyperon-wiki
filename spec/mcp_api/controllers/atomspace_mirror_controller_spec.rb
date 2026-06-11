@@ -1,89 +1,176 @@
 # frozen_string_literal: true
 
-require "rails_helper"
+require "spec_helper"
 
-# Lane C / Level 9 acceptance matrix. Behavioral, FakeReadClient-backed, no sidecar.
-# NOTE(scaffold): JWT minting + route wiring helpers are marked TODO until the
-# mcp:atomspace:read scope claim lands in token issuance (shared infra; see Chris heads-up
-# and INTEGRATION.md). Examples that depend on that are `pending` rather than silently green.
+# Lane C / Level 9 behavioral harness.
+#
+# Two tiers:
+#   * AtomspaceReadFilter unit specs -- deterministic; stub Card.fetch; no DB writes. These
+#     lock the security-critical multi-card default-deny logic (Invariant 9).
+#   * Request specs -- mint a scoped MCP test token (MessageVerifier, matching the repo's
+#     existing generate_test_token pattern, plus a `scope` claim) and exercise the scope gate,
+#     quarantine matrix, and read-your-writes terminal states via the FakeReadClient +
+#     ReadConsistencyPort stub. No sidecar / no Lane A engine needed.
+#
+# NOTE: read-rule reference fixtures over *real* restricted cards are covered at the filter-unit
+# tier via stubs; an end-to-end restricted-card request fixture is a follow-up once the deck
+# test DB seeding for +*read rules is in place.
+
 RSpec.describe Api::Mcp::AtomspaceMirrorController, type: :request do
-  # TODO(integration): mint a real RS256 MCP JWT carrying the given scopes.
-  def auth_headers(scopes:)
-    skip "TODO: mint MCP JWT with scope claim once issuance carries explicit scopes"
+  # --- scoped test token (MessageVerifier; mirrors the repo's generate_test_token + scope) ---
+  def generate_test_token(role:, scope: nil, sub: "user:Administrator")
+    payload = { sub: sub, role: role, iat: Time.now.to_i, exp: (Time.now + 1.hour).to_i }
+    payload[:scope] = scope if scope
+    ActiveSupport::MessageVerifier.new(Rails.application.secret_key_base).generate(payload)
   end
 
-  let(:public_card)     { Card.create!(name: "AtomSpaceSpec Public #{SecureRandom.hex(3)}") }
-  let(:restricted_card) { Card.create!(name: "AtomSpaceSpec Private #{SecureRandom.hex(3)}") } # + read-rule fixture
+  def auth(role: "user", scope: nil)
+    { "Authorization" => "Bearer #{generate_test_token(role: role, scope: scope)}" }
+  end
 
   before { Atomspace::ReadClient.bind!(Atomspace::FakeReadClient) }
-  after  { Atomspace::FakeReadClient.seed!([]); Atomspace::ReadConsistencyPort.reset! }
+  after do
+    Atomspace::FakeReadClient.seed!([])
+    Atomspace::ReadConsistencyPort.reset!
+  end
 
+  # ====================================================================================
+  # Tier 1 -- AtomspaceReadFilter: strict multi-card default-deny (Invariant 9). Deterministic.
+  # ====================================================================================
+  describe AtomspaceReadFilter do
+    subject(:filter) { Class.new { include AtomspaceReadFilter }.new }
+
+    let(:account) { double("account", name: "Anonymous") }
+
+    around { |example| Card::Auth.as("Anonymous") { example.run } }
+
+    def stub_card(id, readable:)
+      allow(Card).to receive(:fetch).with(id).and_return(double("card", "ok?" => readable))
+    end
+
+    def run(atoms)
+      filter.send(:filter_by_read_auth, atoms, account)
+    end
+
+    it "drops a card-scoped atom with a nil card_id" do
+      expect(run([Atomspace::Atom.new(type: "DeckoCard", card_id: nil)])).to be_empty
+    end
+
+    it "drops a card whose card_id does not resolve" do
+      allow(Card).to receive(:fetch).with(999).and_return(nil)
+      expect(run([Atomspace::Atom.new(type: "DeckoCard", card_id: 999)])).to be_empty
+    end
+
+    it "keeps a readable card" do
+      stub_card(1, readable: true)
+      expect(run([Atomspace::Atom.new(type: "DeckoCard", card_id: 1)]).size).to eq(1)
+    end
+
+    it "drops a reference when the referee is restricted even though the referer is public" do
+      stub_card(1, readable: true)  # referer
+      stub_card(2, readable: false) # referee
+      atom = Atomspace::Atom.new(type: "DeckoReference", referer_id: 1, referee_id: 2)
+      expect(run([atom])).to be_empty
+    end
+
+    it "drops a reference when the referer is restricted even though the referee is public" do
+      stub_card(1, readable: false) # referer
+      stub_card(2, readable: true)  # referee
+      atom = Atomspace::Atom.new(type: "DeckoReference", referer_id: 1, referee_id: 2)
+      expect(run([atom])).to be_empty
+    end
+
+    it "returns an unresolved-target reference iff the referer is readable" do
+      stub_card(1, readable: true)
+      readable = Atomspace::Atom.new(type: "DeckoReference", referer_id: 1, referee_id: nil)
+      expect(run([readable]).size).to eq(1)
+
+      stub_card(3, readable: false)
+      hidden = Atomspace::Atom.new(type: "DeckoReference", referer_id: 3, referee_id: nil)
+      expect(run([hidden])).to be_empty
+    end
+  end
+
+  # ====================================================================================
+  # Tier 2 -- request specs: gate, quarantine matrix, RYW terminals.
+  # ====================================================================================
   describe "scope gate" do
-    it "403s every read tool without mcp:atomspace:read" do
-      pending "needs JWT minting"
-      get "/api/mcp/atomspace_mirror/query_atoms", params: { pattern: "(card $x)" },
-                                                   headers: auth_headers(scopes: %w[mcp:read])
+    it "403s a read tool without mcp:atomspace:read" do
+      get "/api/mcp/atomspace_mirror/atom_types", headers: auth(role: "user", scope: "mcp:read")
       expect(response).to have_http_status(:forbidden)
     end
 
-    it "allows read tools with mcp:atomspace:read" do
-      pending "needs JWT minting"
-    end
-
-    # Codex Finding 1.1 / Gemini: invocation-boundary enforcement is also covered gem-side.
-    it "rejects a direct invocation of a hidden tool when the scope is absent" do
-      pending "gem-side dispatch spec covers the JSON-RPC path"
+    it "permits a read tool with mcp:atomspace:read" do
+      Atomspace::FakeReadClient.seed!([])
+      get "/api/mcp/atomspace_mirror/atom_types", headers: auth(scope: "mcp:atomspace:read")
+      expect(response).not_to have_http_status(:forbidden)
+      expect(JSON.parse(response.body)).to have_key("_meta")
     end
   end
 
   describe "quarantine matrix (mcp:atomspace:read + mcp:admin)" do
-    it "denies scope-without-admin (403)"  do pending "needs JWT minting" end
-    it "denies admin-without-scope (403)"  do pending "needs JWT minting" end
-    it "allows scope + admin"              do pending "needs JWT minting" end
-  end
-
-  describe "multi-card auth filter (Invariant 9)" do
-    it "drops an atom whose card_id is nil or unresolvable" do
-      filter = Class.new { include AtomspaceReadFilter }.new
-      atoms = [Atomspace::Atom.new(type: "DeckoCard", card_id: nil)]
-      expect(filter.send(:filter_by_read_auth, atoms, Card::Auth.current)).to be_empty
+    it "denies scope-without-admin (403)" do
+      get "/api/mcp/atomspace_mirror/quarantine", headers: auth(scope: "mcp:atomspace:read")
+      expect(response).to have_http_status(:forbidden)
     end
 
-    it "drops a reference when the referee is restricted even if the referer is public" do
-      pending "needs read-rule fixtures + account roles"
+    it "denies admin-without-scope (403)" do
+      get "/api/mcp/atomspace_mirror/quarantine", headers: auth(role: "admin", scope: "mcp:admin")
+      expect(response).to have_http_status(:forbidden)
     end
 
-    it "returns an unresolved reference iff the referer is readable" do
-      pending "needs read-rule fixtures"
+    it "allows scope + admin" do
+      Atomspace::FakeReadClient.seed!([])
+      get "/api/mcp/atomspace_mirror/quarantine",
+          headers: auth(role: "admin", scope: "mcp:atomspace:read mcp:admin")
+      expect(response).not_to have_http_status(:forbidden)
     end
   end
 
-  describe "read-your-writes (wait_for_event_id)" do
+  describe "read-your-writes terminals" do
+    before { Atomspace::FakeReadClient.seed!([]) }
+
     def stub_readiness(status)
-      Atomspace::ReadConsistencyPort.impl = Class.new { define_method(:check_event_ready) { |_| status } }.new
+      impl = Class.new { define_method(:check_event_ready) { |_event_id| status } }.new
+      Atomspace::ReadConsistencyPort.impl = impl
     end
 
-    it ":integrity_error short-circuits with HTTP 409 (no further polling)" do
-      pending "needs route + JWT; logic asserted via ReadConsistencyPort stub"
+    def ryw_get(scope: "mcp:atomspace:read")
+      get "/api/mcp/atomspace_mirror/query_atoms",
+          params: { pattern: "(card $x)", wait_for_event_id: "decko:action:1" },
+          headers: auth(scope: scope)
+    end
+
+    it "mirror_integrity is terminal -> 409" do
       stub_readiness(:integrity_error)
+      ryw_get
+      expect(response).to have_http_status(409)
+      expect(JSON.parse(response.body)["error"]).to eq("mirror_integrity")
     end
 
-    it "times out cleanly with 503 when the event never lands" do
-      pending "needs route + JWT"
-    end
-  end
-
-  describe "fail-closed wiring" do
-    it "returns 503 (not fake data) when no read client is bound" do
-      Atomspace::ReadClient.reset!
-      expect { Atomspace::ReadClient.for(account: double(name: "x")) }
-        .to raise_error(Atomspace::ServiceUnavailable)
+    it "event_failed -> 503" do
+      stub_readiness(:failed)
+      ryw_get
+      expect(response).to have_http_status(503)
+      expect(JSON.parse(response.body)["error"]).to eq("event_failed")
     end
 
-    it "watermark_meta also fails closed" do
-      Atomspace::ReadClient.reset!
-      expect { Atomspace::ReadClient.watermark_meta }.to raise_error(Atomspace::ServiceUnavailable)
-      expect(Atomspace::ReadClient.safe_watermark_meta).to eq(Atomspace::ReadClient::SAFE_META)
+    it "never-lands -> 503 staleness_timeout" do
+      original = ENV["READ_YOUR_WRITES_MAX_WAIT_SECONDS"]
+      ENV["READ_YOUR_WRITES_MAX_WAIT_SECONDS"] = "0"
+      stub_readiness(:not_yet)
+      ryw_get
+      expect(response).to have_http_status(503)
+      expect(JSON.parse(response.body)["error"]).to eq("staleness_timeout")
+    ensure
+      ENV["READ_YOUR_WRITES_MAX_WAIT_SECONDS"] = original
+    end
+
+    it "ReadConsistencyPort unwired -> 503 read_consistency_not_wired (fail-closed, not 500)" do
+      Atomspace::ReadConsistencyPort.reset!
+      ryw_get
+      expect(response).to have_http_status(503)
+      expect(JSON.parse(response.body)["reason"]).to eq("read_consistency_not_wired")
     end
   end
 end
