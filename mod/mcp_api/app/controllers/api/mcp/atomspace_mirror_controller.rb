@@ -16,10 +16,10 @@ module Api
 
       before_action :require_atomspace_read_scope!, except: %i[quarantine_index quarantine_delete]
       before_action :require_quarantine_scope!, only: %i[quarantine_index quarantine_delete]
-      rescue_from Atomspace::ServiceUnavailable, with: :render_service_unavailable
-      # Read-your-writes before Lane A's L7 read_consistency is wired -> fail-closed 503,
-      # not a generic 500 (Codex Finding 4).
-      rescue_from Atomspace::ReadConsistencyPort::NotWired, with: :render_service_unavailable
+      rescue_from Atomspace::ServiceUnavailable, with: :render_read_client_unavailable
+      # Read-your-writes before Lane A's L7 read_consistency is wired -> fail-closed 503, not a
+      # generic 500, AND with a distinct signal reason for triage (Codex Findings 4 + 2).
+      rescue_from Atomspace::ReadConsistencyPort::NotWired, with: :render_consistency_unavailable
 
       # --- card-scoped, read-your-writes-aware ---
       def query_atoms
@@ -137,9 +137,18 @@ module Api
         false
       end
 
-      def render_service_unavailable(_error)
-        Atomspace::Observability.alert(signal_class: 3, payload: { signal: "read_client_unbound" })
-        render json: { error: "atomspace_unavailable", _meta: Atomspace::ReadClient::SAFE_META }, status: 503
+      def render_read_client_unavailable(_error)
+        render_unavailable("read_client_unbound")
+      end
+
+      def render_consistency_unavailable(_error)
+        render_unavailable("read_consistency_not_wired")
+      end
+
+      def render_unavailable(reason)
+        Atomspace::Observability.alert(signal_class: 3, payload: { signal: reason })
+        render json: { error: "atomspace_unavailable", reason: reason, _meta: Atomspace::ReadClient::SAFE_META },
+               status: 503
       end
 
       # Auth gates. Match the mcp_api render-and-halt idiom: a before_action that renders sets
