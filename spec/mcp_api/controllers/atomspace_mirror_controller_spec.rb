@@ -17,15 +17,15 @@ require "spec_helper"
 # test DB seeding for +*read rules is in place.
 
 RSpec.describe Api::Mcp::AtomspaceMirrorController, type: :request do
-  # --- scoped test token (MessageVerifier; mirrors the repo's generate_test_token + scope) ---
-  def generate_test_token(role:, scope: nil, sub: "user:Administrator")
-    payload = { sub: sub, role: role, iat: Time.now.to_i, exp: (Time.now + 1.hour).to_i }
-    payload[:scope] = scope if scope
-    ActiveSupport::MessageVerifier.new(Rails.application.secret_key_base).generate(payload)
-  end
-
-  def auth(role: "user", scope: nil)
-    { "Authorization" => "Bearer #{generate_test_token(role: role, scope: scope)}" }
+  # Stub the REAL verify path. BaseController authenticates via McpApi::JwtService.verify_token
+  # (RS256), not MessageVerifier -- so we stub it to return a controlled payload (string keys,
+  # as the controller reads them). This exercises the actual auth + scope-gate code path without
+  # minting RS256 tokens (Codex). `sub` resolves @current_mcp_account via find_mcp_account.
+  def auth(role: "user", scope: nil, sub: "user:Administrator")
+    payload = { "sub" => sub, "role" => role }
+    payload["scope"] = scope if scope
+    allow(McpApi::JwtService).to receive(:verify_token).and_return(payload)
+    { "Authorization" => "Bearer test-token" }
   end
 
   before { Atomspace::ReadClient.bind!(Atomspace::FakeReadClient) }
