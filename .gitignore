@@ -111,8 +111,13 @@ mattermost_exports/
 mattermost_config.json
 
 # Local caches / data dumps (weekly cleanup)
+# Content-pass raw source staging (large, regenerated; wiki is authoritative)
 __pycache__/
+**/__pycache__/
 *.pyc
 /raw_data_exports/
 /publication_texts/
 /transcript_exports/
+
+# Archived one-off ingestion scratch and state trackers
+/scripts/archive/
