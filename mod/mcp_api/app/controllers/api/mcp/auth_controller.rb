@@ -219,7 +219,8 @@ module Api
         McpApi::JwtService.generate_token(
           role: role,
           api_key_id: api_key_id,
-          expires_in: token_ttl
+          expires_in: token_ttl,
+          scopes: McpApi::AtomspaceGrants.scopes_for(api_key_id) # explicit grant only
         )
       end
 
@@ -234,7 +235,8 @@ module Api
         McpApi::JwtService.generate_token(
           role: role,
           api_key_id: api_key_id,
-          expires_in: token_ttl
+          expires_in: token_ttl,
+          scopes: McpApi::AtomspaceGrants.scopes_for(api_key_id) # explicit grant only
         )
       end
 
