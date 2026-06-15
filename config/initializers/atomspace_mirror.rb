@@ -19,9 +19,15 @@ rescue LoadError => e
   Rails.logger.warn("[atomspace_mirror] mod code not loaded: #{e.message}")
 end
 
-if defined?(ActiveRecord::Migrator)
+if defined?(ActiveRecord) && Rails.application
   migrate_dir = Rails.root.join("mod", "atomspace_mirror", "db", "migrate").to_s
-  if Dir.exist?(migrate_dir) && !ActiveRecord::Migrator.migrations_paths.include?(migrate_dir)
-    ActiveRecord::Migrator.migrations_paths << migrate_dir
+  if Dir.exist?(migrate_dir)
+    # `rake db:migrate` derives its migration paths from config.paths["db/migrate"], NOT from
+    # ActiveRecord::Migrator.migrations_paths (verified on dev 2026-06-15). Append to BOTH.
+    app_paths = Rails.application.config.paths["db/migrate"]
+    app_paths << migrate_dir unless app_paths.to_a.include?(migrate_dir)
+    if defined?(ActiveRecord::Migrator) && !ActiveRecord::Migrator.migrations_paths.include?(migrate_dir)
+      ActiveRecord::Migrator.migrations_paths << migrate_dir
+    end
   end
 end
