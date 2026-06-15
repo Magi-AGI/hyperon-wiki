@@ -22,31 +22,57 @@ Self-contained engine foundation — **no drain / no sidecar I/O yet**:
   method (§10 helper; used by the §10 drain guard, §3 reset rake, and L7 readiness).
 - `lib/read_consistency.rb` — `ReadConsistency.check_event_ready(event_id)` (L7 / §4). Dispatches
   by `event_kind` first; fails closed (`:integrity_error`) on any corrupt combination.
-- `lib/atomspace_mirror.rb` — require chain for the above (mod `lib/` is not autoloaded).
-- `lib/atomspace_mirror/engine.rb` — `Rails::Engine` that appends the mod's `db/migrate` to the
-  app migration path (required for `decko update` to run the migration; see below).
-- `lib/card/mod/atomspace_mirror.rb` — Decko mod entry; auto-required at boot, requires the engine
-  then `lib/atomspace_mirror.rb` (see "Loading & migration path" below).
+- `lib/atomspace_mirror.rb` — require chain for the models + read-consistency.
+- **`config/initializers/atomspace_mirror.rb`** (deck-level, not in this mod dir) — the wiring that
+  actually loads the mod and registers its migration path. See below.
 
 ## Loading & migration path
 
-Follows the repo's local-mod convention (cf. `mod/mcp_api`):
+**Decko does not auto-load a deck-local mod's Ruby, and `decko update` does NOT run a mod's
+`db/migrate`** (verified on the dev box 2026-06-15: a `lib/card/mod/<name>.rb` entry + a
+`Rails::Engine` are never loaded at boot, and `decko update`'s schema-migration step ignores
+ActiveRecord's migration path — which is why `mod/mcp_api`'s own migration never ran). Deck-local
+mods in this deck are wired by **explicit requires in the deck config** (e.g. `mcp_api` in
+`config/routes.rb`).
 
-- `lib/card/mod/atomspace_mirror.rb` is the entry Decko auto-requires for mods shipping Ruby under
-  `lib/card/mod/`. It requires the engine, then `lib/atomspace_mirror.rb` (the models +
-  read-consistency). Decko does not autoload mod `lib/`, so the require chain is explicit.
-- `lib/atomspace_mirror/engine.rb` (`AtomspaceMirror::Engine < Rails::Engine`) appends the mod's
-  `db/migrate` to the application migration path (`app.config.paths["db/migrate"]` +
-  `ActiveRecord::Migrator.migrations_paths`). **This is required:** Decko does NOT auto-discover a
-  mod's `db/migrate` — without the engine append, the deck's migration path is only the deck-root
-  `db/migrate` (verified on the dev box 2026-06-15; `mod/mcp_api`'s own `db/migrate` never ran for
-  exactly this reason — its engine omits the append). With the append, `decko update` /
-  `rake db:migrate` run the migration and it tracks in the standard `schema_migrations` table.
+So this mod is wired by the deck-level **`config/initializers/atomspace_mirror.rb`**, which:
+1. `require`s `mod/atomspace_mirror/lib/atomspace_mirror` (models + read-consistency) so they load
+   at boot (Decko does not autoload mod `lib/`);
+2. appends `mod/atomspace_mirror/db/migrate` to `ActiveRecord::Migrator.migrations_paths` so a
+   standard Rails migration run picks up the schema migration.
 
-**Verification (dev box, 2026-06-15):** the migration DDL was applied on dev (against PG 17.9) and
-**all schema checks passed** — 4 tables, 6 indexes (correct partials/uniques), 3 CHECK constraints,
-single seeded `mirror_state` row (`draining_enabled=false`), and a rejected second-row insert — then
-rolled back to pristine. The engine-append discovery path is the fix for `decko update` pickup.
+## Deploy
+
+The migration runs via **`rake db:migrate`**, not `decko update`.
+
+```bash
+# preflight: confirm Rails.env + DB host/db identity (dev vs prod)
+RAILS_ENV=production bundle exec ruby -e 'require "./config/environment"; \
+  c=ActiveRecord::Base.connection_db_config.configuration_hash; puts "env=#{Rails.env} host=#{c[:host]} db=#{c[:database]}"'
+
+# snapshot the DB first (RDS console snapshot, or a version-matched pg_dump)
+
+# pre-check: record schema_migrations count; confirm 20260614000001 not yet applied
+RAILS_ENV=production bundle exec ruby -e 'require "./config/environment"; \
+  v=ActiveRecord::Base.connection.select_values("SELECT version FROM schema_migrations"); \
+  puts "count=#{v.size} has=#{v.include?(%q{20260614000001})}"'
+
+# apply (targeted is safest; the initializer must be present so the path is registered)
+RAILS_ENV=production bundle exec rake db:migrate:up VERSION=20260614000001
+
+# post-check: count +1, version present, four mirror_* tables exist
+```
+
+**Rollback** (additive + exactly reversible — touches no existing table):
+```bash
+RAILS_ENV=production bundle exec ruby -e 'require "./config/environment"; c=ActiveRecord::Base.connection; \
+  c.execute("DROP TABLE IF EXISTS mirror_reconcile_runs, mirror_bootstrap_runs, mirror_outbox, mirror_state CASCADE"); \
+  c.execute("DELETE FROM schema_migrations WHERE version = " + c.quote("20260614000001"))'
+```
+
+> **Note:** the dev box's `pg_dump` (v14) is older than the RDS server (PG 17) — `pg_dump` and the
+> MCP `admin_backup` fail with a version mismatch. Use an RDS console snapshot until the client is
+> upgraded (separate maintenance task).
 
 ## Deferred (NOT in Slice 1)
 
