@@ -12,11 +12,14 @@
 #      migration. NOTE: the migration runs via `rake db:migrate`, NOT `decko update`
 #      (see mod/atomspace_mirror/README.md "Deploy").
 #
-# Defensive: never block app boot if the mod files are absent (e.g. a branch/deploy without the mod).
-begin
-  require_relative "../../mod/atomspace_mirror/lib/atomspace_mirror"
-rescue LoadError => e
-  Rails.logger.warn("[atomspace_mirror] mod code not loaded: #{e.message}")
+# Load the mod's models + read-consistency. If the entry file is ABSENT (a branch/deploy without
+# the mod), warn and skip so boot still succeeds. If it IS present but raises while loading, let it
+# fail loudly -- do NOT boot with the models / ReadConsistency silently missing.
+mod_entry = File.expand_path("../../mod/atomspace_mirror/lib/atomspace_mirror.rb", __dir__)
+if File.exist?(mod_entry)
+  require mod_entry
+else
+  Rails.logger.warn("[atomspace_mirror] mod entry not found at #{mod_entry}; skipping load")
 end
 
 if defined?(ActiveRecord) && Rails.application

@@ -38,7 +38,8 @@ mods in this deck are wired by **explicit requires in the deck config** (e.g. `m
 So this mod is wired by the deck-level **`config/initializers/atomspace_mirror.rb`**, which:
 1. `require`s `mod/atomspace_mirror/lib/atomspace_mirror` (models + read-consistency) so they load
    at boot (Decko does not autoload mod `lib/`);
-2. appends `mod/atomspace_mirror/db/migrate` to `ActiveRecord::Migrator.migrations_paths` so a
+2. appends `mod/atomspace_mirror/db/migrate` to **`config.paths["db/migrate"]`** (the source
+   `rake db:migrate` actually reads) and to `ActiveRecord::Migrator.migrations_paths`, so a
    standard Rails migration run picks up the schema migration.
 
 ## Deploy
