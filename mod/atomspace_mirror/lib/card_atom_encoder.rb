@@ -113,14 +113,15 @@ module CardAtomEncoder
 
   # --- helpers ---
 
-  # Card::Change#field may be the name string or the raw integer index -- normalize to the name.
-  # A corrupt out-of-range integer index raises rather than encoding a bogus "field".
+  # Card::Change#field may be the name string or the raw integer index -- normalize to a name and
+  # validate it against the locked TRACKED_FIELDS set. A corrupt/unknown field (out-of-range index
+  # OR an unexpected name) raises rather than encoding a bogus change -- this surfaces any new Decko
+  # tracked field for a deliberate contract update instead of leaking it silently (Codex 2026-06-21).
   def field_name(raw)
-    return raw.to_s unless raw.is_a?(Integer)
-    unless (0...TRACKED_FIELDS.size).cover?(raw)
-      raise ArgumentError, "corrupt card_changes.field index #{raw} (outside TRACKED_FIELDS)"
-    end
-    TRACKED_FIELDS[raw]
+    name = raw.is_a?(Integer) && (0...TRACKED_FIELDS.size).cover?(raw) ? TRACKED_FIELDS[raw] : raw.to_s
+    return name if TRACKED_FIELDS.include?(name)
+
+    raise ArgumentError, "unknown/corrupt card_changes.field #{raw.inspect} (not in TRACKED_FIELDS)"
   end
 
   # pre_state old-value lookup, tolerant of string or symbol keys (distinguishes absent from nil).

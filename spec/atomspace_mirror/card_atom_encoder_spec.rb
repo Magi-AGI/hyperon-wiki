@@ -191,7 +191,12 @@ RSpec.describe CardAtomEncoder do
 
     it "raises on a corrupt out-of-range integer card_changes.field index" do
       a = action(card, card_changes: [change(99, "x")])
-      expect { enc(a) }.to raise_error(ArgumentError, /corrupt card_changes.field/)
+      expect { enc(a) }.to raise_error(ArgumentError, /card_changes.field/)
+    end
+
+    it "raises on an unknown card_changes.field name not in TRACKED_FIELDS" do
+      a = action(card, card_changes: [change("codename", "x")]) # not a tracked field (V5-PROTOCOL-2)
+      expect { enc(a) }.to raise_error(ArgumentError, /not in TRACKED_FIELDS/)
     end
   end
 
