@@ -9,6 +9,14 @@ require "active_support/core_ext/object/blank"
 require_relative "../../mod/atomspace_mirror/lib/card_atom_encoder"
 
 RSpec.describe CardAtomEncoder do
+  NO_AUTH = { current_id: nil, as_id: nil }.freeze
+
+  # encode wrapper: auth is mandatory, so default tests to the explicit "unavailable" snapshot
+  # unless a case overrides it.
+  def enc(action_obj, **over)
+    described_class.encode(action_obj, **{ auth: NO_AUTH }.merge(over))
+  end
+
   def card(**over)
     OpenStruct.new({
       id: 17120, name: "Some Card", key: "some_card", codename: nil, type_id: 6,
@@ -51,9 +59,16 @@ RSpec.describe CardAtomEncoder do
     atom_of(atoms, kind)["fields"].map(&:first)
   end
 
+  describe "input contract" do
+    it "requires auth: (raises when omitted) so the dual-actor snapshot cannot silently regress" do
+      expect { described_class.encode(action(card)) }.to raise_error(ArgumentError)
+      expect { described_class.encode(action(card), auth: {}) }.to raise_error(ArgumentError, /current_id/)
+    end
+  end
+
   describe "delete actions" do
     let(:deleted_card) { card(trash: true, db_content: "", references_out: [ref]) }
-    let(:atoms) { described_class.encode(action(deleted_card, action_type: :delete)) }
+    let(:atoms) { enc(action(deleted_card, action_type: :delete)) }
 
     it "emits a DeckoCard with Trash=true and the full ordered 14-field arity" do
       expect(order_of(atoms, "DeckoCard")).to eq(
@@ -73,28 +88,27 @@ RSpec.describe CardAtomEncoder do
 
   describe "draft actions" do
     it "emits zero atoms" do
-      expect(described_class.encode(action(card, draft: true))).to eq([])
+      expect(enc(action(card, draft: true))).to eq([])
     end
   end
 
   describe "DeckoCard field encoding" do
     it "uses NoCodename when codename is nil, else the codename symbol" do
-      expect(fields_of(described_class.encode(action(card)), "DeckoCard")["Codename"]).to eq("sym" => "NoCodename")
-      withcn = fields_of(described_class.encode(action(card(codename: "mod_x"))), "DeckoCard")
-      expect(withcn["Codename"]).to eq("sym" => "mod_x")
+      expect(fields_of(enc(action(card)), "DeckoCard")["Codename"]).to eq("sym" => "NoCodename")
+      expect(fields_of(enc(action(card(codename: "mod_x"))), "DeckoCard")["Codename"]).to eq("sym" => "mod_x")
     end
 
     it "uses NoLeft / NoRight sentinels when null, else the integer id" do
-      f = fields_of(described_class.encode(action(card)), "DeckoCard")
+      f = fields_of(enc(action(card)), "DeckoCard")
       expect(f["LeftId"]).to eq("sym" => "NoLeft")
       expect(f["RightId"]).to eq("sym" => "NoRight")
-      f2 = fields_of(described_class.encode(action(card(left_id: 5, right_id: 6))), "DeckoCard")
+      f2 = fields_of(enc(action(card(left_id: 5, right_id: 6))), "DeckoCard")
       expect(f2["LeftId"]).to eq(5)
       expect(f2["RightId"]).to eq(6)
     end
 
     it "encodes Trash as a native JSON boolean and Content as the raw db_content string" do
-      f = fields_of(described_class.encode(action(card(db_content: "<h2>x</h2>"))), "DeckoCard")
+      f = fields_of(enc(action(card(db_content: "<h2>x</h2>"))), "DeckoCard")
       expect(f["Trash"]).to be(false)
       expect(f["Content"]).to eq("<h2>x</h2>")
     end
@@ -103,7 +117,7 @@ RSpec.describe CardAtomEncoder do
   describe "DeckoReference encoding" do
     it "maps one ordered atom per reference; RefType symbol; Unresolved for nil referee_id" do
       c = card(references_out: [ref(ref_type: "I"), ref(referee_id: nil, is_present: false)])
-      atoms = described_class.encode(action(c))
+      atoms = enc(action(c))
       refs = atoms.select { |a| a["atom"] == "DeckoReference" }
       expect(refs.size).to eq(2)
       expect(refs.first["fields"].map(&:first)).to eq(%w[RefererId RefereeKey RefereeId RefType IsPresent])
@@ -115,9 +129,7 @@ RSpec.describe CardAtomEncoder do
 
   describe "DeckoProvenance encoding" do
     it "emits the full ordered 21-field provenance envelope" do
-      # Canonical Encodings + L1 historically labeled this "20 (16+4)" but the explicit list is 21
-      # (17 non-agent + 4 agent); label corrected 2026-06-21 (OQ#17). The encoder is the 21-field list.
-      expect(order_of(described_class.encode(action(card)), "DeckoProvenance")).to eq(%w[
+      expect(order_of(enc(action(card)), "DeckoProvenance")).to eq(%w[
         source event_schema_version event_id action_id act_id super_action_id action draft card_id
         card_key actor_id auth_current_id auth_as_id acted_at ip_address stage changes
         agent_session_id agent_kind origin_system origin_request_id
@@ -125,7 +137,7 @@ RSpec.describe CardAtomEncoder do
     end
 
     it "carries the constants + event_id" do
-      f = fields_of(described_class.encode(action(card)), "DeckoProvenance")
+      f = fields_of(enc(action(card)), "DeckoProvenance")
       expect(f["source"]).to eq("decko")
       expect(f["event_schema_version"]).to eq("decko-spaceevent-v1")
       expect(f["event_id"]).to eq("decko:action:129552")
@@ -133,21 +145,21 @@ RSpec.describe CardAtomEncoder do
     end
 
     it "uses NoSuper / NoIP sentinels when null" do
-      f = fields_of(described_class.encode(action(card)), "DeckoProvenance")
+      f = fields_of(enc(action(card)), "DeckoProvenance")
       expect(f["super_action_id"]).to eq("sym" => "NoSuper")
       expect(f["ip_address"]).to eq("sym" => "NoIP")
     end
 
     it "encodes the Source-5 dual-actor auth fields from the auth snapshot, distinct from actor_id" do
       a = action(card, act_obj: act(actor_id: 10))
-      f = fields_of(described_class.encode(a, auth: { current_id: 3, as_id: 5 }), "DeckoProvenance")
+      f = fields_of(enc(a, auth: { current_id: 3, as_id: 5 }), "DeckoProvenance")
       expect(f["actor_id"]).to eq(10)
       expect(f["auth_current_id"]).to eq(3)
       expect(f["auth_as_id"]).to eq(5)
     end
 
-    it "uses JSON null (not a sentinel) for absent dual-actor + agent fields" do
-      f = fields_of(described_class.encode(action(card)), "DeckoProvenance")
+    it "uses JSON null (not a sentinel) for an explicitly-unavailable dual-actor + absent agent fields" do
+      f = fields_of(enc(action(card)), "DeckoProvenance")
       %w[auth_current_id auth_as_id agent_session_id agent_kind origin_system origin_request_id].each do |k|
         expect(f[k]).to be_nil
       end
@@ -156,7 +168,7 @@ RSpec.describe CardAtomEncoder do
     it "tags present agent_kind / origin_system as symbols and keeps ids/strings native" do
       ctx = { agent_kind: :external_mcp_agent, origin_system: :mcp,
               agent_session_id: "jwt-jti-7f3c2a", origin_request_id: "req-abc" }
-      f = fields_of(described_class.encode(action(card), request_context: ctx), "DeckoProvenance")
+      f = fields_of(enc(action(card), request_context: ctx), "DeckoProvenance")
       expect(f["agent_kind"]).to eq("sym" => "external_mcp_agent")
       expect(f["origin_system"]).to eq("sym" => "mcp")
       expect(f["agent_session_id"]).to eq("jwt-jti-7f3c2a")
@@ -164,7 +176,7 @@ RSpec.describe CardAtomEncoder do
 
     it "builds the changes array from card_changes (name OR integer field) joined with pre_state" do
       a = action(card, card_changes: [change("db_content", "new body"), change(3, "t")]) # 3 => trash
-      f = fields_of(described_class.encode(a, pre_state: { "db_content" => "old body" }), "DeckoProvenance")
+      f = fields_of(enc(a, pre_state: { "db_content" => "old body" }), "DeckoProvenance")
       expect(f["changes"]).to eq([
         { "field" => "db_content", "old" => "old body", "new" => "new body" },
         { "field" => "trash", "old" => nil, "new" => "t" }
@@ -173,15 +185,20 @@ RSpec.describe CardAtomEncoder do
 
     it "tolerates symbol-keyed pre_state" do
       a = action(card, card_changes: [change("db_content", "new")])
-      f = fields_of(described_class.encode(a, pre_state: { db_content: "old" }), "DeckoProvenance")
+      f = fields_of(enc(a, pre_state: { db_content: "old" }), "DeckoProvenance")
       expect(f["changes"]).to eq([{ "field" => "db_content", "old" => "old", "new" => "new" }])
+    end
+
+    it "raises on a corrupt out-of-range integer card_changes.field index" do
+      a = action(card, card_changes: [change(99, "x")])
+      expect { enc(a) }.to raise_error(ArgumentError, /corrupt card_changes.field/)
     end
   end
 
   describe "referential transparency" do
     it "produces identical output for identical inputs" do
       c = card(left_id: 5, references_out: [ref])
-      expect(described_class.encode(action(c))).to eq(described_class.encode(action(c)))
+      expect(enc(action(c))).to eq(enc(action(c)))
     end
   end
 end

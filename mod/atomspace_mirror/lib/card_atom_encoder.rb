@@ -31,7 +31,13 @@ module CardAtomEncoder
   # name); the encoder accepts either the integer index or the name string.
   TRACKED_FIELDS = %w[name type_id db_content trash left_id right_id].freeze
 
-  def encode(action, pre_state: {}, auth: {}, request_context: {})
+  def encode(action, pre_state: {}, auth:, request_context: {})
+    # auth is MANDATORY (Source-5 dual-actor audit data): callers must pass the Card::Auth.serialize
+    # snapshot, or { current_id: nil, as_id: nil } when genuinely unavailable. Omission must be
+    # explicit, never a silent null -- so no default, and the keys must be present.
+    unless auth.is_a?(Hash) && auth.key?(:current_id) && auth.key?(:as_id)
+      raise ArgumentError, "auth: must be a Hash with :current_id and :as_id keys"
+    end
     return [] if action.draft
 
     card = action.card
@@ -108,8 +114,13 @@ module CardAtomEncoder
   # --- helpers ---
 
   # Card::Change#field may be the name string or the raw integer index -- normalize to the name.
+  # A corrupt out-of-range integer index raises rather than encoding a bogus "field".
   def field_name(raw)
-    raw.is_a?(Integer) ? (TRACKED_FIELDS[raw] || raw.to_s) : raw.to_s
+    return raw.to_s unless raw.is_a?(Integer)
+    unless (0...TRACKED_FIELDS.size).cover?(raw)
+      raise ArgumentError, "corrupt card_changes.field index #{raw} (outside TRACKED_FIELDS)"
+    end
+    TRACKED_FIELDS[raw]
   end
 
   # pre_state old-value lookup, tolerant of string or symbol keys (distinguishes absent from nil).
