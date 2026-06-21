@@ -27,6 +27,11 @@ module CardAtomEncoder
   EVENT_SCHEMA_VERSION = "decko-spaceevent-v1"
   STAGE = "integrate_with_delay"
 
+  # Raised for genuine corrupt action DATA (e.g. an unknown card_changes.field). The L2 writer
+  # catches THIS narrowly to emit a terminal 'failed' outbox row; unexpected errors (NoMethodError
+  # etc.) propagate loudly. auth-contract violations stay ArgumentError (a caller bug, not data).
+  class EncodingError < StandardError; end
+
   # Decko card_changes.field is an integer index into this list (Card::Change#field maps it to the
   # name); the encoder accepts either the integer index or the name string.
   TRACKED_FIELDS = %w[name type_id db_content trash left_id right_id].freeze
@@ -121,7 +126,7 @@ module CardAtomEncoder
     name = raw.is_a?(Integer) && (0...TRACKED_FIELDS.size).cover?(raw) ? TRACKED_FIELDS[raw] : raw.to_s
     return name if TRACKED_FIELDS.include?(name)
 
-    raise ArgumentError, "unknown/corrupt card_changes.field #{raw.inspect} (not in TRACKED_FIELDS)"
+    raise EncodingError, "unknown/corrupt card_changes.field #{raw.inspect} (not in TRACKED_FIELDS)"
   end
 
   # pre_state old-value lookup, tolerant of string or symbol keys (distinguishes absent from nil).

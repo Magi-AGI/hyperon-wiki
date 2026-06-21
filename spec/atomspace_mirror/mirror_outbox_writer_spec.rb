@@ -123,6 +123,23 @@ RSpec.describe MirrorOutboxWriter do
       expect(row[:payload]).to be_nil
       expect(row[:error]).to match(/card_changes.field/)
     end
+
+    it "lets superseded_by_bootstrap WIN over a corrupt encode (does not become 'failed')" do
+      install(bootstrap_a_start: 100)
+      a = action(card, id: 50, card_changes: [OpenStruct.new(field: 99, value: "x")]) # corrupt + pre-A_start
+      MirrorOutboxWriter.write(a, auth: NO_AUTH)
+      row = inserted.first
+      expect(inserted.size).to eq(1)
+      expect(row[:status]).to eq("superseded_by_bootstrap")
+      expect(row[:payload]).to be_nil # encode failed, but the sweep already covered this card
+    end
+
+    it "lets an unexpected (non-EncodingError) error propagate loudly, inserting nothing" do
+      install
+      allow(CardAtomEncoder).to receive(:encode).and_raise(RuntimeError, "boom")
+      expect { MirrorOutboxWriter.write(action(card), auth: NO_AUTH) }.to raise_error(RuntimeError, /boom/)
+      expect(inserted).to be_empty
+    end
   end
 
   describe "auth contract" do

@@ -37,17 +37,33 @@ module MirrorOutboxWriter
     return if mirror_own_card?(action.card)
     return if action.draft
 
-    atoms =
-      begin
-        CardAtomEncoder.encode(action, pre_state: pre_state, auth: auth, request_context: request_context)
-      rescue StandardError => e
-        # Corrupt input (e.g. the encoder's TRACKED_FIELDS guard) -> insert a terminal 'failed' row
-        # so check_event_ready returns :failed (HTTP 503 event_failed) instead of a never-inserted
-        # row that times out as staleness. (Codex 2026-06-21.)
-        return insert_failed(action, e)
-      end
+    # Encode OUTSIDE the state lock (keeps the singleton lock short). Catch ONLY a genuine encoder
+    # data-corruption error -> a 'failed' row; unexpected bugs (NoMethodError etc.) propagate loudly.
+    atoms = nil
+    encode_error = nil
+    begin
+      atoms = CardAtomEncoder.encode(action, pre_state: pre_state, auth: auth, request_context: request_context)
+    rescue CardAtomEncoder::EncodingError => e
+      encode_error = e
+    end
 
-    insert_event(action, atoms) unless atoms.empty?
+    MirrorOutbox.transaction do
+      state = MirrorState.lock.first # SELECT FOR UPDATE; atomic vs bootstrap completion
+      if superseded_by_bootstrap?(state, action)
+        # Sweep already covered this card: terminal-advance REGARDLESS of encode outcome. A corrupt
+        # encode must NOT override this -> superseded_by_bootstrap (payload best-effort). (Codex blocker.)
+        insert_row(event_id: event_id(action), action_id: action.id, card_id: action.card_id,
+                   status: "superseded_by_bootstrap", payload: (atoms && { "atoms" => atoms }))
+      elsif encode_error
+        # Corrupt input -> terminal 'failed' so check_event_ready returns event_failed instead of a
+        # never-inserted row that times out as staleness.
+        insert_row(event_id: event_id(action), action_id: action.id, card_id: action.card_id,
+                   status: "failed", payload: nil, error: encode_error.message)
+      else
+        insert_row(event_id: event_id(action), action_id: action.id, card_id: action.card_id,
+                   status: "queued", payload: { "atoms" => atoms })
+      end
+    end
   end
 
   def mirror_own_card?(card)
@@ -55,25 +71,9 @@ module MirrorOutboxWriter
     cn.present? && SELF_CARD_CODENAMES.include?(cn.to_s)
   end
 
-  def insert_event(action, atoms)
-    MirrorOutbox.transaction do
-      state = MirrorState.lock.first # SELECT FOR UPDATE; serializes against bootstrap completion
-      status =
-        if state.bootstrap_a_start.nil?
-          "queued"
-        elsif action.id <= state.bootstrap_a_start
-          "superseded_by_bootstrap" # sweep already covered this card; do not re-apply
-        else
-          "queued"
-        end
-      insert_row(event_id: event_id(action), action_id: action.id, card_id: action.card_id,
-                 status: status, payload: { "atoms" => atoms })
-    end
-  end
-
-  def insert_failed(action, error)
-    insert_row(event_id: event_id(action), action_id: action.id, card_id: action.card_id,
-               status: "failed", payload: nil, error: error.message)
+  # action.id <= the persisted bootstrap anchor => the sweep already covered this card (Section 1).
+  def superseded_by_bootstrap?(state, action)
+    !state.bootstrap_a_start.nil? && action.id <= state.bootstrap_a_start
   end
 
   # RecordNotUnique is rescued NARROWLY around the INSERT only -- idempotent no-op on a duplicate
