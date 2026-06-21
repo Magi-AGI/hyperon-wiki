@@ -2,8 +2,8 @@
 
 # Level 1 -- pure encoder. Converts one Decko card action into the ordered atom-event list for a
 # single mirror_outbox row's payload. No model writes; reads the action's already-loaded card +
-# associations (references_out, card_changes) and the injected pre_state / request_context.
-# Referentially transparent: same (action, pre_state, request_context) -> identical output.
+# associations (references_out, card_changes) and the injected pre_state / auth / request_context.
+# Referentially transparent: same inputs -> identical output.
 #
 # Output wire format is FROZEN in Card 17161 (L1 "Slice 2 outbox payload wire format", 2026-06-21);
 # atom shapes per Canonical Encodings. V1 only -- Content is the raw db_content string, NO cardtype
@@ -14,10 +14,12 @@
 #                     #super_action_id, #card_id, #act, #card_changes, #card
 #   action.act      : Card::Act    -- #id, #actor_id, #acted_at, #ip_address
 #   action.card     : Card         -- the 14 source attributes; #references_out (Card::Reference)
-#   card_changes    : Card::Change -- #field (TRACKED_FIELDS name string), #value (new value)
-#   pre_state       : Hash{field_name => old_value} for the changes array; {} when unavailable
-#   request_context : Hash of Source-6 agent fields; {} outside an MCP request (those encode as
-#                     JSON null per the frozen contract)
+#   card_changes    : Card::Change -- #field (TRACKED_FIELDS name OR integer index), #value (new)
+#   pre_state       : Hash{field_name => old_value} for the changes array (string or symbol keys);
+#                     {} when unavailable
+#   auth            : Hash{current_id:, as_id:} -- Source-5 dual-actor snapshot captured at action
+#                     time by L2 (Card::Auth.serialize.current_id / .as_id); {} -> JSON null
+#   request_context : Hash of the 4 Source-6 agent fields; {} outside an MCP request (-> JSON null)
 module CardAtomEncoder
   module_function
 
@@ -25,13 +27,17 @@ module CardAtomEncoder
   EVENT_SCHEMA_VERSION = "decko-spaceevent-v1"
   STAGE = "integrate_with_delay"
 
-  def encode(action, pre_state: {}, request_context: {})
+  # Decko card_changes.field is an integer index into this list (Card::Change#field maps it to the
+  # name); the encoder accepts either the integer index or the name string.
+  TRACKED_FIELDS = %w[name type_id db_content trash left_id right_id].freeze
+
+  def encode(action, pre_state: {}, auth: {}, request_context: {})
     return [] if action.draft
 
     card = action.card
     [decko_card(card),
      *decko_references(card),
-     decko_provenance(action, card, pre_state || {}, request_context || {})]
+     decko_provenance(action, card, pre_state || {}, auth || {}, request_context || {})]
   end
 
   def decko_card(card)
@@ -45,7 +51,7 @@ module CardAtomEncoder
       ["LeftId",    card.left_id || sym("NoLeft")],
       ["RightId",   card.right_id || sym("NoRight")],
       ["Content",   card.db_content],
-      ["Trash",     !card.trash.nil? && card.trash ? true : false],
+      ["Trash",     card.trash ? true : false],
       ["CreatedAt", iso(card.created_at)],
       ["UpdatedAt", iso(card.updated_at)],
       ["CreatorId", card.creator_id],
@@ -65,7 +71,7 @@ module CardAtomEncoder
     end
   end
 
-  def decko_provenance(action, card, pre_state, ctx)
+  def decko_provenance(action, card, pre_state, auth, ctx)
     ip = action.act.ip_address
     atom "DeckoProvenance", [
       ["source",               SOURCE],
@@ -79,8 +85,8 @@ module CardAtomEncoder
       ["card_id",              action.card_id],
       ["card_key",             card.key],
       ["actor_id",             action.act.actor_id],
-      ["auth_current_id",      ctx[:auth_current_id]],   # JSON null when absent (canonical |null)
-      ["auth_as_id",           ctx[:auth_as_id]],
+      ["auth_current_id",      auth[:current_id]],   # Source-5 dual-actor (Card::Auth.serialize),
+      ["auth_as_id",           auth[:as_id]],        # captured at action time by L2; JSON null if absent
       ["acted_at",             iso(action.act.acted_at)],
       ["ip_address",           filled?(ip) ? ip : sym("NoIP")],
       ["stage",                STAGE],
@@ -94,12 +100,25 @@ module CardAtomEncoder
 
   def changes(action, pre_state)
     Array(action.card_changes).map do |ch|
-      field = ch.field.to_s
-      { "field" => field, "old" => pre_state[field], "new" => ch.value }
+      field = field_name(ch.field)
+      { "field" => field, "old" => pre_lookup(pre_state, field), "new" => ch.value }
     end
   end
 
   # --- helpers ---
+
+  # Card::Change#field may be the name string or the raw integer index -- normalize to the name.
+  def field_name(raw)
+    raw.is_a?(Integer) ? (TRACKED_FIELDS[raw] || raw.to_s) : raw.to_s
+  end
+
+  # pre_state old-value lookup, tolerant of string or symbol keys (distinguishes absent from nil).
+  def pre_lookup(pre_state, field)
+    return nil unless pre_state
+    return pre_state[field] if pre_state.key?(field)
+
+    pre_state[field.to_sym]
+  end
 
   def atom(kind, fields)
     { "atom" => kind, "fields" => fields }
