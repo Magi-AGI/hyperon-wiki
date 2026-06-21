@@ -13,7 +13,8 @@ format :html do
     seal = render_approval_indicator
     ai_link = render_ai_draft_link
     tags = render_page_tags
-    output([seal, ai_link, tags, super()].compact.reject(&:blank?))
+    attribution = render_page_attribution
+    output([seal, ai_link, tags, attribution, super()].compact.reject(&:blank?))
   end
 
   # NOTE: the implementation of view :ai_draft_link lives in
