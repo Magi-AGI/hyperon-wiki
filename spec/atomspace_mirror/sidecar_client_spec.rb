@@ -56,9 +56,15 @@ RSpec.describe SidecarClient do
     expect(seen).to eq([["/apply", { "payloads" => [payload] }]])
   end
 
-  it "maps a transport exception to retryable (never raises)" do
-    transport = ->(_path, _body) { raise Errno::ECONNREFUSED }
-    out = SidecarClient.new(transport: transport).apply(payload)
-    expect(out.outcome).to eq(:retryable)
+  it "maps genuine transport errors to retryable (never raises)" do
+    [Errno::ECONNREFUSED, Net::ReadTimeout, SocketError].each do |err|
+      transport = ->(_path, _body) { raise err }
+      expect(SidecarClient.new(transport: transport).apply(payload).outcome).to eq(:retryable)
+    end
+  end
+
+  it "lets a programming error PROPAGATE (not silently retried)" do
+    transport = ->(_path, _body) { raise NoMethodError, "boom" }
+    expect { SidecarClient.new(transport: transport).apply(payload) }.to raise_error(NoMethodError, /boom/)
   end
 end

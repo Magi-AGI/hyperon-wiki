@@ -16,8 +16,9 @@ RSpec.describe MirrorDrainValidator do
   def card_atom(id: 724) = atom("DeckoCard", [["Id", id], ["Name", "Foo"], ["Trash", false]])
   def ref_atom(referer: 724) = atom("DeckoReference", [["RefererId", referer], ["RefType", { "sym" => "L" }]])
 
-  def prov_atom(event_id: "decko:action:893", action_id: 893)
-    atom("DeckoProvenance", [["event_id", event_id], ["action_id", action_id], ["action", { "sym" => "create" }]])
+  def prov_atom(event_id: "decko:action:893", action_id: 893, card_id: 724)
+    atom("DeckoProvenance",
+         [["event_id", event_id], ["action_id", action_id], ["card_id", card_id], ["action", { "sym" => "create" }]])
   end
 
   def payload(*atoms) = { "atoms" => atoms }
@@ -93,9 +94,28 @@ RSpec.describe MirrorDrainValidator do
         .to raise_error(MirrorDrainValidator::InvalidRow, /action_id/)
     end
 
+    it "rejects DeckoProvenance.card_id != row.card_id (corrupt provenance, Codex)" do
+      expect { MirrorDrainValidator.validate!(row, payload(card_atom, prov_atom(card_id: 999))) }
+        .to raise_error(MirrorDrainValidator::InvalidRow, /DeckoProvenance.card_id/)
+    end
+
+    it "rejects missing DeckoProvenance.card_id" do
+      prov = atom("DeckoProvenance", [["event_id", "decko:action:893"], ["action_id", 893]])
+      expect { MirrorDrainValidator.validate!(row, payload(card_atom, prov)) }
+        .to raise_error(MirrorDrainValidator::InvalidRow, /DeckoProvenance.card_id/)
+    end
+
     it "rejects a DeckoReference.RefererId != row.card_id" do
       expect { MirrorDrainValidator.validate!(row, payload(card_atom, ref_atom(referer: 999), prov_atom)) }
         .to raise_error(MirrorDrainValidator::InvalidRow, /RefererId/)
+    end
+  end
+
+  describe "duplicate load-bearing fields (Codex)" do
+    it "rejects an atom with a repeated field name (Id=724, Id=999 could pass first-match identity)" do
+      dup_card = atom("DeckoCard", [["Id", 724], ["Id", 999], ["Trash", false]])
+      expect { MirrorDrainValidator.validate!(row, payload(dup_card, prov_atom)) }
+        .to raise_error(MirrorDrainValidator::InvalidRow, /duplicate field name/)
     end
   end
 end

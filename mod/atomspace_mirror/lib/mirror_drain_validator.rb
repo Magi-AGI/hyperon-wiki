@@ -22,6 +22,8 @@ module MirrorDrainValidator
     validate_row_shape!(row)
     atoms = payload_atoms!(payload)
 
+    atoms.each { |a| reject_duplicate_fields!(a) }
+
     cards = atoms.select { |a| kind(a) == "DeckoCard" }
     provs = atoms.select { |a| kind(a) == "DeckoProvenance" }
     refs  = atoms.select { |a| kind(a) == "DeckoReference" }
@@ -56,6 +58,9 @@ module MirrorDrainValidator
     event_id = field(prov, "event_id")
     raise InvalidRow, "DeckoProvenance.event_id #{event_id.inspect} != row.event_id #{row.event_id.inspect}" unless event_id == row.event_id
 
+    prov_card_id = field(prov, "card_id")
+    raise InvalidRow, "DeckoProvenance.card_id #{prov_card_id.inspect} != row.card_id #{row.card_id.inspect}" unless prov_card_id == row.card_id
+
     action_id = field(prov, "action_id")
     raise InvalidRow, "DeckoProvenance.action_id #{action_id.inspect} != row.action_id #{row.action_id.inspect}" unless action_id == row.action_id
 
@@ -71,6 +76,16 @@ module MirrorDrainValidator
     raise InvalidRow, "payload missing 'atoms' array" unless atoms.is_a?(Array)
     raise InvalidRow, "payload 'atoms' is empty" if atoms.empty?
     atoms
+  end
+
+  # Duplicate field names are rejected: the validator reads the FIRST match for identity keys, but
+  # the sidecar renderer preserves ALL fields, so a payload like Id=724, Id=999 could pass identity
+  # yet render a corrupt atom (Codex 2026-06-22). Reject any atom with a repeated field name.
+  def reject_duplicate_fields!(atom)
+    return unless atom.is_a?(Hash) && atom["fields"].is_a?(Array)
+    names = atom["fields"].map { |p| p.is_a?(Array) && p.size == 2 ? p[0] : nil }.compact
+    dups = names.tally.select { |_name, count| count > 1 }.keys
+    raise InvalidRow, "#{kind(atom).inspect} has duplicate field name(s): #{dups.inspect}" unless dups.empty?
   end
 
   def kind(atom)

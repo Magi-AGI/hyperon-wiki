@@ -13,3 +13,9 @@ require_relative "mirror_reconcile_run"
 require_relative "read_consistency"
 require_relative "card_atom_encoder"
 require_relative "mirror_outbox_writer"
+# Slice 3 (L8 drain): shared constants/watermark, the structural+identity preflight, and the IPC
+# client. Required here so the deck initializer's `require "atomspace_mirror"` loads them at runtime
+# (the specs require them directly, which does NOT prove runtime availability -- Codex 2026-06-22).
+require_relative "mirror"
+require_relative "mirror_drain_validator"
+require_relative "sidecar_client"

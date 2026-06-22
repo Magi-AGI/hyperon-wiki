@@ -61,6 +61,14 @@ end
 # iteration in Phase 4; batching is a Phase 5+ optimization). Transport is injectable for tests:
 # a callable (path, body_hash) -> [http_status_int, parsed_body_or_nil].
 class SidecarClient
+  # ONLY genuine network/timeout failures are retryable. Everything else (JSON generation bugs,
+  # NoMethodError, contract mistakes) is a programming error and MUST propagate loudly -- mapping all
+  # StandardError to :retryable would silently retry real bugs forever (Codex 2026-06-22).
+  RETRYABLE_TRANSPORT_ERRORS = [
+    Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EHOSTUNREACH, Errno::ENETUNREACH, Errno::EPIPE,
+    Errno::ETIMEDOUT, Net::OpenTimeout, Net::ReadTimeout, SocketError, EOFError, IOError, Timeout::Error
+  ].freeze
+
   def initialize(host: "127.0.0.1", port: 9407, open_timeout: 2, read_timeout: 5, transport: nil)
     @host = host
     @port = port
@@ -73,7 +81,7 @@ class SidecarClient
   def apply(payload)
     status, parsed = post("/apply", { "payloads" => [payload] })
     DrainDelivery.classify(http_status: status, body: parsed)
-  rescue StandardError => e   # connect refused / timeout / DNS / etc. -> retryable
+  rescue *RETRYABLE_TRANSPORT_ERRORS => e   # connect refused / timeout / DNS / reset -> retryable
     DrainDelivery.classify(http_status: 0, transport_error: "#{e.class}: #{e.message}")
   end
 
