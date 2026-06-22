@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "time" # Time#iso8601 (stdlib; autoloaded under Decko/ActiveSupport but not standalone)
+
 # Level 1 -- pure encoder. Converts one Decko card action into the ordered atom-event list for a
 # single mirror_outbox row's payload. No model writes; reads the action's already-loaded card +
 # associations (references_out, card_changes) and the injected pre_state / auth / request_context.
@@ -77,7 +79,10 @@ module CardAtomEncoder
         ["RefereeKey", r.referee_key],
         ["RefereeId",  r.referee_id || sym("Unresolved")],
         ["RefType",    sym(r.ref_type)],
-        ["IsPresent",  r.is_present ? true : false]
+        # IsPresent = does the reference resolve to an existing card. The card_references
+        # is_present column is DEAD in card-1.110.0 (0/574 rows populated on dev, 2026-06-21 L2b),
+        # so it is derived from referee_id (the resolved target id; nil => a wanted/unresolved link).
+        ["IsPresent",  !r.referee_id.nil?]
       ]
     end
   end
