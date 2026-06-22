@@ -22,5 +22,15 @@
 # is referenced fully-qualified (::MirrorOutboxWriter, ::Card).
 event :write_to_mirror_outbox, :integrate_with_delay, on: %i[create update delete] do
   action = current_action
-  ::MirrorOutboxWriter.write(action, auth: ::Card::Auth.serialize) if action
+  if action
+    # pre_state = each changed field's value as of the PRIOR action, so the encoder's provenance
+    # `changes` carry real old->new (locked contract). Card::Action#previous_value is Decko's
+    # authoritative source (card.last_change_on field, before: self; nil on :create), so this does
+    # not depend on dirty-tracking timing. Built here (the only Decko-coupled file) to keep the
+    # writer/encoder pure + standalone-testable.
+    pre_state = action.card_changes.each_with_object({}) do |ch, h|
+      h[ch.field] = action.previous_value(ch.field.to_sym)
+    end
+    ::MirrorOutboxWriter.write(action, pre_state: pre_state, auth: ::Card::Auth.serialize)
+  end
 end
