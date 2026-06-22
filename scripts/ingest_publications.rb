@@ -63,6 +63,18 @@ def emit_metadata(parent_name, year:, venue:, source:)
   fields = { "year" => [:number, year], "venue" => [:phrase, venue],
              "metadata_source" => [:phrase, source] }
   fields.reject! { |_, (_, v)| v.nil? || v.to_s.strip.empty? }
+  # +year is a Number cardtype: it rejects non-numeric content. Normalize whole-number
+  # floats (sheet JSON may serialize "2013.0") and require a sane 4-digit year; otherwise
+  # skip emitting +year (logged) rather than letting the create raise.
+  if fields.key?("year")
+    yv = fields["year"][1].to_s.strip.sub(/\.0+\z/, "")
+    if yv =~ /\A\d{4}\z/ && (1900..2100).cover?(yv.to_i)
+      fields["year"][1] = yv
+    else
+      puts "  metadata SKIP +year: #{fields["year"][1].inspect} is not a valid 4-digit year (1900-2100)"
+      fields.delete("year")
+    end
+  end
   return if fields.empty?
 
   Card::Auth.as_bot do
