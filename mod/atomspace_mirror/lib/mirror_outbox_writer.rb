@@ -5,19 +5,18 @@ require_relative "card_atom_encoder"
 # Level 2 -- outbox writer (the business logic behind the integrate_with_delay hook). Encodes the
 # action and INSERTs a single mirror_outbox row under the Section 1 (Rider C v2) INSERT discipline.
 # Unit-testable in isolation; the Decko set hook (set/all/atomspace_mirror.rb) is a one-line
-# delegation, and L2b gathers the inputs across the delayed-job process boundary (see below).
+# delegation passing `action = current_action` + `auth = Card::Auth.serialize`.
 #
-# POST-STATE CONTRACT (Codex 2026-06-21): `action` MUST expose `action.card` + `references_out` AS
-# OF this action (the post-action snapshot), NOT current card state. integrate_with_delay runs in a
-# delayed worker, possibly after later edits to the same card have committed; encoding current state
-# under an older action_id would corrupt provenance and confuse supersession. L2b is responsible for
-# supplying the post-action snapshot (or reconstructing it from Card::Action history) and proving it
-# with a delayed-two-updates test before the hook is installed. This writer never re-reads current
-# state -- it encodes exactly what `action` exposes.
+# RUNTIME MODEL (L2b dev-validated 2026-06-21): on this deck Cardio.config.delaying is false, so the
+# integrate_with_delay hook runs INLINE in the saving request -- `action` (Decko's current_action)
+# exposes correct AS-OF-THIS-ACTION state, so there is no delayed-worker post-state hazard and no
+# snapshot reconstruction is needed. (If delaying is ever enabled, revisit: `action.card` could then
+# reflect a later edit -- see L2 card 17170.)
 #
-# L2b also gathers (across the process boundary): pre_state (from action history), auth
-# (Card::Auth.serialize captured at save time), request_context (Source-6 fields stashed in
-# Card::Env.params at save time). See Open Questions #16 (mod-install) for the hook-load gating.
+# `action` CONTRACT: a Card::Action exposing #card (+ #references_out), #card_changes, #act,
+# #id/#card_id/#draft/#action_type/#super_action_id, AND #previous_value(field) (used to derive
+# pre_state). auth = Card::Auth.serialize ({current_id:, as_id:}). request_context = the Source-6
+# agent fields from Card::Env.params ({} until an MCP write path stashes them -- Open Questions #18).
 module MirrorOutboxWriter
   module_function
 
@@ -28,7 +27,7 @@ module MirrorOutboxWriter
   # known on dev (L2b).
   SELF_CARD_CODENAMES = %w[mod_atomspace_mirror].freeze
 
-  def write(action, pre_state: {}, auth:, request_context: {})
+  def write(action, pre_state: nil, auth:, request_context: {})
     # Validate the auth contract LOUDLY here -- an L2b wiring bug must not be swallowed into a
     # 'failed' row by the encode rescue below (that rescue is only for genuine encode/data corruption).
     unless auth.is_a?(Hash) && auth.key?(:current_id) && auth.key?(:as_id)
@@ -37,12 +36,16 @@ module MirrorOutboxWriter
     return if mirror_own_card?(action.card)
     return if action.draft
 
-    # Encode OUTSIDE the state lock (keeps the singleton lock short). Catch ONLY a genuine encoder
-    # data-corruption error -> a 'failed' row; unexpected bugs (NoMethodError etc.) propagate loudly.
+    # Derive pre_state + encode OUTSIDE the state lock (keeps the singleton lock short). BOTH run in
+    # the same rescue: a corrupt card_changes.field raises CardAtomEncoder::EncodingError from
+    # field_name (in derive_pre_state OR encode) -> a terminal 'failed' row, never a dropped event.
+    # Unexpected bugs (NoMethodError etc.) still propagate loudly. Callers may inject pre_state
+    # (bootstrap/reconcile); the inline hook passes none -> derived from the action here.
     atoms = nil
     encode_error = nil
     begin
-      atoms = CardAtomEncoder.encode(action, pre_state: pre_state, auth: auth, request_context: request_context)
+      effective_pre_state = pre_state || derive_pre_state(action)
+      atoms = CardAtomEncoder.encode(action, pre_state: effective_pre_state, auth: auth, request_context: request_context)
     rescue CardAtomEncoder::EncodingError => e
       encode_error = e
     end
@@ -63,6 +66,19 @@ module MirrorOutboxWriter
         insert_row(event_id: event_id(action), action_id: action.id, card_id: action.card_id,
                    status: "queued", payload: { "atoms" => atoms })
       end
+    end
+  end
+
+  # pre-action field values for the encoder's provenance `changes`. Each card_changes.field is
+  # normalized through the SAME locked mapping the encoder uses -- CardAtomEncoder.field_name, which
+  # accepts the Decko name string OR the raw integer TRACKED_FIELDS index (the source archive
+  # documents the integer form) -- so a numeric field never crashes the write path; a corrupt field
+  # raises EncodingError here, inside write's rescue, -> a terminal 'failed' row. The prior value is
+  # read via Card::Action#previous_value (card.last_change_on field, before: self; nil on :create).
+  def derive_pre_state(action)
+    Array(action.card_changes).each_with_object({}) do |ch, h|
+      field = CardAtomEncoder.field_name(ch.field)
+      h[field] = action.previous_value(field.to_sym)
     end
   end
 

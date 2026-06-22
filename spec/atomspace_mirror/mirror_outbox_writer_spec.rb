@@ -114,7 +114,7 @@ RSpec.describe MirrorOutboxWriter do
   describe "encoder failure" do
     it "inserts a terminal 'failed' row (so RYW returns event_failed, not a timeout)" do
       install
-      a = action(card, card_changes: [OpenStruct.new(field: 99, value: "x")]) # encoder raises (corrupt index)
+      a = action(card, card_changes: [OpenStruct.new(field: 99, value: "x")]) # field_name raises (corrupt index)
       MirrorOutboxWriter.write(a, auth: NO_AUTH)
       row = inserted.first
       expect(inserted.size).to eq(1)
@@ -139,6 +139,32 @@ RSpec.describe MirrorOutboxWriter do
       allow(CardAtomEncoder).to receive(:encode).and_raise(RuntimeError, "boom")
       expect { MirrorOutboxWriter.write(action(card), auth: NO_AUTH) }.to raise_error(RuntimeError, /boom/)
       expect(inserted).to be_empty
+    end
+  end
+
+  describe "pre_state derivation (in the writer, normalized via field_name)" do
+    # the hook passes no pre_state; the writer derives it from action.previous_value per changed
+    # field, normalizing card_changes.field through the locked field_name mapping (name OR integer).
+
+    it "joins each change's previous_value into the provenance changes (real old->new)" do
+      install
+      a = action(card, card_changes: [OpenStruct.new(field: "db_content", value: "new body")])
+      a.define_singleton_method(:previous_value) { |f| f == :db_content ? "old body" : nil }
+      MirrorOutboxWriter.write(a, auth: NO_AUTH)
+      prov = inserted.first[:payload]["atoms"].find { |x| x["atom"] == "DeckoProvenance" }
+      expect(prov["fields"].to_h["changes"]).to eq(
+        [{ "field" => "db_content", "old" => "old body", "new" => "new body" }]
+      )
+    end
+
+    it "normalizes a NUMERIC card_changes.field index (does NOT crash the write path)" do
+      install
+      a = action(card, card_changes: [OpenStruct.new(field: 2, value: "n")]) # 2 => db_content
+      a.define_singleton_method(:previous_value) { |f| f == :db_content ? "o" : nil }
+      MirrorOutboxWriter.write(a, auth: NO_AUTH)
+      expect(inserted.first[:status]).to eq("queued")
+      prov = inserted.first[:payload]["atoms"].find { |x| x["atom"] == "DeckoProvenance" }
+      expect(prov["fields"].to_h["changes"]).to eq([{ "field" => "db_content", "old" => "o", "new" => "n" }])
     end
   end
 
