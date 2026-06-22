@@ -22,7 +22,7 @@ module MirrorDrainValidator
     validate_row_shape!(row)
     atoms = payload_atoms!(payload)
 
-    atoms.each { |a| reject_duplicate_fields!(a) }
+    atoms.each { |a| validate_atom_fields!(a) }
 
     cards = atoms.select { |a| kind(a) == "DeckoCard" }
     provs = atoms.select { |a| kind(a) == "DeckoProvenance" }
@@ -78,12 +78,28 @@ module MirrorDrainValidator
     atoms
   end
 
-  # Duplicate field names are rejected: the validator reads the FIRST match for identity keys, but
-  # the sidecar renderer preserves ALL fields, so a payload like Id=724, Id=999 could pass identity
-  # yet render a corrupt atom (Codex 2026-06-22). Reject any atom with a repeated field name.
-  def reject_duplicate_fields!(atom)
-    return unless atom.is_a?(Hash) && atom["fields"].is_a?(Array)
-    names = atom["fields"].map { |p| p.is_a?(Array) && p.size == 2 ? p[0] : nil }.compact
+  # Full field well-formedness preflight (OQ#15 -- corrupt rows must terminalize locally, never bounce
+  # off a possibly-down sidecar as a "retryable" failure; Codex 2026-06-22). Every fields entry MUST
+  # be a [non-empty-string-name, value] pair, and field names MUST be unique within the atom -- a
+  # first-match validator reading a duplicate (Id=724, Id=999) would pass identity while the sidecar
+  # renderer preserves ALL fields and renders a corrupt atom.
+  def validate_atom_fields!(atom)
+    raise InvalidRow, "atom must be an object, got #{atom.class}" unless atom.is_a?(Hash)
+    fields = atom["fields"]
+    raise InvalidRow, "#{kind(atom).inspect} 'fields' must be an array" unless fields.is_a?(Array)
+
+    names = []
+    fields.each do |pair|
+      unless pair.is_a?(Array) && pair.size == 2
+        raise InvalidRow, "#{kind(atom).inspect} has a malformed field (expected [name, value]): #{pair.inspect}"
+      end
+      name = pair[0]
+      unless name.is_a?(String) && !name.empty?
+        raise InvalidRow, "#{kind(atom).inspect} has a field with a non-string/empty name: #{name.inspect}"
+      end
+      names << name
+    end
+
     dups = names.tally.select { |_name, count| count > 1 }.keys
     raise InvalidRow, "#{kind(atom).inspect} has duplicate field name(s): #{dups.inspect}" unless dups.empty?
   end

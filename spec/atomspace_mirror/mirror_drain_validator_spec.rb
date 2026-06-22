@@ -111,11 +111,23 @@ RSpec.describe MirrorDrainValidator do
     end
   end
 
-  describe "duplicate load-bearing fields (Codex)" do
+  describe "field well-formedness (Codex)" do
     it "rejects an atom with a repeated field name (Id=724, Id=999 could pass first-match identity)" do
       dup_card = atom("DeckoCard", [["Id", 724], ["Id", 999], ["Trash", false]])
       expect { MirrorDrainValidator.validate!(row, payload(dup_card, prov_atom)) }
         .to raise_error(MirrorDrainValidator::InvalidRow, /duplicate field name/)
+    end
+
+    it "rejects a malformed field pair even when the identity fields are correct" do
+      bad_card = atom("DeckoCard", [["Id", 724], ["bad_only"], ["Trash", false]])
+      expect { MirrorDrainValidator.validate!(row, payload(bad_card, prov_atom)) }
+        .to raise_error(MirrorDrainValidator::InvalidRow, /malformed field/)
+    end
+
+    it "rejects a field with a non-string / empty name" do
+      bad_card = atom("DeckoCard", [["Id", 724], ["", "x"]])
+      expect { MirrorDrainValidator.validate!(row, payload(bad_card, prov_atom)) }
+        .to raise_error(MirrorDrainValidator::InvalidRow, /non-string\/empty name/)
     end
   end
 end
