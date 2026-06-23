@@ -85,8 +85,9 @@ RSpec.describe DrainWorker do
 
   before do
     allow(Mirror).to receive(:compute_contiguous_watermark).and_return(77)
-    # transition tests bypass the (separately, exhaustively tested) validator unless overridden
-    allow(MirrorDrainValidator).to receive(:validate!).and_return(true)
+    # transition tests bypass the (separately, exhaustively tested) validator halves unless overridden
+    allow(MirrorDrainValidator).to receive(:validate_row_shape!).and_return(nil)
+    allow(MirrorDrainValidator).to receive(:validate_payload!).and_return(true)
   end
 
   def decko_row(**o)
@@ -126,9 +127,9 @@ RSpec.describe DrainWorker do
       expect(sc.calls).to be_empty
     end
 
-    it "invalid: validator raises -> failed locally, NO IPC, alert raised" do
+    it "invalid row shape -> failed locally before the guard, NO IPC" do
       stub_outbox
-      allow(MirrorDrainValidator).to receive(:validate!).and_raise(MirrorDrainValidator::InvalidRow, "bad shape")
+      allow(MirrorDrainValidator).to receive(:validate_row_shape!).and_raise(MirrorDrainValidator::InvalidRow, "bad shape")
       sc = DWSidecar.new(outcome(DrainDelivery::DELIVERED))
       row = decko_row
       expect(worker(sidecar: sc).process_row(row, DWState.new)).to eq(:invalid)
@@ -136,6 +137,29 @@ RSpec.describe DrainWorker do
       expect(row.error).to match(/bad shape/)
       expect(sc.calls).to be_empty
       expect(alerts.map(&:first)).to include(:mirror_structural_invalid)
+    end
+
+    it "invalid payload (non-superseded) -> failed locally, NO IPC" do
+      stub_outbox(superseded: false)
+      allow(MirrorDrainValidator).to receive(:validate_payload!).and_raise(MirrorDrainValidator::InvalidRow, "corrupt payload")
+      sc = DWSidecar.new(outcome(DrainDelivery::DELIVERED))
+      row = decko_row
+      expect(worker(sidecar: sc).process_row(row, DWState.new)).to eq(:invalid)
+      expect(row.status).to eq("failed")
+      expect(row.error).to match(/corrupt payload/)
+      expect(sc.calls).to be_empty
+    end
+
+    it "supersedes an OBSOLETE row even when its payload is corrupt -- payload validation never runs, no IPC, no failed hole (Codex)" do
+      stub_outbox(superseded: true)
+      expect(MirrorDrainValidator).not_to receive(:validate_payload!)
+      sc = DWSidecar.new(outcome(DrainDelivery::DELIVERED))
+      row = decko_row
+      state = DWState.new
+      expect(worker(sidecar: sc).process_row(row, state)).to eq(:superseded)
+      expect(row.status).to eq("superseded_by_later")
+      expect(sc.calls).to be_empty
+      expect(state.updates.last).to eq(last_drained_action_id: 77)
     end
 
     it "failed_terminal: sidecar rejection -> failed + alert" do

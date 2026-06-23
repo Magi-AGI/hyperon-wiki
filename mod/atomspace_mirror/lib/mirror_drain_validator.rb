@@ -14,14 +14,25 @@ module MirrorDrainValidator
 
   class InvalidRow < StandardError; end
 
+  # Full validation = row shape + payload (identity + well-formedness). Kept for callers that want
+  # the whole check in one call. NB the drain worker calls the two halves SEPARATELY and in order:
+  # validate_row_shape! -> supersession guard -> validate_payload! (only for rows that reach the
+  # sidecar), so an already-obsolete row with a corrupt payload is skipped (superseded_by_later),
+  # not failed into a permanent watermark hole (Codex 2026-06-22).
+  #
   # @param row     responds to #event_kind, #card_id, #action_id, #event_id (the mirror_outbox row)
   # @param payload the parsed outbox payload Hash: {"atoms" => [{"atom"=>.., "fields"=>[[name,val],..]}, ..]}
   # @raise InvalidRow with a reason on any structural OR row<->payload-identity violation
   # @return true when valid
   def validate!(row, payload)
     validate_row_shape!(row)
-    atoms = payload_atoms!(payload)
+    validate_payload!(row, payload)
+  end
 
+  # Payload identity + well-formedness ONLY (assumes the row shape is already valid). Run just before
+  # IPC, after the supersession guard.
+  def validate_payload!(row, payload)
+    atoms = payload_atoms!(payload)
     atoms.each { |a| validate_atom_fields!(a) }
 
     cards = atoms.select { |a| kind(a) == "DeckoCard" }
@@ -37,7 +48,7 @@ module MirrorDrainValidator
     true
   end
 
-  # --- row shape (OQ#15) ---
+  # --- row shape (OQ#15): only what the supersession helper needs (event_kind, card_id, action_id) ---
   def validate_row_shape!(row)
     unless EVENT_KINDS.include?(row.event_kind)
       raise InvalidRow, "event_kind #{row.event_kind.inspect} not in #{EVENT_KINDS}"

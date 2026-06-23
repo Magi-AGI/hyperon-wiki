@@ -66,17 +66,19 @@ class DrainWorker
   # MirrorOutbox.transaction; the diagnostic watermark is recomputed on every TERMINAL transition.
   # Returns a symbol: :invalid | :superseded | :delivered | :failed | :retried.
   def process_row(row, state)
-    # (1) OQ#15 preflight: a structurally invalid / mismatched row terminalizes LOCALLY -- never IPC
-    # (so a corrupt row can't masquerade as a retryable sidecar outage).
+    # (1) ROW-SHAPE preflight only (event_kind / card_id / action_id) -- what the supersession helper
+    # needs. A shape-invalid row terminalizes LOCALLY (never IPC).
     begin
-      MirrorDrainValidator.validate!(row, row.payload)
+      MirrorDrainValidator.validate_row_shape!(row)
     rescue MirrorDrainValidator::InvalidRow => e
       terminalize(row, state, "structural validation failed: #{e.message}")
       alert(:mirror_structural_invalid, row, e.message)
       return :invalid
     end
 
-    # (2) same-card stale-overwrite guard (decko_action only; reconcile bypasses by construction).
+    # (2) same-card stale-overwrite guard (decko_action only; reconcile bypasses by construction) --
+    # BEFORE full payload validation, so an already-obsolete row with a corrupt payload is SKIPPED
+    # (superseded_by_later) rather than failed into a permanent watermark hole (Codex 2026-06-22).
     if row.event_kind == "decko_action" && MirrorOutbox.superseded_by_later_or_reconcile?(row)
       MirrorOutbox.transaction do
         row.update!(status: "superseded_by_later", last_attempt_at: now)
@@ -85,7 +87,18 @@ class DrainWorker
       return :superseded
     end
 
-    # (3) forward to the sidecar; classify per the locked failure matrix.
+    # (3) FULL payload validation (identity + well-formedness) -- only for rows that will hit the
+    # sidecar. Invalid -> terminal failed locally (never IPC, so a corrupt row can't masquerade as a
+    # retryable sidecar outage).
+    begin
+      MirrorDrainValidator.validate_payload!(row, row.payload)
+    rescue MirrorDrainValidator::InvalidRow => e
+      terminalize(row, state, "payload validation failed: #{e.message}")
+      alert(:mirror_structural_invalid, row, e.message)
+      return :invalid
+    end
+
+    # (4) forward to the sidecar; classify per the locked failure matrix.
     outcome = @sidecar.apply(row.payload)
     case outcome.outcome
     when DrainDelivery::DELIVERED
