@@ -58,8 +58,11 @@ class DrainWorker
     row = MirrorOutbox.where(status: "queued").order(:id).first
     return true unless row
 
-    process_row(row, state)
-    false
+    # A retryable sidecar outage backs off (idle = true) so drain_loop sleeps after RELEASING the
+    # lock, instead of tight-looping on the same row and burning all attempts in microseconds, which
+    # would turn a transient outage into 'failed' almost instantly (Codex 2026-06-23). Progress
+    # (delivered / superseded / failed / invalid) keeps the loop hot.
+    process_row(row, state) == :retried
   end
 
   # The stateful transition for one queued row (UNIT-TESTED). Each branch wraps its writes in a
@@ -146,7 +149,12 @@ class DrainWorker
   # Section 3 two-phase release: when a reconcile row is delivered, the decko_action rows it was
   # holding (awaiting_reconcile, linked by source_reconcile_event_id) advance in the SAME transaction.
   def release_linked_reconcile(reconcile_row)
+    # Constrain to the reconcile's OWN card_id: the linked awaiting_reconcile rows are for the same
+    # card. Without it, a corrupt cross-card row sharing the source_reconcile_event_id would be
+    # advanced to superseded_by_reconcile (a terminal status) even though §4 would treat that linkage
+    # as :integrity_error (Codex 2026-06-23).
     MirrorOutbox.where(event_kind: "decko_action", status: "awaiting_reconcile",
+                       card_id: reconcile_row.card_id,
                        source_reconcile_event_id: reconcile_row.event_id)
                 .update_all(status: "superseded_by_reconcile")
   end

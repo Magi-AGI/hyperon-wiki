@@ -113,9 +113,12 @@ RSpec.describe DrainWorker do
       row = decko_row(event_kind: "reconcile", action_id: nil, event_id: "decko:reconcile:9")
       worker(sidecar: sc).process_row(row, DWState.new)
       expect(ob.releases).to eq([[
-        { event_kind: "decko_action", status: "awaiting_reconcile", source_reconcile_event_id: "decko:reconcile:9" },
+        { event_kind: "decko_action", status: "awaiting_reconcile", card_id: 1,
+          source_reconcile_event_id: "decko:reconcile:9" },
         { status: "superseded_by_reconcile" }
       ]])
+      # the release is constrained to the reconcile's own card_id (cross-card rows can't be advanced)
+      expect(ob.releases.first.first).to include(card_id: 1)
     end
 
     it "superseded: guard true -> superseded_by_later, NO IPC, watermark advanced" do
@@ -208,12 +211,19 @@ RSpec.describe DrainWorker do
       expect(w.drain_one_iteration).to be(true)
     end
 
-    it "processes (false) when enabled and a row is queued" do
+    it "processes (false=keep draining) when enabled and a row delivers" do
       stub_outbox(queued_row: decko_row)
       stub_const("MirrorState", Class.new { define_singleton_method(:first) { DWState.new(draining_enabled: true) } })
       sc = DWSidecar.new(outcome(DrainDelivery::DELIVERED, "applied"))
       expect(worker(sidecar: sc).drain_one_iteration).to be(false)
       expect(sc.calls.size).to eq(1)
+    end
+
+    it "backs off (true) on a retryable outage so drain_loop sleeps instead of tight-looping" do
+      stub_outbox(queued_row: decko_row)
+      stub_const("MirrorState", Class.new { define_singleton_method(:first) { DWState.new(draining_enabled: true) } })
+      sc = DWSidecar.new(outcome(DrainDelivery::RETRYABLE, "timeout"))
+      expect(worker(sidecar: sc, max_attempts: 3).drain_one_iteration).to be(true)
     end
   end
 end
