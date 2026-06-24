@@ -16,7 +16,10 @@
 # phases; the legacy blunt overwrite (set/right/ai_draft.rb) stays live until
 # Phase 6 replaces it, so there is never a window with no merge path.
 
-require_relative "../../lib/proposal_provenance"
+# ProposalProvenance (mod/editorial_review/lib/proposal_provenance.rb) is
+# autoloaded from the mod's lib dir — do NOT require_relative it here; Decko's
+# set loader evaluates this file without a stable __FILE__, so a relative
+# require raises and silently drops the whole set (events never register).
 
 # Inert plain-text cardtype for the JSON sidecars (+provenance; later +merge
 # audit). We read its stored db_content back verbatim and never rely on its
