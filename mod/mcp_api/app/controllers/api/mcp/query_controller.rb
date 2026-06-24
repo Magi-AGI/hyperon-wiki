@@ -20,7 +20,7 @@ module Api
         # T7: reject queries that produced no real filter (e.g. unrecognized keys,
         # or raw CQL strings like "name ~ 'x'"). Without this guard the query
         # degrades to Card.search(limit/offset) and silently returns EVERY card.
-        filter_keys = safe_query.keys.map(&:to_s) & %w[name type content updated_at created_at]
+        filter_keys = safe_query.keys.map(&:to_s) & %w[name type content updated_at created_at and]
         if filter_keys.empty?
           return render_error(
             "validation_error",
@@ -88,8 +88,8 @@ module Api
               safe_query[:content] = ["match", value]
             end
           when "updated_at", "created_at"
-            # Support date range queries
-            safe_query[key.to_sym] = parse_date_query(value)
+            # Support date range queries (>, >=, <, <=, between)
+            add_date_condition(safe_query, key.to_sym, value)
           end
         end
 
@@ -100,26 +100,39 @@ module Api
         safe_query
       end
 
-      def parse_date_query(value)
-        # Support array format: [">=", "2025-01-01"] or ["between", "2025-01-01", "2025-12-31"]
-        if value.is_a?(Array)
-          operator = value[0]
-          case operator
-          when ">=", ">", "<=", "<"
-            [operator, Time.parse(value[1])]
-          when "between"
-            ["between", Time.parse(value[1]), Time.parse(value[2])]
-          else
-            value
-          end
-        elsif value.is_a?(String)
-          # Single date string means exact match
-          Time.parse(value)
-        else
-          value
+      # Translate a friendly date filter into a Decko CQL condition.
+      #
+      # Decko CQL only honors the keyword operators "gt"/"lt" with a STRING
+      # date value. A raw [">=", date] is parsed as an IN-list (the bug this
+      # fixes) and a Time object is rejected outright ("Invalid value type:
+      # Time"). So we fold the comparison operators onto gt/lt and pass a
+      # normalized date string. ">=" / "<=" collapse to "gt" / "lt" at the
+      # given instant (CQL has no inclusive operator); at day granularity this
+      # behaves as "on or after / on or before" for practical purposes.
+      # "between" is expressed as an :and of a lower (gt) and upper (lt) bound.
+      def add_date_condition(safe_query, field, value)
+        return unless value.is_a?(Array) && value.length >= 2
+
+        operator = value[0].to_s
+        if operator == "between" && value.length >= 3
+          (safe_query[:and] ||= []) << { field => ["gt", normalize_date(value[1])] }
+          safe_query[:and] << { field => ["lt", normalize_date(value[2])] }
+          return
         end
-      rescue ArgumentError
-        value # Return as-is if parsing fails
+
+        cql_op = { ">" => "gt", ">=" => "gt", "gt" => "gt",
+                   "<" => "lt", "<=" => "lt", "lt" => "lt" }[operator]
+        return unless cql_op
+
+        safe_query[field] = [cql_op, normalize_date(value[1])]
+      end
+
+      # Normalize a date/time value to a UTC timestamp string PostgreSQL and
+      # Decko's CQL both accept. Falls back to the raw string if unparseable.
+      def normalize_date(raw)
+        Time.parse(raw.to_s).utc.strftime("%Y-%m-%d %H:%M:%S")
+      rescue ArgumentError, TypeError
+        raw.to_s
       end
 
       def execute_safe_query(query, limit, offset)
