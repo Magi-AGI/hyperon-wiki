@@ -12,6 +12,10 @@ module Mirror
   # task that takes the same lock.
   DRAIN_LOCK_ID = 0x7705_BEEF_DEAD_F00D
 
+  # Distinct signed-int64 advisory-lock key for the singleton bootstrap sweep (separate from the
+  # forward drain's lock, so a bootstrap and the drain don't block each other on the same key).
+  BOOTSTRAP_LOCK_ID = 0x7705_BEEF_DEAD_B007
+
   # The four terminal-advance statuses: a row in any of these is "applied or safely skipped" and the
   # contiguous prefix may advance past it. Their complement (queued / failed / awaiting_reconcile) is
   # a "hole" that holds the watermark down. (Section 2 Mechanism 2 / Section 10.)

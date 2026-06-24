@@ -108,17 +108,38 @@ class SidecarClient
     raise BulkLoadError, "bulk_load transport error: #{e.class}: #{e.message}"
   end
 
+  # GET /space_stats -> the sidecar's atom counts ({"atom_count"=>N, "by_kind"=>{...}}). Used by the
+  # bootstrap runner to assert an EMPTY Space before sweeping (Option A: fresh-sidecar/full-rerun).
+  # Raises BulkLoadError on a non-200 / transport failure (bootstrap aborts loudly).
+  def space_stats
+    status, parsed = post_or_get(:get, "/space_stats", nil)
+    raise BulkLoadError, "space_stats failed (HTTP #{status}): #{parsed.inspect[0, 200]}" unless status == 200 && parsed.is_a?(Hash)
+    parsed
+  rescue *RETRYABLE_TRANSPORT_ERRORS => e
+    raise BulkLoadError, "space_stats transport error: #{e.class}: #{e.message}"
+  end
+
   private
 
   def post(path, body_hash)
+    post_or_get(:post, path, body_hash)
+  end
+
+  def post_or_get(verb, path, body_hash)
     return @transport.call(path, body_hash) if @transport
 
     uri = URI("http://#{@host}:#{@port}#{path}")
     http = Net::HTTP.new(uri.host, uri.port)
     http.open_timeout = @open_timeout
     http.read_timeout = @read_timeout
-    request = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json")
-    request.body = JSON.generate(body_hash)
+    request =
+      if verb == :get
+        Net::HTTP::Get.new(uri.path)
+      else
+        post = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json")
+        post.body = JSON.generate(body_hash)
+        post
+      end
     response = http.request(request)
     [response.code.to_i, safe_parse(response.body)]
   end

@@ -99,4 +99,18 @@ RSpec.describe SidecarClient do
       expect { SidecarClient.new(transport: transport).bulk_load(atoms) }.to raise_error(SidecarClient::BulkLoadError, /transport/)
     end
   end
+
+  describe "#space_stats" do
+    it "GETs /space_stats and returns the parsed stats" do
+      seen = []
+      transport = ->(path, body) { seen << [path, body]; [200, { "atom_count" => 0, "by_kind" => {} }] }
+      expect(SidecarClient.new(transport: transport).space_stats).to eq("atom_count" => 0, "by_kind" => {})
+      expect(seen).to eq([["/space_stats", nil]])
+    end
+
+    it "raises BulkLoadError on a non-200 / transport error" do
+      expect { SidecarClient.new(transport: ->(_p, _b) { [500, nil] }).space_stats }.to raise_error(SidecarClient::BulkLoadError)
+      expect { SidecarClient.new(transport: ->(_p, _b) { raise Errno::ECONNREFUSED }).space_stats }.to raise_error(SidecarClient::BulkLoadError)
+    end
+  end
 end
