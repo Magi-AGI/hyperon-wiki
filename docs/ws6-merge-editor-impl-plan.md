@@ -45,6 +45,16 @@
 - JS gotchas: `String.fromCharCode(92)` for any `\`; `node --check` embedded scripts; CSS literals (no `hsl(var())`).
 - **Exit:** editor reconciles hunks and previews assembled HTML. Still no parent write.
 
+## Phase 4.1 — P4Merge ribbon polish *(presentation only; same contract)*
+- Upgrade the thin-cut gutters to **animated cubic-Bézier connector ribbons** (inline SVG
+  `<path>`, recomputed in JS on scroll/resize/select; no chart lib, CSS-literal styling) plus
+  **user-resizable highlighted bands** that re-fit the ribbons to differing block heights —
+  Lake's signature P4Merge look, scheduled here (not Phase 8) per the 2026-06-24 decision.
+- **Strictly non-semantic (Codex):** hunk meaning stays fully carried by text + label/icon +
+  color + keyboard focus; the tool must remain complete and usable with ribbons disabled.
+- No change to the §3 payload, §4 selection model, or the client assembler — pure rendering.
+- **Exit:** the workbench shows animated P4Merge-style connections; thin-cut behavior unchanged.
+
 ## Phase 5 — TinyMCE polish pane (Phase-2 UI)
 - On "Assemble", instantiate **one** TinyMCE via the deck's `decko.initTinyMCE` with the merged content (reuse fullscreen config). Markdown parents → existing Markdown edit surface, gated on `card.type_name`.
 - Verify/extend `{{nest}}` survival through TinyMCE (`valid_elements`/`extended_valid_elements`, paste cleanup).

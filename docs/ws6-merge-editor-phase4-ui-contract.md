@@ -1,9 +1,10 @@
 # WS6 Phase 4 — Merge Workbench UI Contract
 
-**Status:** RATIFIED by Codex + Gemini (2026-06-24). Open Q #1 → client-side preview
-assembler (non-authoritative; Phase 6 verifies server-side). Open Q #5 → thin cut first
-(3 panes + synced scroll + static connectors); animated Bézier ribbons deferred to a
-polish pass (Phase 4.1 vs Phase 8 — Lake to time). Implementation cleared to begin.
+**Status:** RATIFIED by Codex + Gemini (2026-06-24); thin cut IMPLEMENTED (pure logic
+8/8 local; dev render verification pending). Open Q #1 → client-side preview assembler
+(non-authoritative; Phase 6 verifies server-side). Open Q #5 → thin cut first (3 panes +
+single-scroll grid + static connectors); animated Bézier ribbons → **Phase 4.1** (Lake's
+call, right after the thin cut lands), not Phase 8.
 **Companion to:** `ws6-merge-editor-design.md` (spec), `ws6-merge-editor-impl-plan.md` (Phase 4).
 **Scope of Phase 4:** a **read-only** reconciliation surface. It renders hunks, lets the
 editor toggle per-hunk selections, and previews the assembled draft **client-side**. It
@@ -316,9 +317,9 @@ A reviewer can verify this by checking that no Phase 5 code calls `BlockMerge.me
    payload/defaults/conflict/stale behavior are proven" (could be a Phase 4.1 follow-up once
    the thin cut lands); Gemini says defer to the Phase 8 hardening pass (citing Decko asset-
    pipeline/SVG brittleness risk). Either way it does NOT block Phase 4 completion and the
-   §3/§4 contract is identical. **Lake to pick the timing** of the ribbon polish (Phase 4.1
-   vs Phase 8) — flagged because the ribbons are the specific look Lake asked for, so we want
-   it scheduled, not dropped.
+   §3/§4 contract is identical. **DECIDED (Lake, 2026-06-24): Phase 4.1**, immediately after
+   the thin cut lands and is verified — so the signature P4Merge look ships promptly rather
+   than waiting for Phase 8.
 6. **Ribbon implementation surface (applies whenever #5's polish pass runs):** inline SVG
    `<path>` per gutter with cubic-Bézier `d` recomputed in JS on scroll/resize/select (no
    chart lib), CSS-literal styling (no `hsl(var())` per the plan's JS gotchas), hand-rolled
