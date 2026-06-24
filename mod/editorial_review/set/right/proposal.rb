@@ -29,26 +29,33 @@
 PROPOSAL_META_TYPE = "Plain Text"
 
 # Content cardtypes a proposal may mirror (so 3-way diffs are apples-to-apples).
-# Non-content parent types (e.g. Published/Draft, themselves HTML-backed) are
-# left alone — a proposal created against them stays its authored type and the
-# diff engine keys off the recorded parent_type/proposal_type instead.
-def proposal_content_type_ids
-  [Card.fetch_id(:rich_text), Card.fetch_id(:markdown)].compact
-end
+# Compared by type NAME (robust) rather than codename ids. Non-content parent
+# types (e.g. Published/Draft, themselves HTML-backed) are left alone — a
+# proposal created against them stays its authored type and the diff engine keys
+# off the recorded parent_type/proposal_type instead.
+PROPOSAL_CONTENT_TYPES = %w[RichText Markdown].freeze
 
 # (1) Align proposal content format to its parent's, before the card is stored.
 event :align_proposal_type, :prepare_to_validate, on: :create do
   parent = left
   next unless parent
   next if type_id == parent.type_id
-  next unless proposal_content_type_ids.include?(parent.type_id)
+  next unless PROPOSAL_CONTENT_TYPES.include?(parent.type_name)
 
   self.type_id = parent.type_id
 end
 
 # (2) Stamp base + write provenance at authoring time. Idempotent; honours a
 #     generator-supplied base override (never overwrites it).
-event :stamp_proposal_base, :integrate, on: :create do
+#
+# STAGE = :finalize (not :integrate): :integrate runs after-commit and is
+# deferred/suppressed on the MCP-API and runner create paths (the AI-generator
+# path), so an :integrate stamp would never run for AI-authored proposals.
+# :finalize runs inside the save transaction, so the proposal + base +
+# provenance commit atomically (no orphaned unstamped proposals). The metadata
+# cards' right names (+base/+provenance) are not "proposal", so writing them
+# here does not re-trigger this set.
+event :stamp_proposal_base, :finalize, on: :create do
   parent = left
   next unless parent
 
@@ -109,7 +116,7 @@ end
 
 # (3) Keep proposal_hash/proposal_type current so legitimate post-authoring edits
 #     to the proposal don't trip Phase 6's integrity check. Base fields preserved.
-event :refresh_proposal_hash, :integrate, on: :update, changed: :db_content do
+event :refresh_proposal_hash, :finalize, on: :update, changed: :db_content do
   prov_name = "#{name}+provenance"
   prov = Card.fetch(prov_name)
   next unless prov&.db_content.present?
