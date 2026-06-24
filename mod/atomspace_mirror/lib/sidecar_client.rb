@@ -69,6 +69,11 @@ class SidecarClient
     Errno::ETIMEDOUT, Net::OpenTimeout, Net::ReadTimeout, SocketError, EOFError, IOError, Timeout::Error
   ].freeze
 
+  # Raised when a bootstrap /bulk_load batch fails. Bootstrap is operator-driven (not a per-event
+  # retry loop), so a batch failure aborts the sweep loudly; the operator re-runs (against a fresh
+  # sidecar, per the §1 acceptance -- the in-memory Space is wiped on sidecar restart).
+  class BulkLoadError < StandardError; end
+
   def initialize(host: "127.0.0.1", port: 9407, open_timeout: 2, read_timeout: 5, transport: nil)
     @host = host
     @port = port
@@ -83,6 +88,19 @@ class SidecarClient
     DrainDelivery.classify(http_status: status, body: parsed)
   rescue *RETRYABLE_TRANSPORT_ERRORS => e   # connect refused / timeout / DNS / reset -> retryable
     DrainDelivery.classify(http_status: 0, transport_error: "#{e.class}: #{e.message}")
+  end
+
+  # Bulk-load a batch of atom dicts (DeckoCard/DeckoReference, NO provenance) during the §1 bootstrap
+  # sweep. POST /bulk_load. Returns the count the sidecar loaded; raises BulkLoadError on any
+  # non-200 / transport failure so the sweep aborts loudly (operator re-runs).
+  def bulk_load(atoms)
+    status, parsed = post("/bulk_load", { "atoms" => atoms })
+    unless status == 200 && parsed.is_a?(Hash) && parsed.key?("loaded")
+      raise BulkLoadError, "bulk_load failed (HTTP #{status}): #{(parsed || {}).inspect[0, 200]}"
+    end
+    parsed["loaded"]
+  rescue *RETRYABLE_TRANSPORT_ERRORS => e
+    raise BulkLoadError, "bulk_load transport error: #{e.class}: #{e.message}"
   end
 
   private

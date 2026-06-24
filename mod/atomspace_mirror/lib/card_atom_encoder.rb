@@ -53,6 +53,16 @@ module CardAtomEncoder
      decko_provenance(action, card, pre_state || {}, auth || {}, request_context || {})]
   end
 
+  # Bulk-load snapshot of a card's CURRENT state for the Section 1 bootstrap sweep: DeckoCard + its
+  # DeckoReferences, with NO DeckoProvenance (the sweep is one bulk operation, not N per-action
+  # events; run metadata lives in mirror_bootstrap_runs). PATCH-4 faithful -- identical atom shapes
+  # to the forward path, just without the provenance companion. Pure: no action/auth needed; takes a
+  # live Card (the sweep encodes current state, not an action). Drafts/trash are the caller's call --
+  # the sweep iterates `Card.where(trash: [true, false])`.
+  def encode_card_snapshot(card)
+    [decko_card(card), *decko_references(card)]
+  end
+
   def decko_card(card)
     atom "DeckoCard", [
       ["Id",        card.id],

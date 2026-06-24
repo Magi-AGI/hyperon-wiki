@@ -67,4 +67,25 @@ RSpec.describe SidecarClient do
     transport = ->(_path, _body) { raise NoMethodError, "boom" }
     expect { SidecarClient.new(transport: transport).apply(payload) }.to raise_error(NoMethodError, /boom/)
   end
+
+  describe "#bulk_load" do
+    let(:atoms) { [{ "atom" => "DeckoCard", "fields" => [["Id", 1]] }] }
+
+    it "POSTs to /bulk_load and returns the loaded count" do
+      seen = []
+      transport = ->(path, body) { seen << [path, body]; [200, { "loaded" => 3 }] }
+      expect(SidecarClient.new(transport: transport).bulk_load(atoms)).to eq(3)
+      expect(seen).to eq([["/bulk_load", { "atoms" => atoms }]])
+    end
+
+    it "raises BulkLoadError on a non-200 (sweep aborts loudly)" do
+      transport = ->(_p, _b) { [500, { "error" => "boom" }] }
+      expect { SidecarClient.new(transport: transport).bulk_load(atoms) }.to raise_error(SidecarClient::BulkLoadError)
+    end
+
+    it "raises BulkLoadError on a transport error (no per-batch retry loop)" do
+      transport = ->(_p, _b) { raise Errno::ECONNREFUSED }
+      expect { SidecarClient.new(transport: transport).bulk_load(atoms) }.to raise_error(SidecarClient::BulkLoadError, /transport/)
+    end
+  end
 end

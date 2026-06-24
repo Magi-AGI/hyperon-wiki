@@ -5,19 +5,25 @@
 # runtime. Requiring files directly in the other specs does NOT prove this (Codex load-chain
 # blocker). A minimal ActiveRecord stub lets the AR-model files load without a Rails boot.
 
-unless defined?(ActiveRecord)
-  module ActiveRecord
-    class Base
-      def self.table_name=(value)
-        @table_name = value
-      end
+# Robust to a PARTIAL ActiveRecord already defined by another standalone spec (e.g. the writer spec
+# defines only ActiveRecord::RecordNotUnique): ensure the module + Base + RecordNotUnique each exist,
+# independently, so requiring the AR-model files never hits an uninitialized ActiveRecord::Base.
+module ActiveRecord; end unless defined?(ActiveRecord)
 
-      def self.table_name
-        @table_name
-      end
+unless defined?(ActiveRecord::Base)
+  class ActiveRecord::Base
+    def self.table_name=(value)
+      @table_name = value
     end
-    class RecordNotUnique < StandardError; end
+
+    def self.table_name
+      @table_name
+    end
   end
+end
+
+unless defined?(ActiveRecord::RecordNotUnique)
+  class ActiveRecord::RecordNotUnique < StandardError; end
 end
 
 require_relative "../../mod/atomspace_mirror/lib/atomspace_mirror"

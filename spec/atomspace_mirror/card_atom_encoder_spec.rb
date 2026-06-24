@@ -216,4 +216,27 @@ RSpec.describe CardAtomEncoder do
       expect(enc(action(c))).to eq(enc(action(c)))
     end
   end
+
+  describe "encode_card_snapshot (bootstrap bulk-load)" do
+    it "emits DeckoCard + DeckoReference(s) and NO DeckoProvenance, no auth required" do
+      atoms = described_class.encode_card_snapshot(card(references_out: [ref(ref_type: "I"), ref]))
+      kinds = atoms.map { |a| a["atom"] }
+      expect(kinds).to eq(%w[DeckoCard DeckoReference DeckoReference])
+      expect(kinds).not_to include("DeckoProvenance")
+    end
+
+    it "emits just the DeckoCard (full 14-field arity) for a card with no references" do
+      atoms = described_class.encode_card_snapshot(card)
+      expect(atoms.map { |a| a["atom"] }).to eq(%w[DeckoCard])
+      expect(atoms.first["fields"].map(&:first)).to eq(
+        %w[Id Name Key Codename TypeId TypeName LeftId RightId Content Trash CreatedAt UpdatedAt CreatorId UpdaterId]
+      )
+    end
+
+    it "produces the same DeckoCard/DeckoReference atoms as the forward encoder (PATCH-4 faithful)" do
+      c = card(references_out: [ref])
+      forward = enc(action(c)).reject { |a| a["atom"] == "DeckoProvenance" }
+      expect(described_class.encode_card_snapshot(c)).to eq(forward)
+    end
+  end
 end
