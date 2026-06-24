@@ -72,6 +72,12 @@
 # Codenames for child card fields (right-set registration)
 # =============================================================
 
+# WS6: registers the +proposal right-set (set/right/proposal.rb). Without this
+# codename the Right::Proposal set never resolves its anchor, so its events
+# (stamp_proposal_base, align_proposal_type, refresh_proposal_hash) never fire.
+- :name: proposal
+  :codename: proposal
+
 - :name: ai draft
   :codename: ai_draft
 
