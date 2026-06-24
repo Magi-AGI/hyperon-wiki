@@ -154,24 +154,41 @@ WS6_MW_CSS = <<~'WS6CSS'
   .ws6-tier-estimated{background:#fef7e0;border:1px solid #f9ab00;}
   .ws6-tier-stale{background:#fce8e6;border:1px solid #d93025;}
   .ws6-warn{margin-top:4px;color:#b06000;font-size:13px;}
-  .ws6-grid{display:grid;border:1px solid #ddd;border-bottom:none;max-height:62vh;overflow:auto;}
-  .ws6-grid.ws6-3{grid-template-columns:1fr 28px 1fr 28px 1fr 210px;}
-  .ws6-grid.ws6-2{grid-template-columns:1fr 28px 1fr 210px;}
-  .ws6-row{display:contents;}
-  .ws6-cell{padding:6px 8px;border-bottom:1px solid #eee;min-width:0;}
-  .ws6-pre{margin:0;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Consolas,monospace;font-size:12px;}
-  .ws6-gutter{background:#fafafa;text-align:center;color:#bbb;}
-  .ws6-rail{padding:6px 8px;border-bottom:1px solid #eee;background:#fafbfc;font-size:13px;}
+  /* Phase 4.1: flex-stack so changed hunks are independent-height "slots" (each
+     pane sizes to its content) -> Bézier ribbons fan to fit the differing heights.
+     Column widths are kept identical across header / stable / slot rows. */
+  .ws6-stackwrap{position:relative;border:1px solid #ddd;border-bottom:none;}
+  .ws6-stack{position:relative;max-height:62vh;overflow:auto;}
+  .ws6-row{display:flex;align-items:stretch;}
+  .ws6-slot{display:flex;align-items:flex-start;border-bottom:1px solid #eee;position:relative;}
+  .ws6-col{flex:1 1 0;min-width:0;padding:6px 8px;position:relative;}
+  .ws6-sp{flex:0 0 28px;align-self:stretch;}
+  .ws6-rail{flex:0 0 210px;padding:6px 8px;background:#fafbfc;font-size:13px;align-self:stretch;}
   .ws6-rail label{display:block;cursor:pointer;}
-  .ws6-colhead{font-weight:600;background:#f1f3f4;border-bottom:1px solid #ddd;padding:6px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0;z-index:1;}
-  .ws6-stable-cell{grid-column:1/-1;padding:4px 10px;color:#888;font-size:12px;background:#f7f7f7;border-bottom:1px solid #eee;}
-  .ws6-band-conflict .ws6-cell{background:#fdecea;}
-  .ws6-band-ai_only .ws6-cell{background:#e8f0fe;}
-  .ws6-band-human_only .ws6-cell{background:#f1f3f4;}
-  .ws6-band-both_same .ws6-cell{background:#e6f4ea;}
+  .ws6-pre{margin:0;white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Consolas,monospace;font-size:12px;min-height:1em;}
+  .ws6-colhead{flex:1 1 0;min-width:0;font-weight:600;background:#f1f3f4;border-bottom:1px solid #ddd;padding:6px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0;z-index:3;}
+  .ws6-colhead.ws6-sp{flex:0 0 28px;background:#f1f3f4;}
+  .ws6-colhead.ws6-rail{flex:0 0 210px;background:#f1f3f4;align-self:auto;}
+  .ws6-row.ws6-headrow{position:sticky;top:0;z-index:3;}
+  .ws6-stable-bar{flex:1 1 100%;padding:4px 10px;color:#888;font-size:12px;background:#f7f7f7;border-bottom:1px solid #eee;}
+  .ws6-band-conflict .ws6-col{background:#fdecea;}
+  .ws6-band-ai_only .ws6-col{background:#e8f0fe;}
+  .ws6-band-human_only .ws6-col{background:#f1f3f4;}
+  .ws6-band-both_same .ws6-col{background:#e6f4ea;}
   .ws6-unresolved .ws6-rail{outline:2px solid #d93025;outline-offset:-2px;}
   .ws6-flag{font-size:11px;font-weight:600;color:#d93025;display:none;}
   .ws6-unresolved .ws6-flag{display:block;}
+  /* resize grip: drag a pane's bottom edge to grow/shrink its band height. */
+  .ws6-grip{position:absolute;left:0;right:0;bottom:0;height:6px;cursor:ns-resize;}
+  .ws6-grip:hover{background:rgba(0,0,0,.12);}
+  /* single SVG ribbon overlay; scrolls with content; never intercepts clicks. */
+  .ws6-ribbons{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2;overflow:visible;}
+  .ws6-ribbon{opacity:.5;}
+  .ws6-rib-conflict{fill:#d93025;}
+  .ws6-rib-ai_only{fill:#1a73e8;}
+  .ws6-rib-human_only{fill:#9aa0a6;}
+  .ws6-rib-both_same{fill:#34a853;}
+  @media (prefers-reduced-motion: no-preference){ .ws6-ribbon{transition:opacity .2s ease;} }
   .ws6-actions{margin-top:12px;}
   .ws6-actions button{font-size:14px;padding:6px 12px;margin-right:8px;}
   .ws6-actions button[disabled]{opacity:.5;cursor:not-allowed;}
@@ -259,7 +276,89 @@ WS6_MW_JS = <<~'WS6JS'
       if (pre) pre.textContent = assemble();
     });
 
+    // ---- Phase 4.1: Bézier ribbon overlay (presentation only) ----------------
+    // One SVG overlay; for each changed hunk, draw a closed Bézier ribbon in each
+    // gutter whose two adjacent panes differ. The curves fan to fit the panes'
+    // (independent) heights. Pure overlay: meaning stays in text/labels/controls;
+    // on any failure we hide the SVG and keep the flat thin-cut presentation.
+    var SVGNS = 'http://www.w3.org/2000/svg';
+    function joinNe(a, b) { return (a || []).join('') !== (b || []).join(''); }
+
+    function addRibbon(svg, leftEl, rightEl, ox, oy, type) {
+      var l = leftEl.getBoundingClientRect(), r = rightEl.getBoundingClientRect();
+      var x0 = l.right + ox, x1 = r.left + ox, cx = (x0 + x1) / 2;
+      var lt = l.top + oy, lb = l.bottom + oy, rt = r.top + oy, rb = r.bottom + oy;
+      var d = 'M' + x0 + ',' + lt +
+              ' C' + cx + ',' + lt + ' ' + cx + ',' + rt + ' ' + x1 + ',' + rt +
+              ' L' + x1 + ',' + rb +
+              ' C' + cx + ',' + rb + ' ' + cx + ',' + lb + ' ' + x0 + ',' + lb + ' Z';
+      var path = document.createElementNS(SVGNS, 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('class', 'ws6-ribbon ws6-rib-' + type);
+      svg.appendChild(path);
+    }
+
+    function buildRibbons() {
+      try {
+        var svg = root.querySelector('.ws6-ribbons');
+        var stack = root.querySelector('.ws6-stack');
+        if (!svg || !stack) return;
+        while (svg.firstChild) svg.removeChild(svg.firstChild);
+        svg.setAttribute('width', stack.scrollWidth);
+        svg.setAttribute('height', stack.scrollHeight);
+        var s = stack.getBoundingClientRect();
+        var ox = -s.left + stack.scrollLeft, oy = -s.top + stack.scrollTop;
+        payload.hunks.forEach(function (h) {
+          if (h.type === 'stable') return;
+          var slot = root.querySelector('[data-hunk-id="' + h.id + '"]');
+          if (!slot) return;
+          var base = slot.querySelector('.ws6-pane-base');
+          var cur = slot.querySelector('.ws6-pane-current');
+          var prop = slot.querySelector('.ws6-pane-proposal');
+          if (base && cur && joinNe(h.base, h.current)) addRibbon(svg, base, cur, ox, oy, h.type);
+          if (cur && prop && joinNe(h.current, h.proposal)) addRibbon(svg, cur, prop, ox, oy, h.type);
+        });
+      } catch (e) {
+        var s2 = root.querySelector('.ws6-ribbons');
+        if (s2) s2.style.display = 'none';
+      }
+    }
+
+    var rebuildTimer = null;
+    function rebuildSoon() {
+      if (rebuildTimer) clearTimeout(rebuildTimer);
+      rebuildTimer = setTimeout(buildRibbons, 60);
+    }
+
+    // resizable bands: drag a pane's grip to grow/shrink its height; ribbons
+    // follow live (this is the "animate to fit the different dimensions").
+    root.addEventListener('mousedown', function (ev) {
+      var grip = ev.target.closest ? ev.target.closest('.ws6-grip') : null;
+      if (!grip) return;
+      ev.preventDefault();
+      var col = grip.parentNode;
+      var startY = ev.clientY, startH = col.getBoundingClientRect().height;
+      function move(e) {
+        var hgt = Math.max(24, startH + (e.clientY - startY));
+        col.style.minHeight = hgt + 'px';
+        buildRibbons();
+      }
+      function up() {
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+      }
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+
+    // No scroll listener needed: the SVG is an absolute child of the scroll
+    // container, so it scrolls with content; only resize/zoom changes geometry.
+    if (window.addEventListener) window.addEventListener('resize', rebuildSoon);
+
     refresh();
+    // draw after layout settles (fonts/reflow)
+    buildRibbons();
+    setTimeout(buildRibbons, 80);
   })();
 WS6JS
 
@@ -290,13 +389,15 @@ format :html do
   # ---- workbench rendering helpers (pure string building over the payload) ----
 
   def merge_workbench_shell(payload)
-    cols = payload[:mode] == "three_way" ? "ws6-3" : "ws6-2"
     rows = payload[:hunks].map { |hunk| mw_row(hunk, payload[:mode]) }.join
     island = MergeWorkbench.to_island_json(payload)
 
     %(<div class="ws6-mw">) +
       mw_banner(payload) +
-      %(<div class="ws6-grid #{cols}">#{mw_header(payload[:mode])}#{rows}</div>) +
+      %(<div class="ws6-stackwrap"><div class="ws6-stack">) +
+      mw_header(payload[:mode]) + rows +
+      %(<svg class="ws6-ribbons" xmlns="http://www.w3.org/2000/svg"></svg>) +
+      %(</div></div>) +
       mw_actions +
       %(<script type="application/json" id="ws6-mw-data">#{island}</script>) +
       %(<style>#{WS6_MW_CSS}</style>) +
@@ -326,39 +427,48 @@ format :html do
   def mw_header(mode)
     heads =
       if mode == "three_way"
-        ["Base", :gutter, "Current (human)", :gutter, "Proposal (AI)", "Selection"]
+        ["Base", :gutter, "Current (human)", :gutter, "Proposal (AI)", :rail]
       else
-        ["Current (human)", :gutter, "Proposal (AI)", "Selection"]
+        ["Current (human)", :gutter, "Proposal (AI)", :rail]
       end
-    heads.map do |hd|
-      hd == :gutter ? %(<div class="ws6-colhead ws6-gutter"></div>) : %(<div class="ws6-colhead">#{h hd}</div>)
+    cells = heads.map do |hd|
+      case hd
+      when :gutter then %(<div class="ws6-colhead ws6-sp"></div>)
+      when :rail then %(<div class="ws6-colhead ws6-rail">Selection</div>)
+      else %(<div class="ws6-colhead">#{h hd}</div>)
+      end
     end.join
+    %(<div class="ws6-row ws6-headrow">#{cells}</div>)
   end
 
   def mw_row(hunk, mode)
     if hunk[:type] == "stable"
       n = hunk[:count]
-      return %(<div class="ws6-stable-cell">▸ #{n} unchanged block#{n == 1 ? '' : 's'}</div>)
+      return %(<div class="ws6-row"><div class="ws6-stable-bar">▸ #{n} unchanged block#{n == 1 ? '' : 's'}</div></div>)
     end
 
     type = hunk[:type]
-    cells =
+    panes =
       if mode == "three_way"
-        mw_cell(hunk[:base]) + mw_gutter + mw_cell(hunk[:current]) + mw_gutter + mw_cell(hunk[:proposal])
+        mw_pane(hunk[:base], "base") + mw_sp + mw_pane(hunk[:current], "current") +
+          mw_sp + mw_pane(hunk[:proposal], "proposal")
       else
-        mw_cell(hunk[:current]) + mw_gutter + mw_cell(hunk[:proposal])
+        mw_pane(hunk[:current], "current") + mw_sp + mw_pane(hunk[:proposal], "proposal")
       end
-    cells += mw_rail(hunk)
+    panes += mw_rail(hunk)
 
-    %(<div class="ws6-row ws6-band-#{type}" data-hunk-id="#{h hunk[:id]}" data-type="#{type}">#{cells}</div>)
+    %(<div class="ws6-slot ws6-band-#{type}" data-hunk-id="#{h hunk[:id]}" data-type="#{type}">#{panes}</div>)
   end
 
-  def mw_cell(blocks)
-    %(<div class="ws6-cell"><pre class="ws6-pre">#{h Array(blocks).join("\n")}</pre></div>)
+  # A pane = a resizable content band (the grip lets the user drag its height,
+  # which makes the ribbons fan to fit). pane class drives ribbon endpoint lookup.
+  def mw_pane(blocks, side)
+    %(<div class="ws6-col ws6-pane-#{side}"><pre class="ws6-pre">#{h Array(blocks).join("\n")}</pre>) +
+      %(<div class="ws6-grip" title="drag to resize this band"></div></div>)
   end
 
-  def mw_gutter
-    %(<div class="ws6-cell ws6-gutter">›</div>)
+  def mw_sp
+    %(<div class="ws6-sp"></div>)
   end
 
   # Selection control per hunk type (contract §4). Meaning is carried in text +
