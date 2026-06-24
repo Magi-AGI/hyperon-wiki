@@ -1,10 +1,11 @@
 # WS6 Phase 4 — Merge Workbench UI Contract
 
-**Status:** RATIFIED by Codex + Gemini (2026-06-24); thin cut IMPLEMENTED (pure logic
-8/8 local; dev render verification pending). Open Q #1 → client-side preview assembler
-(non-authoritative; Phase 6 verifies server-side). Open Q #5 → thin cut first (3 panes +
-single-scroll grid + static connectors); animated Bézier ribbons → **Phase 4.1** (Lake's
-call, right after the thin cut lands), not Phase 8.
+**Status:** RATIFIED by Codex + Gemini (2026-06-24); thin cut IMPLEMENTED + fully VERIFIED
+(pure 8/8 local · dev runner render 18/18 + forced-2-way 7/7 · jsdom interactive 19/19 ·
+headless-Chromium visual · isolated :3001 real-HTTP click-through 7/7). Open Q #1 →
+client-side preview assembler (non-authoritative; Phase 6 verifies server-side). Open Q #5
+→ thin cut first; animated Bézier ribbons → **Phase 4.1** (next). **Integration finding:**
+layout-free is via `&layout=none` (see §1), not intrinsic — Phase 7 entry links must carry it.
 **Companion to:** `ws6-merge-editor-design.md` (spec), `ws6-merge-editor-impl-plan.md` (Phase 4).
 **Scope of Phase 4:** a **read-only** reconciliation surface. It renders hunks, lets the
 editor toggle per-hunk selections, and previews the assembled draft **client-side**. It
@@ -45,16 +46,16 @@ warning behavior, (6) how TinyMCE arrives in Phase 5 without changing merge sema
 
 ## 1. Route / view name
 
-A **layout-free** HTML view on the `proposal` right-set (bypasses the standard card
-513/layout chrome so the workbench is a clean full-width surface):
+An HTML view on the `proposal` right-set, served **layout-free via `&layout=none`** so the
+workbench is a clean full-width surface (bypassing the standard card-513 layout chrome):
 
 | Concern | Decision |
 |---|---|
 | Set | `Right::Proposal` (`set/right/proposal.rb`, the file that already exists) |
 | Primary view | `view :merge_workbench` |
 | Format | `format :html` |
-| URL | `/<Parent>+proposal?view=merge_workbench` (Decko's standard `?view=` param; no new route/controller in Phase 4) |
-| Layout | layout-free shell — the view explicitly opts out of the standard layout (`layout: false` / minimal viewport container), no card-513 nest; matches how other custom full-surface views render in this deck (Gemini #1) |
+| URL | `/<Parent>+proposal?view=merge_workbench&layout=none` (Decko's standard `?view=` + `layout=none` params; no new route/controller in Phase 4) |
+| Layout | **layout-free via Decko's `layout=none` param** — VERIFIED over a real :3001 HTTP request: with `&layout=none` the response is the bare 8.6 KB workbench (zero `<html>` chrome); without it, `?view=merge_workbench` renders correctly but **wrapped in the full card-513 layout** (32 KB). So layout-free is achieved by the URL param, NOT intrinsically by the view. The canonical workbench link always includes `layout=none`; **Phase 7 entry-point links MUST include it.** (`layout=bare`/`blank` 500; `modal` partial-wraps — `none` is the one to use.) |
 | Data API | **none yet.** Phase 4 server-renders the full hunk payload into the initial HTML (and a `<script type="application/json">` island). A JSON endpoint for re-assembly is introduced in §6 as an *optional* enhancement; the default is a server round-trip via the existing card update/`view` path with `selections` in params. |
 
 **Why a named view, not a new controller:** Decko routes `?view=` to the set's format view
