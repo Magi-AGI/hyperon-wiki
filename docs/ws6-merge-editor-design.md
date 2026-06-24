@@ -98,14 +98,37 @@ end
 - **No upstream changes required:** the floor is enforced where content is written (MCP API + scripts + hand-creation all pass through card create), which is stronger governance than per-generator stamping.
 - A companion `on: :create` event aligns the proposal's `type_id` to the parent's content format (§3.5).
 
-**Metadata schema (rich enough to reconstruct *and* verify, Codex):**
+**Metadata schema (rich enough to reconstruct *and* verify — final, reviewer-ratified):**
 
 | Card | Type | Stamped | Contents |
 |---|---|---|---|
-| `<Parent>+proposal+base` | Number | authoring time | parent `act_id` the proposal was authored against (primary key for snapshot reconstruction) |
-| `<Parent>+proposal+provenance` | (json/basic) | authoring time | parent card id + name, parent revision/action/act identifier, **base content hash**, **proposal content hash**, actor/source, timestamp, `override_reason` (if overridden) |
+| `<Parent>+proposal+base` | Number | authoring time | parent `act_id` the proposal was authored against (human/audit reference) |
+| `<Parent>+proposal+provenance` | PlainText (format-inert; render `:raw`) | authoring time, **`proposal_hash`/`proposal_type` refreshed on proposal update** | compact JSON below |
+| `<Parent>+proposal+merge audit` | PlainText | apply (§7) | merge-time counterpart; may retain prior `proposal_hash` values |
 
-`<Parent>+proposal+merge audit` (added on apply, §7) records the merge-time counterpart. The two together prove the chain: *what base was claimed at authoring* → *what was applied at merge* → *by whom*.
+```jsonc
+{
+  "schema_version": 1,
+  "parent_id": 8442, "parent_name": "Glossary+Overgoal", "parent_type": "RichText",
+  "base_act_id": 114217,            // audit reference
+  "base_action_id": 123456,         // DURABLE key: parent's Card::Action id used to reconstruct base (Codex #1)
+  "base_hash": "sha256:…",          // over parent db_content at base_action_id
+  "proposal_hash": "sha256:…",      // CURRENT proposal db_content hash; refreshed on proposal edit (Codex #3)
+  "proposal_type": "RichText",
+  "actor_id": 17, "actor_name": "Lake Watkins",   // id is identity; name is a label (Codex #2 / Gemini)
+  "source": "mcp:create_card",      // "unknown" if undeterminable
+  "stamp_source": "server_current", // server_current | generator_read_time | manual_override (Codex #6)
+  "override": false, "override_reason": null,     // override reserved for manual_override only
+  "stamped_at": "2026-06-23T21:15:00Z"            // strict ISO8601 UTC (Codex #4)
+}
+```
+
+- **Hash:** `sha256` hex over raw stored `db_content` (not rendered) — parser/whitespace-independent (both reviewers).
+- **`base_action_id` vs `base_act_id` (Codex #1):** do not assume an Act maps to exactly one parent content revision. The durable reconstruction key is the parent's `Card::Action` id; `base_act_id` kept for audit. Phase 1 verifies the Act↔Action relationship empirically.
+- **proposal_hash lifecycle (Codex #3):** maintained as the *current* proposal content hash — a `:update` event on the proposal refreshes `proposal_hash`/`proposal_type` while preserving the base fields — so legitimate post-authoring edits don't trip Phase 6's optimistic check.
+- **stamp_source (Codex #6):** a generator-supplied read-time base is `generator_read_time`, **not** `override`. `override:true` + required `override_reason` is reserved for privileged/manual non-current base selection (permission-restricted, audited).
+
+`<Parent>+proposal+merge audit` (apply, §7) records the merge-time counterpart. The two together prove the chain: *base claimed at authoring* → *what was applied at merge* → *by whom*.
 
 ### 4.2 Three-Tier Confidence (Gemini) — covers legacy / ambiguous
 
