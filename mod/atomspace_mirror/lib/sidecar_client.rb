@@ -74,6 +74,10 @@ class SidecarClient
   # sidecar, per the §1 acceptance -- the in-memory Space is wiped on sidecar restart).
   class BulkLoadError < StandardError; end
 
+  # Raised when an L5 Mechanism-3 drift query (projection_index / card_projection) fails. The sweep is
+  # report-only + operator/cron-driven, so a query failure aborts the sweep loudly (no partial report).
+  class DriftQueryError < StandardError; end
+
   def initialize(host: "127.0.0.1", port: 9407, open_timeout: 2, read_timeout: 5, transport: nil)
     @host = host
     @port = port
@@ -117,6 +121,36 @@ class SidecarClient
     parsed
   rescue *RETRYABLE_TRANSPORT_ERRORS => e
     raise BulkLoadError, "space_stats transport error: #{e.class}: #{e.message}"
+  end
+
+  # GET /projection_index -> the full Space drift inventory {card_id (Integer) => sha256}. Keys arrive
+  # as JSON-object strings and are coerced to Integer here. (L5 Mechanism 3.)
+  def projection_index
+    status, parsed = post_or_get(:get, "/projection_index", nil)
+    index = parsed.is_a?(Hash) ? parsed["index"] : nil
+    raise DriftQueryError, "projection_index failed (HTTP #{status}): #{parsed.inspect[0, 200]}" unless status == 200 && index.is_a?(Hash)
+
+    # This is a drift CONTRACT boundary -- never silently coerce. A non-integer key (k.to_i would turn
+    # "abc"->0 / "123x"->123) or a non-string hash is a sidecar contract break, raised loudly.
+    index.each_with_object({}) do |(k, v), h|
+      raise DriftQueryError, "projection_index: non-integer card id key #{k.inspect}" unless k.is_a?(String) && k.match?(/\A\d+\z/)
+      raise DriftQueryError, "projection_index: non-string hash for card #{k} (#{v.inspect})" unless v.is_a?(String) && !v.empty?
+
+      h[k.to_i] = v
+    end
+  rescue *RETRYABLE_TRANSPORT_ERRORS => e
+    raise DriftQueryError, "projection_index transport error: #{e.class}: #{e.message}"
+  end
+
+  # GET /card_projection/:id -> {"card_id", "present", "canonical", "sha256"} for one card (mismatch
+  # diagnostic / re-verification). (L5 Mechanism 3.)
+  def card_projection(card_id)
+    status, parsed = post_or_get(:get, "/card_projection/#{card_id.to_i}", nil)
+    raise DriftQueryError, "card_projection(#{card_id}) failed (HTTP #{status}): #{parsed.inspect[0, 200]}" unless status == 200 && parsed.is_a?(Hash)
+
+    parsed
+  rescue *RETRYABLE_TRANSPORT_ERRORS => e
+    raise DriftQueryError, "card_projection transport error: #{e.class}: #{e.message}"
   end
 
   private

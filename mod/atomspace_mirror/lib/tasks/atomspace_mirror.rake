@@ -11,4 +11,11 @@ namespace :atomspace_mirror do
     puts "[atomspace_mirror] bootstrap completed: run=#{run.id} a_start=#{run.a_start} " \
          "cards_swept=#{run.cards_swept} last_card_id_swept=#{run.last_card_id_swept}"
   end
+
+  desc "Drift sweep: full-projection SHA256 reconciliation, PG vs Space (Section 2 / Level 5, Mech 3, report-only)."
+  task drift_sweep: :environment do
+    run = DriftReconciler.new.run!
+    puts "[atomspace_mirror] drift sweep run=#{run.id} stable=#{run.stable} " \
+         "pg_only=#{run.drift_pg_only} space_only=#{run.drift_space_only} mismatch=#{run.drift_mismatch}"
+  end
 end

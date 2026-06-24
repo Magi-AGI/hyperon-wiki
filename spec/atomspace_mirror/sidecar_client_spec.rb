@@ -100,6 +100,50 @@ RSpec.describe SidecarClient do
     end
   end
 
+  describe "#projection_index (L5 Mechanism 3)" do
+    it "GETs /projection_index and coerces integer-string keys" do
+      seen = []
+      transport = ->(path, body) { seen << [path, body]; [200, { "index" => { "100" => "abc", "5" => "DUPLICATE:2" } }] }
+      idx = SidecarClient.new(transport: transport).projection_index
+      expect(idx).to eq(100 => "abc", 5 => "DUPLICATE:2")    # DUPLICATE sentinel is a valid non-empty string
+      expect(seen).to eq([["/projection_index", nil]])
+    end
+
+    it "raises DriftQueryError on a non-integer key (never silently to_i-coerces 'abc' -> 0)" do
+      transport = ->(_p, _b) { [200, { "index" => { "12x" => "h" } }] }
+      expect { SidecarClient.new(transport: transport).projection_index }
+        .to raise_error(SidecarClient::DriftQueryError, /non-integer card id/)
+    end
+
+    it "raises DriftQueryError on a non-string hash value, a missing index, or a non-200" do
+      expect { SidecarClient.new(transport: ->(_p, _b) { [200, { "index" => { "1" => 5 } }] }).projection_index }
+        .to raise_error(SidecarClient::DriftQueryError, /non-string hash/)
+      expect { SidecarClient.new(transport: ->(_p, _b) { [200, { "nope" => 1 }] }).projection_index }
+        .to raise_error(SidecarClient::DriftQueryError)
+      expect { SidecarClient.new(transport: ->(_p, _b) { [500, nil] }).projection_index }
+        .to raise_error(SidecarClient::DriftQueryError)
+    end
+
+    it "maps transport errors to DriftQueryError" do
+      expect { SidecarClient.new(transport: ->(_p, _b) { raise Errno::ECONNREFUSED }).projection_index }
+        .to raise_error(SidecarClient::DriftQueryError, /transport/)
+    end
+  end
+
+  describe "#card_projection (L5 Mechanism 3)" do
+    it "GETs /card_projection/<id> and returns the parsed hash" do
+      seen = []
+      transport = ->(path, body) { seen << [path, body]; [200, { "card_id" => 7, "present" => true, "sha256" => "h" }] }
+      expect(SidecarClient.new(transport: transport).card_projection(7)).to include("present" => true, "sha256" => "h")
+      expect(seen).to eq([["/card_projection/7", nil]])
+    end
+
+    it "raises DriftQueryError on non-200 / transport error" do
+      expect { SidecarClient.new(transport: ->(_p, _b) { [404, nil] }).card_projection(7) }.to raise_error(SidecarClient::DriftQueryError)
+      expect { SidecarClient.new(transport: ->(_p, _b) { raise Net::ReadTimeout }).card_projection(7) }.to raise_error(SidecarClient::DriftQueryError)
+    end
+  end
+
   describe "#space_stats" do
     it "GETs /space_stats and returns the parsed stats" do
       seen = []

@@ -26,3 +26,7 @@ require_relative "bootstrap"
 # here (it pulls in the optional rufus-scheduler gem).
 require_relative "drift_monitor"
 require_relative "drift_runner"
+# Slice 5b (L5 Mechanism 3): the canonical projection serializer (Lane A anchor) + the full-projection
+# drift sweep (PG vs Space, report-only into mirror_reconcile_runs).
+require_relative "canonical_projection"
+require_relative "drift_reconciler"
