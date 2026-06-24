@@ -1,11 +1,14 @@
 # frozen_string_literal: true
 
 require "spec_helper"
-require_relative "../../../mod/editorial_review/lib/proposal_provenance"
+require_relative "../../mod/editorial_review/lib/proposal_provenance"
 
 # Integration specs for the +proposal model layer (WS6 Phase 1). These exercise
 # real Decko events + revision history, so they require a Decko test DATABASE
 # (run on a provisioned runtime — RAILS_ENV=test / scratch DB — never prod).
+#
+# Lives under spec/integration/ (NOT spec/mod/) because CI's structural-specs
+# job runs spec/mod/ with no database; DB-backed specs belong here.
 RSpec.describe "editorial_review +proposal set" do
   def uniq
     "WS6Proposal#{SecureRandom.hex(4)}"
