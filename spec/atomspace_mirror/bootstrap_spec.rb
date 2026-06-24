@@ -26,20 +26,30 @@ RSpec.describe Bootstrap do
   end
 
   class BState
+    attr_accessor :draining_enabled
     attr_reader :updates
-    def initialize; @updates = []; end
-    def update!(**attrs); @updates << attrs; true; end
+    def initialize(draining_enabled: false)
+      @draining_enabled = draining_enabled
+      @updates = []
+    end
+
+    def update!(**attrs)
+      @updates << attrs
+      attrs.each { |k, v| instance_variable_set("@#{k}", v) }
+      true
+    end
   end
 
   class BSidecar
     attr_reader :bulk_calls
-    def initialize(atom_count: 0, bulk: nil)
+    def initialize(atom_count: 0, bulk: nil, stats: nil)
       @atom_count = atom_count
       @bulk = bulk
+      @stats = stats
       @bulk_calls = []
     end
 
-    def space_stats; { "atom_count" => @atom_count }; end
+    def space_stats; @stats || { "atom_count" => @atom_count }; end
 
     def bulk_load(atoms)
       @bulk_calls << atoms
@@ -48,7 +58,7 @@ RSpec.describe Bootstrap do
     end
   end
 
-  def stub_models(running: false, batches: [], run: BRun.new)
+  def stub_models(running: false, batches: [], run: BRun.new, state_draining: false)
     mbr = Class.new
     mbr.define_singleton_method(:where) { |**_| Object.new.tap { |o| o.define_singleton_method(:exists?) { running } } }
     mbr.define_singleton_method(:create!) do |**attrs|
@@ -57,7 +67,7 @@ RSpec.describe Bootstrap do
     end
     stub_const("MirrorBootstrapRun", mbr)
 
-    @state = BState.new
+    @state = BState.new(draining_enabled: state_draining)
     state = @state
     ms = Class.new
     ms.define_singleton_method(:lock) { Object.new.tap { |o| o.define_singleton_method(:first) { state } } }
@@ -106,6 +116,24 @@ RSpec.describe Bootstrap do
     expect(sql).to match(/action_id <= /)
     expect(args).to eq([100])
     expect(attrs).to eq(status: "superseded_by_bootstrap")
+  end
+
+  it "pauses an already-active mirror (draining_enabled true -> false) BEFORE sweeping" do
+    stub_models(batches: [[FakeCard.new(1)]], state_draining: true)
+    bs = Bootstrap.new(sidecar: BSidecar.new(atom_count: 0))
+    allow(bs).to receive(:snapshot_a_start).and_return(100)
+    bs.run_locked
+    expect(@state.updates.first).to eq(draining_enabled: false)          # paused first
+    expect(@state.updates.last).to include(draining_enabled: true)       # re-enabled at completion
+  end
+
+  it "rejects a malformed /space_stats (missing or non-integer atom_count)" do
+    stub_models
+    expect { Bootstrap.new(sidecar: BSidecar.new(stats: {})).run_locked }
+      .to raise_error(Bootstrap::NonEmptySpace, /atom_count/)
+    stub_models
+    expect { Bootstrap.new(sidecar: BSidecar.new(stats: { "atom_count" => "lots" })).run_locked }
+      .to raise_error(Bootstrap::NonEmptySpace)
   end
 
   it "refuses to start when a run is already 'running' (single-run guard)" do

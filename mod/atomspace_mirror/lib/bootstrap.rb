@@ -44,6 +44,7 @@ class Bootstrap
   # The orchestration (UNIT-TESTED). Aborts loudly on any failure, marking the run row 'failed'.
   def run_locked
     guard_no_running_run!
+    pause_draining!
     assert_empty_space!
     a_start = snapshot_a_start
     run = MirrorBootstrapRun.create!(a_start: a_start, started_at: now, actor: @actor, status: "running")
@@ -66,10 +67,24 @@ class Bootstrap
     raise AlreadyRunning, "a bootstrap run is already in progress (status='running')" if MirrorBootstrapRun.where(status: "running").exists?
   end
 
+  # Pause the forward drain BEFORE sweeping so it cannot apply forward deltas into the fresh Space
+  # while the sweep bulk-loads (the locked "worker paused until completion" model). On a re-bootstrap
+  # draining_enabled is still true from the prior completion; flip it false under the singleton lock.
+  # NOTE the operator must ALSO stop the drain-worker process (the §1 maintenance window) -- flipping
+  # the flag idles future iterations but cannot abort an in-flight one.
+  def pause_draining!
+    MirrorOutbox.transaction do
+      state = MirrorState.lock.first
+      state.update!(draining_enabled: false) if state&.draining_enabled
+    end
+  end
+
   # Option A: bootstrap requires a FRESH (empty) Space -- /bulk_load is not idempotent, so a re-run
-  # must start from a wiped sidecar (restart it first). Refuse to load into a non-empty Space.
+  # must start from a wiped sidecar (restart it first). Refuse to load into a non-empty (or
+  # unverifiable) Space: a missing/non-integer atom_count is a contract break, not "empty".
   def assert_empty_space!
-    count = @sidecar.space_stats["atom_count"].to_i
+    count = @sidecar.space_stats["atom_count"]
+    raise NonEmptySpace, "space_stats returned no integer atom_count: #{count.inspect}" unless count.is_a?(Integer)
     raise NonEmptySpace, "sidecar Space is not empty (atom_count=#{count}); restart the sidecar before bootstrap" unless count.zero?
   end
 
