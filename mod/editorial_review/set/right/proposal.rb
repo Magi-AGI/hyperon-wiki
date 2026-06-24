@@ -170,7 +170,8 @@ WS6_MW_CSS = <<~'WS6CSS'
   .ws6-band-human_only .ws6-cell{background:#f1f3f4;}
   .ws6-band-both_same .ws6-cell{background:#e6f4ea;}
   .ws6-unresolved .ws6-rail{outline:2px solid #d93025;outline-offset:-2px;}
-  .ws6-flag{font-size:11px;font-weight:600;color:#d93025;}
+  .ws6-flag{font-size:11px;font-weight:600;color:#d93025;display:none;}
+  .ws6-unresolved .ws6-flag{display:block;}
   .ws6-actions{margin-top:12px;}
   .ws6-actions button{font-size:14px;padding:6px 12px;margin-right:8px;}
   .ws6-actions button[disabled]{opacity:.5;cursor:not-allowed;}
