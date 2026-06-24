@@ -94,11 +94,16 @@ class SidecarClient
   # sweep. POST /bulk_load. Returns the count the sidecar loaded; raises BulkLoadError on any
   # non-200 / transport failure so the sweep aborts loudly (operator re-runs).
   def bulk_load(atoms)
+    sent = atoms.length
     status, parsed = post("/bulk_load", { "atoms" => atoms })
-    unless status == 200 && parsed.is_a?(Hash) && parsed.key?("loaded")
-      raise BulkLoadError, "bulk_load failed (HTTP #{status}): #{(parsed || {}).inspect[0, 200]}"
+    loaded = parsed.is_a?(Hash) ? parsed["loaded"] : nil
+    # Require an exact integer ack equal to what we sent -- a partial / malformed success must abort
+    # the sweep (it would otherwise silently leave the Space short of the batch). (Codex 2026-06-23.)
+    unless status == 200 && loaded.is_a?(Integer) && loaded == sent
+      raise BulkLoadError,
+            "bulk_load failed (HTTP #{status}, loaded=#{loaded.inspect}, sent=#{sent}): #{(parsed || {}).inspect[0, 200]}"
     end
-    parsed["loaded"]
+    loaded
   rescue *RETRYABLE_TRANSPORT_ERRORS => e
     raise BulkLoadError, "bulk_load transport error: #{e.class}: #{e.message}"
   end

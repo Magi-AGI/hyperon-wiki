@@ -69,13 +69,24 @@ RSpec.describe SidecarClient do
   end
 
   describe "#bulk_load" do
-    let(:atoms) { [{ "atom" => "DeckoCard", "fields" => [["Id", 1]] }] }
+    let(:atoms) { [{ "atom" => "DeckoCard", "fields" => [["Id", 1]] }, { "atom" => "DeckoReference", "fields" => [["RefererId", 1]] }] }
 
-    it "POSTs to /bulk_load and returns the loaded count" do
+    it "POSTs to /bulk_load and returns the loaded count when it equals what was sent" do
       seen = []
-      transport = ->(path, body) { seen << [path, body]; [200, { "loaded" => 3 }] }
-      expect(SidecarClient.new(transport: transport).bulk_load(atoms)).to eq(3)
+      transport = ->(path, body) { seen << [path, body]; [200, { "loaded" => 2 }] }
+      expect(SidecarClient.new(transport: transport).bulk_load(atoms)).to eq(2)
       expect(seen).to eq([["/bulk_load", { "atoms" => atoms }]])
+    end
+
+    it "raises BulkLoadError when loaded != sent (partial / wrong-count ack)" do
+      transport = ->(_p, _b) { [200, { "loaded" => 1 }] } # sent 2
+      expect { SidecarClient.new(transport: transport).bulk_load(atoms) }
+        .to raise_error(SidecarClient::BulkLoadError, /loaded=1, sent=2/)
+    end
+
+    it "raises BulkLoadError on a non-integer loaded" do
+      transport = ->(_p, _b) { [200, { "loaded" => "2" }] }
+      expect { SidecarClient.new(transport: transport).bulk_load(atoms) }.to raise_error(SidecarClient::BulkLoadError)
     end
 
     it "raises BulkLoadError on a non-200 (sweep aborts loudly)" do
