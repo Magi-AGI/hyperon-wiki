@@ -1,8 +1,48 @@
 # WS6 Phase 5 — TinyMCE polish pane (gate / mini-contract)
 
-**Status:** PROPOSAL — resolve the asset/layout fork before any Phase 5 code.
+**Status:** RESOLVED (Codex + Gemini, 2026-06-24) — **Fork B (handoff)** to a **separate
+`+merge draft` artifact**. Both reviewers chose Fork B; they conflicted on the storage
+target and that conflict is resolved in Codex's favor (see below). Pending Lake's go to build.
 **Scope:** add a final WYSIWYG polish step *downstream* of the assembled merge. NO parent
 writes (that's Phase 6); NO change to the diff/merge engine, payload, or selection model.
+
+## RESOLUTION — Fork B, write to `<Parent>+proposal+merge draft` (NOT overwrite the proposal)
+
+Both reviewers picked **Fork B** (handoff to the standard editor, not loading TinyMCE assets
+into the layout-free workbench). They **conflicted on storage**: Gemini said write the
+assembled HTML back into `<Parent>+proposal` and update its provenance hash; Codex said that
+**destroys the audit chain** — overwriting `+proposal` changes the original suggestion's hash,
+so Phase 6 can no longer prove *what was reviewed*. **Resolved in Codex's favor** (the audit
+chain is the point of WS6): store the assembled+polished output in a **separate**
+`<Parent>+proposal+merge draft` card. This keeps every Gemini benefit — `+merge draft` is a
+normal typed card, so the standard edit view gives it TinyMCE (RichText) or the Markdown
+editor (Markdown) natively, with the same polymorphism, stale-base banner, and clean handoff.
+
+**Resolved flow (the union of both reviews, Codex storage target):**
+1. **Explicit** "Assemble & Polish" on the workbench (never automatic) → client assembles the
+   merged HTML from the current selections (the proven assembler).
+2. POST to a **non-destructive seed endpoint** on the proposal set that writes the assembled
+   content to `<Parent>+proposal+merge draft` (creating/updating it; type mirrors the
+   proposal's content type). **No write to `+proposal`; no write to the parent.** Requires
+   write permission on the proposal.
+3. Record audit/lock state for Phase 6 WITHOUT touching the original proposal provenance:
+   write `+merge draft+provenance` (or a `+merge draft+audit`) with `assembled_hash`,
+   `hunk_selections`, `parent_act_id` (parent's last act at workbench load), `base_hash`
+   (from the proposal's provenance), `assembled_at`. The original `+proposal` content + its
+   `+provenance` (original suggestion hash) stay **immutable**.
+4. Redirect to `<Parent>+proposal+merge draft?view=edit` (full layout → native editor:
+   TinyMCE for RichText, Markdown editor for Markdown). The reviewer polishes there.
+5. **Stale-base banner** on that edit view (Gemini): if parent `last_act_id != base` stamp,
+   warn that the parent drifted since authoring.
+6. **Merge-context affordance** (Codex): the edit screen must visibly signal "you are
+   polishing a MERGE DRAFT" (not an ad-hoc proposal edit) — e.g., a banner + back-to-workbench
+   link.
+7. **Re-merge** is an explicit "Reset draft & re-merge" that returns to the workbench and
+   restarts from selections — never feeds the polished HTML back through diff3.
+
+**Phase 6 then verifies three things (Codex):** original `+proposal` hash (reviewed suggestion
+didn't drift before assembly) · `+merge draft` hash (polished output didn't drift before
+apply) · parent/base optimistic locks (parent unchanged underneath the review).
 
 ## First-steps findings (read before building)
 
