@@ -74,6 +74,7 @@
 ## Phase 7 — Lifecycle, entry points, legacy bridge
 - Archive on merge: add `merged` tag, drop `ai_generated` if present, ensure `+merge audit` written.
 - Repoint `view :ai_draft_link` / `view :merge_button` to the workbench; surface a `+proposal` launch entry; optional right-column (card 17242) status + launch button only.
+  - **All workbench entry links MUST carry `&layout=none`** (verified in Phase 4: without it `?view=merge_workbench` renders wrapped in the card-513 layout; with it the response is the bare full-width workbench). See contract §1.
 - "Open as proposal" bridge for stray `+AI`/candidate → explicitly unstamped, Tier 2/3, lower-confidence session (no silent promotion).
 - **Exit:** full UX wired; legacy `+AI` path safe; blunt overwrite fully gone.
 
