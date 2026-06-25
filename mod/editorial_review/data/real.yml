@@ -78,6 +78,13 @@
 - :name: proposal
   :codename: proposal
 
+# WS6 Phase 5: registers the +merge draft right-set (set/right/merge_draft.rb) —
+# the human-assembled+polished output, kept separate from +proposal so the
+# original suggestion stays immutable for the Phase 6 audit. Without this codename
+# the Right::MergeDraft set never resolves (no type alignment, no +audit stamp).
+- :name: merge draft
+  :codename: merge_draft
+
 - :name: ai draft
   :codename: ai_draft
 
