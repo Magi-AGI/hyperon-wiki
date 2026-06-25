@@ -30,6 +30,58 @@ def merge_draft_latest_act_id(card_id)
               .where(draft: [false, nil]).order(id: :desc).first&.act&.id
 end
 
+# Parse the workbench's {hunk_id => "current"|"proposal"|"base"} JSON into the
+# symbol-side hash BlockMerge.assemble expects.
+def parse_merge_selections(raw)
+  return {} if raw.blank?
+
+  parsed = (JSON.parse(raw) rescue {})
+  return {} unless parsed.is_a?(Hash)
+
+  parsed.each_with_object({}) { |(k, v), h| h[k.to_s] = v.to_s.to_sym }
+end
+
+# Server-side re-assembly (Codex integrity rule): when seeded from the workbench
+# (hunk_selections present), re-derive the authoritative content from the
+# SELECTIONS — the client's assembled HTML is never trusted as the artifact
+# (client assemble == BlockMerge.assemble is already proven). Also enforce the
+# parent-drift gate. When hunk_selections is absent (e.g. the human later
+# polishing in the native editor) this is a no-op and the human's content stands.
+event :rederive_merge_draft, :prepare_to_validate, on: :save,
+      when: proc { Env.params[:hunk_selections].present? } do
+  proposal = left
+  next unless proposal
+
+  parent = proposal.left
+  next unless parent
+
+  # Drift gate: the reviewer assembled against a specific parent act; if the
+  # parent moved since, reject so the audit can't claim a stale review basis.
+  submitted = Env.params[:parent_act_id].presence&.to_i
+  current_act = merge_draft_latest_act_id(parent.id)
+  if submitted && current_act && submitted != current_act
+    errors.add(:parent_act_id,
+               "the parent changed since the merge workbench loaded " \
+               "(was #{submitted}, now #{current_act}); reload the workbench and re-merge")
+    next
+  end
+
+  fmt = proposal.type_name == "Markdown" ? :markdown : :html
+  resolve = BaseResolver.resolve(proposal)
+  base = if resolve[:mode] == :three_way && resolve[:base_content]
+           resolve[:base_content]
+         else
+           parent.db_content
+         end
+  merged = BlockMerge.merge(base: base.to_s, current: parent.db_content.to_s,
+                            proposal: proposal.db_content.to_s, format: fmt)
+  begin
+    self.content = BlockMerge.assemble(merged, parse_merge_selections(Env.params[:hunk_selections]))
+  rescue StandardError => e
+    errors.add(:content, "could not assemble merge draft from selections: #{e.message}")
+  end
+end
+
 # (1) Mirror content type to the proposal so ?view=edit loads the right editor.
 event :align_merge_draft_type, :prepare_to_validate, on: :create do
   proposal = left
