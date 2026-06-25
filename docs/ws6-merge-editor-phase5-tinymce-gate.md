@@ -1,0 +1,61 @@
+# WS6 Phase 5 — TinyMCE polish pane (gate / mini-contract)
+
+**Status:** PROPOSAL — resolve the asset/layout fork before any Phase 5 code.
+**Scope:** add a final WYSIWYG polish step *downstream* of the assembled merge. NO parent
+writes (that's Phase 6); NO change to the diff/merge engine, payload, or selection model.
+
+## First-steps findings (read before building)
+
+- The deck's WYSIWYG entry points are `decko.initTinyMCE(el_id)` (from the gem
+  `card-mod-tinymce_editor`) + the global `decko.tinyMCEConfig`. The local
+  `mod/hyperon_ui/assets/script/tinymce_fullscreen.js.coffee` wraps `initTinyMCE` to add the
+  fullscreen plugin/toolbar. So the idiomatic way to get a TinyMCE instance is to render the
+  textarea Decko expects and call `decko.initTinyMCE`.
+- **Blocker:** those globals + the TinyMCE library are loaded by the **standard Decko layout's
+  asset bundle.** Our workbench is served `&layout=none` (Phase 4 finding), whose bare page
+  loads NONE of that JS (verified: the `layout=none` response is 8.6 KB with only our inline
+  assets; the layout-wrapped response is 32 KB with the Decko/asset bundle). So on the
+  layout-free workbench page, `decko` / `decko.initTinyMCE` / `decko.tinyMCEConfig` are
+  **undefined** — we can't just call them from the current view.
+
+## The fork to decide
+
+| Option | How TinyMCE coexists with the layout-free workbench | Trade-off |
+|---|---|---|
+| **A — in-place, load assets into the bare page** | Include the deck's TinyMCE asset set (lib + `decko.tinyMCEConfig` + `initTinyMCE`, and the hyperon_ui fullscreen wrapper) in the `layout=none` workbench view, then upgrade the preview pane → one TinyMCE instance in place. Honors contract §6 ("the exact pane is upgraded in place"). | Must reproduce the deck's TinyMCE asset loading in a layout-free page (script/style tags, load order, version pinning). Heavier page. Risk of asset drift vs the gem. Best UX continuity (user never leaves the diff context). |
+| **B — handoff to the standard editor** | "Assemble & Polish" assembles client-side, persists the merged draft to the proposal, then navigates to the proposal's **standard edit surface** (full layout, TinyMCE already present) seeded with the merged HTML. | Cleanest reuse (TinyMCE lives where it already works; no asset duplication). Loses the side-by-side diff context on the polish screen (acceptable — merge decisions are already made). A navigation, not an in-place upgrade — minor deviation from contract §6's "in place" wording. |
+| **C — render workbench inside the layout only for polishing** | Drop `layout=none` (or switch to a layout that carries assets) when entering polish. | Hybrid/messy; reintroduces the card-513 chrome the ribbons were tuned without. Not recommended. |
+
+**Recommendation:** **Option B** (handoff to the standard editor). It's the lowest-risk reuse
+(Gemini's own "reuse decko.tinyMCEConfig" intent is satisfied natively), avoids duplicating /
+drifting from the gem's asset bundle on a bare page, and keeps the workbench lightweight. The
+"in place" wording in contract §6 is a nicety; the *substantive* §6 guarantees (one-way
+handoff, no path back into diff/merge, nests survive) are fully preserved by a handoff. If
+Lake prefers strict in-place continuity, Option A is viable but costs the asset-loading work
+and ongoing version-pinning risk.
+
+## Constraints (reviewer-locked, apply to whichever option)
+
+- **One-way handoff (Codex + Gemini):** assembled HTML → TinyMCE; from then on TinyMCE owns
+  the canonical document. NO two-way binding back to hunk selections. Re-merging requires an
+  explicit **"Reset draft & re-merge"** that destroys the TinyMCE instance, restores the
+  selection UI, and restarts from the diff — never merges TinyMCE's HTML back through diff3.
+- **No calls back into diff/merge** from the polish layer (Codex). A reviewer can verify by
+  checking the Phase 5 code never calls `BlockMerge.*` or touches `nests`.
+- **Nest survival (Gemini):** prove `{{nest}}` inclusions survive the TinyMCE round-trip via
+  `valid_elements` / `extended_valid_elements` (inherit `decko.tinyMCEConfig`); fail closed
+  (keep raw nest text) if not. Test before relying on it.
+- **Optimistic-lock anchors (Gemini):** the polish form carries hidden inputs `parent_act_id`
+  (parent's last act at workbench load) + `base_hash` (from provenance) — the exact payload
+  Phase 6's transaction will check. Phase 5 only *plants* them; Phase 6 *enforces* them.
+- **No parent writes until Phase 6.** Phase 5 may persist the *merged draft to the proposal*
+  (so polish has somewhere to live) but must NOT write the parent. The blunt
+  `ai_draft.rb` overwrite stays live until Phase 6 retires it.
+- **Markdown parents:** route to the existing Markdown edit surface (gated on
+  `card.type_name`), not TinyMCE — the assembled `:markdown` output is already plain Markdown.
+
+## Exit
+
+The human can hand-tweak the assembled merge in the familiar editor; nests survive; the
+optimistic-lock anchors are in place for Phase 6; no parent has been written; re-merge is an
+explicit, clean reset.
