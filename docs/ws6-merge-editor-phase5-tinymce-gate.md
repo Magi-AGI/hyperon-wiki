@@ -74,6 +74,36 @@ handoff, no path back into diff/merge, nests survive) are fully preserved by a h
 Lake prefers strict in-place continuity, Option A is viable but costs the asset-loading work
 and ongoing version-pinning risk.
 
+## Seed transport — RESOLVED (Codex + Gemini converged, 2026-06-24)
+
+Both reviewers chose the **same** design (Gemini's "fetch POST + server-rendered CSRF" =
+Codex's "custom server-side seed endpoint"); Codex added the integrity rule below.
+
+**Authenticated `fetch` POST from the layout-free workbench to a server-side seed endpoint:**
+1. Workbench renders `<meta name="csrf-token" content="<form_authenticity_token>">` and the
+   parent's load-time `act_id` (data attribute). "Assemble & Polish" is explicit + gated on
+   conflicts resolved (same as Assemble).
+2. On click, JS POSTs `{ hunk_selections, parent_act_id }` (+ `X-CSRF-Token` header;
+   same-origin cookies carry the session) — **NOT** the assembled HTML.
+3. **Server re-derives the content (Codex integrity rule):** re-resolve base/current/proposal,
+   re-run `BlockMerge.merge` + `assemble(selections)` server-side (client≡server already
+   proven) → that is the authoritative `+merge draft` content. The client's HTML is never
+   trusted as the artifact.
+4. **parent_act_id drift gate (both):** if the parent's current act != submitted
+   `parent_act_id`, **reject** and tell the user to reload — the audit must prove what parent
+   state the reviewer assembled against. Captured at load, carried into `+audit`, and
+   **re-checked again at Phase 6 apply** (not only at apply).
+5. Write `+merge draft` + `+merge draft+audit` **transactionally**; **idempotent** — the draft
+   name is deterministic (`<Parent>+proposal+merge draft`), so re-seeding updates/reuses the
+   same card, never duplicates.
+6. Respond with the redirect URL; client navigates to `<Parent>+proposal+merge draft?view=edit`
+   (native layout → TinyMCE/Markdown editor). No parent writes.
+
+**Implementation shape:** the server side is a `prepare_to_validate` event on the `merge_draft`
+set that re-derives `self.content` from `Env.params[:hunk_selections]` (+ the drift gate),
+plus the existing `+audit` finalize event — so the write goes through Decko's CardController
+(native auth + CSRF + transaction). The client POSTs a create/update of the merge draft card.
+
 ## Constraints (reviewer-locked, apply to whichever option)
 
 - **One-way handoff (Codex + Gemini):** assembled HTML → TinyMCE; from then on TinyMCE owns
