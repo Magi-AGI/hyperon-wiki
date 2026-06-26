@@ -3,6 +3,7 @@
 require "net/http"
 require "json"
 require "uri"
+require "socket"
 
 # Level 8 drain -> Level 3 sidecar IPC. The drain forwards ONE already-encoded outbox payload per
 # iteration to the sidecar's POST /apply (localhost; Level 3 B2) and classifies the outcome.
@@ -78,12 +79,20 @@ class SidecarClient
   # report-only + operator/cron-driven, so a query failure aborts the sweep loudly (no partial report).
   class DriftQueryError < StandardError; end
 
-  def initialize(host: "127.0.0.1", port: 9407, open_timeout: 2, read_timeout: 5, transport: nil)
+  # Raised when the L6 B3 admin quarantine call fails. The Reconciler rescues StandardError around the
+  # quarantine, so this fails the orphan repair CLOSED (-> a 'partial' run with a recorded failure),
+  # never silently dropping a Space-but-not-Postgres orphan.
+  class QuarantineError < StandardError; end
+
+  def initialize(host: "127.0.0.1", port: 9407, open_timeout: 2, read_timeout: 5, transport: nil,
+                 socket_path: nil)
     @host = host
     @port = port
     @open_timeout = open_timeout
     @read_timeout = read_timeout
     @transport = transport
+    # The /admin/* surface is Unix-socket only (privileged); admin calls go over the socket, not TCP.
+    @socket_path = socket_path || File.join(ENV["SIDECAR_RUN_DIR"] || "/home/ubuntu/atomspace-run", "sidecar.sock")
   end
 
   # Forward ONE outbox payload (a {"atoms"=>[...]} Hash) and return a DrainDelivery::Outcome.
@@ -153,7 +162,67 @@ class SidecarClient
     raise DriftQueryError, "card_projection transport error: #{e.class}: #{e.message}"
   end
 
+  # L6 / Section 3 B3 admin: remediate a Space-but-not-Postgres orphan -- quarantine (remove) every
+  # atom scoped to `card_id` and return the removed atoms' audit JSON ([{atom, fields}, ...]), which the
+  # Reconciler persists in the remediation run report (PyListSpace is in-memory, so removal is otherwise
+  # lost on restart). Unix-socket ONLY (the admin surface is privileged; 404 over TCP). Raises
+  # QuarantineError on any non-200 / transport failure (the Reconciler -> a 'partial' run, fail-closed).
+  def quarantine_card_scoped_atoms(card_id)
+    cid = strict_card_id(card_id)   # STRICT: never .to_i-coerce "abc"->0 / "12x"->12 at a destructive boundary
+    status, parsed = admin_post("/admin/quarantine_card_scoped_atoms", { "card_id" => cid })
+    validate_quarantine_response!(cid, status, parsed)
+    parsed["removed"]
+  rescue *RETRYABLE_TRANSPORT_ERRORS => e
+    raise QuarantineError, "quarantine transport error: #{e.class}: #{e.message}"
+  end
+
   private
+
+  # A destructive admin op must NOT silently coerce its target. A non-integer / non-positive card_id is
+  # a caller bug -- fail closed (Codex), never quarantine card 0 or a truncated id.
+  def strict_card_id(card_id)
+    n = begin
+      Integer(card_id.to_s.strip, 10)
+    rescue ArgumentError, TypeError
+      raise QuarantineError, "quarantine card_id must be an integer, got #{card_id.inspect}"
+    end
+    raise QuarantineError, "quarantine card_id must be a positive integer, got #{card_id.inspect}" unless n.positive?
+
+    n
+  end
+
+  # Validate the WHOLE mutating-call contract (Codex): HTTP 200, the echoed card_id matches what we
+  # asked to quarantine, removed is an array, removed_count is an integer, and the count is consistent
+  # with the array. Any deviation fails closed.
+  def validate_quarantine_response!(cid, status, parsed)
+    unless status == 200 && parsed.is_a?(Hash)
+      raise QuarantineError, "quarantine(#{cid}) failed (HTTP #{status}): #{(parsed || {}).inspect[0, 200]}"
+    end
+
+    removed = parsed["removed"]
+    count = parsed["removed_count"]
+    ok = removed.is_a?(Array) && count.is_a?(Integer) && count == removed.length && parsed["card_id"] == cid
+    return if ok
+
+    raise QuarantineError, "quarantine(#{cid}) returned an inconsistent response: #{parsed.inspect[0, 200]}"
+  end
+
+  # Admin (Unix-socket) POST. Honors the injected transport in tests; else minimal HTTP/1.0 over the
+  # UNIX socket (the sidecar serves wsgiref on AF_UNIX -- HTTP/1.0 + Connection: close => read to EOF),
+  # mirroring Lane C's SidecarReadClient transport.
+  def admin_post(path, body_hash)
+    return @transport.call(path, body_hash) if @transport
+
+    sock = UNIXSocket.new(@socket_path)
+    payload = JSON.generate(body_hash)
+    sock.write("POST #{path} HTTP/1.0\r\nHost: localhost\r\nContent-Type: application/json\r\n" \
+               "Content-Length: #{payload.bytesize}\r\nConnection: close\r\n\r\n#{payload}")
+    raw = sock.read.to_s
+    head, _, json_body = raw.partition("\r\n\r\n")
+    [head[%r{\AHTTP/\d\.\d (\d+)}, 1].to_i, safe_parse(json_body)]
+  ensure
+    sock&.close
+  end
 
   def post(path, body_hash)
     post_or_get(:post, path, body_hash)

@@ -128,6 +128,7 @@ class DrainWorker
     MirrorOutbox.transaction do
       if failed
         row.update!(status: "failed", attempts: attempts, last_attempt_at: now, error: reason)
+        propagate_reconcile_failure(row)
         advance_watermark(state)
       else
         row.update!(attempts: attempts, last_attempt_at: now, error: reason)  # stays 'queued'
@@ -142,8 +143,26 @@ class DrainWorker
   def terminalize(row, state, message)
     MirrorOutbox.transaction do
       row.update!(status: "failed", attempts: row.attempts.to_i + 1, last_attempt_at: now, error: message)
+      propagate_reconcile_failure(row)
       advance_watermark(state)
     end
+  end
+
+  # Section 3 / Level 6 release-on-FAILURE (symmetric to release_linked_reconcile on delivery). When a
+  # RECONCILE row terminal-fails -- by ANY path (invalid shape, invalid payload, sidecar FAILED_TERMINAL,
+  # or retry exhaustion, all of which route through terminalize / retry_or_fail above) -- the
+  # awaiting_reconcile rows it was holding must NOT hang at :not_yet to the read-your-writes timeout.
+  # They transition to 'failed' (NOT superseded_by_reconcile): 'failed' is NOT a terminal-advance status,
+  # so the watermark truthfully HOLDS the hole (the actions were never applied), and check_event_ready
+  # returns :failed (fail-fast). The hole is cleared later when a fresh same-card reconcile RELINKS these
+  # rows (Reconciler relink). Constrained to the reconcile's own card_id + event_id (no cross-card or
+  # cross-run release). Runs INSIDE the caller's transaction.
+  def propagate_reconcile_failure(row)
+    return unless row.event_kind == "reconcile"
+
+    MirrorOutbox.where(event_kind: "decko_action", status: "awaiting_reconcile",
+                       card_id: row.card_id, source_reconcile_event_id: row.event_id)
+                .update_all(status: "failed", error: "linked reconcile #{row.event_id} failed terminally")
   end
 
   # Section 3 two-phase release: when a reconcile row is delivered, the decko_action rows it was
