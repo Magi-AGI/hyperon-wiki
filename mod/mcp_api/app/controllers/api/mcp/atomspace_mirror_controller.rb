@@ -121,9 +121,21 @@ module Api
           else # :not_yet / :not_yet_inserted
             return render_err(503, "staleness_timeout", event_id) if monotonic >= deadline
 
-            ActiveRecord::Base.clear_active_connections!
+            release_pool_connection_for_poll
             sleep poll_interval
           end
+        end
+      end
+
+      # Release the AR connection back to the pool across the RYW poll sleep so polling can't starve
+      # it (Gemini #1). ActiveRecord::Base.clear_active_connections! was REMOVED in Rails 7.2 (this
+      # 500'd the read-your-writes gate live on the dev box); use the connection handler when the
+      # class-level shim is gone. (HTTP capstone finding, 2026-06-26.)
+      def release_pool_connection_for_poll
+        if ActiveRecord::Base.respond_to?(:clear_active_connections!)
+          ActiveRecord::Base.clear_active_connections!
+        else
+          ActiveRecord::Base.connection_handler.clear_active_connections!
         end
       end
 
