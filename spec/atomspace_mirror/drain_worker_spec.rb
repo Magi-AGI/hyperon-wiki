@@ -174,6 +174,47 @@ RSpec.describe DrainWorker do
       expect(alerts.map(&:first)).to include(:mirror_drain_failed)
     end
 
+    # Section 3 / Level 6 release-on-FAILURE: a terminal-failed RECONCILE must not strand its linked
+    # awaiting_reconcile rows at :not_yet. They go to 'failed' (NOT superseded_by_reconcile, which would
+    # falsely advance the watermark past unapplied actions).
+    def reconcile_row(**o)
+      decko_row(event_kind: "reconcile", action_id: nil, event_id: "reconcile:card:1:7", **o)
+    end
+
+    def failure_release(event_id = "reconcile:card:1:7")
+      [{ event_kind: "decko_action", status: "awaiting_reconcile", card_id: 1, source_reconcile_event_id: event_id },
+       { status: "failed", error: "linked reconcile #{event_id} failed terminally" }]
+    end
+
+    it "reconcile FAILED_TERMINAL: propagates linked awaiting rows to failed (watermark holds the hole)" do
+      ob = stub_outbox
+      sc = DWSidecar.new(outcome(DrainDelivery::FAILED_TERMINAL, "rejected"))
+      expect(worker(sidecar: sc).process_row(reconcile_row, DWState.new)).to eq(:failed)
+      expect(ob.releases).to include(failure_release)
+    end
+
+    it "reconcile retry-EXHAUSTED: also propagates linked awaiting rows to failed" do
+      ob = stub_outbox
+      sc = DWSidecar.new(outcome(DrainDelivery::RETRYABLE, "timeout"))
+      expect(worker(sidecar: sc, max_attempts: 3).process_row(reconcile_row(attempts: 2), DWState.new)).to eq(:failed)
+      expect(ob.releases).to include(failure_release)
+    end
+
+    it "reconcile INVALID payload (terminalized) also propagates the failure" do
+      ob = stub_outbox
+      allow(MirrorDrainValidator).to receive(:validate_payload!).and_raise(MirrorDrainValidator::InvalidRow, "bad")
+      sc = DWSidecar.new(outcome(DrainDelivery::DELIVERED))
+      expect(worker(sidecar: sc).process_row(reconcile_row, DWState.new)).to eq(:invalid)
+      expect(ob.releases).to include(failure_release)
+    end
+
+    it "a failing decko_action row does NOT propagate (only reconcile rows release on failure)" do
+      ob = stub_outbox
+      sc = DWSidecar.new(outcome(DrainDelivery::FAILED_TERMINAL, "rejected"))
+      worker(sidecar: sc).process_row(decko_row, DWState.new)
+      expect(ob.releases).to be_empty
+    end
+
     it "retryable below max: increments attempts, stays queued, no watermark advance" do
       stub_outbox
       sc = DWSidecar.new(outcome(DrainDelivery::RETRYABLE, "timeout"))

@@ -30,3 +30,7 @@ require_relative "drift_runner"
 # drift sweep (PG vs Space, report-only into mirror_reconcile_runs).
 require_relative "canonical_projection"
 require_relative "drift_reconciler"
+# Slice 6 (L6 reconcile / repair): the pure decision core + the apply layer (Reconciler.run! +
+# remediate_hook_lag! + requeue_failed!). Required after its runtime collaborators (encoder, writer,
+# sidecar client, models) so the rakes can resolve them.
+require_relative "reconciler"
