@@ -25,7 +25,12 @@ event :tag_parent_needs_review, :integrate, on: :save do
 end
 
 format :html do
-  view :core do
+  # cache: :never — this view renders viewer-dependent content (the admin-gated
+  # "Open as proposal" bridge button via ai_draft_can_bridge?). Decko's default
+  # :standard view cache keys on card+view, NOT the viewer, so a cached anonymous
+  # render (no button) would otherwise be served to admins too. Mirrors Decko core
+  # admin.rb's `view :core, cache: :never`.
+  view :core, cache: :never do
     if card.content.present?
       parent = card.left
       proposal = parent && Card.fetch("#{parent.name}+proposal")
