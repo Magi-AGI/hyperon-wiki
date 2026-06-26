@@ -1,0 +1,362 @@
+{
+  "version": 1,
+  "vectors": [
+    {
+      "name": "minimal_no_refs",
+      "input": [
+        {
+          "atom": "DeckoCard",
+          "fields": [
+            [
+              "Id",
+              100
+            ],
+            [
+              "Name",
+              "Alpha"
+            ],
+            [
+              "Key",
+              "alpha"
+            ],
+            [
+              "Codename",
+              {
+                "sym": "NoCodename"
+              }
+            ],
+            [
+              "TypeId",
+              1
+            ],
+            [
+              "TypeName",
+              "Basic"
+            ],
+            [
+              "LeftId",
+              {
+                "sym": "NoLeft"
+              }
+            ],
+            [
+              "RightId",
+              {
+                "sym": "NoRight"
+              }
+            ],
+            [
+              "Content",
+              "hello"
+            ],
+            [
+              "Trash",
+              false
+            ],
+            [
+              "CreatedAt",
+              "2026-06-24T00:00:00Z"
+            ],
+            [
+              "UpdatedAt",
+              "2026-06-24T01:00:00Z"
+            ],
+            [
+              "CreatorId",
+              7
+            ],
+            [
+              "UpdaterId",
+              7
+            ]
+          ]
+        }
+      ],
+      "expected_bytes": "[[\"DeckoCard\",[[\"Id\",100],[\"Name\",\"Alpha\"],[\"Key\",\"alpha\"],[\"Codename\",{\"sym\":\"NoCodename\"}],[\"TypeId\",1],[\"TypeName\",\"Basic\"],[\"LeftId\",{\"sym\":\"NoLeft\"}],[\"RightId\",{\"sym\":\"NoRight\"}],[\"Content\",\"hello\"],[\"Trash\",false],[\"CreatedAt\",\"2026-06-24T00:00:00Z\"],[\"UpdatedAt\",\"2026-06-24T01:00:00Z\"],[\"CreatorId\",7],[\"UpdaterId\",7]]]]",
+      "expected_sha256": "50c41ba8cdc11149c7efb04228ed7275e5c21619297217de11a35b861ba38012"
+    },
+    {
+      "name": "symbols_and_sorted_refs",
+      "input": [
+        {
+          "atom": "DeckoCard",
+          "fields": [
+            [
+              "Id",
+              200
+            ],
+            [
+              "Name",
+              "Beta Card"
+            ],
+            [
+              "Key",
+              "beta_card"
+            ],
+            [
+              "Codename",
+              {
+                "sym": "beta_code"
+              }
+            ],
+            [
+              "TypeId",
+              1
+            ],
+            [
+              "TypeName",
+              "Basic"
+            ],
+            [
+              "LeftId",
+              5
+            ],
+            [
+              "RightId",
+              {
+                "sym": "NoRight"
+              }
+            ],
+            [
+              "Content",
+              "body"
+            ],
+            [
+              "Trash",
+              true
+            ],
+            [
+              "CreatedAt",
+              "2026-06-24T00:00:00Z"
+            ],
+            [
+              "UpdatedAt",
+              "2026-06-24T01:00:00Z"
+            ],
+            [
+              "CreatorId",
+              7
+            ],
+            [
+              "UpdaterId",
+              7
+            ]
+          ]
+        },
+        {
+          "atom": "DeckoReference",
+          "fields": [
+            [
+              "RefererId",
+              200
+            ],
+            [
+              "RefereeKey",
+              "zzz_target"
+            ],
+            [
+              "RefereeId",
+              900
+            ],
+            [
+              "RefType",
+              {
+                "sym": "L"
+              }
+            ],
+            [
+              "IsPresent",
+              true
+            ]
+          ]
+        },
+        {
+          "atom": "DeckoReference",
+          "fields": [
+            [
+              "RefererId",
+              200
+            ],
+            [
+              "RefereeKey",
+              "aaa_target"
+            ],
+            [
+              "RefereeId",
+              {
+                "sym": "Unresolved"
+              }
+            ],
+            [
+              "RefType",
+              {
+                "sym": "L"
+              }
+            ],
+            [
+              "IsPresent",
+              false
+            ]
+          ]
+        },
+        {
+          "atom": "DeckoReference",
+          "fields": [
+            [
+              "RefererId",
+              200
+            ],
+            [
+              "RefereeKey",
+              "mmm_target"
+            ],
+            [
+              "RefereeId",
+              300
+            ],
+            [
+              "RefType",
+              {
+                "sym": "I"
+              }
+            ],
+            [
+              "IsPresent",
+              true
+            ]
+          ]
+        },
+        {
+          "atom": "DeckoReference",
+          "fields": [
+            [
+              "RefererId",
+              200
+            ],
+            [
+              "RefereeKey",
+              "bbb_target"
+            ],
+            [
+              "RefereeId",
+              150
+            ],
+            [
+              "RefType",
+              {
+                "sym": "L"
+              }
+            ],
+            [
+              "IsPresent",
+              true
+            ]
+          ]
+        }
+      ],
+      "expected_bytes": "[[\"DeckoCard\",[[\"Id\",200],[\"Name\",\"Beta Card\"],[\"Key\",\"beta_card\"],[\"Codename\",{\"sym\":\"beta_code\"}],[\"TypeId\",1],[\"TypeName\",\"Basic\"],[\"LeftId\",5],[\"RightId\",{\"sym\":\"NoRight\"}],[\"Content\",\"body\"],[\"Trash\",true],[\"CreatedAt\",\"2026-06-24T00:00:00Z\"],[\"UpdatedAt\",\"2026-06-24T01:00:00Z\"],[\"CreatorId\",7],[\"UpdaterId\",7]]],[\"DeckoReference\",[[\"RefererId\",200],[\"RefereeKey\",\"mmm_target\"],[\"RefereeId\",300],[\"RefType\",{\"sym\":\"I\"}],[\"IsPresent\",true]]],[\"DeckoReference\",[[\"RefererId\",200],[\"RefereeKey\",\"bbb_target\"],[\"RefereeId\",150],[\"RefType\",{\"sym\":\"L\"}],[\"IsPresent\",true]]],[\"DeckoReference\",[[\"RefererId\",200],[\"RefereeKey\",\"zzz_target\"],[\"RefereeId\",900],[\"RefType\",{\"sym\":\"L\"}],[\"IsPresent\",true]]],[\"DeckoReference\",[[\"RefererId\",200],[\"RefereeKey\",\"aaa_target\"],[\"RefereeId\",{\"sym\":\"Unresolved\"}],[\"RefType\",{\"sym\":\"L\"}],[\"IsPresent\",false]]]]",
+      "expected_sha256": "e680e06caf3c86f773f9d8aa42ad211d129a226c5f2e60643de74ca7bfce9bb6"
+    },
+    {
+      "name": "unicode_and_control_chars",
+      "input": [
+        {
+          "atom": "DeckoCard",
+          "fields": [
+            [
+              "Id",
+              300
+            ],
+            [
+              "Name",
+              "Quote \"x\" \\ slash"
+            ],
+            [
+              "Key",
+              "quote_\"x\"_\\_slash"
+            ],
+            [
+              "Codename",
+              {
+                "sym": "NoCodename"
+              }
+            ],
+            [
+              "TypeId",
+              1
+            ],
+            [
+              "TypeName",
+              "Basic"
+            ],
+            [
+              "LeftId",
+              {
+                "sym": "NoLeft"
+              }
+            ],
+            [
+              "RightId",
+              {
+                "sym": "NoRight"
+              }
+            ],
+            [
+              "Content",
+              "line1\nline2\té— end"
+            ],
+            [
+              "Trash",
+              false
+            ],
+            [
+              "CreatedAt",
+              "2026-06-24T00:00:00Z"
+            ],
+            [
+              "UpdatedAt",
+              "2026-06-24T01:00:00Z"
+            ],
+            [
+              "CreatorId",
+              7
+            ],
+            [
+              "UpdaterId",
+              7
+            ]
+          ]
+        },
+        {
+          "atom": "DeckoReference",
+          "fields": [
+            [
+              "RefererId",
+              300
+            ],
+            [
+              "RefereeKey",
+              "uni_ref"
+            ],
+            [
+              "RefereeId",
+              301
+            ],
+            [
+              "RefType",
+              {
+                "sym": "P"
+              }
+            ],
+            [
+              "IsPresent",
+              true
+            ]
+          ]
+        }
+      ],
+      "expected_bytes": "[[\"DeckoCard\",[[\"Id\",300],[\"Name\",\"Quote \\\"x\\\" \\\\ slash\"],[\"Key\",\"quote_\\\"x\\\"_\\\\_slash\"],[\"Codename\",{\"sym\":\"NoCodename\"}],[\"TypeId\",1],[\"TypeName\",\"Basic\"],[\"LeftId\",{\"sym\":\"NoLeft\"}],[\"RightId\",{\"sym\":\"NoRight\"}],[\"Content\",\"line1\\nline2\\té— end\"],[\"Trash\",false],[\"CreatedAt\",\"2026-06-24T00:00:00Z\"],[\"UpdatedAt\",\"2026-06-24T01:00:00Z\"],[\"CreatorId\",7],[\"UpdaterId\",7]]],[\"DeckoReference\",[[\"RefererId\",300],[\"RefereeKey\",\"uni_ref\"],[\"RefereeId\",301],[\"RefType\",{\"sym\":\"P\"}],[\"IsPresent\",true]]]]",
+      "expected_sha256": "756668226f99f3257df67f14c4ebd4f821b37b0dd806b3a6d5b25972447b99c3"
+    }
+  ]
+}

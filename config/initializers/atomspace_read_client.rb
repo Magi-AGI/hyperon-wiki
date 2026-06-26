@@ -11,11 +11,13 @@ require_relative "../../mod/mcp_api/lib/atomspace/read_client"
 # Atomspace::ReadClient.for raises ServiceUnavailable and the controller returns 503 -- never
 # fake/empty data.
 if Rails.env.test? || Rails.env.development? || ENV["ATOMSPACE_READ_CLIENT"] == "fake"
+  # TEST/DEV (or explicit override): the in-memory fake, so the L7 readiness + L9 auth post-filter get
+  # coverage without a running sidecar. FAIL-CLOSED in production -- never the fake.
   require_relative "../../mod/mcp_api/lib/atomspace/fake_read_client"
   Atomspace::ReadClient.bind!(Atomspace::FakeReadClient)
+else
+  # PRODUCTION (C2): the real sidecar read client over the privileged UNIX socket (POST /read).
+  require_relative "../../mod/mcp_api/lib/atomspace/sidecar_read_client"
+  Atomspace::ReadClient.bind!(Atomspace::SidecarReadClient)
 end
-
-# TODO(Lane B): in production, bind the real client here once the sidecar read-IPC verb exists:
-#   require_relative "../../mod/mcp_api/lib/atomspace/sidecar_read_client"  # (when added)
-#   Atomspace::ReadClient.bind!(Atomspace::SidecarReadClient) unless Rails.env.test?
-# ReadConsistencyPort (L7) is wired separately by Lane A's mod/atomspace_mirror engine.
+# ReadConsistencyPort (L7) is wired separately by Lane A's config/initializers/atomspace_mirror.rb (C1).

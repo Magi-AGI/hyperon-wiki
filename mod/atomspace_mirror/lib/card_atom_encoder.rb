@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "time" # Time#iso8601 (stdlib; autoloaded under Decko/ActiveSupport but not standalone)
+
 # Level 1 -- pure encoder. Converts one Decko card action into the ordered atom-event list for a
 # single mirror_outbox row's payload. No model writes; reads the action's already-loaded card +
 # associations (references_out, card_changes) and the injected pre_state / auth / request_context.
@@ -27,6 +29,11 @@ module CardAtomEncoder
   EVENT_SCHEMA_VERSION = "decko-spaceevent-v1"
   STAGE = "integrate_with_delay"
 
+  # Raised for genuine corrupt action DATA (e.g. an unknown card_changes.field). The L2 writer
+  # catches THIS narrowly to emit a terminal 'failed' outbox row; unexpected errors (NoMethodError
+  # etc.) propagate loudly. auth-contract violations stay ArgumentError (a caller bug, not data).
+  class EncodingError < StandardError; end
+
   # Decko card_changes.field is an integer index into this list (Card::Change#field maps it to the
   # name); the encoder accepts either the integer index or the name string.
   TRACKED_FIELDS = %w[name type_id db_content trash left_id right_id].freeze
@@ -44,6 +51,16 @@ module CardAtomEncoder
     [decko_card(card),
      *decko_references(card),
      decko_provenance(action, card, pre_state || {}, auth || {}, request_context || {})]
+  end
+
+  # Bulk-load snapshot of a card's CURRENT state for the Section 1 bootstrap sweep: DeckoCard + its
+  # DeckoReferences, with NO DeckoProvenance (the sweep is one bulk operation, not N per-action
+  # events; run metadata lives in mirror_bootstrap_runs). PATCH-4 faithful -- identical atom shapes
+  # to the forward path, just without the provenance companion. Pure: no action/auth needed; takes a
+  # live Card (the sweep encodes current state, not an action). Drafts/trash are the caller's call --
+  # the sweep iterates `Card.where(trash: [true, false])`.
+  def encode_card_snapshot(card)
+    [decko_card(card), *decko_references(card)]
   end
 
   def decko_card(card)
@@ -72,7 +89,10 @@ module CardAtomEncoder
         ["RefereeKey", r.referee_key],
         ["RefereeId",  r.referee_id || sym("Unresolved")],
         ["RefType",    sym(r.ref_type)],
-        ["IsPresent",  r.is_present ? true : false]
+        # IsPresent = does the reference resolve to an existing card. The card_references
+        # is_present column is DEAD in card-1.110.0 (0/574 rows populated on dev, 2026-06-21 L2b),
+        # so it is derived from referee_id (the resolved target id; nil => a wanted/unresolved link).
+        ["IsPresent",  !r.referee_id.nil?]
       ]
     end
   end
@@ -113,14 +133,15 @@ module CardAtomEncoder
 
   # --- helpers ---
 
-  # Card::Change#field may be the name string or the raw integer index -- normalize to the name.
-  # A corrupt out-of-range integer index raises rather than encoding a bogus "field".
+  # Card::Change#field may be the name string or the raw integer index -- normalize to a name and
+  # validate it against the locked TRACKED_FIELDS set. A corrupt/unknown field (out-of-range index
+  # OR an unexpected name) raises rather than encoding a bogus change -- this surfaces any new Decko
+  # tracked field for a deliberate contract update instead of leaking it silently (Codex 2026-06-21).
   def field_name(raw)
-    return raw.to_s unless raw.is_a?(Integer)
-    unless (0...TRACKED_FIELDS.size).cover?(raw)
-      raise ArgumentError, "corrupt card_changes.field index #{raw} (outside TRACKED_FIELDS)"
-    end
-    TRACKED_FIELDS[raw]
+    name = raw.is_a?(Integer) && (0...TRACKED_FIELDS.size).cover?(raw) ? TRACKED_FIELDS[raw] : raw.to_s
+    return name if TRACKED_FIELDS.include?(name)
+
+    raise EncodingError, "unknown/corrupt card_changes.field #{raw.inspect} (not in TRACKED_FIELDS)"
   end
 
   # pre_state old-value lookup, tolerant of string or symbol keys (distinguishes absent from nil).
