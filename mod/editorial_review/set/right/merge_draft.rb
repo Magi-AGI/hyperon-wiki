@@ -206,7 +206,10 @@ event :apply_merge_draft, :finalize, on: :update,
 
   # --- all gates pass: apply within this transaction ---
   pre_act = current_act
-  merged_content = db_content
+  # Normalize line endings to LF: the draft content may carry CRLF from the
+  # browser's form encoding; the integrity gate already accepted it (newline-
+  # agnostic hash), and the parent should store clean LF like every other card.
+  merged_content = db_content.to_s.gsub("\r\n", "\n")
   # Nested parent write (proven merge_ai_draft pattern). Actor has :update (gate 1).
   parent.content = merged_content
   parent.save!
