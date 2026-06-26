@@ -78,6 +78,30 @@ the workbench; Phase 6 removes the legacy write itself.
 - no surviving blunt-overwrite entry point (grep + behavior test).
 - Markdown parent path (apply markdown content) parallels the HTML path.
 
+## Implementation notes (from the Phase 6 WIP, commit 60d8657)
+
+**Decko no-op-rollback gotcha (both reviewers ratified the fix).** Applying via a
+`merge draft update` whose content is byte-identical leaves the primary card with no
+dirty attributes → Decko skips the DB write and the act rolls back, taking the *nested*
+`parent.save!` with it ("Failed to save the record"). Fix: mirror the proven
+`merge_ai_draft` pattern — `parent.content = merged; parent.save!` (nested save, not
+`update!`) AND give the triggering act a real change so it commits, via an `+applied`
+lifecycle marker subcard on the merge draft. The marker is **audit/lifecycle state only —
+NOT a substitute for verifying the parent write** (Codex).
+
+**Verification must be fresh-process (Codex + Gemini).** In-transaction success is not
+enough — re-read in a NEW runner process and confirm: (a) the parent's `db_content` equals
+the merged draft, (b) a NEW `Card::Action`/`Card::Act` exists in the parent's history
+(traceable revision), (c) `<proposal>+merge audit` persisted with the full schema, (d) the
+`merged` tag is set. Then confirm every REJECT path wrote nothing (parent unchanged, no
+`+merge audit`, no new parent act).
+
+**Phase 6 green criteria (the definition of done):** permission check · optimistic lock ·
+base/proposal/merge-draft hash checks · transactionality (all-or-nothing) · idempotent
+retry (409, no second parent act) · archive/lifecycle transition · **no parent write on
+every reject path** · and the blunt `merge_ai_draft` removed/hidden/rerouted **in the same
+verified change** that enables "Apply to parent."
+
 ## Open items folded from review
 
 Two-hash audit (Codex) settled in Phase 5 (`assembled_hash` immutable, `polished_hash`
