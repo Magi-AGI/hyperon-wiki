@@ -99,6 +99,9 @@ end
 event :stamp_merge_draft_audit, :finalize, on: :save, changed: :db_content do
   proposal = left
   next unless proposal
+  # Phase 6 apply clears the draft content as its lifecycle transition; that is
+  # not a polish — leave the audit's polished_hash as the applied value.
+  next if Env.params[:apply_to_parent] == "true"
 
   audit_name = "#{name}+audit"
   current_hash = ProposalProvenance.content_hash(db_content)
@@ -227,32 +230,24 @@ event :apply_merge_draft, :finalize, on: :update,
     "merged_at" => Time.now.utc.iso8601
   }
 
+  # Durable apply record. Card.create! works in-act here AND makes the request
+  # transaction non-empty so the nested parent.save! commits (a same-content
+  # merge-draft trigger is a no-op for SELF; without a real card write the act
+  # would roll back). The audit's existence is also the merged marker the
+  # idempotency gate above checks. (add_subcard / nested Card#save! of an existing
+  # card are not reliably available outside a web request — keep this
+  # runner-verifiable.) The proposal "merged" tag / dropping "ai generated" and
+  # any post-merge archiving of the draft are deferred to Phase 7 lifecycle wiring.
   Card::Auth.as_bot do
     Card.create!(name: "#{proposal.name}+merge audit", type: MERGE_DRAFT_META_TYPE,
                  content: ProposalProvenance.to_json_compact(apply_record))
-    merge_apply_lifecycle(proposal)
   end
-
-  # Mark the draft applied (archive-don't-delete) — also gives THIS act a real
-  # change so it commits; an apply that left the draft byte-identical would be a
-  # no-op update and roll back the nested parent write.
-  add_subcard "#{name}+applied", content: Time.now.utc.iso8601
 end
 
 # Abort helper: record the reason so Decko rolls the act back (no parent write).
 def merge_apply_reject(message)
   errors.add(:apply_to_parent, message)
   nil
-end
-
-# Lifecycle transition on a successful apply: tag the proposal "merged" and drop
-# the "ai generated" tag if present. Archive-don't-delete.
-def merge_apply_lifecycle(proposal)
-  tag_name = "#{proposal.name}+tag"
-  tag = Card.fetch(tag_name) || Card.create!(name: tag_name, type_id: Card::PointerID)
-  tag.drop_item("ai generated") if tag.item_names.include?("ai generated")
-  tag.add_item("merged") unless tag.item_names.include?("merged")
-  tag.save!
 end
 
 format :html do
