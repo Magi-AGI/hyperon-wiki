@@ -61,4 +61,36 @@ format :html do
       nest(tag_card, view: :content)
     end
   end
+
+  # Renders the card's +author / +contributor / +editor pointers as a compact
+  # attribution block (one labeled, comma-separated row of person links each)
+  # at the top of the page.
+  #
+  # WHY here (same rationale as view :page_tags above): Draft / Published
+  # cardtypes have no `+*type+*structure` rule, so this is invoked via
+  # `render_page_attribution` from the Draft `view :core` (set/type/draft.rb)
+  # and the Published core (Abstract::EditoriallyReviewed). IndexSubtopic /
+  # IndexSection / History cards invoke it via `{{_self|page_attribution}}`
+  # in their structure rules (where view :core dispatch is bypassed), which is
+  # why the definition lives in set/all (universally resolvable for inclusion).
+  #
+  # Person names are rendered as links so each resolves to the Contributor
+  # card (which can later hold a sign-in account). Wrapped in
+  # `.wiki-page-attribution`; the Skin (sandra ui styles) styles it small/grey
+  # and tightens spacing. Returns "" when the card has none of the three
+  # pointers populated, so attribution-less cards render no extra UI.
+  view :page_attribution, cache: :never do
+    rows = [%w[author Authors], %w[contributor Contributors], %w[editor Editors]].filter_map do |field, label|
+      pointer = Card.fetch("#{card.name}+#{field}")
+      next unless pointer && pointer.type_id == Card::PointerID && pointer.item_names.present?
+
+      links = pointer.item_names.map { |item_name| link_to_card item_name }.join(", ")
+      %(<div class="wiki-attr-row"><span class="wiki-attr-label">#{label}:</span> #{links}</div>)
+    end
+    return "" if rows.empty?
+
+    wrap_with(:div, class: "wiki-page-attribution") do
+      rows.join
+    end
+  end
 end
