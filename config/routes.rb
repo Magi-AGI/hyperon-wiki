@@ -83,6 +83,23 @@ Decko.application.routes.draw do
         post 'suggest_improvements', action: :suggest_improvements
       end
 
+      # AtomSpace mirror read API (Lane C, Level 9) -- Api::Mcp::AtomspaceMirrorController.
+      # Gated by the mcp:atomspace:read scope; quarantine additionally requires mcp:admin.
+      # MUST be drawn here (before `mount Decko::Engine => '/'`) so it isn't shadowed by the
+      # Decko card catch-all -- an append-initializer runs after the mount and 404s to a card.
+      scope :atomspace_mirror, controller: "atomspace_mirror" do
+        get  'atom_types',            action: :atom_types
+        get  'atom_count_by_type',    action: :atom_count_by_type
+        get  'space_stats',           action: :space_stats
+        get  'query_atoms',           action: :query_atoms
+        get  'get_card_atom',         action: :get_card_atom
+        get  'get_card_provenance',   action: :get_card_provenance
+        get  'list_references',       action: :list_references
+        get  'list_atoms_by_type',    action: :list_atoms_by_type
+        get  'quarantine',            action: :quarantine_index
+        post 'quarantine/:id/delete', action: :quarantine_delete
+      end
+
       # Admin endpoints (admin role required)
       namespace :admin do
         resources :api_keys, only: [:index, :show, :create, :update, :destroy]
