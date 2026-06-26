@@ -239,4 +239,64 @@ RSpec.describe CardAtomEncoder do
       expect(described_class.encode_card_snapshot(c)).to eq(forward)
     end
   end
+
+  # L6 / Section 3: a reconcile event is DRAINED through /apply, so its payload must satisfy the L8
+  # drain validator (exactly one DeckoProvenance, identity-matched to the reconcile outbox row).
+  describe "encode_reconcile_snapshot (Level 6 synthetic reconcile event)" do
+    let(:run_card) { card(references_out: [ref]) }
+    let(:atoms) do
+      described_class.encode_reconcile_snapshot(
+        run_card, event_id: "reconcile:card:17120:7", actor: 3, acted_at: Time.utc(2026, 6, 26, 1, 0, 0)
+      )
+    end
+
+    it "emits DeckoCard + DeckoReference(s) + EXACTLY ONE synthetic DeckoProvenance" do
+      expect(atoms.map { |a| a["atom"] }).to eq(%w[DeckoCard DeckoReference DeckoProvenance])
+      expect(atoms.count { |a| a["atom"] == "DeckoProvenance" }).to eq(1)
+    end
+
+    it "reuses the canonical DeckoCard/DeckoReference atoms (identical to encode_card_snapshot)" do
+      card_and_refs = atoms.reject { |a| a["atom"] == "DeckoProvenance" }
+      expect(card_and_refs).to eq(described_class.encode_card_snapshot(run_card))
+    end
+
+    it "carries the SAME 21-field provenance arity/order as the forward encoder" do
+      forward_order = order_of(enc(action(card)), "DeckoProvenance")
+      expect(order_of(atoms, "DeckoProvenance")).to eq(forward_order)
+    end
+
+    it "sets the three drain-validator identity fields to match a reconcile outbox row" do
+      prov = fields_of(atoms, "DeckoProvenance")
+      expect(prov["event_id"]).to eq("reconcile:card:17120:7")
+      expect(prov["card_id"]).to eq(17120)
+      expect(prov["action_id"]).to be_nil   # reconcile rows carry a NULL action_id (OQ#12); validator requires the match
+    end
+
+    it "marks it synthetic: action=reconcile, stage=reconcile, empty changes, NoSuper, NoIP" do
+      prov = fields_of(atoms, "DeckoProvenance")
+      expect(prov["action"]).to eq("sym" => "reconcile")
+      expect(prov["stage"]).to eq("reconcile")
+      expect(prov["changes"]).to eq([])
+      expect(prov["super_action_id"]).to eq("sym" => "NoSuper")
+      expect(prov["ip_address"]).to eq("sym" => "NoIP")
+    end
+
+    it "records the run's actor + timestamp and JSON-nulls every unsourceable request-time field" do
+      prov = fields_of(atoms, "DeckoProvenance")
+      expect(prov["actor_id"]).to eq(3)
+      expect(prov["acted_at"]).to eq("2026-06-26T01:00:00Z")
+      %w[act_id auth_current_id auth_as_id agent_session_id agent_kind origin_system origin_request_id].each do |f|
+        expect(prov[f]).to be_nil
+      end
+    end
+
+    it "defaults actor/acted_at to an honest nil when the run leaves them unattributed" do
+      prov = fields_of(
+        described_class.encode_reconcile_snapshot(run_card, event_id: "reconcile:card:17120:8"),
+        "DeckoProvenance"
+      )
+      expect(prov["actor_id"]).to be_nil
+      expect(prov["acted_at"]).to be_nil
+    end
+  end
 end

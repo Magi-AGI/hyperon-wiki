@@ -63,6 +63,23 @@ module CardAtomEncoder
     [decko_card(card), *decko_references(card)]
   end
 
+  # CURRENT-state snapshot for a synthetic RECONCILE event (Section 3 / Level 6) -- the payload of a
+  # `reconcile:card:C:R` mirror_outbox row created by the L6 Reconciler for a PG-but-not-Space card, a
+  # mismatched-hash card, or a hook-lag Case (b) hold. UNLIKE encode_card_snapshot (bulk_load, no
+  # provenance), a reconcile event is DRAINED through the forward /apply path, and the L8 drain
+  # validator requires EXACTLY ONE DeckoProvenance whose event_id/card_id/action_id match the outbox
+  # row (mirror_drain_validator validate_identity!). A reconcile event has no real Card::Action, so we
+  # synthesize one provenance atom: action_id is NIL (a reconcile row's action_id is NULL by the OQ#12
+  # CHECK), action = :reconcile, stage = "reconcile", changes = [] (a full-state overwrite, not a
+  # field delta). `actor` is the reconcile run's operator id and `acted_at` the run timestamp -- the
+  # only audit fields a synthetic event can honestly carry; the request-time dual-actor + agent
+  # context have no source and serialize as JSON null. Pure: takes a live Card (current state).
+  def encode_reconcile_snapshot(card, event_id:, actor: nil, acted_at: nil)
+    [decko_card(card),
+     *decko_references(card),
+     reconcile_provenance(card, event_id: event_id, actor: actor, acted_at: acted_at)]
+  end
+
   def decko_card(card)
     atom "DeckoCard", [
       ["Id",        card.id],
@@ -121,6 +138,37 @@ module CardAtomEncoder
       ["agent_kind",           ctx[:agent_kind] ? sym(ctx[:agent_kind].to_s) : nil],
       ["origin_system",        ctx[:origin_system] ? sym(ctx[:origin_system].to_s) : nil],
       ["origin_request_id",    ctx[:origin_request_id]]
+    ]
+  end
+
+  # Synthetic provenance companion for a reconcile event. Carries the SAME 21-field ordered shape as
+  # decko_provenance (so the sidecar decoder handles both uniformly) -- only the values differ: a NULL
+  # action_id/act_id, the `reconcile` action marker, the `reconcile` stage, an empty `changes`, and
+  # JSON null for every request-time field that a synthetic event cannot source. The three identity
+  # fields the drain validator checks (event_id, card_id, action_id) match the reconcile outbox row.
+  def reconcile_provenance(card, event_id:, actor:, acted_at:)
+    atom "DeckoProvenance", [
+      ["source",               SOURCE],
+      ["event_schema_version", EVENT_SCHEMA_VERSION],
+      ["event_id",             event_id],
+      ["action_id",            nil],                 # reconcile rows carry a NULL action_id (OQ#12 CHECK)
+      ["act_id",               nil],
+      ["super_action_id",      sym("NoSuper")],
+      ["action",               sym("reconcile")],    # synthetic marker (vs create/update/delete)
+      ["draft",                false],
+      ["card_id",              card.id],
+      ["card_key",             card.key],
+      ["actor_id",             actor],               # reconcile-run operator id (nil if unattributed)
+      ["auth_current_id",      nil],                 # no request-time auth snapshot for a synthetic event
+      ["auth_as_id",           nil],
+      ["acted_at",             iso(acted_at)],
+      ["ip_address",           sym("NoIP")],
+      ["stage",                "reconcile"],         # vs "integrate_with_delay"
+      ["changes",              []],                  # full-state overwrite, no field-level delta
+      ["agent_session_id",     nil],
+      ["agent_kind",           nil],
+      ["origin_system",        nil],
+      ["origin_request_id",    nil]
     ]
   end
 
