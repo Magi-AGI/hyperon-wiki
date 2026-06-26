@@ -168,17 +168,44 @@ class SidecarClient
   # lost on restart). Unix-socket ONLY (the admin surface is privileged; 404 over TCP). Raises
   # QuarantineError on any non-200 / transport failure (the Reconciler -> a 'partial' run, fail-closed).
   def quarantine_card_scoped_atoms(card_id)
-    status, parsed = admin_post("/admin/quarantine_card_scoped_atoms", { "card_id" => card_id.to_i })
-    unless status == 200 && parsed.is_a?(Hash) && parsed["removed"].is_a?(Array)
-      raise QuarantineError, "quarantine(#{card_id}) failed (HTTP #{status}): #{(parsed || {}).inspect[0, 200]}"
-    end
-
+    cid = strict_card_id(card_id)   # STRICT: never .to_i-coerce "abc"->0 / "12x"->12 at a destructive boundary
+    status, parsed = admin_post("/admin/quarantine_card_scoped_atoms", { "card_id" => cid })
+    validate_quarantine_response!(cid, status, parsed)
     parsed["removed"]
   rescue *RETRYABLE_TRANSPORT_ERRORS => e
     raise QuarantineError, "quarantine transport error: #{e.class}: #{e.message}"
   end
 
   private
+
+  # A destructive admin op must NOT silently coerce its target. A non-integer / non-positive card_id is
+  # a caller bug -- fail closed (Codex), never quarantine card 0 or a truncated id.
+  def strict_card_id(card_id)
+    n = begin
+      Integer(card_id.to_s.strip, 10)
+    rescue ArgumentError, TypeError
+      raise QuarantineError, "quarantine card_id must be an integer, got #{card_id.inspect}"
+    end
+    raise QuarantineError, "quarantine card_id must be a positive integer, got #{card_id.inspect}" unless n.positive?
+
+    n
+  end
+
+  # Validate the WHOLE mutating-call contract (Codex): HTTP 200, the echoed card_id matches what we
+  # asked to quarantine, removed is an array, removed_count is an integer, and the count is consistent
+  # with the array. Any deviation fails closed.
+  def validate_quarantine_response!(cid, status, parsed)
+    unless status == 200 && parsed.is_a?(Hash)
+      raise QuarantineError, "quarantine(#{cid}) failed (HTTP #{status}): #{(parsed || {}).inspect[0, 200]}"
+    end
+
+    removed = parsed["removed"]
+    count = parsed["removed_count"]
+    ok = removed.is_a?(Array) && count.is_a?(Integer) && count == removed.length && parsed["card_id"] == cid
+    return if ok
+
+    raise QuarantineError, "quarantine(#{cid}) returned an inconsistent response: #{parsed.inspect[0, 200]}"
+  end
 
   # Admin (Unix-socket) POST. Honors the injected transport in tests; else minimal HTTP/1.0 over the
   # UNIX socket (the sidecar serves wsgiref on AF_UNIX -- HTTP/1.0 + Connection: close => read to EOF),

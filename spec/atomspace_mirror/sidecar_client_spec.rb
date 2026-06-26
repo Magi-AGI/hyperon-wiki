@@ -177,5 +177,24 @@ RSpec.describe SidecarClient do
       expect { SidecarClient.new(transport: ->(_p, _b) { raise Errno::ECONNREFUSED }).quarantine_card_scoped_atoms(5) }
         .to raise_error(SidecarClient::QuarantineError, /transport error/)
     end
+
+    it "STRICT card_id: a non-integer / non-positive id fails closed WITHOUT calling the sidecar (Codex)" do
+      called = false
+      transport = ->(_p, _b) { called = true; [200, { "card_id" => 0, "removed" => [], "removed_count" => 0 }] }
+      %w[abc 12x 0 -5].each do |bad|
+        expect { SidecarClient.new(transport: transport).quarantine_card_scoped_atoms(bad) }
+          .to raise_error(SidecarClient::QuarantineError, /integer/)
+      end
+      expect(called).to be(false)   # never reached the destructive call
+    end
+
+    it "validates the FULL mutating-call contract: card_id echo + removed_count == removed.length (Codex)" do
+      mismatch_count = ->(_p, _b) { [200, { "card_id" => 5, "removed" => removed, "removed_count" => 99 }] }
+      wrong_card = ->(_p, _b) { [200, { "card_id" => 6, "removed" => removed, "removed_count" => 2 }] }
+      expect { SidecarClient.new(transport: mismatch_count).quarantine_card_scoped_atoms(5) }
+        .to raise_error(SidecarClient::QuarantineError, /inconsistent/)
+      expect { SidecarClient.new(transport: wrong_card).quarantine_card_scoped_atoms(5) }
+        .to raise_error(SidecarClient::QuarantineError, /inconsistent/)
+    end
   end
 end
