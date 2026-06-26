@@ -74,10 +74,19 @@ module CardAtomEncoder
   # field delta). `actor` is the reconcile run's operator id and `acted_at` the run timestamp -- the
   # only audit fields a synthetic event can honestly carry; the request-time dual-actor + agent
   # context have no source and serialize as JSON null. Pure: takes a live Card (current state).
-  def encode_reconcile_snapshot(card, event_id:, actor: nil, acted_at: nil)
+  #
+  # actor_id is the provenance DeckoActor field, which is a Decko actor INTEGER in the forward path --
+  # so it must be an Integer or nil here too. A reconcile run's human/operator attribution is a STRING
+  # and belongs in mirror_reconcile_runs.actor / the run report, NOT in this integer atom field;
+  # passing a string would silently change the type/meaning of actor_id, so it's rejected loudly.
+  def encode_reconcile_snapshot(card, event_id:, actor_id: nil, acted_at: nil)
+    unless actor_id.nil? || actor_id.is_a?(Integer)
+      raise ArgumentError, "actor_id: must be an Integer (Decko actor id) or nil; put string operator " \
+                           "attribution in mirror_reconcile_runs.actor, not the provenance actor_id field"
+    end
     [decko_card(card),
      *decko_references(card),
-     reconcile_provenance(card, event_id: event_id, actor: actor, acted_at: acted_at)]
+     reconcile_provenance(card, event_id: event_id, actor_id: actor_id, acted_at: acted_at)]
   end
 
   def decko_card(card)
@@ -146,7 +155,7 @@ module CardAtomEncoder
   # action_id/act_id, the `reconcile` action marker, the `reconcile` stage, an empty `changes`, and
   # JSON null for every request-time field that a synthetic event cannot source. The three identity
   # fields the drain validator checks (event_id, card_id, action_id) match the reconcile outbox row.
-  def reconcile_provenance(card, event_id:, actor:, acted_at:)
+  def reconcile_provenance(card, event_id:, actor_id:, acted_at:)
     atom "DeckoProvenance", [
       ["source",               SOURCE],
       ["event_schema_version", EVENT_SCHEMA_VERSION],
@@ -158,7 +167,7 @@ module CardAtomEncoder
       ["draft",                false],
       ["card_id",              card.id],
       ["card_key",             card.key],
-      ["actor_id",             actor],               # reconcile-run operator id (nil if unattributed)
+      ["actor_id",             actor_id],            # Decko actor INTEGER (nil if the run has no Decko-user context)
       ["auth_current_id",      nil],                 # no request-time auth snapshot for a synthetic event
       ["auth_as_id",           nil],
       ["acted_at",             iso(acted_at)],

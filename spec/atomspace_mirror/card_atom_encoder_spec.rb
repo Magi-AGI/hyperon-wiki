@@ -246,7 +246,7 @@ RSpec.describe CardAtomEncoder do
     let(:run_card) { card(references_out: [ref]) }
     let(:atoms) do
       described_class.encode_reconcile_snapshot(
-        run_card, event_id: "reconcile:card:17120:7", actor: 3, acted_at: Time.utc(2026, 6, 26, 1, 0, 0)
+        run_card, event_id: "reconcile:card:17120:7", actor_id: 3, acted_at: Time.utc(2026, 6, 26, 1, 0, 0)
       )
     end
 
@@ -281,7 +281,7 @@ RSpec.describe CardAtomEncoder do
       expect(prov["ip_address"]).to eq("sym" => "NoIP")
     end
 
-    it "records the run's actor + timestamp and JSON-nulls every unsourceable request-time field" do
+    it "records the run's integer actor_id + timestamp and JSON-nulls every unsourceable request-time field" do
       prov = fields_of(atoms, "DeckoProvenance")
       expect(prov["actor_id"]).to eq(3)
       expect(prov["acted_at"]).to eq("2026-06-26T01:00:00Z")
@@ -290,13 +290,19 @@ RSpec.describe CardAtomEncoder do
       end
     end
 
-    it "defaults actor/acted_at to an honest nil when the run leaves them unattributed" do
+    it "defaults actor_id/acted_at to an honest nil when the run leaves them unattributed" do
       prov = fields_of(
         described_class.encode_reconcile_snapshot(run_card, event_id: "reconcile:card:17120:8"),
         "DeckoProvenance"
       )
       expect(prov["actor_id"]).to be_nil
       expect(prov["acted_at"]).to be_nil
+    end
+
+    it "rejects a STRING actor_id loudly (operator attribution belongs in the run row, not actor_id)" do
+      expect do
+        described_class.encode_reconcile_snapshot(run_card, event_id: "reconcile:card:17120:9", actor_id: "system")
+      end.to raise_error(ArgumentError, /Integer/)
     end
   end
 end
