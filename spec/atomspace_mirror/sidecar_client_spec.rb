@@ -157,4 +157,25 @@ RSpec.describe SidecarClient do
       expect { SidecarClient.new(transport: ->(_p, _b) { raise Errno::ECONNREFUSED }).space_stats }.to raise_error(SidecarClient::BulkLoadError)
     end
   end
+
+  describe "#quarantine_card_scoped_atoms (L6 B3 admin)" do
+    let(:removed) { [{ "atom" => "DeckoCard", "fields" => [["Id", 5]] }, { "atom" => "DeckoProvenance", "fields" => [["card_id", 5]] }] }
+
+    it "POSTs /admin/quarantine_card_scoped_atoms with {card_id} and returns the removed audit set" do
+      seen = []
+      transport = ->(path, body) { seen << [path, body]; [200, { "card_id" => 5, "removed" => removed, "removed_count" => 2 }] }
+      audit = SidecarClient.new(transport: transport).quarantine_card_scoped_atoms("5")
+      expect(seen).to eq([["/admin/quarantine_card_scoped_atoms", { "card_id" => 5 }]])  # strict int coercion
+      expect(audit).to eq(removed)
+    end
+
+    it "raises QuarantineError on a non-200, a malformed body, or a transport error (fail-closed)" do
+      expect { SidecarClient.new(transport: ->(_p, _b) { [500, nil] }).quarantine_card_scoped_atoms(5) }
+        .to raise_error(SidecarClient::QuarantineError, /HTTP 500/)
+      expect { SidecarClient.new(transport: ->(_p, _b) { [200, { "no_removed" => true }] }).quarantine_card_scoped_atoms(5) }
+        .to raise_error(SidecarClient::QuarantineError)
+      expect { SidecarClient.new(transport: ->(_p, _b) { raise Errno::ECONNREFUSED }).quarantine_card_scoped_atoms(5) }
+        .to raise_error(SidecarClient::QuarantineError, /transport error/)
+    end
+  end
 end
