@@ -23,6 +23,9 @@ module Api
       # Read-your-writes before Lane A's L7 read_consistency is wired -> fail-closed 503, not a
       # generic 500, AND with a distinct signal reason for triage (Codex Findings 4 + 2).
       rescue_from Atomspace::ReadConsistencyPort::NotWired, with: :render_consistency_unavailable
+      # A malformed read param (e.g. a bad action_id_range / query pattern) is a CLIENT error -> 400,
+      # not a 500 (Codex C2).
+      rescue_from Atomspace::InvalidRequest, with: :render_invalid_request
 
       # --- card-scoped, read-your-writes-aware ---
       def query_atoms
@@ -152,6 +155,11 @@ module Api
         Atomspace::Observability.alert(signal_class: 3, payload: { signal: reason })
         render json: { error: "atomspace_unavailable", reason: reason, _meta: Atomspace::ReadClient::SAFE_META },
                status: 503
+      end
+
+      def render_invalid_request(error)
+        render json: { error: "bad_request", reason: error.message, _meta: Atomspace::ReadClient::SAFE_META },
+               status: 400
       end
 
       # Auth gates. Match the mcp_api render-and-halt idiom: a before_action that renders sets

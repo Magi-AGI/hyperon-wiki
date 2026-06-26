@@ -26,7 +26,9 @@ module Atomspace
     end
 
     def get_card_atom(card_id:, include_trash: false, **)
-      all.select { |a| a.card_id.to_s == card_id.to_s }
+      # the DeckoCard atom ONLY (references are list_references) -- aligned with SidecarReadClient +
+      # the locked C2 contract (Codex 2026-06-25).
+      all.select { |a| a.type == "DeckoCard" && a.card_id.to_s == card_id.to_s }
     end
 
     def get_card_provenance(card_id: nil, event_id: nil, **)
