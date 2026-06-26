@@ -252,6 +252,8 @@ WS6_MW_JS = <<~'WS6JS'
         note.className = 'ws6-note ' + (n === 0 ? 'ws6-ok' : 'ws6-bad');
       }
       if (asm) asm.disabled = (n !== 0);
+      var polish = root.querySelector('[data-ws6="polish"]');
+      if (polish) polish.disabled = (n !== 0);
       markRows();
     }
 
@@ -274,6 +276,43 @@ WS6_MW_JS = <<~'WS6JS'
       if (unresolved() !== 0) return;
       var pre = root.querySelector('[data-ws6="preview"]');
       if (pre) pre.textContent = assemble();
+    });
+
+    // Phase 5 handoff: authenticated seed POST -> redirect to the native editor.
+    // We send the user's SELECTIONS (not the assembled HTML as authoritative);
+    // the server re-derives the content from them. credentials:same-origin sends
+    // the session cookie; X-CSRF-Token sends the server-rendered token.
+    var polishBtn = root.querySelector('[data-ws6="polish"]');
+    if (polishBtn) polishBtn.addEventListener('click', function () {
+      if (unresolved() !== 0) return;
+      var meta = document.querySelector('meta[name="csrf-token"]');
+      var token = meta ? meta.getAttribute('content') : '';
+      var proposal = root.getAttribute('data-proposal');
+      var parentAct = root.getAttribute('data-parent-act-id') || '';
+      var fd = new FormData();
+      fd.append('card[name]', proposal);
+      fd.append('card[subcards][+merge draft][content]', assemble());
+      fd.append('hunk_selections', JSON.stringify(selections));
+      fd.append('parent_act_id', parentAct);
+      var orig = polishBtn.textContent;
+      polishBtn.disabled = true;
+      polishBtn.textContent = 'Creating draft...';
+      var editUrl = '/' + encodeURIComponent(proposal + '+merge draft') + '?view=edit';
+      fetch('/card/update', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': token, 'Accept': 'application/json' },
+        credentials: 'same-origin',
+        body: fd
+      }).then(function (res) {
+        if (res.ok || res.status === 302) { window.location.href = editUrl; return; }
+        return res.text().then(function () {
+          polishBtn.disabled = false; polishBtn.textContent = orig;
+          window.alert('Could not create the merge draft (HTTP ' + res.status + '). Try reloading the workbench.');
+        });
+      }).catch(function () {
+        polishBtn.disabled = false; polishBtn.textContent = orig;
+        window.alert('Network error creating the merge draft.');
+      });
     });
 
     // ---- Phase 4.1: Bézier ribbon overlay (presentation only) ----------------
@@ -392,7 +431,15 @@ format :html do
     rows = payload[:hunks].map { |hunk| mw_row(hunk, payload[:mode]) }.join
     island = MergeWorkbench.to_island_json(payload)
 
-    %(<div class="ws6-mw">) +
+    # Phase 5 handoff anchors: CSRF token (for the authenticated seed POST) +
+    # the parent's load-time act id (the drift-gate / Phase 6 lock anchor).
+    parent = card.left
+    parent_act = parent && Card::Action.where(card_id: parent.id)
+                                        .where(draft: [false, nil]).order(id: :desc).first&.act&.id
+    token = (form_authenticity_token rescue "")
+
+    %(<meta name="csrf-token" content="#{h token}">) +
+      %(<div class="ws6-mw" data-proposal="#{h card.name}" data-parent-act-id="#{parent_act}">) +
       mw_banner(payload) +
       %(<div class="ws6-stackwrap"><div class="ws6-stack">) +
       mw_header(payload[:mode]) + rows +
@@ -493,8 +540,10 @@ format :html do
 
   def mw_actions
     apply_title = "Simulation Mode — apply lands in Phase 6 (verifying merge-apply)"
+    polish_title = "Create the merge draft from your selections and open it in the editor to polish"
     %(<div class="ws6-actions">) +
       %(<button type="button" data-ws6="assemble">Assemble Merge Draft</button>) +
+      %(<button type="button" data-ws6="polish" title="#{polish_title}">Assemble &amp; Polish &rarr;</button>) +
       %(<span class="ws6-note" data-ws6="conflict-note"></span>) +
       %(<button type="button" disabled title="#{apply_title}">Apply to parent — Simulation Mode</button>) +
       %(<pre class="ws6-pre ws6-preview" data-ws6="preview"></pre>) +
