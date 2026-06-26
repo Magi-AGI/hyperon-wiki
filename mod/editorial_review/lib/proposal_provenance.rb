@@ -16,11 +16,15 @@ module ProposalProvenance
   SCHEMA_VERSION = 1
   HASH_ALGO = "sha256"
 
-  # Stable, parser-independent fingerprint over RAW stored db_content (never
-  # rendered HTML) so whitespace/markup normalization can't shift it. nil is
-  # treated as "" so a missing-content card hashes deterministically.
+  # Stable fingerprint over the stored db_content (never rendered HTML). Line
+  # endings are normalized (CRLF -> LF) before hashing so the fingerprint is
+  # robust to editor/transport newline rewriting — e.g. TinyMCE and browser form
+  # submission rewrite "\n" to "\r\n", which must NOT read as a content change at
+  # the Phase 6 apply gate — while any real change to the text still shifts it.
+  # nil is treated as "" so a missing-content card hashes deterministically.
   def content_hash(content)
-    "#{HASH_ALGO}:#{Digest::SHA256.hexdigest(content.to_s)}"
+    normalized = content.to_s.gsub("\r\n", "\n")
+    "#{HASH_ALGO}:#{Digest::SHA256.hexdigest(normalized)}"
   end
 
   # Assemble the authoring-time provenance record. All values are passed in by

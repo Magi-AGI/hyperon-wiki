@@ -378,12 +378,15 @@ WS6_MW_JS = <<~'WS6JS'
         '? This writes the polished content to the parent.')) return;
       var meta = document.querySelector('meta[name="csrf-token"]');
       var token = meta ? meta.getAttribute('content') : '';
-      // Trigger via a benign +applied marker (a guaranteed real change so the
-      // act commits) and send NO content — the server applies its own saved
-      // bytes after the four-fold gate.
+      // Exact saved bytes from the JSON island (LF preserved, unlike a textarea).
+      var island = root.querySelector('[data-ws6="draft-content"]');
+      var content = '';
+      if (island) {
+        try { content = JSON.parse(island.textContent.split('<' + String.fromCharCode(92) + '/').join('</')); } catch (e) { content = ''; }
+      }
       var fd = new FormData();
       fd.append('card[name]', root.getAttribute('data-proposal') + '+merge draft');
-      fd.append('card[subcards][+applied][content]', String(Date.now()));
+      fd.append('card[content]', content);
       fd.append('apply_to_parent', 'true');
       fd.append('parent_act_id', root.getAttribute('data-parent-act-id') || '');
       var orig = applyBtn.textContent;
@@ -693,12 +696,14 @@ format :html do
     # tampering is caught by the integrity gate (audit isn't refreshed on apply).
     apply =
       if draft_exists
-        # Apply sends NO content — it adds a benign +applied marker so the act
-        # commits, and the server uses the draft's OWN saved bytes for the
-        # integrity check + parent write. (Posting the content back would either
-        # mismatch the LF-based polished_hash via browser CRLF rewriting, or open
-        # a tamper surface.)
-        %(<button type="button" data-ws6="apply" class="ws6-apply">Apply to parent &rarr;</button>)
+        # Carry the draft's EXACT saved bytes in a JSON island (NOT a <textarea>,
+        # which the browser rewrites to CRLF on submit -> would mismatch the
+        # LF-based polished_hash). Posting the content fires the apply act and,
+        # being byte-identical to db_content, passes the integrity gate. Any
+        # tampered content is still rejected (audit isn't refreshed during apply).
+        island = JSON.generate(draft.db_content).gsub("</", "<\\/")
+        %(<button type="button" data-ws6="apply" class="ws6-apply">Apply to parent &rarr;</button>) +
+          %(<script type="application/json" data-ws6="draft-content">#{island}</script>)
       else
         %(<button type="button" disabled title="Create and polish a merge draft first">Apply to parent</button>)
       end
