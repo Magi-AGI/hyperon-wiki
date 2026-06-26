@@ -101,13 +101,18 @@ event :stamp_merge_draft_audit, :finalize, on: :save, changed: :db_content do
   next unless proposal
 
   audit_name = "#{name}+audit"
-  assembled_hash = ProposalProvenance.content_hash(db_content)
+  current_hash = ProposalProvenance.content_hash(db_content)
   existing = Card.fetch(audit_name)
 
+  # Two-hash audit (Codex): assembled_hash is the IMMUTABLE seed-time hash of the
+  # server-assembled content (proves the recorded hunk_selections produced this
+  # draft); polished_hash tracks the CURRENT content, refreshed on every native
+  # editor save. Phase 6 applies against polished_hash; assembled_hash preserves
+  # the origin proof. Never mutate assembled_hash.
   record =
     if existing&.db_content.present?
       rec = ProposalProvenance.parse(existing.db_content)
-      rec["assembled_hash"] = assembled_hash
+      rec["polished_hash"] = current_hash
       rec["polished_at"] = Time.now.utc.iso8601
       rec
     else
@@ -117,7 +122,7 @@ event :stamp_merge_draft_audit, :finalize, on: :save, changed: :db_content do
       parent_act_id = Env.params[:parent_act_id].presence&.to_i ||
                       (parent && merge_draft_latest_act_id(parent.id))
       {
-        "schema" => "ws6-merge-draft-audit/1",
+        "schema" => "ws6-merge-draft-audit/2",
         "proposal_name" => proposal.name,
         "proposal_hash" => prov_rec["proposal_hash"],
         "parent_id" => parent&.id,
@@ -125,7 +130,8 @@ event :stamp_merge_draft_audit, :finalize, on: :save, changed: :db_content do
         "parent_act_id" => parent_act_id,
         "base_act_id" => prov_rec["base_act_id"],
         "base_hash" => prov_rec["base_hash"],
-        "assembled_hash" => assembled_hash,
+        "assembled_hash" => current_hash,
+        "polished_hash" => current_hash,
         "hunk_selections" => Env.params[:hunk_selections].presence,
         "actor_name" => Card::Auth.current&.name,
         "source" => Env.params[:assemble_source].presence || "workbench",
