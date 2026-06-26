@@ -155,6 +155,106 @@ event :stamp_merge_draft_audit, :finalize, on: :save, changed: :db_content do
   end
 end
 
+# ---------------------------------------------------------------------------
+# PHASE 6 — verifying merge-apply (the governance gate from the Khellar call).
+# Triggered by the apply_to_parent param on a merge-draft save. Runs a four-fold
+# gate INSIDE the save transaction; if any check fails it adds an error and the
+# whole act rolls back — never a partial parent write. Replaces the blunt
+# merge_ai_draft overwrite. Spec: docs/ws6-merge-editor-phase6-apply-gate.md.
+event :apply_merge_draft, :finalize, on: :update,
+      when: proc { Env.params[:apply_to_parent] == "true" } do
+  proposal = left
+  next merge_apply_reject("merge draft has no proposal") unless proposal
+
+  parent = proposal.left
+  next merge_apply_reject("proposal has no parent card") unless parent
+
+  audit = Card.fetch("#{name}+audit")
+  rec = audit&.db_content.present? ? ProposalProvenance.parse(audit.db_content) : nil
+  next merge_apply_reject("no merge-draft audit found; cannot verify before applying") unless rec
+
+  # Idempotency: a completed apply leaves a +merge audit. Refuse to re-apply.
+  if Card.fetch("#{proposal.name}+merge audit")&.db_content.present?
+    next merge_apply_reject("this proposal has already been merged (409)")
+  end
+
+  # (1) Permission — on the PARENT, for the acting user (not the draft/proposal).
+  actor = Card::Auth.current
+  next merge_apply_reject("you do not have permission to update #{parent.name}") unless parent.ok?(:update)
+
+  # (2) Optimistic lock — parent must not have moved since the reviewer assembled.
+  current_act = merge_draft_latest_act_id(parent.id)
+  if rec["parent_act_id"] && current_act && rec["parent_act_id"].to_i != current_act.to_i
+    next merge_apply_reject(
+      "the parent changed since this merge was reviewed (act #{rec['parent_act_id']} -> #{current_act}); " \
+      "re-open the merge workbench and re-merge before applying"
+    )
+  end
+
+  # (3) Draft integrity — what we are about to write must equal what was last
+  #     polished + saved (polished_hash), so no DB tampering slips through.
+  if rec["polished_hash"] && ProposalProvenance.content_hash(db_content) != rec["polished_hash"]
+    next merge_apply_reject("the merge draft changed since it was last saved; reload the draft and re-apply")
+  end
+
+  # (4) Identity — the applier is the polishing author or holds parent-update
+  #     clearance (gate 1 already proved the latter). Recorded in the audit.
+  identity_note = rec["actor_name"].present? && actor&.name != rec["actor_name"] ? "applied-by-other" : "applied-by-author"
+
+  # --- all gates pass: apply within this transaction ---
+  pre_act = current_act
+  merged_content = db_content
+  # Nested parent write (proven merge_ai_draft pattern). Actor has :update (gate 1).
+  parent.content = merged_content
+  parent.save!
+  post_act = merge_draft_latest_act_id(parent.id)
+
+  apply_record = {
+    "schema" => "ws6-merge-apply/1",
+    "proposal_name" => proposal.name,
+    "merged_by_id" => actor&.id,
+    "merged_by_name" => actor&.name,
+    "identity" => identity_note,
+    "parent_id" => parent.id,
+    "parent_name" => parent.name,
+    "parent_pre_merge_act_id" => pre_act,
+    "parent_post_merge_act_id" => post_act,
+    "hunk_selections" => rec["hunk_selections"],
+    "original_base_act_id" => rec["base_act_id"],
+    "original_proposal_hash" => rec["proposal_hash"],
+    "assembled_hash" => rec["assembled_hash"],
+    "polished_hash" => rec["polished_hash"],
+    "merged_at" => Time.now.utc.iso8601
+  }
+
+  Card::Auth.as_bot do
+    Card.create!(name: "#{proposal.name}+merge audit", type: MERGE_DRAFT_META_TYPE,
+                 content: ProposalProvenance.to_json_compact(apply_record))
+    merge_apply_lifecycle(proposal)
+  end
+
+  # Mark the draft applied (archive-don't-delete) — also gives THIS act a real
+  # change so it commits; an apply that left the draft byte-identical would be a
+  # no-op update and roll back the nested parent write.
+  add_subcard "#{name}+applied", content: Time.now.utc.iso8601
+end
+
+# Abort helper: record the reason so Decko rolls the act back (no parent write).
+def merge_apply_reject(message)
+  errors.add(:apply_to_parent, message)
+  nil
+end
+
+# Lifecycle transition on a successful apply: tag the proposal "merged" and drop
+# the "ai generated" tag if present. Archive-don't-delete.
+def merge_apply_lifecycle(proposal)
+  tag_name = "#{proposal.name}+tag"
+  tag = Card.fetch(tag_name) || Card.create!(name: tag_name, type_id: Card::PointerID)
+  tag.drop_item("ai generated") if tag.item_names.include?("ai generated")
+  tag.add_item("merged") unless tag.item_names.include?("merged")
+  tag.save!
+end
+
 format :html do
   # Merge-context + stale-base banner, prepended to the standard edit screen so
   # the reviewer knows they are polishing a MERGE DRAFT (not an ad-hoc edit) and
