@@ -193,6 +193,7 @@ WS6_MW_CSS = <<~'WS6CSS'
   .ws6-actions button{font-size:14px;padding:6px 12px;margin-right:8px;}
   .ws6-actions button[disabled]{opacity:.5;cursor:not-allowed;}
   .ws6-actions button.ws6-danger{border:1px solid #d93025;color:#d93025;background:#fff;}
+  .ws6-actions button.ws6-apply{background:#188038;color:#fff;border:1px solid #188038;font-weight:600;}
   .ws6-draft-notice{margin-top:8px;font-size:13px;color:#5f6368;background:#fef7e0;border:1px solid #f9ab00;border-radius:4px;padding:6px 10px;}
   .ws6-draft-indicator{margin-bottom:10px;font-size:13px;background:#e8f0fe;border:1px solid #1a73e8;border-radius:4px;padding:6px 10px;}
   .ws6-note{font-size:13px;}
@@ -341,6 +342,50 @@ WS6_MW_JS = <<~'WS6JS'
     var openBtn = root.querySelector('[data-ws6="open-draft"]');
     if (openBtn) openBtn.addEventListener('click', function () { window.location.href = editUrl(); });
 
+    // Apply to parent — the verifying merge-apply (Phase 6). Posts the saved draft
+    // content + parent_act_id; the server runs the four-fold gate and only then
+    // writes the parent. We trust ONLY the server's verdict.
+    var applyBtn = root.querySelector('[data-ws6="apply"]');
+    if (applyBtn) applyBtn.addEventListener('click', function () {
+      var parentName = root.getAttribute('data-parent') || 'the parent card';
+      if (!window.confirm('Apply this reviewed merge draft to ' + parentName +
+        '? This writes the polished content to the parent.')) return;
+      var meta = document.querySelector('meta[name="csrf-token"]');
+      var token = meta ? meta.getAttribute('content') : '';
+      var draftEl = root.querySelector('[data-ws6="draft-content"]');
+      var fd = new FormData();
+      fd.append('card[name]', root.getAttribute('data-proposal') + '+merge draft');
+      if (draftEl) fd.append('card[content]', draftEl.value);
+      fd.append('apply_to_parent', 'true');
+      fd.append('parent_act_id', root.getAttribute('data-parent-act-id') || '');
+      var orig = applyBtn.textContent;
+      applyBtn.disabled = true;
+      applyBtn.textContent = 'Applying...';
+      fetch('/card/update', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': token, 'Accept': 'application/json' },
+        credentials: 'same-origin',
+        body: fd
+      }).then(function (res) {
+        if (res.ok || res.status === 302) {
+          window.location.href = '/' + encodeURIComponent(root.getAttribute('data-parent'));
+          return;
+        }
+        return res.text().then(function (body) {
+          applyBtn.disabled = false; applyBtn.textContent = orig;
+          var msg = /already been merged/i.test(body) ? 'This proposal has already been merged.'
+            : /parent changed|parent_act_id/i.test(body) ? 'The parent changed since this was reviewed. Reload the workbench and re-merge before applying.'
+            : /changed since it was last saved/i.test(body) ? 'The merge draft changed since its last save. Reload and re-apply.'
+            : /permission/i.test(body) ? 'You do not have permission to update the parent card.'
+            : 'Apply was rejected (HTTP ' + res.status + ').';
+          window.alert(msg + ' The parent was NOT changed.');
+        });
+      }).catch(function () {
+        applyBtn.disabled = false; applyBtn.textContent = orig;
+        window.alert('Network error during apply. The parent was NOT changed.');
+      });
+    });
+
     // ---- Phase 4.1: Bézier ribbon overlay (presentation only) ----------------
     // One SVG overlay; for each changed hunk, draw a closed Bézier ribbon in each
     // gutter whose two adjacent panes differ. The curves fan to fit the panes'
@@ -471,7 +516,8 @@ format :html do
     token = (form_authenticity_token rescue "")
 
     %(<meta name="csrf-token" content="#{h token}">) +
-      %(<div class="ws6-mw" data-proposal="#{h card.name}" data-parent-act-id="#{parent_act}">) +
+      %(<div class="ws6-mw" data-proposal="#{h card.name}" data-parent="#{h parent.name}" ) +
+      %(data-parent-act-id="#{parent_act}">) +
       mw_banner(payload) +
       mw_draft_indicator +
       %(<div class="ws6-stackwrap"><div class="ws6-stack">) +
@@ -587,12 +633,12 @@ format :html do
   end
 
   def mw_actions
-    apply_title = "Simulation Mode — apply lands in Phase 6 (verifying merge-apply)"
     # If a merge draft already exists (the human has started polishing), the
     # primary action OPENS it (edits preserved); rebuilding is an explicit,
     # confirmed, destructive "Reset" (Codex + Gemini). Otherwise the primary
     # action creates the draft.
-    draft_exists = Card.fetch("#{card.name}+merge draft")&.db_content.present?
+    draft = Card.fetch("#{card.name}+merge draft")
+    draft_exists = draft&.db_content.present?
 
     primary =
       if draft_exists
@@ -613,11 +659,25 @@ format :html do
         ""
       end
 
+    # Apply to parent — the verifying merge-apply (Phase 6). Active only once a
+    # polished merge draft exists; the server re-checks permission, optimistic
+    # lock, and the polished_hash before writing the parent. The draft's current
+    # (server-side, saved) content rides along hidden so the apply post is a
+    # no-op-content trigger whose db_content already matches polished_hash; any
+    # tampering is caught by the integrity gate (audit isn't refreshed on apply).
+    apply =
+      if draft_exists
+        %(<button type="button" data-ws6="apply" class="ws6-apply">Apply to parent &rarr;</button>) +
+          %(<textarea hidden data-ws6="draft-content">#{h draft.db_content}</textarea>)
+      else
+        %(<button type="button" disabled title="Create and polish a merge draft first">Apply to parent</button>)
+      end
+
     %(<div class="ws6-actions">) +
       %(<button type="button" data-ws6="assemble">Assemble Merge Draft</button>) +
       primary +
       %(<span class="ws6-note" data-ws6="conflict-note"></span>) +
-      %(<button type="button" disabled title="#{apply_title}">Apply to parent — Simulation Mode</button>) +
+      apply +
       notice +
       %(<pre class="ws6-pre ws6-preview" data-ws6="preview"></pre>) +
       %(</div>)

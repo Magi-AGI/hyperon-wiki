@@ -1,5 +1,15 @@
 # Set module for +ai draft child cards.
 # When an ai draft is created or updated, auto-tag the parent with "needs review".
+#
+# WS6 Phase 6 — MUTUAL EXCLUSION: the blunt "merge into parent" overwrite has been
+# REMOVED. There used to be an `event :merge_ai_draft` (triggered by a
+# ?merge_draft=true post) that copied the draft straight onto the parent, plus a
+# `merge_button` that fired it. Both are gone. Removing the EVENT — not just the
+# button — is deliberate: a direct ?merge_draft=true post is no longer a usable
+# bypass. The ONLY authorized path to write a draft back to a parent is now the
+# verifying 3-way merge workbench + apply gate (set/right/proposal.rb +
+# set/right/merge_draft.rb), which checks permission, optimistic lock, and content
+# hashes in one transaction. The +AI -> +proposal bridge lands in Phase 7.
 
 event :tag_parent_needs_review, :integrate, on: :save do
   parent = left
@@ -14,42 +24,13 @@ event :tag_parent_needs_review, :integrate, on: :save do
   end
 end
 
-# Event: when an ai draft is merged into the parent card.
-# Triggered by saving with merge_draft param.
-event :merge_ai_draft, :finalize, on: :update,
-      when: proc { |_c| Env.params[:merge_draft] == "true" } do
-  parent = left
-  return unless parent
-
-  parent.content = content
-  parent.save!
-
-  add_subcard "#{parent.name}+approved by", content: Auth.current.name, type_id: Card::PhraseID
-  add_subcard "#{parent.name}+approved at", content: Time.current.to_date.to_s, type_id: Card::DateID
-
-  self.content = ""
-end
-
 format :html do
-  view :merge_button do
-    return "" unless card.ok?(:update) && card.content.present?
-
-    parent = card.left
-    return "" unless parent
-
-    link_to_card parent.name, "Merge into #{h parent.name}",
-                 path: { action: :update, card: { content: card.content },
-                         merge_draft: "true" },
-                 class: "btn btn-primary btn-sm"
-  end
-
   view :core do
     if card.content.present?
       banner = wrap_with(:div, class: "alert alert-info mb-3") do
-        [
-          "<strong>AI Draft</strong> &mdash; Proposed changes pending review.",
-          (" " + render_merge_button if card.ok?(:update))
-        ].compact.join
+        "<strong>AI Draft</strong> &mdash; proposed changes pending review. " \
+          "Merging into the parent now goes through the verifying merge workbench " \
+          "on the parent's <code>+proposal</code> (no direct overwrite)."
       end
       output [banner, super()]
     else
