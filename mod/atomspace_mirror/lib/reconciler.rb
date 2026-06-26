@@ -180,16 +180,17 @@ module Reconciler
 
       run = start_run("sweep", detection_run_id: detection_run_id)
       diff = signals_from(detection)
-      warn_if_sample_truncated(detection, diff)
+      result = blank_result
+      warn_if_sample_truncated(detection, diff, result)
       actions = Reconciler.plan_sweep(diff: diff, run_id: run.id, in_flight: @in_flight_fn)
-      finish_run(run, execute(actions), detection_run_id: detection_run_id)
+      finish_run(run, execute(actions, result), detection_run_id: detection_run_id)
     end
 
     # --- entry: hook-lag remediation (Mechanism 1b coverage-gap) ---
     def remediate_hook_lag!
       run = start_run("hook_lag")
       actions = Reconciler.plan_hook_lag(gaps: enriched_gaps, run_id: run.id)
-      finish_run(run, execute(actions))
+      finish_run(run, execute(actions, blank_result))
     end
 
     # --- entry: drain-lag reset (failed rows) ---
@@ -197,20 +198,24 @@ module Reconciler
       run = start_run("requeue")
       superseded = ->(row) { @outbox.superseded_by_later_or_reconcile?(row) }
       actions = Reconciler.plan_requeue(rows: @failed_rows_source.call, superseded: superseded)
-      finish_run(run, execute(actions))
+      finish_run(run, execute(actions, blank_result))
     end
 
     # ============================ action execution ============================
-    # Tally of what actually happened (remediated = SUCCESSFUL repairs only; failures recorded, never
-    # silently counted as success). Drives the run row's remediated count + completed/partial status.
-    Result = Struct.new(:remediated, :audit, :failures, keyword_init: true)
+    # Tally of what actually happened. `changed` = rows actually written/updated (real repairs);
+    # `already_present` = idempotent no-ops (the desired end-state was already in place -- a re-run, a
+    # coalesced duplicate, or an update that matched nothing); `failures` = repairs that could NOT be
+    # applied (gone card, pruned action, encode error, B3 outage). The run's `remediated` column = the
+    # changed count; status is 'partial' iff any failures. `truncated` rides along for auditability.
+    Result = Struct.new(:changed, :already_present, :failures, :audit, :truncated, keyword_init: true)
 
-    def execute(actions)
-      result = Result.new(remediated: 0, audit: [], failures: [])
+    def blank_result = Result.new(changed: 0, already_present: 0, failures: [], audit: [], truncated: [])
+
+    def execute(actions, result)
       # AwaitingWithReconcile coalesces per (card_id, run_id): one reconcile event, many awaiting rows.
       awaiting, rest = actions.partition { |a| a.is_a?(Reconciler::AwaitingWithReconcile) }
       awaiting.group_by { |a| [a.card_id, a.run_id] }.each do |(card_id, run_id), group|
-        result.remediated += exec_awaiting_group(card_id, run_id, group.map(&:action_id))
+        exec_awaiting_group(card_id, run_id, group.map(&:action_id), result)
       end
       rest.each { |action| exec_one(action, result) }
       result
@@ -218,15 +223,25 @@ module Reconciler
 
     def exec_one(action, result)
       case action
-      when Reconciler::ReplayQueued      then result.remediated += exec_replay_queued(action.card_id, action.action_id, result)
-      when Reconciler::SupersededByLater then (insert_superseded_by_later(action.card_id, action.action_id); result.remediated += 1)
-      when Reconciler::ReconcileCreate   then result.remediated += exec_reconcile_create(action.card_id, action.run_id)
+      when Reconciler::ReplayQueued      then exec_replay_queued(action.card_id, action.action_id, result)
+      when Reconciler::SupersededByLater then tally_write(result, insert_superseded_by_later(action.card_id, action.action_id))
+      when Reconciler::ReconcileCreate   then exec_reconcile_create(action.card_id, action.run_id, result)
       when Reconciler::Quarantine        then exec_quarantine(action.card_id, result)
       when Reconciler::SkipInFlight      then alert(:mirror_reconcile_skip, action.card_id, action.reason)
-      when Reconciler::RequeueReset      then (update_row(action.row_id, status: "queued", attempts: 0, error: nil); result.remediated += 1)
-      when Reconciler::RequeueSupersede  then (update_row(action.row_id, status: "superseded_by_later"); result.remediated += 1)
+      when Reconciler::RequeueReset      then tally_update(result, update_row(action.row_id, status: "queued", attempts: 0, error: nil))
+      when Reconciler::RequeueSupersede  then tally_update(result, update_row(action.row_id, status: "superseded_by_later"))
       when Reconciler::RequeueHold       then alert(:mirror_reconcile_hold, action.row_id, action.reason)
       end
+    end
+
+    # outcome of an idempotent insert (:created -> a real change, :already_present -> no-op).
+    def tally_write(result, outcome)
+      outcome == :created ? result.changed += 1 : result.already_present += 1
+    end
+
+    # update_all affected-row count: >0 changed, else the row was already in the target state.
+    def tally_update(result, affected)
+      affected.to_i.positive? ? result.changed += 1 : result.already_present += 1
     end
 
     # Tail replay: reconstruct the canonical forward payload from the historical action (Codex: never
@@ -234,99 +249,95 @@ module Reconciler
     # request-time Card::Auth.serialize snapshot is not persisted on a historical action; actor_id is
     # still real). A corrupt-encode raises EncodingError -> a terminal 'failed' row so check_event_ready
     # returns event_failed, not a staleness timeout (mirrors MirrorOutboxWriter).
-    # Returns the remediated increment (1 = a real repair row queued; 0 = pruned/encode-failed, recorded
-    # as a failure -- not a successful repair).
+    # Tail replay. A pruned action or a corrupt encode is a FAILURE (recorded -> run 'partial'); a real
+    # queued row is a change; an already-present row is an idempotent no-op.
     def exec_replay_queued(card_id, action_id, result)
       action = @action_lookup.call(action_id)
       unless action
         alert(:mirror_reconcile_action_pruned, card_id,
               "card_actions row #{action_id} not found; cannot reconstruct replay payload")
-        result.failures << { card_id: card_id, action_id: action_id, reason: "card_action pruned" }
-        return 0
+        return result.failures << { card_id: card_id, action_id: action_id, reason: "card_action pruned" }
       end
       begin
         atoms = @encoder.encode(action, pre_state: @pre_state_fn.call(action),
                                         auth: { current_id: nil, as_id: nil }, request_context: {})
-        insert_decko_action(card_id, action_id, status: "queued", payload: { "atoms" => atoms })
-        1
+        tally_write(result, insert_decko_action(card_id, action_id, status: "queued", payload: { "atoms" => atoms }))
       rescue CardAtomEncoder::EncodingError => e
         insert_decko_action(card_id, action_id, status: "failed", payload: nil, error: e.message)
         result.failures << { card_id: card_id, action_id: action_id, reason: "encode: #{e.message}" }
-        0
       end
     end
 
     # Case (b): fresh current-state reconcile + linked awaiting rows, single transaction, reconcile
-    # FIRST (Invariant 13). Orphan-prevention (Codex): precompute the NEW awaitings + the relink
-    # orphans BEFORE the txn; if BOTH are empty, skip. CRUCIALLY (Codex blocker), only link awaitings /
-    # relink orphans when the reconcile event actually EXISTS -- insert_reconcile_event returns false
-    # when the card is gone (no snapshot), so a missing card never strands rows on a non-existent event.
-    # Returns 1 when a reconcile + linked rows were written, else 0.
-    def exec_awaiting_group(card_id, run_id, action_ids)
+    # FIRST (Invariant 13). Orphan-prevention: precompute the NEW awaitings + the relink orphans BEFORE
+    # the txn; if BOTH are empty, skip. Only link/relink when the reconcile event EXISTS -- a gone card
+    # records a failure (run 'partial') and writes nothing, never stranding rows on a phantom event.
+    def exec_awaiting_group(card_id, run_id, action_ids, result)
       reconcile_event_id = reconcile_event_id(card_id, run_id)
       new_ids = action_ids - existing_decko_action_ids(action_ids)
       orphans = orphan_failed_ids(card_id)
-      return 0 if new_ids.empty? && orphans.empty?
+      return if new_ids.empty? && orphans.empty?
 
-      written = 0
       @outbox.transaction do
-        if insert_reconcile_event(card_id, reconcile_event_id)
-          new_ids.each do |n|
-            insert_decko_action(card_id, n, status: "awaiting_reconcile", payload: nil,
-                                            source_reconcile_event_id: reconcile_event_id)
-          end
-          relink_orphans(card_id, orphans, reconcile_event_id)
-          written = 1
-        end
+        recon = insert_reconcile_event(card_id, reconcile_event_id, result)
+        next if recon == :card_missing
+
+        wrote_awaiting = new_ids.count { |n|
+          insert_decko_action(card_id, n, status: "awaiting_reconcile", payload: nil,
+                                          source_reconcile_event_id: reconcile_event_id) == :created
+        }.positive?
+        relinked = relink_orphans(card_id, orphans, reconcile_event_id).positive?
+        tally_change(result, recon == :created || wrote_awaiting || relinked)
       end
-      written
     end
 
-    # Sweep pg_only / mismatch: fresh current-state reconcile + relink any same-card orphans. No new
-    # awaiting row (a full-card overwrite is not tied to a specific action id). Returns 1 if a reconcile
-    # was created/exists (so orphans were relinked to a real event), else 0 (card gone).
-    def exec_reconcile_create(card_id, run_id)
+    # Sweep pg_only / mismatch: fresh current-state reconcile + relink any same-card orphans (no new
+    # awaiting row -- a full-card overwrite is not tied to a specific action id).
+    def exec_reconcile_create(card_id, run_id, result)
       reconcile_event_id = reconcile_event_id(card_id, run_id)
       orphans = orphan_failed_ids(card_id)
-      written = 0
       @outbox.transaction do
-        if insert_reconcile_event(card_id, reconcile_event_id)
-          relink_orphans(card_id, orphans, reconcile_event_id)
-          written = 1
-        end
+        recon = insert_reconcile_event(card_id, reconcile_event_id, result)
+        next if recon == :card_missing
+
+        relinked = relink_orphans(card_id, orphans, reconcile_event_id).positive?
+        tally_change(result, recon == :created || relinked)
       end
-      written
+    end
+
+    def tally_change(result, changed)
+      changed ? result.changed += 1 : result.already_present += 1
     end
 
     # Quarantine is FAIL-CLOSED (Codex): if B3 is unavailable / errors, the space-only orphan is NOT
-    # repaired -- record a failure (-> the run completes 'partial', NOT counted as remediated) and
-    # alert. Never swallow into a silent success.
+    # repaired -- record a failure (-> the run completes 'partial', NOT counted as changed) and alert.
+    # Never swallow into a silent success.
     def exec_quarantine(card_id, result)
       audit = Array(@sidecar.quarantine_card_scoped_atoms(card_id))
       result.audit.concat(audit)
-      result.remediated += 1
+      result.changed += 1
     rescue StandardError => e
       result.failures << { card_id: card_id, reason: "quarantine unavailable: #{e.message}" }
       alert(:mirror_reconcile_quarantine_unavailable, card_id, e.message)
     end
 
     # ============================ idempotent outbox writers ============================
-    # Idempotent-insert the synthetic reconcile event. Returns TRUE when the reconcile row EXISTS after
-    # this call -- created now, or a RecordNotUnique duplicate means a prior run already created it (same
-    # deterministic event_id). Returns FALSE only when the card is gone (cannot snapshot): callers must
-    # NOT link awaiting / relink orphan rows to a reconcile that was never created (Codex blocker).
-    def insert_reconcile_event(card_id, event_id)
+    # Idempotent-insert the synthetic reconcile event. Returns :created (freshly inserted), :already_present
+    # (a RecordNotUnique duplicate -- a prior run made it under the same deterministic event_id), or
+    # :card_missing (card gone: records a FAILURE + alert, writes nothing). Callers must NOT link awaiting
+    # / relink orphan rows on :card_missing (Codex blocker) AND must surface it as a partial run (Codex).
+    def insert_reconcile_event(card_id, event_id, result)
       card = @card_lookup.call(card_id)
       unless card
         alert(:mirror_reconcile_card_missing, card_id, "card #{card_id} absent; cannot snapshot/reconcile")
-        return false
+        result.failures << { card_id: card_id, reason: "card absent; cannot reconcile" }
+        return :card_missing
       end
 
       payload = { "atoms" => @encoder.encode_reconcile_snapshot(card, event_id: event_id,
                                                                        actor_id: nil, acted_at: @clock.call) }
       create_row(event_kind: "reconcile", event_id: event_id, action_id: nil, card_id: card_id,
                  status: "queued", payload: payload)
-      true
     end
 
     def insert_decko_action(card_id, action_id, status:, payload:, source_reconcile_event_id: nil, error: nil)
@@ -339,12 +350,13 @@ module Reconciler
       insert_decko_action(card_id, action_id, status: "superseded_by_later", payload: nil)
     end
 
-    # ON CONFLICT DO NOTHING: a duplicate event_id / (decko_action, action_id) from a re-run, a retry,
-    # or coalescing is an idempotent no-op (the unique indexes enforce it).
+    # Returns :created on a fresh insert, :already_present when the unique index rejects a duplicate
+    # (event_id / (decko_action, action_id)) -- an idempotent no-op from a re-run, retry, or coalescing.
     def create_row(**attrs)
       @outbox.create!(**attrs.compact)
+      :created
     rescue ActiveRecord::RecordNotUnique
-      nil
+      :already_present
     end
 
     def update_row(row_id, **attrs)
@@ -354,12 +366,14 @@ module Reconciler
     # Relink PROVEN reconcile-orphans (Codex Fix 1): same-card, nil-payload, FAILED decko_action rows
     # whose source_reconcile_event_id points to a same-card reconcile that is itself FAILED. Clears the
     # stale failure metadata (error/attempts) so the relinked awaiting row reads clean in reports.
+    # Returns the number of rows relinked.
     def relink_orphans(card_id, orphan_ids, reconcile_event_id)
-      return if orphan_ids.empty?
+      return 0 if orphan_ids.empty?
 
       @outbox.where(id: orphan_ids).update_all(
         status: "awaiting_reconcile", source_reconcile_event_id: reconcile_event_id, error: nil, attempts: 0
       )
+      orphan_ids.size
     end
 
     def orphan_failed_ids(card_id)
@@ -383,12 +397,15 @@ module Reconciler
     end
 
     # 'completed' only when nothing failed; 'partial' when some repairs could not be applied (e.g. B3
-    # quarantine unavailable, a pruned card_action, an encode failure). remediated counts SUCCESSFUL
-    # repairs only.
+    # quarantine unavailable, a gone/pruned card, an encode failure). `remediated` = rows actually
+    # changed; `already_present` (idempotent no-ops) and `truncated` (sample-bounded coverage) ride in
+    # the report for post-hoc audit after logs rotate.
     def finish_run(run, result, detection_run_id: nil)
       status = result.failures.empty? ? "completed" : "partial"
-      run.update!(completed_at: @clock.call, status: status, remediated: result.remediated,
+      run.update!(completed_at: @clock.call, status: status, remediated: result.changed,
                   report_path: JSON.generate(detection_run_id: detection_run_id,
+                                             changed: result.changed, already_present: result.already_present,
+                                             truncated: result.truncated,
                                              failures: result.failures.first(@sample_limit),
                                              quarantine_audit_sample: result.audit.first(@sample_limit)))
       run
@@ -410,7 +427,7 @@ module Reconciler
     # The L5 report stores only the first sample_limit ids; remediation is therefore sample-bounded.
     # When the recorded drift count exceeds the sample, log so the operator runs another sweep+remediate
     # cycle (the repair is idempotent, so iterating converges).
-    def warn_if_sample_truncated(detection, diff)
+    def warn_if_sample_truncated(detection, diff, result)
       {
         "pg_only" => [detection.drift_pg_only.to_i, diff.pg_only.size],
         "space_only" => [detection.drift_space_only.to_i, diff.space_only.size],
@@ -418,6 +435,9 @@ module Reconciler
       }.each do |cls, (count, sampled)|
         next unless count > sampled
 
+        # Persist the truncation in the run report (not just an alert) so the convergence requirement is
+        # auditable after logs rotate (Codex): another sweep+remediate cycle is needed to cover the rest.
+        result.truncated << { drift_class: cls, drift: count, sampled: sampled }
         alert(:mirror_reconcile_sample_truncated, cls,
               "#{cls} drift=#{count} but only #{sampled} sampled in the L5 report; re-run sweep+remediate to converge")
       end

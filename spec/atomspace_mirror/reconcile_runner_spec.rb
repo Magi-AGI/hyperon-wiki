@@ -50,7 +50,9 @@ class RROutbox
 
   def apply_update(conds, attrs)
     @update_calls << [conds, attrs]
-    matching(conds).each { |r| r.merge!(attrs) }
+    rows = matching(conds)
+    rows.each { |r| r.merge!(attrs) }
+    rows.size                     # update_all returns the affected-row count
   end
 
   def match?(row, cond)
@@ -290,15 +292,17 @@ RSpec.describe Reconciler::Runner do
     end
   end
 
-  describe "missing-card safety (Codex blocker 1: never link rows to a non-existent reconcile)" do
-    it "Case (b) with a gone card writes NOTHING (no reconcile, no stranded awaiting rows)" do
+  describe "missing-card safety (Codex blocker 1 + run-result: never link to a phantom reconcile)" do
+    it "Case (b) with a gone card writes NOTHING and the run is 'partial' with a failure (Codex)" do
       r = runner(card_lookup: ->(_id) { nil }, gap_source: -> { [{ card_id: 5, action_id: 100 }] },
                  later_card_action_fn: ->(*) { true }, later_delivered_decko_fn: ->(*) { false })
-      r.remediate_hook_lag!
+      run = r.remediate_hook_lag!
       expect(outbox.creates).to be_empty
+      expect(run.status).to eq("partial")
+      expect(JSON.parse(run.report_path)["failures"]).not_to be_empty
     end
 
-    it "sweep with a gone card does NOT relink orphans to a missing reconcile (orphan stays failed)" do
+    it "sweep with a gone card does NOT relink orphans, and the run is 'partial' with a failure" do
       orphan = { id: 11, event_kind: "decko_action", card_id: 5, status: "failed", action_id: 100, payload: nil,
                  event_id: "decko:action:100", source_reconcile_event_id: "reconcile:card:5:001" }
       failed_recon = { id: 10, event_kind: "reconcile", card_id: 5, status: "failed",
@@ -306,11 +310,36 @@ RSpec.describe Reconciler::Runner do
       ob = RROutbox.new([orphan, failed_recon])
       detection = OpenStruct.new(stable: true, drift_pg_only: 1, drift_space_only: 0, drift_mismatch: 0,
                                  report_path: JSON.generate(pg_only_sample: [5], space_only_sample: [], mismatch_sample: []))
-      runner(outbox: ob, card_lookup: ->(_id) { nil },
-             reconcile_run_model: RRRunModel.new(detection: detection)).run_sweep!(9)
+      run = runner(outbox: ob, card_lookup: ->(_id) { nil },
+                   reconcile_run_model: RRRunModel.new(detection: detection)).run_sweep!(9)
       expect(ob.creates).to be_empty
       expect(ob.update_calls).to be_empty                          # no relink happened
       expect(ob.all_rows.find { |r| r[:id] == 11 }[:status]).to eq("failed")
+      expect(run.status).to eq("partial")
+      expect(JSON.parse(run.report_path)["failures"]).not_to be_empty
+    end
+  end
+
+  describe "run-result accounting (Codex: changed vs already_present vs truncated)" do
+    it "an idempotent re-run counts already_present, NOT remediated (changed), and stays 'completed'" do
+      existing = { id: 1, event_kind: "decko_action", action_id: 100, status: "queued", card_id: 5,
+                   event_id: "decko:action:100", payload: { "atoms" => [] } }
+      ob = RROutbox.new([existing])
+      run = runner(outbox: ob, gap_source: -> { [{ card_id: 5, action_id: 100 }] },
+                   later_card_action_fn: ->(*) { false }, later_delivered_decko_fn: ->(*) { false }).remediate_hook_lag!
+      report = JSON.parse(run.report_path)
+      expect(report["changed"]).to eq(0)            # the replay row already existed
+      expect(report["already_present"]).to eq(1)
+      expect(run.remediated).to eq(0)               # remediated == changed, not no-ops
+      expect(run.status).to eq("completed")
+    end
+
+    it "persists a 'truncated' block when the L5 drift count exceeds the report sample" do
+      detection = OpenStruct.new(stable: true, drift_pg_only: 100, drift_space_only: 0, drift_mismatch: 0,
+                                 report_path: JSON.generate(pg_only_sample: [11], space_only_sample: [], mismatch_sample: []))
+      run = runner(reconcile_run_model: RRRunModel.new(detection: detection)).run_sweep!(3)
+      truncated = JSON.parse(run.report_path)["truncated"]
+      expect(truncated).to include(hash_including("drift_class" => "pg_only", "drift" => 100, "sampled" => 1))
     end
   end
 
