@@ -194,6 +194,10 @@ WS6_MW_CSS = <<~'WS6CSS'
   .ws6-actions button[disabled]{opacity:.5;cursor:not-allowed;}
   .ws6-actions button.ws6-danger{border:1px solid #d93025;color:#d93025;background:#fff;}
   .ws6-actions button.ws6-apply{background:#188038;color:#fff;border:1px solid #188038;font-weight:600;}
+  .ws6-apply-status{margin-top:8px;padding:8px 10px;border-radius:4px;font-size:13px;}
+  .ws6-apply-working{background:#f1f3f4;border:1px solid #bbb;color:#333;}
+  .ws6-apply-ok{background:#e6f4ea;border:1px solid #34a853;color:#188038;}
+  .ws6-apply-bad{background:#fce8e6;border:1px solid #d93025;color:#b71c1c;font-weight:600;}
   .ws6-draft-notice{margin-top:8px;font-size:13px;color:#5f6368;background:#fef7e0;border:1px solid #f9ab00;border-radius:4px;padding:6px 10px;}
   .ws6-draft-indicator{margin-bottom:10px;font-size:13px;background:#e8f0fe;border:1px solid #1a73e8;border-radius:4px;padding:6px 10px;}
   .ws6-note{font-size:13px;}
@@ -345,6 +349,28 @@ WS6_MW_JS = <<~'WS6JS'
     // Apply to parent — the verifying merge-apply (Phase 6). Posts the saved draft
     // content + parent_act_id; the server runs the four-fold gate and only then
     // writes the parent. We trust ONLY the server's verdict.
+    // Surface apply outcomes clearly + persistently inline (not just a missable
+    // alert), echoing the SERVER's actual reason so failures are unambiguous.
+    function setApplyStatus(kind, text) {
+      var el = root.querySelector('[data-ws6="apply-status"]');
+      if (!el) { window.alert(text); return; }
+      el.textContent = text;
+      el.className = 'ws6-apply-status ws6-apply-' + kind;
+      el.style.display = 'block';
+    }
+
+    // Decko returns {error_status, errors:{key:msg,...}} on a rejected save —
+    // join the messages so the human sees the exact gate that blocked.
+    function serverErrors(body) {
+      try {
+        var j = JSON.parse(body);
+        if (j && j.errors) {
+          return Object.keys(j.errors).map(function (k) { return j.errors[k]; }).join(' ');
+        }
+      } catch (e) { /* not json */ }
+      return body && body.length < 300 ? body : '';
+    }
+
     var applyBtn = root.querySelector('[data-ws6="apply"]');
     if (applyBtn) applyBtn.addEventListener('click', function () {
       var parentName = root.getAttribute('data-parent') || 'the parent card';
@@ -352,15 +378,21 @@ WS6_MW_JS = <<~'WS6JS'
         '? This writes the polished content to the parent.')) return;
       var meta = document.querySelector('meta[name="csrf-token"]');
       var token = meta ? meta.getAttribute('content') : '';
-      var draftEl = root.querySelector('[data-ws6="draft-content"]');
+      // Exact saved bytes from the JSON island (LF preserved, unlike a textarea).
+      var island = root.querySelector('[data-ws6="draft-content"]');
+      var content = '';
+      if (island) {
+        try { content = JSON.parse(island.textContent.split('<' + String.fromCharCode(92) + '/').join('</')); } catch (e) { content = ''; }
+      }
       var fd = new FormData();
       fd.append('card[name]', root.getAttribute('data-proposal') + '+merge draft');
-      if (draftEl) fd.append('card[content]', draftEl.value);
+      fd.append('card[content]', content);
       fd.append('apply_to_parent', 'true');
       fd.append('parent_act_id', root.getAttribute('data-parent-act-id') || '');
       var orig = applyBtn.textContent;
       applyBtn.disabled = true;
       applyBtn.textContent = 'Applying...';
+      setApplyStatus('working', 'Applying to ' + parentName + '...');
       fetch('/card/update', {
         method: 'POST',
         headers: { 'X-CSRF-Token': token, 'Accept': 'application/json' },
@@ -368,21 +400,18 @@ WS6_MW_JS = <<~'WS6JS'
         body: fd
       }).then(function (res) {
         if (res.ok || res.status === 302) {
+          setApplyStatus('ok', 'Applied. Opening ' + parentName + '...');
           window.location.href = '/' + encodeURIComponent(root.getAttribute('data-parent'));
           return;
         }
         return res.text().then(function (body) {
           applyBtn.disabled = false; applyBtn.textContent = orig;
-          var msg = /already been merged/i.test(body) ? 'This proposal has already been merged.'
-            : /parent changed|parent_act_id/i.test(body) ? 'The parent changed since this was reviewed. Reload the workbench and re-merge before applying.'
-            : /changed since it was last saved/i.test(body) ? 'The merge draft changed since its last save. Reload and re-apply.'
-            : /permission/i.test(body) ? 'You do not have permission to update the parent card.'
-            : 'Apply was rejected (HTTP ' + res.status + ').';
-          window.alert(msg + ' The parent was NOT changed.');
+          setApplyStatus('bad', 'Apply rejected (HTTP ' + res.status + '). ' +
+            (serverErrors(body) || 'See the server log.') + ' The parent was NOT changed.');
         });
-      }).catch(function () {
+      }).catch(function (e) {
         applyBtn.disabled = false; applyBtn.textContent = orig;
-        window.alert('Network error during apply. The parent was NOT changed.');
+        setApplyStatus('bad', 'Network error during apply: ' + (e && e.message) + '. The parent was NOT changed.');
       });
     });
 
@@ -667,8 +696,12 @@ format :html do
     # tampering is caught by the integrity gate (audit isn't refreshed on apply).
     apply =
       if draft_exists
+        # Carry the draft's EXACT saved bytes in a JSON island, not a <textarea>
+        # (browsers rewrite textarea newlines to CRLF on submit, which would not
+        # match the LF-based polished_hash and the integrity gate would reject).
+        island = JSON.generate(draft.db_content).gsub("</", "<\\/")
         %(<button type="button" data-ws6="apply" class="ws6-apply">Apply to parent &rarr;</button>) +
-          %(<textarea hidden data-ws6="draft-content">#{h draft.db_content}</textarea>)
+          %(<script type="application/json" data-ws6="draft-content">#{island}</script>)
       else
         %(<button type="button" disabled title="Create and polish a merge draft first">Apply to parent</button>)
       end
@@ -679,6 +712,7 @@ format :html do
       %(<span class="ws6-note" data-ws6="conflict-note"></span>) +
       apply +
       notice +
+      %(<div class="ws6-apply-status" data-ws6="apply-status" role="alert" style="display:none"></div>) +
       %(<pre class="ws6-pre ws6-preview" data-ws6="preview"></pre>) +
       %(</div>)
   end
