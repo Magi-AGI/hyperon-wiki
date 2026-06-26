@@ -194,6 +194,7 @@ WS6_MW_CSS = <<~'WS6CSS'
   .ws6-actions button[disabled]{opacity:.5;cursor:not-allowed;}
   .ws6-actions button.ws6-danger{border:1px solid #d93025;color:#d93025;background:#fff;}
   .ws6-draft-notice{margin-top:8px;font-size:13px;color:#5f6368;background:#fef7e0;border:1px solid #f9ab00;border-radius:4px;padding:6px 10px;}
+  .ws6-draft-indicator{margin-bottom:10px;font-size:13px;background:#e8f0fe;border:1px solid #1a73e8;border-radius:4px;padding:6px 10px;}
   .ws6-note{font-size:13px;}
   .ws6-ok{color:#188038;}
   .ws6-bad{color:#d93025;font-weight:600;}
@@ -379,8 +380,14 @@ WS6_MW_JS = <<~'WS6JS'
           var base = slot.querySelector('.ws6-pane-base');
           var cur = slot.querySelector('.ws6-pane-current');
           var prop = slot.querySelector('.ws6-pane-proposal');
-          if (base && cur && joinNe(h.base, h.current)) addRibbon(svg, base, cur, ox, oy, h.type);
-          if (cur && prop && joinNe(h.current, h.proposal)) addRibbon(svg, cur, prop, ox, oy, h.type);
+          // Base is centered: gutter 1 connects Current<->Base, gutter 2 Base<->Proposal.
+          // 2-way (no base): a single Current<->Proposal ribbon.
+          if (base) {
+            if (cur && joinNe(h.current, h.base)) addRibbon(svg, cur, base, ox, oy, h.type);
+            if (prop && joinNe(h.base, h.proposal)) addRibbon(svg, base, prop, ox, oy, h.type);
+          } else if (cur && prop && joinNe(h.current, h.proposal)) {
+            addRibbon(svg, cur, prop, ox, oy, h.type);
+          }
         });
       } catch (e) {
         var s2 = root.querySelector('.ws6-ribbons');
@@ -466,6 +473,7 @@ format :html do
     %(<meta name="csrf-token" content="#{h token}">) +
       %(<div class="ws6-mw" data-proposal="#{h card.name}" data-parent-act-id="#{parent_act}">) +
       mw_banner(payload) +
+      mw_draft_indicator +
       %(<div class="ws6-stackwrap"><div class="ws6-stack">) +
       mw_header(payload[:mode]) + rows +
       %(<svg class="ws6-ribbons" xmlns="http://www.w3.org/2000/svg"></svg>) +
@@ -475,6 +483,17 @@ format :html do
       %(<style>#{WS6_MW_CSS}</style>) +
       %(<script>#{WS6_MW_JS}</script>) +
       %(</div>)
+  end
+
+  # Prominent "a merge draft already exists" state + preview link (Codex), so the
+  # human knows polishing is in progress and where it lives (it is NOT the
+  # Current Parent column).
+  def mw_draft_indicator
+    return "" unless Card.fetch("#{card.name}+merge draft")&.db_content.present?
+
+    url = "/" + "#{card.name}+merge draft".gsub(" ", "%20") + "?view=edit"
+    %(<div class="ws6-draft-indicator">&#128221; A merge draft is in progress for this proposal. ) +
+      %(<a href="#{h url}">Open it in the editor &rarr;</a></div>)
   end
 
   def mw_banner(payload)
@@ -497,11 +516,15 @@ format :html do
   end
 
   def mw_header(mode)
+    # Base in the CENTER (Current Parent | Base | Proposal) — the standard 3-way
+    # layout: both sides visibly diverge outward from the common ancestor.
+    # "Current Parent" (not "human") makes clear this column is the LIVE parent
+    # card content, never the merge draft.
     heads =
       if mode == "three_way"
-        ["Base", :gutter, "Current (human)", :gutter, "Proposal (AI)", :rail]
+        ["Current Parent", :gutter, "Base", :gutter, "Proposal (AI)", :rail]
       else
-        ["Current (human)", :gutter, "Proposal (AI)", :rail]
+        ["Current Parent", :gutter, "Proposal (AI)", :rail]
       end
     cells = heads.map do |hd|
       case hd
@@ -522,7 +545,7 @@ format :html do
     type = hunk[:type]
     panes =
       if mode == "three_way"
-        mw_pane(hunk[:base], "base") + mw_sp + mw_pane(hunk[:current], "current") +
+        mw_pane(hunk[:current], "current") + mw_sp + mw_pane(hunk[:base], "base") +
           mw_sp + mw_pane(hunk[:proposal], "proposal")
       else
         mw_pane(hunk[:current], "current") + mw_sp + mw_pane(hunk[:proposal], "proposal")
