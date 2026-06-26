@@ -35,6 +35,20 @@ PROPOSAL_META_TYPE = "Plain Text"
 # off the recorded parent_type/proposal_type instead.
 PROPOSAL_CONTENT_TYPES = %w[RichText Markdown].freeze
 
+# (0a) WS6 Phase 8.1 capability gate (SERVER-SIDE — UI gating is insufficient):
+#      a crafted POST carrying legacy_bridge_from must not be able to start a
+#      merge workflow on a parent the actor cannot edit. Adding an error here
+#      aborts the create, so NO +proposal/+base/+provenance cards are written.
+#      Defined before seed_legacy_proposal so it runs first in this stage.
+event :guard_legacy_bridge, :prepare_to_validate, on: :create,
+      when: proc { Env.params[:legacy_bridge_from].present? } do
+  parent = left
+  unless parent&.ok?(:update)
+    errors.add(:legacy_bridge_from,
+               "you do not have permission to start a merge on #{parent&.name}")
+  end
+end
+
 # (0) Phase 7.2 legacy bridge: seed a bridged proposal's content from the source
 #     +AI draft (when created via "Open as proposal" with no content of its own).
 event :seed_legacy_proposal, :prepare_to_validate, on: :create,

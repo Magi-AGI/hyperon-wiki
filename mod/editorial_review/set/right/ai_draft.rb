@@ -58,9 +58,14 @@ format :html do
     end
   end
 
-  # Admin/editor gate: may the current user create the parent's +proposal?
+  # Capability gate (WS6 Phase 8.1): may the current user start a merge on this
+  # parent? Requires BOTH update capability on the parent (the authoritative
+  # editorial gate — resolves to whatever role the wiki restricts article edits
+  # to, e.g. Editor in prod, with no role name hard-coded) AND create permission
+  # for the +proposal card. Mirrors the apply gate's parent.ok?(:update).
   def ai_draft_can_bridge?(parent)
-    Card.new(name: "#{parent.name}+proposal", type_id: parent.type_id).ok?(:create)
+    parent.ok?(:update) &&
+      Card.new(name: "#{parent.name}+proposal", type_id: parent.type_id).ok?(:create)
   rescue StandardError
     false
   end
