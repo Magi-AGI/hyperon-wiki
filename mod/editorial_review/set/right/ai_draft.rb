@@ -27,10 +27,22 @@ end
 format :html do
   view :core do
     if card.content.present?
+      parent = card.left
+      proposal = parent && Card.fetch("#{parent.name}+proposal")
+      # Entry point (Phase 7.3): when a +proposal exists, link to its workbench
+      # via the centralized layout=none builder. When it doesn't, the Phase 7.2
+      # legacy bridge will offer "Open as proposal" here instead.
+      link =
+        if proposal&.db_content.present?
+          %( <a href="#{MergeWorkbench.workbench_url(proposal.name)}" ) +
+            %(class="btn btn-primary btn-sm">Review &amp; merge in the workbench &rarr;</a>)
+        else
+          ""
+        end
       banner = wrap_with(:div, class: "alert alert-info mb-3") do
         "<strong>AI Draft</strong> &mdash; proposed changes pending review. " \
-          "Merging into the parent now goes through the verifying merge workbench " \
-          "on the parent's <code>+proposal</code> (no direct overwrite)."
+          "Merging into the parent goes through the verifying merge workbench " \
+          "(no direct overwrite).#{link}"
       end
       output [banner, super()]
     else

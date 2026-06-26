@@ -24,6 +24,15 @@ module MergeWorkbench
 
   SCHEMA_VERSION = 1
 
+  # The canonical workbench URL for a proposal. ALWAYS carries layout=none — the
+  # Phase 4 finding is that without it the view renders wrapped in the card-513
+  # layout. Every entry point (links, redirects, the legacy bridge) must build
+  # the URL here so the param can't be dropped. Spaces are %20-encoded; the "+"
+  # in compound card names stays literal (Decko routes it).
+  def workbench_url(proposal_name)
+    "/" + proposal_name.to_s.gsub(" ", "%20") + "?view=merge_workbench&layout=none"
+  end
+
   # resolve: a BaseResolver.resolve result hash.
   # current / proposal: content strings. format: :html | :markdown.
   # proposal_name / parent_name: for the payload header.
