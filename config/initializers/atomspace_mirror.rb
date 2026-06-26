@@ -22,6 +22,24 @@ else
   Rails.logger.warn("[atomspace_mirror] mod entry not found at #{mod_entry}; skipping load")
 end
 
+# Lane C integration (C1): wire the L9 read-consistency PORT (mod/mcp_api) to Lane A's L7
+# ReadConsistency, so the read endpoints' read-your-writes poll (`wait_for_event_id`) drives off the
+# real `mirror_outbox` status. Like the read-client binding, this MUST be app-level (Decko does not
+# load mod initializers) and the port must be required explicitly.
+#
+# FAIL-CLOSED + VISIBLE (Codex 2026-06-25): if the mod loaded above (ReadConsistency is defined), the
+# port MUST bind here -- a missing port file raises a loud LoadError, never a silent green. If the mod
+# entry was ABSENT, ReadConsistency is undefined: log it and leave the port UNBOUND, so the read API
+# fail-closes to 503 read_consistency_not_wired at request time (never serves an unproven read).
+if defined?(ReadConsistency)
+  require_relative "../../mod/mcp_api/lib/atomspace/read_consistency_port"
+  Atomspace::ReadConsistencyPort.impl = ReadConsistency
+  Rails.logger.info("[atomspace_mirror] L7 ReadConsistencyPort bound to ReadConsistency (read-your-writes live)")
+else
+  Rails.logger.warn("[atomspace_mirror] ReadConsistency not loaded; ReadConsistencyPort left UNBOUND " \
+                    "(read API fail-closes to 503 read_consistency_not_wired until the mod is present)")
+end
+
 if defined?(ActiveRecord) && Rails.application
   migrate_dir = Rails.root.join("mod", "atomspace_mirror", "db", "migrate").to_s
   if Dir.exist?(migrate_dir)
