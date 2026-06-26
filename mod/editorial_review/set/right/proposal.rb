@@ -514,6 +514,12 @@ format :html do
     parent = card.left
     return wrap_with(:div, class: "alert alert-warning") { "Proposal has no parent card." } unless parent
 
+    # Post-merge terminal state (Phase 7.1): once an apply has written a
+    # +merge audit, the proposal is merged — show a clean locked screen instead
+    # of the diff/apply UI (the apply event also rejects a re-apply with 409).
+    merged_audit = Card.fetch("#{card.name}+merge audit")
+    return merge_workbench_merged_view(parent, merged_audit) if merged_audit&.db_content.present?
+
     begin
       fmt = card.type_name == "Markdown" ? :markdown : :html
       resolve = BaseResolver.resolve(card)
@@ -532,6 +538,24 @@ format :html do
   end
 
   # ---- workbench rendering helpers (pure string building over the payload) ----
+
+  # Phase 7.1: terminal "already merged" screen — links to the final article and
+  # the immutable merge audit; no Apply/Assemble/Reset, so a merged proposal can't
+  # be re-applied from the UI (the apply event also 409s a re-apply).
+  def merge_workbench_merged_view(parent, audit_card)
+    rec = (JSON.parse(audit_card.db_content) rescue {})
+    parent_url = "/" + parent.name.gsub(" ", "%20")
+    audit_url = "/" + audit_card.name.gsub(" ", "%20")
+    by_txt = rec["merged_by_name"] ? " by #{h rec['merged_by_name']}" : ""
+    when_txt = rec["merged_at"] ? " on #{h rec['merged_at']}" : ""
+    %(<div class="ws6-mw"><style>#{WS6_MW_CSS}</style>) +
+      %(<div class="ws6-banner ws6-tier-verified"><strong>This proposal has been merged) +
+      %(#{by_txt}#{when_txt}.</strong><br>The reviewed changes were applied to the parent ) +
+      %(through the verifying merge gate. The proposal and its audit are kept immutable.</div>) +
+      %(<p><a href="#{parent_url}">&rarr; View the final article: #{h parent.name}</a></p>) +
+      %(<p><a href="#{audit_url}">&rarr; Inspect the immutable merge audit</a></p>) +
+      %(</div>)
+  end
 
   def merge_workbench_shell(payload)
     rows = payload[:hunks].map { |hunk| mw_row(hunk, payload[:mode]) }.join

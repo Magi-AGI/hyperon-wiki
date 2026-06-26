@@ -253,6 +253,32 @@ def merge_apply_reject(message)
   nil
 end
 
+# Phase 7.1 lifecycle tags. Runs AFTER the apply act commits (:integrate, web
+# only) so the tag update is a FRESH act — a nested Card#save! of the existing
+# tag mid-act is what failed in Phase 6. Fires only on a SUCCESSFUL apply (a
+# rejected apply never commits, so :integrate never runs; the +merge audit guard
+# is belt-and-suspenders). Adds "merged", drops "ai generated" on the proposal's
+# tag. Wrapped in rescue: the merge is already durably applied, so a tag hiccup
+# must never surface as a post-commit error to the user.
+event :tag_merged_on_apply, :integrate, on: :update,
+      when: proc { Env.params[:apply_to_parent] == "true" } do
+  proposal = left
+  next unless proposal
+  next unless Card.fetch("#{proposal.name}+merge audit")&.db_content.present?
+
+  begin
+    Card::Auth.as_bot do
+      tag = Card.fetch("#{proposal.name}+tag") ||
+            Card.create!(name: "#{proposal.name}+tag", type_id: Card::PointerID)
+      tag.drop_item("ai generated") if tag.item_names.include?("ai generated")
+      tag.add_item("merged") unless tag.item_names.include?("merged")
+      tag.save!
+    end
+  rescue StandardError => e
+    Rails.logger.error("[ws6 tag_merged_on_apply] #{e.class}: #{e.message}")
+  end
+end
+
 format :html do
   # Merge-context + stale-base banner, prepended to the standard edit screen so
   # the reviewer knows they are polishing a MERGE DRAFT (not an ad-hoc edit) and
