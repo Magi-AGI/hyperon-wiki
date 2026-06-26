@@ -68,12 +68,12 @@ RSpec.describe Reconciler do
   end
 
   describe ".plan_sweep (Mechanism 3 pg_only / mismatch / space_only)" do
-    Diff = Struct.new(:pg_only, :space_only, :mismatch, keyword_init: true)
+    SweepDiff = Struct.new(:pg_only, :space_only, :mismatch, keyword_init: true)
 
     let(:none_in_flight) { ->(_card_id) { false } }
 
     it "pg_only -> ReconcileCreate(reason: pg_only); mismatch -> ReconcileCreate(reason: mismatch)" do
-      diff = Diff.new(pg_only: [11], space_only: [], mismatch: [22])
+      diff = SweepDiff.new(pg_only: [11], space_only: [], mismatch: [22])
       actions = described_class.plan_sweep(diff: diff, run_id: 3, in_flight: none_in_flight)
       expect(actions).to contain_exactly(
         Reconciler::ReconcileCreate.new(card_id: 11, run_id: 3, reason: "pg_only"),
@@ -82,14 +82,14 @@ RSpec.describe Reconciler do
     end
 
     it "space_only -> Quarantine, ALWAYS (never in-flight gated; an orphan has no forward path)" do
-      diff = Diff.new(pg_only: [], space_only: [99], mismatch: [])
+      diff = SweepDiff.new(pg_only: [], space_only: [99], mismatch: [])
       always_in_flight = ->(_c) { true }
       actions = described_class.plan_sweep(diff: diff, run_id: 3, in_flight: always_in_flight)
       expect(actions).to eq([Reconciler::Quarantine.new(card_id: 99)])
     end
 
     it "a same-card queued/awaiting row in flight -> SkipInFlight for pg_only/mismatch (not space_only)" do
-      diff = Diff.new(pg_only: [11], space_only: [99], mismatch: [22])
+      diff = SweepDiff.new(pg_only: [11], space_only: [99], mismatch: [22])
       in_flight = ->(card_id) { card_id == 11 }            # only card 11 has a forward row pending
       actions = described_class.plan_sweep(diff: diff, run_id: 3, in_flight: in_flight)
       expect(actions).to include(
@@ -100,7 +100,7 @@ RSpec.describe Reconciler do
     end
 
     it "an all-clean diff yields no actions" do
-      diff = Diff.new(pg_only: [], space_only: [], mismatch: [])
+      diff = SweepDiff.new(pg_only: [], space_only: [], mismatch: [])
       expect(described_class.plan_sweep(diff: diff, run_id: 1, in_flight: none_in_flight)).to eq([])
     end
   end

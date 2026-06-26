@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 #
 # L6 APPLY LAYER specs (Lane A, Slice 6 Part 2a). Reconciler::Runner turns a pure plan into idempotent
-# mirror_outbox writes + a mirror_reconcile_runs audit row. STANDALONE: an in-memory FakeOutbox (which
+# mirror_outbox writes + a mirror_reconcile_runs audit row. STANDALONE: an in-memory RROutbox (which
 # faithfully resolves the proof-based orphan subquery), injected stub encoder/lookups/sidecar, and a
 # fake run model -- no Decko boot, DB, or sidecar. The live SQL predicate resolvers are dev-gated;
 # here every predicate is injected so the transaction / coalescing / relink logic is what's exercised.
@@ -18,7 +18,7 @@ end
 
 # An in-memory mirror_outbox: captures create!/update_all and answers the apply layer's queries
 # (pluck/select/to_a/nested-where). Rows are symbol-keyed hashes.
-class FakeOutbox
+class RROutbox
   attr_reader :creates, :update_calls
 
   def initialize(rows = [])
@@ -79,7 +79,7 @@ class FakeOutbox
   end
 end
 
-class FakeRun
+class RRRun
   attr_reader :attrs
 
   def initialize(attrs) = (@attrs = attrs)
@@ -90,7 +90,7 @@ class FakeRun
   def report_path = @attrs[:report_path]
 end
 
-class FakeRunModel
+class RRRunModel
   attr_reader :created
 
   def initialize(detection: nil)
@@ -100,15 +100,15 @@ class FakeRunModel
 
   def find(_id) = @detection
   def create!(**attrs)
-    run = FakeRun.new(attrs)
+    run = RRRun.new(attrs)
     @created << run
     run
   end
 end
 
 RSpec.describe Reconciler::Runner do
-  let(:outbox) { FakeOutbox.new }
-  let(:run_model) { FakeRunModel.new }
+  let(:outbox) { RROutbox.new }
+  let(:run_model) { RRRunModel.new }
 
   # A stub encoder: the encoder itself is exhaustively tested in Part 1; here we only need a payload.
   def stub_encoder(raise_encoding: false)
@@ -139,7 +139,7 @@ RSpec.describe Reconciler::Runner do
   describe "#run_sweep! (stability gate, Fix 4)" do
     it "ABORTS an unstable detection run by default: no outbox writes, an 'aborted' run is recorded" do
       detection = OpenStruct.new(stable: false, report_path: "{}", drift_pg_only: 1, drift_space_only: 0, drift_mismatch: 0)
-      run = runner(reconcile_run_model: FakeRunModel.new(detection: detection)).run_sweep!(7)
+      run = runner(reconcile_run_model: RRRunModel.new(detection: detection)).run_sweep!(7)
       expect(run.status).to eq("aborted")
       expect(outbox.creates).to be_empty
       expect(JSON.parse(run.report_path)["aborted"]).to match(/not stable/)
@@ -148,7 +148,7 @@ RSpec.describe Reconciler::Runner do
     it "force: true remediates an unstable run" do
       detection = OpenStruct.new(stable: false, drift_pg_only: 1, drift_space_only: 0, drift_mismatch: 0,
                                  report_path: JSON.generate(pg_only_sample: [11], space_only_sample: [], mismatch_sample: []))
-      rm = FakeRunModel.new(detection: detection)
+      rm = RRRunModel.new(detection: detection)
       runner(reconcile_run_model: rm).run_sweep!(7, force: true)
       expect(creates_of("reconcile").map { |c| c[:card_id] }).to eq([11])
     end
@@ -172,7 +172,7 @@ RSpec.describe Reconciler::Runner do
     end
 
     it "pg_only + mismatch -> fresh reconcile events; space_only -> sidecar quarantine; run recorded" do
-      rm = FakeRunModel.new(detection: detection)
+      rm = RRRunModel.new(detection: detection)
       run = runner(reconcile_run_model: rm, sidecar: sidecar).run_sweep!(3)
       expect(creates_of("reconcile").map { |c| c[:card_id] }).to contain_exactly(11, 22)
       expect(creates_of("reconcile").map { |c| c[:event_id] }).to all(match(/\Areconcile:card:\d+:555\z/))
@@ -183,7 +183,7 @@ RSpec.describe Reconciler::Runner do
     end
 
     it "skips a same-card in-flight card (SkipInFlight is NOT counted as remediated)" do
-      rm = FakeRunModel.new(detection: detection)
+      rm = RRRunModel.new(detection: detection)
       run = runner(reconcile_run_model: rm, sidecar: sidecar, in_flight_fn: ->(c) { c == 11 }).run_sweep!(3)
       expect(creates_of("reconcile").map { |c| c[:card_id] }).to eq([22])   # 11 skipped, 22 created
       expect(run.remediated).to eq(2)                                       # mismatch(22) + quarantine(99)
@@ -253,7 +253,7 @@ RSpec.describe Reconciler::Runner do
         { id: 2, event_kind: "decko_action", action_id: 101, status: "awaiting_reconcile", card_id: 5,
           event_id: "decko:action:101", source_reconcile_event_id: "reconcile:card:5:111", payload: nil }
       ]
-      ob = FakeOutbox.new(existing)
+      ob = RROutbox.new(existing)
       runner(outbox: ob, gap_source: two_same_card, **case_b).remediate_hook_lag!
       expect(ob.creates).to be_empty   # both gaps already present + no orphans -> nothing written
     end
@@ -274,10 +274,10 @@ RSpec.describe Reconciler::Runner do
     end
 
     it "a fresh sweep reconcile relinks ONLY the proven orphan -> awaiting, clearing stale error/attempts" do
-      ob = FakeOutbox.new(rows)
+      ob = RROutbox.new(rows)
       detection = OpenStruct.new(stable: true, drift_pg_only: 1, drift_space_only: 0, drift_mismatch: 0,
                                  report_path: JSON.generate(pg_only_sample: [5], space_only_sample: [], mismatch_sample: []))
-      runner(outbox: ob, reconcile_run_model: FakeRunModel.new(detection: detection)).run_sweep!(9)
+      runner(outbox: ob, reconcile_run_model: RRRunModel.new(detection: detection)).run_sweep!(9)
 
       relink = ob.update_calls.find { |(_c, attrs)| attrs[:status] == "awaiting_reconcile" }
       expect(relink).not_to be_nil
@@ -290,6 +290,49 @@ RSpec.describe Reconciler::Runner do
     end
   end
 
+  describe "missing-card safety (Codex blocker 1: never link rows to a non-existent reconcile)" do
+    it "Case (b) with a gone card writes NOTHING (no reconcile, no stranded awaiting rows)" do
+      r = runner(card_lookup: ->(_id) { nil }, gap_source: -> { [{ card_id: 5, action_id: 100 }] },
+                 later_card_action_fn: ->(*) { true }, later_delivered_decko_fn: ->(*) { false })
+      r.remediate_hook_lag!
+      expect(outbox.creates).to be_empty
+    end
+
+    it "sweep with a gone card does NOT relink orphans to a missing reconcile (orphan stays failed)" do
+      orphan = { id: 11, event_kind: "decko_action", card_id: 5, status: "failed", action_id: 100, payload: nil,
+                 event_id: "decko:action:100", source_reconcile_event_id: "reconcile:card:5:001" }
+      failed_recon = { id: 10, event_kind: "reconcile", card_id: 5, status: "failed",
+                       event_id: "reconcile:card:5:001", action_id: nil, payload: nil }
+      ob = RROutbox.new([orphan, failed_recon])
+      detection = OpenStruct.new(stable: true, drift_pg_only: 1, drift_space_only: 0, drift_mismatch: 0,
+                                 report_path: JSON.generate(pg_only_sample: [5], space_only_sample: [], mismatch_sample: []))
+      runner(outbox: ob, card_lookup: ->(_id) { nil },
+             reconcile_run_model: RRRunModel.new(detection: detection)).run_sweep!(9)
+      expect(ob.creates).to be_empty
+      expect(ob.update_calls).to be_empty                          # no relink happened
+      expect(ob.all_rows.find { |r| r[:id] == 11 }[:status]).to eq("failed")
+    end
+  end
+
+  describe "quarantine is fail-closed (Codex major 3)" do
+    let(:detection) do
+      OpenStruct.new(stable: true, drift_pg_only: 0, drift_space_only: 1, drift_mismatch: 0,
+                     report_path: JSON.generate(pg_only_sample: [], space_only_sample: [99], mismatch_sample: []))
+    end
+
+    it "a B3-unavailable quarantine -> run is 'partial', NOT counted as remediated, failure recorded" do
+      bad_sidecar = Object.new
+      bad_sidecar.define_singleton_method(:quarantine_card_scoped_atoms) { |_c| raise "B3 not live" }
+      alerts = []
+      run = runner(reconcile_run_model: RRRunModel.new(detection: detection), sidecar: bad_sidecar,
+                   alerter: ->(sig, *) { alerts << sig }).run_sweep!(3)
+      expect(run.status).to eq("partial")
+      expect(run.remediated).to eq(0)
+      expect(JSON.parse(run.report_path)["failures"]).not_to be_empty
+      expect(alerts).to include(:mirror_reconcile_quarantine_unavailable)
+    end
+  end
+
   describe "#requeue_failed! (Option B resolution -> writes)" do
     it "superseded -> superseded_by_later; payload-present -> queued/attempts0; nil-payload -> HOLD (no write)" do
       rows = [
@@ -297,7 +340,7 @@ RSpec.describe Reconciler::Runner do
         { id: 2, payload_present: true },   # reset
         { id: 3, payload_present: false }   # hold (no write)
       ]
-      ob = FakeOutbox.new([{ id: 1 }, { id: 2 }, { id: 3 }])
+      ob = RROutbox.new([{ id: 1 }, { id: 2 }, { id: 3 }])
       ob.mark_superseded(1)
       alerts = []
       runner(outbox: ob, failed_rows_source: -> { rows }, alerter: ->(sig, *) { alerts << sig }).requeue_failed!
@@ -307,6 +350,13 @@ RSpec.describe Reconciler::Runner do
       expect(by_id[2]).to eq(status: "queued", attempts: 0, error: nil)
       expect(by_id).not_to have_key(3)                 # nil-payload row never written
       expect(alerts).to include(:mirror_reconcile_hold)
+    end
+
+    it "works on AR-like rows that respond to #id / #payload_present? (Codex blocker 2)" do
+      ar_like = Struct.new(:id, :payload_present?)
+      ob = RROutbox.new([{ id: 8 }])
+      runner(outbox: ob, failed_rows_source: -> { [ar_like.new(8, true)] }).requeue_failed!
+      expect(ob.update_calls).to eq([[[{ id: 8 }], { status: "queued", attempts: 0, error: nil }]])
     end
   end
 end
