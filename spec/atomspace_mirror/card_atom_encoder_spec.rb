@@ -41,9 +41,11 @@ RSpec.describe CardAtomEncoder do
     OpenStruct.new(field: field, value: value)
   end
 
+  # Real Card::Reference rows carry a DEAD is_present column (nil on every row in card-1.110.0,
+  # verified L2b 2026-06-21), so the double defaults it to nil; IsPresent is derived from referee_id.
   def ref(**over)
     OpenStruct.new({ referer_id: 17120, referee_key: "target", referee_id: 17117, ref_type: "L",
-                     is_present: true }.merge(over))
+                     is_present: nil }.merge(over))
   end
 
   def atom_of(atoms, kind)
@@ -116,13 +118,21 @@ RSpec.describe CardAtomEncoder do
 
   describe "DeckoReference encoding" do
     it "maps one ordered atom per reference; RefType symbol; Unresolved for nil referee_id" do
-      c = card(references_out: [ref(ref_type: "I"), ref(referee_id: nil, is_present: false)])
+      c = card(references_out: [ref(ref_type: "I"), ref(referee_id: nil)])
       atoms = enc(action(c))
       refs = atoms.select { |a| a["atom"] == "DeckoReference" }
       expect(refs.size).to eq(2)
       expect(refs.first["fields"].map(&:first)).to eq(%w[RefererId RefereeKey RefereeId RefType IsPresent])
       expect(refs[0]["fields"].to_h["RefType"]).to eq("sym" => "I")
       expect(refs[1]["fields"].to_h["RefereeId"]).to eq("sym" => "Unresolved")
+    end
+
+    it "derives IsPresent from referee_id resolution (is_present column is dead in Decko)" do
+      # resolved referee_id => IsPresent true even though the is_present column is nil;
+      # nil referee_id (a wanted/unresolved link) => IsPresent false.
+      c = card(references_out: [ref(referee_id: 521, is_present: nil), ref(referee_id: nil, is_present: nil)])
+      refs = enc(action(c)).select { |a| a["atom"] == "DeckoReference" }
+      expect(refs[0]["fields"].to_h["IsPresent"]).to be(true)
       expect(refs[1]["fields"].to_h["IsPresent"]).to be(false)
     end
   end
@@ -191,7 +201,12 @@ RSpec.describe CardAtomEncoder do
 
     it "raises on a corrupt out-of-range integer card_changes.field index" do
       a = action(card, card_changes: [change(99, "x")])
-      expect { enc(a) }.to raise_error(ArgumentError, /corrupt card_changes.field/)
+      expect { enc(a) }.to raise_error(CardAtomEncoder::EncodingError, /card_changes.field/)
+    end
+
+    it "raises on an unknown card_changes.field name not in TRACKED_FIELDS" do
+      a = action(card, card_changes: [change("codename", "x")]) # not a tracked field (V5-PROTOCOL-2)
+      expect { enc(a) }.to raise_error(CardAtomEncoder::EncodingError, /not in TRACKED_FIELDS/)
     end
   end
 
@@ -199,6 +214,29 @@ RSpec.describe CardAtomEncoder do
     it "produces identical output for identical inputs" do
       c = card(left_id: 5, references_out: [ref])
       expect(enc(action(c))).to eq(enc(action(c)))
+    end
+  end
+
+  describe "encode_card_snapshot (bootstrap bulk-load)" do
+    it "emits DeckoCard + DeckoReference(s) and NO DeckoProvenance, no auth required" do
+      atoms = described_class.encode_card_snapshot(card(references_out: [ref(ref_type: "I"), ref]))
+      kinds = atoms.map { |a| a["atom"] }
+      expect(kinds).to eq(%w[DeckoCard DeckoReference DeckoReference])
+      expect(kinds).not_to include("DeckoProvenance")
+    end
+
+    it "emits just the DeckoCard (full 14-field arity) for a card with no references" do
+      atoms = described_class.encode_card_snapshot(card)
+      expect(atoms.map { |a| a["atom"] }).to eq(%w[DeckoCard])
+      expect(atoms.first["fields"].map(&:first)).to eq(
+        %w[Id Name Key Codename TypeId TypeName LeftId RightId Content Trash CreatedAt UpdatedAt CreatorId UpdaterId]
+      )
+    end
+
+    it "produces the same DeckoCard/DeckoReference atoms as the forward encoder (PATCH-4 faithful)" do
+      c = card(references_out: [ref])
+      forward = enc(action(c)).reject { |a| a["atom"] == "DeckoProvenance" }
+      expect(described_class.encode_card_snapshot(c)).to eq(forward)
     end
   end
 end

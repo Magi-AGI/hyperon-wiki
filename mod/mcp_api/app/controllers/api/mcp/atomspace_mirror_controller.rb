@@ -23,6 +23,9 @@ module Api
       # Read-your-writes before Lane A's L7 read_consistency is wired -> fail-closed 503, not a
       # generic 500, AND with a distinct signal reason for triage (Codex Findings 4 + 2).
       rescue_from Atomspace::ReadConsistencyPort::NotWired, with: :render_consistency_unavailable
+      # A malformed read param (e.g. a bad action_id_range / query pattern) is a CLIENT error -> 400,
+      # not a 500 (Codex C2).
+      rescue_from Atomspace::InvalidRequest, with: :render_invalid_request
 
       # --- card-scoped, read-your-writes-aware ---
       def query_atoms
@@ -118,9 +121,21 @@ module Api
           else # :not_yet / :not_yet_inserted
             return render_err(503, "staleness_timeout", event_id) if monotonic >= deadline
 
-            ActiveRecord::Base.clear_active_connections!
+            release_pool_connection_for_poll
             sleep poll_interval
           end
+        end
+      end
+
+      # Release the AR connection back to the pool across the RYW poll sleep so polling can't starve
+      # it (Gemini #1). ActiveRecord::Base.clear_active_connections! was REMOVED in Rails 7.2 (this
+      # 500'd the read-your-writes gate live on the dev box); use the connection handler when the
+      # class-level shim is gone. (HTTP capstone finding, 2026-06-26.)
+      def release_pool_connection_for_poll
+        if ActiveRecord::Base.respond_to?(:clear_active_connections!)
+          ActiveRecord::Base.clear_active_connections!
+        else
+          ActiveRecord::Base.connection_handler.clear_active_connections!
         end
       end
 
@@ -152,6 +167,11 @@ module Api
         Atomspace::Observability.alert(signal_class: 3, payload: { signal: reason })
         render json: { error: "atomspace_unavailable", reason: reason, _meta: Atomspace::ReadClient::SAFE_META },
                status: 503
+      end
+
+      def render_invalid_request(error)
+        render json: { error: "bad_request", reason: error.message, _meta: Atomspace::ReadClient::SAFE_META },
+               status: 400
       end
 
       # Auth gates. Match the mcp_api render-and-halt idiom: a before_action that renders sets

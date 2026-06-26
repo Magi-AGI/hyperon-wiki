@@ -75,12 +75,22 @@ RAILS_ENV=production bundle exec ruby -e 'require "./config/environment"; c=Acti
 > MCP `admin_backup` fail with a version mismatch. Use an RDS console snapshot until the client is
 > upgraded (separate maintenance task).
 
-## Deferred (NOT in Slice 1)
+## Added in Slice 2 (this branch)
+
+- **L1 encoder** (`lib/card_atom_encoder.rb`) + **L2 outbox writer** (`lib/mirror_outbox_writer.rb`)
+  + the **`integrate_with_delay` set hook** (`set/all/atomspace_mirror.rb`). The hook is installed and
+  dev-validated (2026-06-21): on this deck `Cardio.config.delaying = false`, so it runs INLINE in the
+  saving request; the mod is auto-discovered from the `mod/` filesystem dir (no `decko update` / mod
+  card needed — just drop the files + `rake db:migrate` + restart web). See the Implementation Plan
+  cards "Level 1 -- Encoder" / "Level 2 -- Mirror Mod".
+
+## Deferred (NOT in Slice 1 or Slice 2)
 
 - **ReadConsistencyPort binding** — wiring `ReadConsistency` into Lane C's
   `Atomspace::ReadConsistencyPort` is the **integration glue step** (Lane C's port lives in
   `mod/mcp_api`, which is not on this branch). Added when Lane A and Lane C combine.
-- **Drain worker / integrate hook / bootstrap / reconcile execution** — Slices 2–3.
+- **Drain worker / bootstrap / reconcile EXECUTION** — Slice 3 (needs the Lane B sidecar). The Slice 2
+  hook only INSERTs `mirror_outbox` rows; nothing drains/applies them yet.
   In particular (**OQ#15**, Slice 3): the drain worker must independently reject structurally
   invalid queued rows; `superseded_by_later_or_reconcile?` returning `false` must **not** be read
   as "safe to apply" at the write path.

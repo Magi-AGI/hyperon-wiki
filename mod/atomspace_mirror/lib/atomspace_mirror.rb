@@ -11,3 +11,22 @@ require_relative "mirror_outbox"
 require_relative "mirror_bootstrap_run"
 require_relative "mirror_reconcile_run"
 require_relative "read_consistency"
+require_relative "card_atom_encoder"
+require_relative "mirror_outbox_writer"
+# Slice 3 (L8 drain): shared constants/watermark, the structural+identity preflight, and the IPC
+# client. Required here so the deck initializer's `require "atomspace_mirror"` loads them at runtime
+# (the specs require them directly, which does NOT prove runtime availability -- Codex 2026-06-22).
+require_relative "mirror"
+require_relative "mirror_drain_validator"
+require_relative "sidecar_client"
+require_relative "drain_worker"
+require_relative "bootstrap"
+# Slice 5a (L5 drift detection): the pure stream monitors + their runtime shell. REPORT-ONLY; the
+# Rufus schedule wiring (config/initializers/drift_schedule.rb) is launched explicitly, not required
+# here (it pulls in the optional rufus-scheduler gem).
+require_relative "drift_monitor"
+require_relative "drift_runner"
+# Slice 5b (L5 Mechanism 3): the canonical projection serializer (Lane A anchor) + the full-projection
+# drift sweep (PG vs Space, report-only into mirror_reconcile_runs).
+require_relative "canonical_projection"
+require_relative "drift_reconciler"
