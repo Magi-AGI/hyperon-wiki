@@ -104,13 +104,19 @@ event :stamp_merge_draft_audit, :finalize, on: :save, changed: :db_content do
   current_hash = ProposalProvenance.content_hash(db_content)
   existing = Card.fetch(audit_name)
 
-  # Two-hash audit (Codex): assembled_hash is the IMMUTABLE seed-time hash of the
-  # server-assembled content (proves the recorded hunk_selections produced this
-  # draft); polished_hash tracks the CURRENT content, refreshed on every native
-  # editor save. Phase 6 applies against polished_hash; assembled_hash preserves
-  # the origin proof. Never mutate assembled_hash.
+  # Two-hash audit (Codex). A (re)assembly is signalled by hunk_selections in the
+  # params (the workbench seed / explicit Reset & re-merge); a native editor save
+  # (polishing) has none.
+  #   - (Re)assembly: assembled_hash AND polished_hash both = the freshly
+  #     server-assembled content; (re)records origin (selections/parent_act_id).
+  #     Reset legitimately produces a NEW assembled_hash (a new authoritative
+  #     assembly), so it is rebuilt here — NOT preserved from a prior seed.
+  #   - Native polish save: refresh polished_hash ONLY; assembled_hash stays the
+  #     immutable origin so we keep proving selections -> assembled content.
+  # Phase 6 applies against polished_hash.
+  reassembling = Env.params[:hunk_selections].present?
   record =
-    if existing&.db_content.present?
+    if existing&.db_content.present? && !reassembling
       rec = ProposalProvenance.parse(existing.db_content)
       rec["polished_hash"] = current_hash
       rec["polished_at"] = Time.now.utc.iso8601

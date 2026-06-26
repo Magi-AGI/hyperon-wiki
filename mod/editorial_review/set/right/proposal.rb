@@ -192,6 +192,8 @@ WS6_MW_CSS = <<~'WS6CSS'
   .ws6-actions{margin-top:12px;}
   .ws6-actions button{font-size:14px;padding:6px 12px;margin-right:8px;}
   .ws6-actions button[disabled]{opacity:.5;cursor:not-allowed;}
+  .ws6-actions button.ws6-danger{border:1px solid #d93025;color:#d93025;background:#fff;}
+  .ws6-draft-notice{margin-top:8px;font-size:13px;color:#5f6368;background:#fef7e0;border:1px solid #f9ab00;border-radius:4px;padding:6px 10px;}
   .ws6-note{font-size:13px;}
   .ws6-ok{color:#188038;}
   .ws6-bad{color:#d93025;font-weight:600;}
@@ -252,8 +254,12 @@ WS6_MW_JS = <<~'WS6JS'
         note.className = 'ws6-note ' + (n === 0 ? 'ws6-ok' : 'ws6-bad');
       }
       if (asm) asm.disabled = (n !== 0);
-      var polish = root.querySelector('[data-ws6="polish"]');
-      if (polish) polish.disabled = (n !== 0);
+      // gate the selection-driven actions (create / reset); "open existing
+      // draft" is never gated — it just navigates to the saved draft.
+      ['[data-ws6="polish"]', '[data-ws6="reset"]'].forEach(function (sel) {
+        var b = root.querySelector(sel);
+        if (b) b.disabled = (n !== 0);
+      });
       markRows();
     }
 
@@ -278,42 +284,61 @@ WS6_MW_JS = <<~'WS6JS'
       if (pre) pre.textContent = assemble();
     });
 
-    // Phase 5 handoff: authenticated seed POST -> redirect to the native editor.
-    // We send the user's SELECTIONS (not the assembled HTML as authoritative);
-    // the server re-derives the content from them. credentials:same-origin sends
-    // the session cookie; X-CSRF-Token sends the server-rendered token.
-    var polishBtn = root.querySelector('[data-ws6="polish"]');
-    if (polishBtn) polishBtn.addEventListener('click', function () {
+    // Phase 5 handoff. Three actions over the same authenticated seed transport:
+    //   - polish  (no draft yet): create the draft from selections, open editor.
+    //   - reset   (draft exists): explicit, confirmed DESTRUCTIVE rebuild.
+    //   - open    (draft exists): just navigate to the saved draft (preserves
+    //             manual TinyMCE edits — the fix for silent-overwrite).
+    // The seed POST sends SELECTIONS (not the assembled HTML as authoritative);
+    // the server re-derives + re-runs the parent-drift gate. On a stale-parent
+    // rejection we reload so the user merges against live reality.
+    function editUrl() {
+      return '/' + encodeURIComponent(root.getAttribute('data-proposal') + '+merge draft') + '?view=edit';
+    }
+
+    function seedMergeDraft(btn, isReset) {
       if (unresolved() !== 0) return;
+      if (isReset && !window.confirm(
+        'Discard your manual edits and re-assemble the merge draft from your current selections? ' +
+        'This permanently deletes the rich-text polishing you have done in the editor.')) return;
       var meta = document.querySelector('meta[name="csrf-token"]');
       var token = meta ? meta.getAttribute('content') : '';
-      var proposal = root.getAttribute('data-proposal');
-      var parentAct = root.getAttribute('data-parent-act-id') || '';
       var fd = new FormData();
-      fd.append('card[name]', proposal);
+      fd.append('card[name]', root.getAttribute('data-proposal'));
       fd.append('card[subcards][+merge draft][content]', assemble());
       fd.append('hunk_selections', JSON.stringify(selections));
-      fd.append('parent_act_id', parentAct);
-      var orig = polishBtn.textContent;
-      polishBtn.disabled = true;
-      polishBtn.textContent = 'Creating draft...';
-      var editUrl = '/' + encodeURIComponent(proposal + '+merge draft') + '?view=edit';
+      fd.append('parent_act_id', root.getAttribute('data-parent-act-id') || '');
+      var orig = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Working...';
       fetch('/card/update', {
         method: 'POST',
         headers: { 'X-CSRF-Token': token, 'Accept': 'application/json' },
         credentials: 'same-origin',
         body: fd
       }).then(function (res) {
-        if (res.ok || res.status === 302) { window.location.href = editUrl; return; }
-        return res.text().then(function () {
-          polishBtn.disabled = false; polishBtn.textContent = orig;
-          window.alert('Could not create the merge draft (HTTP ' + res.status + '). Try reloading the workbench.');
+        if (res.ok || res.status === 302) { window.location.href = editUrl(); return; }
+        return res.text().then(function (body) {
+          btn.disabled = false; btn.textContent = orig;
+          if (/parent changed|parent_act_id/i.test(body)) {
+            window.alert('The parent card changed since you opened this workbench. Reloading to show the latest changes before you merge.');
+            window.location.reload();
+          } else {
+            window.alert('Could not create the merge draft (HTTP ' + res.status + '). Try reloading the workbench.');
+          }
         });
       }).catch(function () {
-        polishBtn.disabled = false; polishBtn.textContent = orig;
+        btn.disabled = false; btn.textContent = orig;
         window.alert('Network error creating the merge draft.');
       });
-    });
+    }
+
+    var polishBtn = root.querySelector('[data-ws6="polish"]');
+    if (polishBtn) polishBtn.addEventListener('click', function () { seedMergeDraft(polishBtn, false); });
+    var resetBtn = root.querySelector('[data-ws6="reset"]');
+    if (resetBtn) resetBtn.addEventListener('click', function () { seedMergeDraft(resetBtn, true); });
+    var openBtn = root.querySelector('[data-ws6="open-draft"]');
+    if (openBtn) openBtn.addEventListener('click', function () { window.location.href = editUrl(); });
 
     // ---- Phase 4.1: Bézier ribbon overlay (presentation only) ----------------
     // One SVG overlay; for each changed hunk, draw a closed Bézier ribbon in each
@@ -540,12 +565,37 @@ format :html do
 
   def mw_actions
     apply_title = "Simulation Mode — apply lands in Phase 6 (verifying merge-apply)"
-    polish_title = "Create the merge draft from your selections and open it in the editor to polish"
+    # If a merge draft already exists (the human has started polishing), the
+    # primary action OPENS it (edits preserved); rebuilding is an explicit,
+    # confirmed, destructive "Reset" (Codex + Gemini). Otherwise the primary
+    # action creates the draft.
+    draft_exists = Card.fetch("#{card.name}+merge draft")&.db_content.present?
+
+    primary =
+      if draft_exists
+        %(<button type="button" data-ws6="open-draft">Open Existing Merge Draft &rarr;</button>) +
+          %(<button type="button" data-ws6="reset" class="ws6-danger">Discard Edits &amp; Re-assemble</button>)
+      else
+        polish_title = "Create the merge draft from your selections and open it in the editor to polish"
+        %(<button type="button" data-ws6="polish" title="#{polish_title}">Assemble &amp; Polish &rarr;</button>)
+      end
+
+    notice =
+      if draft_exists
+        %(<div class="ws6-draft-notice">A merge draft already exists. ) +
+          %(<strong>Open Existing Merge Draft</strong> keeps your manual edits; ) +
+          %(<strong>Discard Edits &amp; Re-assemble</strong> rebuilds from your current selections ) +
+          %(and permanently discards your rich-text polishing.</div>)
+      else
+        ""
+      end
+
     %(<div class="ws6-actions">) +
       %(<button type="button" data-ws6="assemble">Assemble Merge Draft</button>) +
-      %(<button type="button" data-ws6="polish" title="#{polish_title}">Assemble &amp; Polish &rarr;</button>) +
+      primary +
       %(<span class="ws6-note" data-ws6="conflict-note"></span>) +
       %(<button type="button" disabled title="#{apply_title}">Apply to parent — Simulation Mode</button>) +
+      notice +
       %(<pre class="ws6-pre ws6-preview" data-ws6="preview"></pre>) +
       %(</div>)
   end
