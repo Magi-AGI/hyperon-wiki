@@ -29,24 +29,54 @@ format :html do
     if card.content.present?
       parent = card.left
       proposal = parent && Card.fetch("#{parent.name}+proposal")
-      # Entry point (Phase 7.3): when a +proposal exists, link to its workbench
-      # via the centralized layout=none builder. When it doesn't, the Phase 7.2
-      # legacy bridge will offer "Open as proposal" here instead.
-      link =
+      # Entry point: when a +proposal exists, link to its workbench (Phase 7.3).
+      # When none exists, offer the Phase 7.2 legacy bridge ("Open as proposal"),
+      # but only to a user who may create the proposal (admin/editor) — never a
+      # silent or anonymous promotion.
+      action =
         if proposal&.db_content.present?
           %( <a href="#{MergeWorkbench.workbench_url(proposal.name)}" ) +
             %(class="btn btn-primary btn-sm">Review &amp; merge in the workbench &rarr;</a>)
+        elsif parent && ai_draft_can_bridge?(parent)
+          ai_draft_bridge_form(parent)
         else
           ""
         end
       banner = wrap_with(:div, class: "alert alert-info mb-3") do
         "<strong>AI Draft</strong> &mdash; proposed changes pending review. " \
           "Merging into the parent goes through the verifying merge workbench " \
-          "(no direct overwrite).#{link}"
+          "(no direct overwrite).#{action}"
       end
       output [banner, super()]
     else
       wrap_with(:div, class: "text-muted") { "<em>No AI draft pending.</em>" }
     end
+  end
+
+  # Admin/editor gate: may the current user create the parent's +proposal?
+  def ai_draft_can_bridge?(parent)
+    Card.new(name: "#{parent.name}+proposal", type_id: parent.type_id).ok?(:create)
+  rescue StandardError
+    false
+  end
+
+  # Phase 7.2 "Open as proposal" — a plain authenticated form POST that creates
+  # <parent>+proposal seeded from THIS +AI draft (legacy_bridge_from); the
+  # proposal set estimates the base from the draft's creation time and marks it
+  # low-confidence, and `success` redirects into the merge workbench (layout=none).
+  def ai_draft_bridge_form(parent)
+    prop_name = "#{parent.name}+proposal"
+    token = (form_authenticity_token rescue "")
+    success_url = MergeWorkbench.workbench_url(prop_name)
+    %(<form method="post" action="/card/update" style="display:inline">) +
+      %(<input type="hidden" name="authenticity_token" value="#{h token}">) +
+      %(<input type="hidden" name="card[name]" value="#{h prop_name}">) +
+      %(<input type="hidden" name="card[type]" value="#{h parent.type_name}">) +
+      %(<input type="hidden" name="legacy_bridge_from" value="#{h card.name}">) +
+      %(<input type="hidden" name="proposal_source" value="legacy_bridge">) +
+      %(<input type="hidden" name="success" value="#{h success_url}">) +
+      %( <button type="submit" class="btn btn-warning btn-sm" ) +
+      %(title="Creates an estimated-base review proposal and opens the merge workbench">) +
+      %(Open as proposal (review &amp; merge) &rarr;</button></form>)
   end
 end

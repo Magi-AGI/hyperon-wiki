@@ -35,6 +35,14 @@ PROPOSAL_META_TYPE = "Plain Text"
 # off the recorded parent_type/proposal_type instead.
 PROPOSAL_CONTENT_TYPES = %w[RichText Markdown].freeze
 
+# (0) Phase 7.2 legacy bridge: seed a bridged proposal's content from the source
+#     +AI draft (when created via "Open as proposal" with no content of its own).
+event :seed_legacy_proposal, :prepare_to_validate, on: :create,
+      when: proc { Env.params[:legacy_bridge_from].present? } do
+  ai = Card.fetch(Env.params[:legacy_bridge_from])
+  self.content = ai.db_content if ai && db_content.blank?
+end
+
 # (1) Align proposal content format to its parent's, before the card is stored.
 event :align_proposal_type, :prepare_to_validate, on: :create do
   parent = left
@@ -68,7 +76,20 @@ event :stamp_proposal_base, :finalize, on: :create do
   override_reason = Env.params[:proposal_base_override_reason].presence
 
   existing_base = Card.fetch(base_name)
-  if existing_base&.db_content.present?
+  legacy_from = Env.params[:legacy_bridge_from].presence
+  base_content_for_hash = parent.db_content # default: base == current parent
+
+  if legacy_from
+    # Phase 7.2 legacy bridge: ESTIMATE the base from the source +AI draft's
+    # creation time (the parent revision it was most plausibly drafted against).
+    # base_hash is taken from the RECONSTRUCTED historical content, not current,
+    # and BaseResolver downgrades stamp_source=legacy_bridge to the estimated tier.
+    ai = Card.fetch(legacy_from)
+    est_action = ai && RevisionSnapshot.latest_action_at_or_before(parent.id, ai.created_at)
+    base_act_id = est_action&.act&.id
+    base_content_for_hash = (est_action && RevisionSnapshot.content_at(parent.id, est_action)) || parent.db_content
+    stamp_source = "legacy_bridge"
+  elsif existing_base&.db_content.present?
     # A generator/human pre-stamped a read-time (or deliberately chosen) base.
     # A read-time stamp is NOT an override; override is reserved for an explicit
     # manual non-current base selection (carries a required reason).
@@ -95,7 +116,7 @@ event :stamp_proposal_base, :finalize, on: :create do
     parent_id: parent.id, parent_name: parent.name,
     parent_type: parent.type_name, proposal_type: type_name,
     base_act_id: base_act_id, base_action_id: base_action_id,
-    base_hash: ProposalProvenance.content_hash(parent.db_content),
+    base_hash: ProposalProvenance.content_hash(base_content_for_hash),
     proposal_hash: ProposalProvenance.content_hash(db_content),
     actor_id: actor&.id, actor_name: actor&.name,
     source: Env.params[:proposal_source].presence || "unknown",

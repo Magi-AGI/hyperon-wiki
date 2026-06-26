@@ -83,6 +83,14 @@ module BaseResolver
       warnings << "parent id changed since authoring (#{prov['parent_id']} -> #{parent.id})"
     end
 
+    # Legacy-bridge base is an ESTIMATE from a +AI draft's creation time — never
+    # "verified" even when the reconstruction hashes clean (Phase 7.2). Downgrade
+    # to estimated (still 3-way, but with the yellow caveat / one-click 2-way).
+    if prov["stamp_source"] == "legacy_bridge" && tier == :verified
+      tier = :estimated
+      warnings << "base ESTIMATED from a legacy +AI draft's creation time; switch to 2-way if blocks look misaligned"
+    end
+
     build(tier, parent: parent, prov: prov, base_content: (ok ? content : nil), base_hash_ok: ok,
           warning: warnings.empty? ? nil : warnings.join("; "))
   end
