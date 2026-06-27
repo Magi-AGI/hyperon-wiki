@@ -27,13 +27,34 @@ format :html do
     review_link = link_to_card ai_draft.name, "Review AI Draft &rarr;",
                                class: "btn btn-outline-info btn-sm me-2"
 
-    merge_button = if card.ok?(:update)
-                     link_to_card card.name, "Merge AI Draft &rarr; Parent",
-                                  path: { action: :update,
-                                          card: { content: ai_draft.content },
-                                          merge_draft: "true" },
-                                  class: "btn btn-primary btn-sm"
-                   end
+    # WS6 Phase 8.1 (Option A): "Merge AI Draft -> Parent" must NOT overwrite the
+    # parent directly. It routes through the verifying 3-way merge workbench /
+    # apply gate instead (the WS6 mutual-exclusion invariant: the only path that
+    # writes a parent is apply_merge_draft). Gated on card.ok?(:update) — the same
+    # editorial capability as the apply gate. When an active +proposal exists, go
+    # straight to the workbench; otherwise POST the capability-gated legacy bridge
+    # (creates the proposal from this +AI draft and redirects into the workbench).
+    merge_button =
+      if card.ok?(:update)
+        proposal = Card.fetch("#{card.name}+proposal")
+        if proposal&.db_content.present?
+          %(<a href="#{MergeWorkbench.workbench_url(proposal.name)}" ) +
+            %(class="btn btn-primary btn-sm">Merge AI Draft &rarr; Parent</a>)
+        else
+          prop_name = "#{card.name}+proposal"
+          token = (form_authenticity_token rescue "")
+          success_url = MergeWorkbench.workbench_url(prop_name)
+          %(<form method="post" action="/card/update" style="display:inline">) +
+            %(<input type="hidden" name="authenticity_token" value="#{h token}">) +
+            %(<input type="hidden" name="card[name]" value="#{h prop_name}">) +
+            %(<input type="hidden" name="card[type]" value="#{h card.type_name}">) +
+            %(<input type="hidden" name="legacy_bridge_from" value="#{h ai_draft.name}">) +
+            %(<input type="hidden" name="proposal_source" value="legacy_bridge">) +
+            %(<input type="hidden" name="success" value="#{h success_url}">) +
+            %(<button type="submit" class="btn btn-primary btn-sm">) +
+            %(Merge AI Draft &rarr; Parent</button></form>)
+        end
+      end
 
     wrap_with(:div, class: "mb-3") do
       [review_link, merge_button].compact.join(" ")
