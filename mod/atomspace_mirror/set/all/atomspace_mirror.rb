@@ -25,6 +25,12 @@ event :write_to_mirror_outbox, :integrate_with_delay, on: %i[create update delet
   # derives pre_state from it (via Card::Action#previous_value, normalized through the locked
   # field_name mapping) so a corrupt/numeric card_changes.field becomes a terminal 'failed' row
   # rather than crashing the write path -- see MirrorOutboxWriter#derive_pre_state.
+  # Deploy-safety gate: do NOTHING unless the mirror is explicitly activated
+  # (ATOMSPACE_MIRRORING_ENABLED=true). Shipping the mod with the mirror dormant must never add work
+  # to -- or break -- a card save (e.g. before the mirror tables are migrated). See
+  # MirrorOutboxWriter.enabled?.
+  next unless ::MirrorOutboxWriter.enabled?
+
   action = current_action
   ::MirrorOutboxWriter.write(action, auth: ::Card::Auth.serialize) if action
 end
