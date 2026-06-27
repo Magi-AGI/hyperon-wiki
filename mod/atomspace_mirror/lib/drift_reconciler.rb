@@ -26,10 +26,17 @@ require_relative "sidecar_client"
 class DriftReconciler
   Diff = Struct.new(:pg_only, :space_only, :mismatch, keyword_init: true)
 
-  def initialize(sidecar: SidecarClient.new, clock: -> { Time.now.utc }, actor: "system",
+  # The drift queries (/projection_index, /card_projection) are O(n) over the whole Space -- at the
+  # production corpus (~9.6K cards / ~17K atoms) /projection_index measured ~7.4s, which exceeds the
+  # SidecarClient default 5s read_timeout and times the sweep out (proven live on prod 2026-06-26). So
+  # the drift sidecar gets a generous, env-tunable read_timeout (default 60s). This is a Phase-4
+  # headroom fix; the O(n) projection cost is the Phase-5 trigger to move to a write-time/indexed hash.
+  DRIFT_READ_TIMEOUT = Integer(ENV["ATOMSPACE_DRIFT_READ_TIMEOUT"] || "60")
+
+  def initialize(sidecar: nil, clock: -> { Time.now.utc }, actor: "system",
                  sample_limit: 50, card_source: nil, card_lookup: nil, a_start_provider: nil,
                  drain_lag_fn: nil, max_action_fn: nil, reconcile_run_model: nil, pg_hash_fn: nil)
-    @sidecar = sidecar
+    @sidecar = sidecar || SidecarClient.new(read_timeout: DRIFT_READ_TIMEOUT)
     @clock = clock
     @actor = actor
     @sample_limit = sample_limit
