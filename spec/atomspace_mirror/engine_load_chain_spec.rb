@@ -34,7 +34,7 @@ RSpec.describe "engine load chain" do
       MirrorState MirrorOutbox MirrorBootstrapRun MirrorReconcileRun
       ReadConsistency CardAtomEncoder MirrorOutboxWriter
       Mirror MirrorDrainValidator SidecarClient DrainDelivery DrainWorker Bootstrap
-      DriftMonitor DriftRunner CanonicalProjection DriftReconciler
+      DriftMonitor DriftRunner CanonicalProjection DriftReconciler Reconciler
     ].each do |const|
       expect(Object.const_defined?(const)).to be(true), "#{const} was not loaded by the mod entry point"
     end

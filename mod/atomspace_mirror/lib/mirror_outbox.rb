@@ -6,6 +6,13 @@
 class MirrorOutbox < ActiveRecord::Base
   self.table_name = "mirror_outbox" # table is singular; Rails would otherwise expect "mirror_outboxes"
 
+  # A row is "redrivable" only if it still carries a payload. The L6 drain-lag reset (Reconciler
+  # plan_requeue / requeue_failed!) consults this: a nil-payload failed row (a reconcile-orphan or a
+  # corrupt-encode terminal) must NOT be reset to queued -- it would fail validate_payload! instantly.
+  def payload_present?
+    !payload.nil?
+  end
+
   # Shared supersession predicate (Card 17120 Section 10). Returns true when this row's payload
   # should NOT be applied because a later same-card delivered decko_action OR a later-inserted
   # delivered reconcile already reflects current/later state for the card.
