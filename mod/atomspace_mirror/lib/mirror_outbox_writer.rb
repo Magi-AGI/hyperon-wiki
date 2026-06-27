@@ -27,6 +27,16 @@ module MirrorOutboxWriter
   # known on dev (L2b).
   SELF_CARD_CODENAMES = %w[mod_atomspace_mirror].freeze
 
+  # MASTER ACTIVATION GATE (deploy safety). The integrate hook calls `write` only when this is true;
+  # it is OFF unless ATOMSPACE_MIRRORING_ENABLED is explicitly "true". So the mod can be SHIPPED to a
+  # server (code present, hook loaded) while the mirror is still dormant -- no mirror_state table
+  # required, no outbox writes, zero added work on a card save -- and a save can NEVER break because
+  # the mirror isn't migrated/bootstrapped yet. Activation is a deliberate op: migrate the mirror
+  # tables, bootstrap the corpus, start the sidecar + drain worker, THEN set the env and restart.
+  def enabled?
+    ENV["ATOMSPACE_MIRRORING_ENABLED"].to_s.strip.casecmp?("true")
+  end
+
   def write(action, pre_state: nil, auth:, request_context: {})
     # Validate the auth contract LOUDLY here -- an L2b wiring bug must not be swallowed into a
     # 'failed' row by the encode rescue below (that rescue is only for genuine encode/data corruption).

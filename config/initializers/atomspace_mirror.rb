@@ -31,10 +31,20 @@ end
 # port MUST bind here -- a missing port file raises a loud LoadError, never a silent green. If the mod
 # entry was ABSENT, ReadConsistency is undefined: log it and leave the port UNBOUND, so the read API
 # fail-closes to 503 read_consistency_not_wired at request time (never serves an unproven read).
-if defined?(ReadConsistency)
+#
+# DEPLOY-SAFETY (Codex 2026-06-26): the binding is ALSO gated on the activation switch. check_event_ready
+# does MirrorOutbox.find_by, so binding the port while the mirror is dormant (mod shipped but tables not
+# yet migrated) would turn an authenticated read with wait_for_event_id into a 500 (PG::UndefinedTable),
+# not a controlled fail-close. So when ATOMSPACE_MIRRORING_ENABLED is not true we leave the port UNBOUND
+# -> wait_for_event_id returns the existing 503 read_consistency_not_wired. Activation (env set +
+# restart, after migrate/bootstrap/services) binds it.
+if defined?(ReadConsistency) && MirrorOutboxWriter.enabled?
   require_relative "../../mod/mcp_api/lib/atomspace/read_consistency_port"
   Atomspace::ReadConsistencyPort.impl = ReadConsistency
   Rails.logger.info("[atomspace_mirror] L7 ReadConsistencyPort bound to ReadConsistency (read-your-writes live)")
+elsif defined?(ReadConsistency)
+  Rails.logger.info("[atomspace_mirror] mod present but ATOMSPACE_MIRRORING_ENABLED is not true; " \
+                    "ReadConsistencyPort left UNBOUND (read API fail-closes to 503 until activation)")
 else
   Rails.logger.warn("[atomspace_mirror] ReadConsistency not loaded; ReadConsistencyPort left UNBOUND " \
                     "(read API fail-closes to 503 read_consistency_not_wired until the mod is present)")

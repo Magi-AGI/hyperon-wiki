@@ -176,4 +176,27 @@ RSpec.describe MirrorOutboxWriter do
       expect(inserted).to be_empty
     end
   end
+
+  # The integrate hook gates on this -- the deploy-safety master switch (OFF unless explicitly true).
+  describe ".enabled? (deploy-safety activation gate)" do
+    around do |ex|
+      prev = ENV["ATOMSPACE_MIRRORING_ENABLED"]
+      ex.run
+      ENV["ATOMSPACE_MIRRORING_ENABLED"] = prev
+    end
+
+    it "is OFF by default (unset/blank/anything-but-true) so a shipped-but-dormant mirror never fires" do
+      [nil, "", "false", "0", "yes", "TRUE!"].each do |v|
+        v.nil? ? ENV.delete("ATOMSPACE_MIRRORING_ENABLED") : ENV["ATOMSPACE_MIRRORING_ENABLED"] = v
+        expect(MirrorOutboxWriter.enabled?).to be(false), "expected disabled for #{v.inspect}"
+      end
+    end
+
+    it "is ON only for an explicit true (case/whitespace-insensitive)" do
+      ["true", "TRUE", " True "].each do |v|
+        ENV["ATOMSPACE_MIRRORING_ENABLED"] = v
+        expect(MirrorOutboxWriter.enabled?).to be(true), "expected enabled for #{v.inspect}"
+      end
+    end
+  end
 end
