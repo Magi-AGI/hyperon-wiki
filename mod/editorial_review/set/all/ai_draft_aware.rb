@@ -22,25 +22,33 @@
 format :html do
   view :ai_draft_link, cache: :never do
     ai_draft = Card.fetch("#{card.name}+AI") || Card.fetch("#{card.name}+ai draft")
-    return "" unless ai_draft && ai_draft.content.present?
+    proposal = Card.fetch("#{card.name}+proposal")
+    has_ai       = ai_draft && ai_draft.content.present?
+    has_proposal = proposal && proposal.db_content.present?
+    # WS6 discoverability (#2): surface the entry point whenever EITHER an +AI
+    # draft OR a +proposal exists. A proposal created directly via the API (no
+    # +AI draft) previously left the parent page with no link into the workbench.
+    return "" unless has_ai || has_proposal
 
-    review_link = link_to_card ai_draft.name, "Review AI Draft &rarr;",
-                               class: "btn btn-outline-info btn-sm me-2"
+    review_link = has_ai &&
+                  link_to_card(ai_draft.name, "Review AI Draft &rarr;",
+                               class: "btn btn-outline-info btn-sm me-2")
 
     # WS6 Phase 8.1 (Option A): "Merge AI Draft -> Parent" must NOT overwrite the
     # parent directly. It routes through the verifying 3-way merge workbench /
     # apply gate instead (the WS6 mutual-exclusion invariant: the only path that
     # writes a parent is apply_merge_draft). Gated on card.ok?(:update) — the same
     # editorial capability as the apply gate. When an active +proposal exists, go
-    # straight to the workbench; otherwise POST the capability-gated legacy bridge
-    # (creates the proposal from this +AI draft and redirects into the workbench).
+    # straight to the workbench (covers API-created proposals); otherwise POST the
+    # capability-gated legacy bridge (creates the proposal from the +AI draft).
     merge_button =
       if card.ok?(:update)
-        proposal = Card.fetch("#{card.name}+proposal")
-        if proposal&.db_content.present?
+        if has_proposal
+          merged = Card.fetch("#{proposal.name}+merge audit")&.db_content.present?
+          label = merged ? "View merged proposal &rarr;" : "Review &amp; merge proposal &rarr;"
           %(<a href="#{MergeWorkbench.workbench_url(proposal.name)}" ) +
-            %(class="btn btn-primary btn-sm">Merge AI Draft &rarr; Parent</a>)
-        else
+            %(class="btn btn-primary btn-sm">#{label}</a>)
+        elsif has_ai
           prop_name = "#{card.name}+proposal"
           token = (form_authenticity_token rescue "")
           success_url = MergeWorkbench.workbench_url(prop_name)
@@ -57,7 +65,7 @@ format :html do
       end
 
     wrap_with(:div, class: "mb-3") do
-      [review_link, merge_button].compact.join(" ")
+      [review_link, merge_button].select { |x| x.is_a?(String) && x.present? }.join(" ")
     end
   end
 
