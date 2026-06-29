@@ -26,6 +26,11 @@
 # rendered form, so Decko's RichText URL chunk-processor never touches it.
 # NOTE (dev-runtime check): confirm "Plain Text" is the right inert core type
 # in this Decko 0.20 deck; if not, this is the single constant to change.
+# kramdown (the deck's Markdown engine, a card-mod-markdown dependency) backs the
+# workbench "Rendered preview" toggle for Markdown proposals. A plain gem require
+# (NOT require_relative) is safe here — it resolves via $LOAD_PATH, not __FILE__.
+require "kramdown"
+
 PROPOSAL_META_TYPE = "Plain Text"
 
 # Content cardtypes a proposal may mirror (so 3-way diffs are apples-to-apples).
@@ -239,6 +244,18 @@ WS6_MW_CSS = <<~'WS6CSS'
   .ws6-ok{color:#188038;}
   .ws6-bad{color:#d93025;font-weight:600;}
   .ws6-preview{margin-top:8px;border:1px solid #ddd;background:#fcfcfc;padding:8px;min-height:60px;}
+  /* "Rendered preview" toggle + the two pane layers it switches between. */
+  .ws6-viewtoggle{margin-bottom:10px;font-size:13px;color:#3c4043;}
+  .ws6-viewtoggle label{cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+  .ws6-vt-hint{color:#80868b;}
+  .ws6-rendered-layer{display:none;font-size:13px;line-height:1.45;}
+  .ws6-rendered-layer > :first-child{margin-top:0;}
+  .ws6-rendered-layer > :last-child{margin-bottom:0;}
+  .ws6-rendered-layer p,.ws6-rendered-layer ul,.ws6-rendered-layer ol,.ws6-rendered-layer pre{margin:0 0 .5em;}
+  .ws6-rendered-layer img{max-width:100%;height:auto;}
+  .ws6-empty{color:#9aa0a6;}
+  .ws6-mw.ws6-show-rendered .ws6-raw-layer{display:none;}
+  .ws6-mw.ws6-show-rendered .ws6-rendered-layer{display:block;}
 WS6CSS
 
 WS6_MW_JS = <<~'WS6JS'
@@ -535,6 +552,15 @@ WS6_MW_JS = <<~'WS6JS'
     // container, so it scrolls with content; only resize/zoom changes geometry.
     if (window.addEventListener) window.addEventListener('resize', rebuildSoon);
 
+    // "Rendered preview" toggle: flip raw<->formatted panes, then re-measure the
+    // ribbons (pane heights change with the rendered content).
+    var renderToggle = root.querySelector('[data-ws6="render-toggle"]');
+    if (renderToggle) renderToggle.addEventListener('change', function () {
+      if (renderToggle.checked) root.classList.add('ws6-show-rendered');
+      else root.classList.remove('ws6-show-rendered');
+      rebuildSoon();
+    });
+
     refresh();
     // draw after layout settles (fonts/reflow)
     buildRibbons();
@@ -543,6 +569,45 @@ WS6_MW_JS = <<~'WS6JS'
 WS6JS
 
 format :html do
+  # WS6 discoverability (#1): a +proposal created directly via the API (no +AI
+  # draft) had no surfaced entry point — visiting it just showed the raw proposed
+  # content with no hint that a merge workbench exists. Override :core to prepend
+  # a banner that ALWAYS advertises the workbench (or, once merged, the record),
+  # independent of how the proposal was created. cache: :never because the banner
+  # links into a permission-gated flow and mirrors the other WS6 viewer-aware
+  # cores; `super()` renders the normal proposal content below it.
+  view :core, cache: :never do
+    output [proposal_review_banner, super()]
+  end
+
+  # The banner shown above a proposal's content. Pre-merge: "open the workbench".
+  # Post-merge (a +merge audit exists): a terminal "merged" note linking to the
+  # final article and the immutable record. Returns "" for an orphan proposal
+  # (no parent) so nothing misleading is shown.
+  def proposal_review_banner
+    parent = card.left
+    return "" unless parent
+
+    wb = MergeWorkbench.workbench_url(card.name)
+    parent_url = "/" + parent.name.gsub(" ", "%20")
+    merged = Card.fetch("#{card.name}+merge audit")&.db_content.present?
+
+    if merged
+      wrap_with(:div, class: "alert alert-success mb-3") do
+        %(<strong>Merged proposal.</strong> These reviewed changes were applied to ) +
+          %(<a href="#{parent_url}">#{h parent.name}</a> through the verifying merge gate. ) +
+          %(<a href="#{wb}">View the merge record &rarr;</a>)
+      end
+    else
+      wrap_with(:div, class: "alert alert-info mb-3") do
+        %(<strong>Merge proposal</strong> for <a href="#{parent_url}">#{h parent.name}</a>. ) +
+          %(This is a proposed edit awaiting review &mdash; nothing is written to the ) +
+          %(article until an editor applies it through the verifying merge workbench. ) +
+          %( <a class="btn btn-primary btn-sm" href="#{wb}">Open merge workbench &rarr;</a>)
+      end
+    end
+  end
+
   view :merge_workbench do
     return "" unless card.ok?(:read)
 
@@ -608,6 +673,7 @@ format :html do
       %(data-parent-act-id="#{parent_act}">) +
       mw_banner(payload) +
       mw_draft_indicator +
+      mw_view_toggle +
       %(<div class="ws6-stackwrap"><div class="ws6-stack">) +
       mw_header(payload[:mode]) + rows +
       %(<svg class="ws6-ribbons" xmlns="http://www.w3.org/2000/svg"></svg>) +
@@ -628,6 +694,18 @@ format :html do
     url = "/" + "#{card.name}+merge draft".gsub(" ", "%20") + "?view=edit"
     %(<div class="ws6-draft-indicator">&#128221; A merge draft is in progress for this proposal. ) +
       %(<a href="#{h url}">Open it in the editor &rarr;</a></div>)
+  end
+
+  # "Rendered preview" toggle: switches every comparison pane between raw source
+  # and formatted output (JS flips .ws6-show-rendered on .ws6-mw, then rebuilds
+  # the ribbons). Default OFF — raw source is authoritative for diffing; the
+  # rendered view is the human-readability aid Lake asked for.
+  def mw_view_toggle
+    fmt_label = card.type_name == "Markdown" ? "Markdown" : "HTML"
+    %(<div class="ws6-viewtoggle"><label>) +
+      %(<input type="checkbox" data-ws6="render-toggle"> ) +
+      %(Rendered preview <span class="ws6-vt-hint">(show formatted #{fmt_label} ) +
+      %(instead of raw source)</span></label></div>)
   end
 
   def mw_banner(payload)
@@ -691,9 +769,39 @@ format :html do
 
   # A pane = a resizable content band (the grip lets the user drag its height,
   # which makes the ribbons fan to fit). pane class drives ribbon endpoint lookup.
+  #
+  # Two layers are emitted: the raw source (<pre>, default) and a rendered
+  # preview (formatted HTML / Markdown). The "Rendered preview" toggle flips a
+  # class on .ws6-mw so only one layer is visible at a time (CSS); both are always
+  # in the DOM so toggling is instant and the ribbon geometry just re-measures.
   def mw_pane(blocks, side)
-    %(<div class="ws6-col ws6-pane-#{side}"><pre class="ws6-pre">#{h Array(blocks).join("\n")}</pre>) +
+    arr = Array(blocks)
+    %(<div class="ws6-col ws6-pane-#{side}">) +
+      %(<pre class="ws6-pre ws6-raw-layer">#{h arr.join("\n")}</pre>) +
+      %(<div class="ws6-rendered-layer">#{mw_render_blocks(arr)}</div>) +
       %(<div class="ws6-grip" title="drag to resize this band"></div></div>)
+  end
+
+  # Render a hunk's blocks to display HTML for the "Rendered preview" toggle.
+  # RichText blocks are already HTML; Markdown blocks are converted with Kramdown
+  # (the deck's markdown engine). Either way the output is whitelist-sanitized
+  # (Card::Content.clean!) before display. {{nests}} are left as literal text — a
+  # readable preview, not a live re-render (which would recurse / hit the DB). Any
+  # failure falls back to the escaped source so a pane can never render blank.
+  def mw_render_blocks(blocks)
+    arr = Array(blocks)
+    joined = arr.join("\n")
+    return %(<em class="ws6-empty">(empty)</em>) if joined.strip.empty?
+
+    html =
+      if card.type_name == "Markdown"
+        Kramdown::Document.new(joined).to_html
+      else
+        joined
+      end
+    Card::Content.clean!(html)
+  rescue StandardError
+    "<pre class=\"ws6-pre\">#{h joined}</pre>"
   end
 
   def mw_sp
