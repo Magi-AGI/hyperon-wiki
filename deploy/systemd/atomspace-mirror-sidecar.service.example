@@ -1,0 +1,39 @@
+# Level 3 sidecar: holds the in-memory PyListSpace, serves the local IPC contract.
+# Install: copy to /etc/systemd/system/atomspace-mirror-sidecar.service (drop .example),
+# `systemctl daemon-reload`. START ONLY during the activation / coordinated-rebuild runbook.
+#
+# NO [Install]/WantedBy ON PURPOSE (Codex C2): DO NOT `systemctl enable` this unit. The Phase-5 Space
+# is in-memory, so a boot/manual start comes up EMPTY. If a host reboot auto-started an empty sidecar
+# (and the drain resumed against a DB that still says bootstrapped/draining), the mirror would silently
+# corrupt (missing history, partial atoms). Boot auto-start is therefore disabled; the sidecar is
+# brought up only by an operator following the runbook, which re-bootstraps before resuming reads/drain.
+#
+# FAIL-CLOSED RESTART POLICY: Restart=no. Any sidecar exit is an INCIDENT: the drain BindsTo this unit
+# and stops with it, reads fail closed (MirrorReadiness -> sidecar_unreachable / sidecar_empty_post_
+# restart / sidecar_below_expected), and recovery is the COORDINATED REBUILD runbook (restart sidecar
+# fresh -> bootstrap -> verify -> resume drain). This relies on a REAL ALERT SINK to page an operator
+# when the sidecar drops and reads start 503-ing -- see docs/ATOMSPACE-MIRROR-DEPLOYMENT.md.
+[Unit]
+Description=AtomSpace Mirror sidecar (Level 3, in-memory PyListSpace)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/atomspace-mirror-sidecar
+# Sidecar needs only its own SIDECAR_* / ops tunables (no DB env). Optional so a missing file is not
+# a hard failure; SIDECAR_RUN_DIR/SIDECAR_PORT default in code if absent.
+EnvironmentFile=-/home/ubuntu/atomspace-mirror.env
+# Prod venv lacks ensurepip: hyperon==0.2.10 is installed for the ubuntu user (pip install --user).
+ExecStart=/usr/bin/python3 -m atomspace_mirror_sidecar
+Restart=no
+# Defense-in-depth memory guard on the 3.7Gi box. Leave COMMENTED until you have measured the real
+# post-bootstrap RSS (~358MB at ~17K atoms), then set it with headroom (e.g. 2-3x the measured RSS).
+# Setting it too low would OOM-kill the sidecar into the fail-closed incident path -- deliberate but
+# disruptive, so tune it, don't guess. MemoryMax=900M
+# Do NOT use `KillMode=control-group` with a broad pkill; the sidecar self-manages its pidfile+socket.
+KillSignal=SIGTERM
+# SIGTERM triggers graceful shutdown (servers stop, pidfile+socket unlinked). Bounded by TimeoutStopSec.
+TimeoutStopSec=30

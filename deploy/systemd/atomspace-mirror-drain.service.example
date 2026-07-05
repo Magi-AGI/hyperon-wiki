@@ -1,0 +1,40 @@
+# Level 8 forward-drain worker: `rake atomspace_mirror:drain` (the supervised drain_loop).
+# Install: copy to /etc/systemd/system/atomspace-mirror-drain.service (drop .example), daemon-reload.
+# START ONLY via the activation / coordinated-rebuild runbook, after bootstrap completes.
+#
+# NO [Install]/WantedBy ON PURPOSE (Codex C2): this unit is NEVER enabled for boot auto-start. A host
+# reboot must not resume the drain against an empty in-memory Space while Postgres still says
+# bootstrapped/draining -- the drain would apply forward rows into a partial Space and corrupt it.
+# BindsTo+After the sidecar: if the sidecar stops/crashes/restarts, this unit stops too. Restart=
+# on-failure recovers a drain-ONLY crash (the Postgres advisory lock Mirror::DRAIN_LOCK_ID keeps it a
+# singleton across any overlap); a sidecar incident holds the drain down until the coordinated rebuild
+# runbook restarts both. It is safe to start before bootstrap: drain_one_iteration idles while
+# mirror_state.draining_enabled is false.
+[Unit]
+Description=AtomSpace Mirror forward-drain worker (Level 8)
+After=atomspace-mirror-sidecar.service
+BindsTo=atomspace-mirror-sidecar.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/hyperon-wiki
+# App env FIRST (DB_USERNAME / DATABASE_PASSWORD / DB_HOST / SECRET_KEY_BASE / RAILS_ENV and the
+# ATOMSPACE_MIRRORING_ENABLED activation gate -- the SAME file the web/jobs units source), then the
+# atomspace ops tunables (optional `-`, so a missing file does not fail the unit).
+EnvironmentFile=/home/ubuntu/hyperon-wiki/.env.production
+EnvironmentFile=-/home/ubuntu/atomspace-mirror.env
+Environment=RAILS_ENV=production
+# Prod uses rbenv (per docs/AWS-DEPLOYMENT.md): call the shim directly and put the shims on PATH so any
+# rake sub-shell resolves `ruby`/`bundle`. `/usr/bin/env bundle` would miss the rbenv-managed Ruby.
+Environment=PATH=/home/ubuntu/.rbenv/shims:/home/ubuntu/.rbenv/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/ubuntu/.rbenv/shims/bundle exec rake atomspace_mirror:drain
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+# SIGTERM sets DrainWorker#stop; the loop exits after the current iteration. If it is blocked on a
+# BLOCKING pg_advisory_lock wait or an in-flight sidecar HTTP request, stop is deferred until that
+# returns -- so a stuck worker may be SIGKILLed at TimeoutStopSec. That is safe: unforwarded rows stay
+# 'queued' (no loss) and the advisory lock auto-releases when the DB connection drops.
+TimeoutStopSec=30

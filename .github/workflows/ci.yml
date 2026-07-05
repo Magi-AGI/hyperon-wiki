@@ -21,6 +21,111 @@ jobs:
       - name: Run mod specs
         run: bundle exec rspec spec/mod/ --format progress
 
+  atomspace-structural-specs:
+    name: AtomSpace structural specs (no DB)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+
+      # Bundler resolves the committed Gemfile.lock (bundler-cache runs `bundle install`);
+      # confirm the L5 drift-schedule dependency loads before running specs.
+      - name: rufus-scheduler loads under Bundler
+        run: bundle exec ruby -e 'require "rufus-scheduler"; puts Rufus::Scheduler::VERSION'
+
+      # Boot-free specs ONLY (each requires its source file directly, no spec_helper / no DB).
+      # DB-gated specs (schema/mirror_outbox/read_consistency + the controller request spec) run in
+      # the Postgres job below -- do NOT add them here.
+      - name: Run no-DB AtomSpace specs
+        run: |
+          bundle exec rspec \
+            spec/atomspace_mirror/bootstrap_spec.rb \
+            spec/atomspace_mirror/canonical_projection_spec.rb \
+            spec/atomspace_mirror/card_atom_encoder_spec.rb \
+            spec/atomspace_mirror/drain_worker_spec.rb \
+            spec/atomspace_mirror/drift_monitor_spec.rb \
+            spec/atomspace_mirror/drift_reconciler_spec.rb \
+            spec/atomspace_mirror/engine_load_chain_spec.rb \
+            spec/atomspace_mirror/mirror_drain_validator_spec.rb \
+            spec/atomspace_mirror/mirror_outbox_writer_spec.rb \
+            spec/atomspace_mirror/mirror_spec.rb \
+            spec/atomspace_mirror/reconcile_runner_spec.rb \
+            spec/atomspace_mirror/reconciler_spec.rb \
+            spec/atomspace_mirror/sidecar_client_spec.rb \
+            spec/mcp_api/atomspace/mirror_readiness_spec.rb \
+            spec/mcp_api/atomspace/sidecar_health_stats_spec.rb \
+            --format progress
+
+      # Load/listing smoke check only: proves the drain + drift_schedule tasks are DEFINED without
+      # executing their (long-running) loops. Never invoke atomspace_mirror:drain / :drift_schedule here.
+      - name: AtomSpace rake tasks load
+        run: bundle exec rake -T atomspace_mirror
+
+  atomspace-db-specs:
+    name: AtomSpace DB-backed specs (PostgreSQL)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          # No POSTGRES_DB: let `rake db:create` make hyperon_test (avoids "already exists" noise).
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    # Matches config/database.yml (test): explicit DB_HOST/DB_USERNAME/DATABASE_PASSWORD, port 5432.
+    env:
+      RAILS_ENV: test
+      DB_HOST: 127.0.0.1
+      DB_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+
+      # ImageMagick is installed ONLY in this DB-backed job (full Decko boot needs MiniMagick), so an
+      # ImageMagick/runner-infra failure here can never mask the no-DB AtomSpace signal above.
+      - name: Install ImageMagick
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+
+      # `db:create db:migrate` (NOT db:prepare): the mod-local mirror migrations are absent from
+      # db/schema.rb, so db:prepare's schema-load path would skip them; db:migrate runs them via the
+      # migration-path append in config/initializers/atomspace_mirror.rb.
+      - name: Create + migrate test database
+        run: bundle exec rake db:create db:migrate
+
+      - name: Seed test deck
+        run: bundle exec decko seed
+
+      - name: Run DB-gated AtomSpace specs
+        run: |
+          bundle exec rspec \
+            spec/atomspace_mirror/schema_spec.rb \
+            spec/atomspace_mirror/mirror_outbox_spec.rb \
+            spec/atomspace_mirror/read_consistency_spec.rb \
+            spec/mcp_api/controllers/atomspace_mirror_controller_spec.rb \
+            --format progress
+
+      # Non-looping availability check for both daemon entrypoints (loads them; never calls the loops).
+      - name: Daemon entrypoint load checks
+        run: bundle exec rails runner 'raise "DrainWorker#drain_loop missing" unless DrainWorker.instance_methods.include?(:drain_loop); require_relative "mod/atomspace_mirror/config/initializers/drift_schedule"; raise "DriftSchedule.install missing" unless DriftSchedule.respond_to?(:install); puts "load-checks ok"'
+
   rendering-specs:
     name: Rendering specs (MySQL)
     runs-on: ubuntu-latest
