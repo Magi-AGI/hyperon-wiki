@@ -18,6 +18,12 @@ jobs:
           ruby-version: "3.4"
           bundler-cache: true
 
+      # spec/mod/ boots the full Decko app, which loads card-mod-carrierwave's mini_magick config and
+      # fails at boot with MiniMagick::Error unless ImageMagick is present (CI run 28758983560). This
+      # job is "no DB" but still needs ImageMagick. The AtomSpace no-DB job stays ImageMagick-free.
+      - name: Install ImageMagick
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+
       - name: Run mod specs
         run: bundle exec rspec spec/mod/ --format progress
 
@@ -76,7 +82,11 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          # No POSTGRES_DB: let `rake db:create` make hyperon_test (avoids "already exists" noise).
+          # Pre-create hyperon_test. EMPIRICAL (CI run 28758983560): Decko loads the Rails environment
+          # during `db:create` (db:create => db:load_config => environment) and connects to hyperon_test
+          # BEFORE the task can create it, so an absent DB fails with ActiveRecord::NoDatabaseError /
+          # PG::ConnectionBad "database hyperon_test does not exist". The service therefore pre-creates it.
+          POSTGRES_DB: hyperon_test
         ports: ["5432:5432"]
         options: >-
           --health-cmd="pg_isready -U postgres"
@@ -106,7 +116,9 @@ jobs:
 
       # `db:create db:migrate` (NOT db:prepare): the mod-local mirror migrations are absent from
       # db/schema.rb, so db:prepare's schema-load path would skip them; db:migrate runs them via the
-      # migration-path append in config/initializers/atomspace_mirror.rb.
+      # migration-path append in config/initializers/atomspace_mirror.rb. `db:create` is idempotent
+      # against the service-pre-created hyperon_test (prints "already exists", exit 0); db:migrate then
+      # applies the three mirror migrations.
       - name: Create + migrate test database
         run: bundle exec rake db:create db:migrate
 
