@@ -28,7 +28,14 @@ RSpec.describe Api::Mcp::AtomspaceMirrorController, type: :request do
     { "Authorization" => "Bearer test-token" }
   end
 
-  before { Atomspace::ReadClient.bind!(Atomspace::FakeReadClient) }
+  before do
+    Atomspace::ReadClient.bind!(Atomspace::FakeReadClient)
+    # Default the Phase-5 read-readiness gate GREEN so the scope / quarantine / read-your-writes
+    # tiers exercise their own behavior; the dedicated "read-readiness gate" describe below drives the
+    # fail-closed paths. (Without this stub the new require_mirror_ready! before_action would 503 every
+    # request as mirroring_disabled in the test env.)
+    allow(Atomspace::MirrorReadiness).to receive(:check).and_return(Atomspace::MirrorReadiness::READY)
+  end
   after do
     Atomspace::FakeReadClient.seed!([])
     Atomspace::ReadConsistencyPort.reset!
@@ -171,6 +178,50 @@ RSpec.describe Api::Mcp::AtomspaceMirrorController, type: :request do
       ryw_get
       expect(response).to have_http_status(503)
       expect(JSON.parse(response.body)["reason"]).to eq("read_consistency_not_wired")
+    end
+  end
+
+  # ====================================================================================
+  # Tier 3 -- read-readiness gate (Phase 5): reads fail closed until the mirror is ready. Covers the
+  # NO-WAIT card path and the aggregate/quarantine paths that never consulted ReadConsistencyPort.
+  # ====================================================================================
+  describe "read-readiness gate (fail-closed 503 mirror_not_ready)" do
+    before { Atomspace::FakeReadClient.seed!([]) }
+
+    def not_ready(reason)
+      result = Atomspace::MirrorReadiness::Result.new(ready: false, reason: reason)
+      allow(Atomspace::MirrorReadiness).to receive(:check).and_return(result)
+    end
+
+    it "503s a NO-WAIT card read (query_atoms, no wait_for_event_id) when not bootstrapped" do
+      not_ready("mirror_not_bootstrapped")
+      get "/api/mcp/atomspace_mirror/query_atoms",
+          params: { pattern: "(card $x)" }, headers: auth(scope: "mcp:atomspace:read")
+      expect(response).to have_http_status(503)
+      body = JSON.parse(response.body)
+      expect(body["error"]).to eq("mirror_not_ready")
+      expect(body["reason"]).to eq("mirror_not_bootstrapped")
+    end
+
+    it "503s an aggregate read (no RYW path at all) when the sidecar is empty post-restart" do
+      not_ready("sidecar_empty_post_restart")
+      get "/api/mcp/atomspace_mirror/atom_types", headers: auth(scope: "mcp:atomspace:read")
+      expect(response).to have_http_status(503)
+      expect(JSON.parse(response.body)["reason"]).to eq("sidecar_empty_post_restart")
+    end
+
+    it "503s admin quarantine when mirroring is disabled" do
+      not_ready("mirroring_disabled")
+      get "/api/mcp/atomspace_mirror/quarantine",
+          headers: auth(role: "admin", scope: "mcp:atomspace:read mcp:admin")
+      expect(response).to have_http_status(503)
+      expect(JSON.parse(response.body)["error"]).to eq("mirror_not_ready")
+    end
+
+    it "still 403s (scope gate precedes readiness) for a no-scope caller even when not ready" do
+      not_ready("mirror_not_bootstrapped")
+      get "/api/mcp/atomspace_mirror/atom_types", headers: auth(role: "user", scope: "mcp:read")
+      expect(response).to have_http_status(:forbidden)
     end
   end
 end

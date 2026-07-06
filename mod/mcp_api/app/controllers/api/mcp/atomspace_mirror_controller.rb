@@ -3,6 +3,7 @@
 require_relative "../../../../lib/atomspace/errors"
 require_relative "../../../../lib/atomspace/read_client"
 require_relative "../../../../lib/atomspace/read_consistency_port"
+require_relative "../../../../lib/atomspace/mirror_readiness"
 require_relative "../../../../lib/atomspace/observability"
 # Decko's routes.rb `require`s controllers at boot, before the mod's concerns autoload
 # resolves; load the concern explicitly so `include AtomspaceReadFilter` can't NameError.
@@ -19,6 +20,11 @@ module Api
 
       before_action :require_atomspace_read_scope!, except: %i[quarantine_index quarantine_delete]
       before_action :require_quarantine_scope!, only: %i[quarantine_index quarantine_delete]
+      # READ-READINESS GATE (Phase 5 go-live blocker). Runs AFTER the scope gates (an unauthorized
+      # caller still gets 403, never a readiness signal) and covers EVERY read action -- card-scoped
+      # (incl. no-wait), aggregate, and admin quarantine -- so an empty / partially-populated / post-
+      # restart Space can never serve a misleading 200. Fail-closed 503 mirror_not_ready until ready.
+      before_action :require_mirror_ready!
       rescue_from Atomspace::ServiceUnavailable, with: :render_read_client_unavailable
       # Read-your-writes before Lane A's L7 read_consistency is wired -> fail-closed 503, not a
       # generic 500, AND with a distinct signal reason for triage (Codex Findings 4 + 2).
@@ -183,6 +189,34 @@ module Api
       def require_quarantine_scope!
         granted = token_scopes.include?("mcp:atomspace:read") && token_scopes.include?("mcp:admin")
         render_forbidden("mcp:atomspace:read + mcp:admin required") unless granted
+      end
+
+      # Fail-closed read-readiness gate. Renders 503 mirror_not_ready (halting the action) unless the
+      # mirror is enabled, migrated, bootstrapped, not mid-rebuild, and backed by a reachable, non-empty
+      # sidecar Space. The sidecar probe is a lambda so the IPC round-trip only happens once the cheap
+      # DB-side checks pass. See Atomspace::MirrorReadiness.
+      def require_mirror_ready!
+        result = Atomspace::MirrorReadiness.check(-> { sidecar_health })
+        return if result.ready?
+
+        Atomspace::Observability.alert(signal_class: 3,
+                                       payload: { signal: "mirror_not_ready", reason: result.reason })
+        render json: { error: "mirror_not_ready", reason: result.reason, _meta: Atomspace::ReadClient::SAFE_META },
+               status: 503
+      end
+
+      # Sidecar liveness + population check for MirrorReadiness. Reports the DeckoCard count from the
+      # ReadClient's NORMALIZED space_stats (`{ atom_count:, types: {<kind> => count}, mirror_lag: }` --
+      # extraction is centralized in MirrorReadiness.card_count_from_stats), which MirrorReadiness
+      # compares against the last completed bootstrap's cards_swept -- a bare non-empty check would
+      # false-green a partial post-restart Space once the drain applies even one row (Codex C2). Any
+      # failure (unbound/unreachable client, transport error, malformed body) is treated as
+      # unreachable -> not ready (fail closed).
+      def sidecar_health
+        stats = read_client.space_stats
+        { reachable: true, card_count: Atomspace::MirrorReadiness.card_count_from_stats(stats) }
+      rescue StandardError
+        { reachable: false, card_count: 0 }
       end
 
       def token_scopes
