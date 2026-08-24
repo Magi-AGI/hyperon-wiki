@@ -72,6 +72,11 @@ Both are started only by the activation / coordinated-rebuild runbook. The drift
 - **No read exposure before readiness** — the read surface fails closed `503 mirror_not_ready` until
   the mirror is enabled + migrated + bootstrapped + backed by a reachable, non-empty sidecar (see
   Readiness gate). Do not grant `mcp:atomspace:read` to agents until go-live is verified.
+  **POLICY REV4 caveat:** the scope is no longer purely an allowlist knob — admin and
+  `Raw Data Analyst` principals now receive it automatically at token mint (see
+  [Read-scope policy](#read-scope-policy-rev4)), so "not granted yet" means *those principals must
+  not mint tokens against the L9 surface yet*, not merely "`ATOMSPACE_READ_GRANTS` is empty". The
+  readiness gate (503 `mirror_not_ready`) remains the real fail-closed protection here.
 - A **WS6/page-attribution agent** may be active on the prod tree — keep ops narrow, do not clobber
   its staged/untracked work.
 
@@ -118,7 +123,34 @@ window; either way reads stay gated by the readiness check.
 9. **Start drift monitors.** `systemctl start atomspace-mirror-drift`. Schedule the Mechanism-3 sweep
    (`atomspace_mirror:drift_sweep`) off-hours via a systemd timer or cron.
 10. **Verify + expose reads.** Save a card, poll the L9 read path (`:ready` after drain), run one
-    drift sweep (expect `stable`, zero drift). Only then grant `mcp:atomspace:read` to agents.
+    drift sweep (expect `stable`, zero drift). Only then grant `mcp:atomspace:read` to agents —
+    under REV4 that means: only then hand out tokens minted for admin / `Raw Data Analyst`
+    principals, and only then add service-key entries to `ATOMSPACE_READ_GRANTS`.
+
+## Read-scope policy (REV4)
+
+`mcp:atomspace:read` is minted by `McpApi::AtomspaceGrants` (`mod/mcp_api/lib/mcp_api/`) for:
+
+| Principal | Auto-granted? | Source |
+|---|---|---|
+| Decko **admin** user | yes | `Mcp::UserAuthenticator.check_admin_status` |
+| Decko role **`Raw Data Analyst`** | yes | `Mcp::UserAuthenticator.get_user_roles` (case/separator-folded) |
+| Anything in `ATOMSPACE_READ_GRANTS` | yes | ENV allowlist, matched against the JWT `sub` |
+| **API-key** principals (`key:<id>`) | **no** — allowlist only | role on a key token is caller-asserted; the legacy `MCP_API_KEY` is permitted every role |
+
+REV4 supersedes REV3's "explicit allowlist only, never role-derived": the mirror *is* the
+raw-data surface, admins already bypass Decko read rules, and `Raw Data Analyst` is the role
+designed for full raw-data access. Unchanged by REV4:
+
+- **`mcp:admin` is a separate scope.** Read scope never implies it, so quarantine
+  (`mcp:atomspace:read` + `mcp:admin`) stays closed to a non-admin `Raw Data Analyst`.
+- **Card-scoped responses are still filtered per atom** through Decko read rules
+  (`AtomspaceReadFilter`). REV4 widens who may *call* the L9 surface, not what any caller may
+  *see*. A `Raw Data Analyst` sees exactly what their `+*read` rules already allow — if analysts
+  are expected to read all `RawData+…` content, that is a Decko read-rule configuration task, not
+  a token-scope one.
+- Aggregate tools (`atom_types`, `atom_count_by_type`, `space_stats`) are gate-only and carry no
+  card-scoped payload, so they expose counts/type names to any read-scoped principal.
 
 Each step's rollback: unset `ATOMSPACE_MIRRORING_ENABLED` in `.env.production` + restart the writers
 (hook no-ops, port unbinds → reads 503). The migration rollback is additive and exactly reversible

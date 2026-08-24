@@ -8,8 +8,10 @@ module McpApi
     class << self
       # Generate RS256 JWT for given role and API key.
       # scopes: optional Array embedded as a space-delimited "scope" claim. Backward-compatible
-      # (omitting/empty => no scope claim). mcp:atomspace:read is granted ONLY via the explicit
-      # AtomspaceGrants allowlist, never role-derived (Codex guardrail).
+      # (omitting/empty => no scope claim). This service does NOT decide scope -- callers pass an
+      # already-authorized list. mcp:atomspace:read comes from McpApi::AtomspaceGrants (POLICY
+      # REV4: explicit ENV allowlist OR admin / Raw Data Analyst principal); mcp:admin is a
+      # separate scope and is never implied by read scope.
       def generate_token(role:, api_key_id:, expires_in: nil, scopes: [])
         expires_in ||= token_ttl
         now = Time.now.to_i
