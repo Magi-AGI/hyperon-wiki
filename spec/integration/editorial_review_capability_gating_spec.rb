@@ -74,6 +74,7 @@ RSpec.describe "editorial_review capability gating (WS6 Phase 8.1)" do
       .each { |k| Card::Env.params.delete(k) }
     Card::Auth.as_bot do
       ["#{proposal_name}+merge audit", "#{draft_name}+audit", draft_name,
+       "#{proposal_name}+mode",
        "#{proposal_name}+provenance", "#{proposal_name}+base", proposal_name,
        "#{editor_name}+*roles", editor_name, plain_name,
        "#{parent_name}+*self+*update", "#{parent_name}+tag", ai_name, parent_name]
@@ -147,6 +148,12 @@ RSpec.describe "editorial_review capability gating (WS6 Phase 8.1)" do
 
     it "writes the parent ONLY through apply_merge_draft, and only for an update-capable user" do
       Card::Auth.as_bot { Card.create!(name: proposal_name, type: "RichText", content: ai0) }
+      # CP006C: the seed and apply gates fail closed unless the proposal's +mode
+      # sidecar records `full-replacement`. This example is about PERMISSION, so
+      # declare mergeability explicitly to isolate the capability assertion.
+      Card::Auth.as_bot do
+        Card.create!(name: "#{proposal_name}+mode", type: "Plain Text", content: "full-replacement")
+      end
       # Seed a merge draft that accepts the AI hunk (server re-derives from selections).
       Card::Env.params[:hunk_selections] = JSON.generate(ai_hunk => "proposal")
       Card::Env.params[:parent_act_id] = parent_act_id.to_s

@@ -55,6 +55,18 @@ event :rederive_merge_draft, :prepare_to_validate, on: :save,
   parent = proposal.left
   next unless parent
 
+  # CP006C fail-closed gate (server side). The workbench view already refuses to
+  # render controls for an unmodeled proposal, but a crafted POST could carry
+  # hunk_selections directly. Re-check the `+mode` sidecar here so a merge draft
+  # can never be seeded or reset from a proposal this workbench may not merge.
+  # errors.add (not a bare `next`) so the save is REJECTED — skipping would let
+  # the client's own assembled content stand, which is the bypass being closed.
+  mode_info = ProposalMode.for_proposal(proposal)
+  unless mode_info[:mergeable]
+    errors.add(:proposal_mode, mode_info[:message])
+    next
+  end
+
   # Drift gate: the reviewer assembled against a specific parent act; if the
   # parent moved since, reject so the audit can't claim a stale review basis.
   submitted = Env.params[:parent_act_id].presence&.to_i
@@ -171,6 +183,15 @@ event :apply_merge_draft, :finalize, on: :update,
 
   parent = proposal.left
   next merge_apply_reject("proposal has no parent card") unless parent
+
+  # CP006C fail-closed gate (0). Checked BEFORE the four-fold gate and before any
+  # parent write, and re-read from the sidecar at apply time rather than trusted
+  # from when the draft was seeded — so a draft assembled while the proposal was
+  # `full-replacement` cannot be applied after the mode was removed, changed to
+  # `manual-review-packet`/`diff`, or corrupted. Stale drafts are the reason this
+  # cannot rely on the seed-time check alone.
+  apply_mode = ProposalMode.for_proposal(proposal)
+  next merge_apply_reject(apply_mode[:message]) unless apply_mode[:mergeable]
 
   audit = Card.fetch("#{name}+audit")
   rec = audit&.db_content.present? ? ProposalProvenance.parse(audit.db_content) : nil
