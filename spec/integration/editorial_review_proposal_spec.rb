@@ -85,9 +85,22 @@ RSpec.describe "editorial_review +proposal set" do
         Card.create!(name: parent_name, type: "RichText", content: "<p>v1</p>")
         first_act = Card.fetch(parent_name).acts.last.id
         Card.fetch(parent_name).update!(content: "<p>v2</p>") # parent moves on
-        # Generator pre-stamps the read-time base (the older act).
-        Card.create!(name: "#{proposal_name}+base", type: "Number", content: first_act.to_s)
-        Card.create!(name: proposal_name, type: "RichText", content: "<p>proposed</p>")
+
+        # Generator pre-stamps the read-time base (the older act) by supplying
+        # +base as a SUBCARD of the proposal, in one act.
+        #
+        # This models the real generator path. It is also the only correct way to
+        # express it: creating "#{proposal_name}+base" as a standalone card first
+        # makes Decko auto-create the compound left card "#{proposal_name}" as an
+        # empty shell, and stamp_proposal_base then fires on THAT creation. The
+        # base is honoured correctly at that point, but the shell already exists,
+        # so a subsequent Card.create! of the proposal fails the uniqueness
+        # validation. Subcards avoid the phantom shell entirely, and the +base
+        # child is stored before the parent's :finalize stage, so
+        # stamp_proposal_base still sees a pre-stamped base and records
+        # generator_read_time rather than server_current.
+        Card.create!(name: proposal_name, type: "RichText", content: "<p>proposed</p>",
+                     subcards: { "+base" => { type: "Number", content: first_act.to_s } })
       end
     end
 
