@@ -92,7 +92,8 @@ module UrlLinkifier
       t.remove
     end
 
-    # Merge anchors split by adjacent URL fragments
+    # Repair URL-shaped anchors that the chunk autolinker split at
+    # non-URI punctuation. Authored anchors are intentionally left untouched.
     fix_split_url_fragments(frag)
 
     frag.to_html
@@ -112,60 +113,51 @@ module UrlLinkifier
     end
   end
 
-  INLINE_NAMES = %w[span b i em strong small code samp kbd u s sup sub].freeze
+  TRAILING_PUNCT_RUN = /[\.,!?:;\)\]\}\"']+\z/
+  CONTINUATION_RE = /\A([\u2013\u2014\u2026\u00A4\/\?#&=A-Za-z0-9\-._~:@!$'()*+,;=%]+)/
 
   def fix_split_url_fragments(frag)
     frag.css('a[href]').each do |a|
       href = a['href']
       next unless href && (href.start_with?('http://', 'https://') || href.start_with?('www.'))
+      next unless bare_url_anchor?(a, href)
 
       node = a.next_sibling
-      while node
-        text_node = nil
-        if node.text?
-          text_node = node
-        elsif node.element? && INLINE_NAMES.include?(node.name.downcase) && node.children.length == 1 && node.children.first.text?
-          text_node = node.children.first
-        end
+      next unless node&.text?
 
-        break unless text_node
+      raw = node.text.to_s
+      next if raw.empty? || raw.match?(/\A[\s\u00A0]/)
 
-        raw = text_node.text
-        break if raw.nil? || raw.empty?
+      match = raw.match(CONTINUATION_RE)
+      next unless match
 
-        # Leading spaces / NBSPs
-        leading_ws = raw[/\A[\s\u00A0]*/]
-        rest = raw[leading_ws.length..-1] || ''
+      raw_ext = match[1]
+      ext = raw_ext.sub(TRAILING_PUNCT_RUN, '')
+      next if ext.empty?
 
-        # Accept a contiguous run of URL-ish continuation characters
-        if (m = rest.match(/\A([\u2013\u2014\u2026\u00A4\/\?#&=A-Za-z0-9\-._~:@!$'()*+,;=%]+)/))
-          ext = m[1]
+      a.add_child(Nokogiri::XML::Text.new(ext, a.document))
+      a['href'] = encode_url_piece(href) + encode_url_piece(ext)
 
-          # Update anchor text and href
-          a.content = (a.text.to_s + ext)
-          a['href'] = encode_url_piece(href) + encode_url_piece(ext)
-
-          # Remove consumed portion from sibling
-          remainder = rest[ext.length..-1] || ''
-          if remainder.empty?
-            parent = text_node.parent
-            text_node.remove
-            if parent != a && parent.element? && parent.children.empty?
-              parent.remove
-            end
-          else
-            text_node.content = remainder
-          end
-
-          # Continue to next sibling
-          node = (node.element? ? node.next_sibling : text_node.next_sibling)
-          href = a['href']
-          next
-        end
-
-        break
+      remainder = raw[ext.length..-1] || ''
+      if remainder.empty?
+        node.remove
+      else
+        node.content = remainder
       end
     end
+  end
+
+  # Only an anchor whose visible text is itself the URL can be a truncated
+  # autolinker product. Authored anchors such as
+  # `<a href="https://github.com/trueagi-io/chaining">trueagi-io/chaining</a>`
+  # or anchors with child markup must not absorb following prose.
+  def bare_url_anchor?(anchor, href)
+    return false unless anchor.children.length == 1 && anchor.children.first.text?
+
+    text = anchor.text.to_s
+    return false if text.empty? || text.match?(/\s/)
+
+    normalize_href(text) == normalize_href(href)
   end
 
   def encode_url_piece(str)
