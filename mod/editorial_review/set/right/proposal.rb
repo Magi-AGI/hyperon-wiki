@@ -621,6 +621,23 @@ format :html do
     return merge_workbench_merged_view(parent, merged_audit) if merged_audit&.db_content.present?
 
     begin
+      # CP006C fail-closed gate. This workbench treats the proposal body as a
+      # candidate WHOLE-PARENT REPLACEMENT, so it may only act on a proposal
+      # whose `+mode` sidecar records `full-replacement`. Missing, unrecognized,
+      # or known-but-unsupported (`manual-review-packet`, `diff`) all stop here,
+      # BEFORE the payload is built — so no `ws6-mw-data` island, no hunk rows
+      # and no assemble/polish/apply controls are ever emitted for an unmodeled
+      # proposal. The server-side seed and apply events gate independently, so a
+      # crafted POST cannot route around this view.
+      #
+      # Inside the rescue deliberately: if the sidecar lookup itself were ever to
+      # raise, the existing handler renders the plain danger alert, which also
+      # emits no merge affordances. Every failure mode stays fail-closed.
+      mode_info = ProposalMode.for_proposal(card)
+      unless mode_info[:mergeable]
+        return ProposalMode.blocked_notice_html(mode_info[:mode], proposal_name: card.name)
+      end
+
       fmt = card.type_name == "Markdown" ? :markdown : :html
       resolve = BaseResolver.resolve(card)
       payload = MergeWorkbench.build_payload(

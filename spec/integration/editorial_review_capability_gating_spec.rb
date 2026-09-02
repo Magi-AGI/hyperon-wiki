@@ -54,6 +54,33 @@ RSpec.describe "editorial_review capability gating (WS6 Phase 8.1)" do
     end
   end
 
+  def admin_members_name
+    "Administrator+*members"
+  end
+
+  # Decko resolves a user's roles from the ROLE side, not the user side.
+  # card-mod-account's Self::Role.generate_rolehash searches for cards matching
+  # `left: {type_id: RoleID}, right_id: MembersID` — i.e. `<Role>+*members` — and
+  # Card#fetch_roles is `[AnyoneSignedInID] + Self::Role.role_ids(id)`. A
+  # user-side `<user>+*roles` pointer is therefore never consulted: creating one
+  # silently grants nothing, which is exactly what made this fixture's "editor"
+  # indistinguishable from a plain signed-in user.
+  #
+  # Saving `<Role>+*members` updates the cached role hash through
+  # card-mod-account's type_plus_right/role/members.rb, so no manual cache reset
+  # is needed here.
+  def grant_admin_role(user_name)
+    members = Card.fetch(admin_members_name)
+    if members
+      members.update!(
+        content: [members.db_content.to_s, "[[#{user_name}]]"].reject(&:empty?).join("\n")
+      )
+    else
+      Card.create!(name: admin_members_name, type_id: Card::PointerID,
+                   content: "[[#{user_name}]]")
+    end
+  end
+
   before do
     Card::Auth.as_bot do
       Card.create!(name: parent_name, type: "RichText", content: parent0)
@@ -63,9 +90,22 @@ RSpec.describe "editorial_review capability gating (WS6 Phase 8.1)" do
                    content: "[[Administrator]]")
       # An update-capable "editor" (Administrator) and a plain signed-in non-editor.
       Card.create!(name: editor_name, type_id: Card::UserID)
-      Card.create!(name: "#{editor_name}+*roles", type_id: Card::PointerID,
-                   content: "[[Administrator]]")
       Card.create!(name: plain_name, type_id: Card::UserID)
+
+      # Administrator+*members is a SHARED, pre-seeded card. Capture it so the
+      # after hook can put it back exactly; appending rather than overwriting
+      # keeps the seeded members intact for anything else in the suite.
+      #
+      # The explicit captured flag matters: a nil @admin_members_before is
+      # ambiguous on its own — it means either "the card did not exist" or "this
+      # before hook failed before we got here". Without the flag the after hook
+      # would read the second case as the first and DELETE the shared, seeded
+      # Administrator+*members card.
+      @admin_members_captured = false
+      @admin_members_before = Card.fetch(admin_members_name)&.db_content
+      @admin_members_captured = true
+
+      grant_admin_role(editor_name)
     end
   end
 
@@ -73,9 +113,22 @@ RSpec.describe "editorial_review capability gating (WS6 Phase 8.1)" do
     %i[legacy_bridge_from proposal_source apply_to_parent merge_draft hunk_selections parent_act_id]
       .each { |k| Card::Env.params.delete(k) }
     Card::Auth.as_bot do
+      # Restore the shared Administrator+*members card before deleting the test
+      # users, so the role grant never leaks into another example. Only touch it
+      # if this example actually captured the prior state (see before hook).
+      if @admin_members_captured
+        members = Card.fetch(admin_members_name)
+        if @admin_members_before
+          members&.update!(content: @admin_members_before)
+        else
+          members&.delete!
+        end
+      end
+
       ["#{proposal_name}+merge audit", "#{draft_name}+audit", draft_name,
+       "#{proposal_name}+mode",
        "#{proposal_name}+provenance", "#{proposal_name}+base", proposal_name,
-       "#{editor_name}+*roles", editor_name, plain_name,
+       editor_name, plain_name,
        "#{parent_name}+*self+*update", "#{parent_name}+tag", ai_name, parent_name]
         .each { |n| Card.fetch(n)&.delete! }
     end
@@ -147,6 +200,12 @@ RSpec.describe "editorial_review capability gating (WS6 Phase 8.1)" do
 
     it "writes the parent ONLY through apply_merge_draft, and only for an update-capable user" do
       Card::Auth.as_bot { Card.create!(name: proposal_name, type: "RichText", content: ai0) }
+      # CP006C: the seed and apply gates fail closed unless the proposal's +mode
+      # sidecar records `full-replacement`. This example is about PERMISSION, so
+      # declare mergeability explicitly to isolate the capability assertion.
+      Card::Auth.as_bot do
+        Card.create!(name: "#{proposal_name}+mode", type: "Plain Text", content: "full-replacement")
+      end
       # Seed a merge draft that accepts the AI hunk (server re-derives from selections).
       Card::Env.params[:hunk_selections] = JSON.generate(ai_hunk => "proposal")
       Card::Env.params[:parent_act_id] = parent_act_id.to_s

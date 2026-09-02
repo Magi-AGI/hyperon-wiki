@@ -16,6 +16,33 @@ RSpec.describe "editorial_review +merge draft set" do
   let(:proposal_name) { "#{parent_name}+proposal" }
   let(:draft_name) { "#{proposal_name}+merge draft" }
   let(:audit_name) { "#{draft_name}+audit" }
+  let(:mode_name) { "#{proposal_name}+mode" }
+  let(:merge_audit_name) { "#{proposal_name}+merge audit" }
+
+  # CP006C: the workbench, the seed and the apply gate all fail closed unless the
+  # proposal's +mode sidecar records `full-replacement`. Every happy path below
+  # therefore has to declare mergeability explicitly — that is the point of the
+  # gate, not incidental setup noise. Passing nil removes the sidecar.
+  def stamp_mode(value = "full-replacement")
+    Card::Auth.as_bot do
+      existing = Card.fetch(mode_name)
+      if value.nil?
+        existing&.delete!
+      elsif existing
+        existing.update!(content: value)
+      else
+        Card.create!(name: mode_name, type: "Plain Text", content: value)
+      end
+    end
+  end
+
+  def parent_content
+    Card::Auth.as_bot { Card.fetch(parent_name).db_content }
+  end
+
+  def workbench_html
+    Card::Auth.as_bot { Card.fetch(proposal_name).format(:html).render(:merge_workbench) }
+  end
 
   def audit
     Card::Auth.as_bot { JSON.parse(Card.fetch(audit_name).db_content) }
@@ -48,13 +75,18 @@ RSpec.describe "editorial_review +merge draft set" do
       Card.create!(name: parent_name, type: "RichText", content: "<p>A</p>\n<p>B</p>")
       Card.create!(name: proposal_name, type: "RichText", content: "<p>A</p>\n<p>B-ai</p>")
     end
+    # Default these examples to the one mergeable mode; the CP006C block below
+    # overrides it per example to exercise the blocked paths.
+    stamp_mode
   end
 
   after do
     Card::Env.params.delete(:hunk_selections)
     Card::Env.params.delete(:parent_act_id)
+    Card::Env.params.delete(:apply_to_parent)
     Card::Auth.as_bot do
-      [audit_name, draft_name, "#{proposal_name}+provenance", "#{proposal_name}+base",
+      [merge_audit_name, audit_name, draft_name, mode_name,
+       "#{proposal_name}+provenance", "#{proposal_name}+base",
        proposal_name, parent_name].each { |n| Card.fetch(n)&.delete! }
     end
   end
@@ -115,6 +147,109 @@ RSpec.describe "editorial_review +merge draft set" do
         Card::Auth.as_bot { Card.fetch(draft_name).update!(content: "should-not-take") }
       end.to raise_error(/parent changed/)
       expect(draft_content).to eq(before_content)
+    end
+  end
+
+  # CP006C. The merge workbench treats the proposal body as a candidate
+  # WHOLE-PARENT REPLACEMENT, so it may only act on a proposal whose +mode
+  # sidecar records `full-replacement`. These specs cover all three enforcement
+  # points: the view, the server-side seed, and the apply gate.
+  context "CP006C fail-closed proposal mode" do
+    shared_examples "a blocked workbench" do
+      it "renders the blocked notice and emits no merge affordances" do
+        html = workbench_html
+        expect(html).to include("ws6-mode-blocked")
+        expect(html).not_to include("ws6-mw-data")
+        expect(html).not_to include('data-ws6="polish"')
+        expect(html).not_to include('data-ws6="apply"')
+        expect(html).not_to include('data-ws6="assemble"')
+        expect(html).not_to include('data-ws6="reset"')
+      end
+    end
+
+    context "when the +mode sidecar is missing" do
+      before { stamp_mode(nil) }
+
+      include_examples "a blocked workbench"
+
+      it "refuses to seed a merge draft from crafted hunk_selections" do
+        expect { seed({ ai_hunk => "proposal" }) }.to raise_error(/mode/i)
+        expect(Card::Auth.as_bot { Card.fetch(draft_name) }).to be_nil
+        expect(Card::Auth.as_bot { Card.fetch(audit_name) }).to be_nil
+        expect(parent_content).to eq("<p>A</p>\n<p>B</p>")
+      end
+    end
+
+    context "when the mode is manual-review-packet" do
+      before { stamp_mode("manual-review-packet") }
+
+      include_examples "a blocked workbench"
+
+      it "refuses to seed a merge draft" do
+        expect { seed({ ai_hunk => "proposal" }) }.to raise_error(/mode/i)
+        expect(Card::Auth.as_bot { Card.fetch(draft_name) }).to be_nil
+      end
+    end
+
+    context "when the mode is diff" do
+      before { stamp_mode("diff") }
+
+      include_examples "a blocked workbench"
+    end
+
+    context "when the mode is an unrecognized value" do
+      before { stamp_mode("whatever the author felt like") }
+
+      include_examples "a blocked workbench"
+    end
+
+    context "when the mode is full-replacement" do
+      it "keeps the existing happy path intact" do
+        html = workbench_html
+        expect(html).to include("ws6-mw-data")
+        expect(html).to include('data-ws6="polish"')
+        expect(html).not_to include("ws6-mode-blocked")
+      end
+
+      it "still seeds and re-derives from selections" do
+        seed({ ai_hunk => "proposal" })
+        expect(draft_content).to eq("<p>A</p>\n<p>B-ai</p>")
+      end
+    end
+
+    # The apply gate re-reads the sidecar at apply time rather than trusting the
+    # value that was current when the draft was assembled. Without that, a draft
+    # seeded while the proposal was mergeable would stay applicable forever.
+    context "a draft assembled while mergeable, then the mode changes" do
+      it "refuses to apply after the mode is removed, leaving parent and audit untouched" do
+        seed({ ai_hunk => "proposal" })
+        body = draft_content
+        stamp_mode(nil)
+
+        Card::Env.params[:apply_to_parent] = "true"
+        Card::Env.params[:parent_act_id] = parent_act_id.to_s
+        expect do
+          Card::Auth.as_bot { Card.fetch(draft_name).update!(content: body) }
+        end.to raise_error(/mode/i)
+
+        expect(parent_content).to eq("<p>A</p>\n<p>B</p>")
+        expect(Card::Auth.as_bot { Card.fetch(merge_audit_name) }).to be_nil
+      end
+
+      it "refuses to apply after the mode is downgraded to manual-review-packet" do
+        seed({ ai_hunk => "proposal" })
+        body = draft_content
+        stamp_mode("manual-review-packet")
+
+        Card::Env.params[:apply_to_parent] = "true"
+        Card::Env.params[:parent_act_id] = parent_act_id.to_s
+        expect do
+          Card::Auth.as_bot { Card.fetch(draft_name).update!(content: body) }
+        end.to raise_error(/mode/i)
+
+        expect(parent_content).to eq("<p>A</p>\n<p>B</p>")
+        expect(Card::Auth.as_bot { Card.fetch(merge_audit_name) }).to be_nil
+      end
     end
   end
 
