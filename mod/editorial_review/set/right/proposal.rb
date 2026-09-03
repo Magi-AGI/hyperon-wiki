@@ -354,6 +354,48 @@ WS6_MW_JS = <<~'WS6JS'
       return '/' + encodeURIComponent(root.getAttribute('data-proposal') + '+merge draft') + '?view=edit';
     }
 
+    // CP006E — shared save transport for BOTH workbench POSTs.
+    //
+    // Decko POST-redirect-GETs a successful /card/update: it answers 303 See
+    // Other pointing at the deck's CONFIGURED origin. When the browser sits on a
+    // different origin than that configured one (the local stack serves this
+    // same deck on 127.0.0.1 while the deck is configured for its public host),
+    // fetch's default redirect:'follow' chases that redirect cross-origin, CORS
+    // blocks the follow-up GET, and the promise REJECTS — so the catch block
+    // reported "network error" AFTER the server had already committed. That
+    // false negative is worse than a plain error: it invites a destructive retry.
+    //
+    // redirect:'manual' stops fetch AT the redirect (never following it), and we
+    // read the redirect itself as the server's success verdict. This does not
+    // weaken anything: Decko rejects with a NON-redirect status and a JSON error
+    // body (403 permission, 409/422 gate rejections), which still lands in the
+    // rejection branches below, and a pre-response network failure still lands
+    // in .catch and is still reported as a failure. We navigate with relative
+    // URLs, so success stays on whatever origin the human is actually browsing.
+    function postCardUpdate(fd, token) {
+      return fetch('/card/update', {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': token, 'Accept': 'application/json' },
+        credentials: 'same-origin',
+        redirect: 'manual',
+        body: fd
+      });
+    }
+
+    // "Did the SERVER commit this save?" — the single definition of success.
+    //   res.ok                 : 2xx (JSON/no-redirect deck configurations)
+    //   type 'opaqueredirect'  : redirect:'manual' saw a redirect (status is 0)
+    //   3xx                    : a redirect we can still see (same-origin/manual
+    //                            is opaque, but a proxy or a future fetch impl
+    //                            may surface it; a redirect is a commit either way)
+    // Everything else — including any failure BEFORE a response — is not success.
+    function savedOk(res) {
+      if (!res) return false;
+      if (res.ok) return true;
+      if (res.type === 'opaqueredirect') return true;
+      return res.status >= 300 && res.status < 400;
+    }
+
     function seedMergeDraft(btn, isReset) {
       if (unresolved() !== 0) return;
       if (isReset && !window.confirm(
@@ -369,13 +411,8 @@ WS6_MW_JS = <<~'WS6JS'
       var orig = btn.textContent;
       btn.disabled = true;
       btn.textContent = 'Working...';
-      fetch('/card/update', {
-        method: 'POST',
-        headers: { 'X-CSRF-Token': token, 'Accept': 'application/json' },
-        credentials: 'same-origin',
-        body: fd
-      }).then(function (res) {
-        if (res.ok || res.status === 302) { window.location.href = editUrl(); return; }
+      postCardUpdate(fd, token).then(function (res) {
+        if (savedOk(res)) { window.location.href = editUrl(); return; }
         return res.text().then(function (body) {
           btn.disabled = false; btn.textContent = orig;
           if (/parent changed|parent_act_id/i.test(body)) {
@@ -445,13 +482,8 @@ WS6_MW_JS = <<~'WS6JS'
       applyBtn.disabled = true;
       applyBtn.textContent = 'Applying...';
       setApplyStatus('working', 'Applying to ' + parentName + '...');
-      fetch('/card/update', {
-        method: 'POST',
-        headers: { 'X-CSRF-Token': token, 'Accept': 'application/json' },
-        credentials: 'same-origin',
-        body: fd
-      }).then(function (res) {
-        if (res.ok || res.status === 302) {
+      postCardUpdate(fd, token).then(function (res) {
+        if (savedOk(res)) {
           setApplyStatus('ok', 'Applied. Opening ' + parentName + '...');
           window.location.href = '/' + encodeURIComponent(root.getAttribute('data-parent'));
           return;
