@@ -1,6 +1,6 @@
 # MCP API Testing Guide
 
-This document explains the comprehensive test suite for the Magi Archive MCP API.
+This document explains the comprehensive test suite for the Hyperon Wiki MCP API.
 
 ## Test Types
 

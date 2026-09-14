@@ -215,7 +215,7 @@ gem "bcrypt"           # API key hashing (likely already present via Devise/Rail
 JWT_PRIVATE_KEY_PATH=/path/to/private_key.pem
 JWT_PUBLIC_KEY_PATH=/path/to/public_key.pem
 JWT_KEY_ID=key-001
-JWT_ISSUER=magi-archive
+JWT_ISSUER=<deck-name>
 JWT_EXPIRY=3600  # 1 hour
 
 # API Key Management

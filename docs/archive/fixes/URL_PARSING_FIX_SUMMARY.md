@@ -117,7 +117,7 @@ Note: `%C2%A4` encodes U+00A4. If the intent is a new query param, replace `¤` 
 
 **To test**:
 1. Create or edit a richtext card
-2. Add a URL with an em-dash or ellipsis: `https://wiki.magi-agi.org/Notes—Important`
+2. Add a URL with an em-dash or ellipsis: `https://example.com/Notes—Important`
 3. Save and view the card
 4. Verify the entire URL is clickable
 

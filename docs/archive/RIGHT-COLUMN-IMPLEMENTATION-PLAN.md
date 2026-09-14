@@ -1,7 +1,7 @@
 # Right Column Implementation Plan — Hyperon Wiki
 
 **Status**: DRAFT 2026-05-09
-**Inspiration**: parallels the AtomSpace Mirror Implementation Plan (Magi Archive card 17161, parent `Neoterics+Magus+Atomspace Layer - Wiki Integration Plan`).
+**Inspiration**: parallels the AtomSpace Mirror Implementation Plan (internal source wiki, card 17161, parent `Neoterics+Magus+Atomspace Layer - Wiki Integration Plan`).
 **Stub state**: Sandra-style two-panel right column shipped 2026-05-09 (`*sidebar_right` HTML card + JS handlers in `Left Sidebar Layout`). Stub gives the visual surface; this plan covers the real backend build.
 
 ---
@@ -139,7 +139,7 @@ Browser (*sidebar_right + setupCodePlayground + setupWikiChat)
 - **C-1** Replace `setupCodePlayground` stub with `fetch("/api/playground/run", {method:"POST", body:JSON.stringify({code})})`. Render `output` / `stderr` distinctly. Show "(running…)" while pending.
 - **C-2** Replace `setupWikiChat` stub with EventSource-based SSE consumption of `/api/assistant/chat`. Append deltas to the in-progress assistant bubble. Show "(searching the wiki…)" pill on `tool_use` events.
 - **C-3** Stub fallback: on any `fetch`/`EventSource` error, fall through to the existing canned-response logic. Log a `console.warn` for debugging but show no error UI to the user (graceful degradation, I-9).
-- **C-4** Markdown-light rendering for assistant messages: convert `**bold**`, `[text](url)`, and `\n\n` paragraph breaks to HTML. Reject `<script>` / `<iframe>` (defense-in-depth even though the agent is system-prompted not to emit them).
+- **C-4** Markdown-light rendering for assistant messages: convert `**bold**`, inline links written as `[` text `](` url `)`, and `\n\n` paragraph breaks to HTML. Reject `<script>` / `<iframe>` (defense-in-depth even though the agent is system-prompted not to emit them).
 - **C-5** Keep the message bubbles + input layout identical to the stub — Sandra has already approved that.
 - **C-6** Chat history is in-memory only (I-4). Page reload empties it. (V2 considers `sessionStorage`.)
 
@@ -168,7 +168,7 @@ R1–R4 fits the post-2026-05-23 contract window; R5–R6 are post-launch. R1 id
 
 1. **Sandbox V1 pick**: Docker-per-request with seccomp + read-only rootfs + tmpfs `/tmp` + no network namespace. Warm-pool of 4 containers. AtomSpace session affinity tied to `<auth_id_or_session_id>` — signed-in users keep state across `Run` clicks (30 min idle timeout, max 100 concurrent), anonymous users get ephemeral per-request containers. See A-2 / A-2.1.
 2. **Model default**: `claude-sonnet-4-6`. Haiku is rejected for V1 — the assistant needs reliable MCP tool-orchestration (multi-step search → read → synthesize), and Haiku has been observed to underperform on agentic tool-use. Cost is acceptable given the rate-limited surface.
-3. **Publish target**: this doc → mirrored into Magi Archive as a card cluster, sibling to the AtomSpace Mirror plan under `Neoterics+Magus`. The local doc remains the editing source; published cards reflect locked content.
+3. **Publish target**: this doc → mirrored into the internal source wiki as a card cluster, sibling to the AtomSpace Mirror plan under `Neoterics+Magus`. The local doc remains the editing source; published cards reflect locked content.
 4. **Naming**: Public V1 name is "Wiki Assistant" (deliberately understated, funnel-aligned). Repo for Lane B is `magi-assistant-wiki` (sibling to `hyperon-wiki`, `hyperon-wiki-mcp`, `hyperon-wiki-ui`). Brand name decision deferred until post-launch usage data.
 5. **Auth tiering**: signed-in users get higher rate limit (60/min vs 10/min) and conversation cap (16k vs 6k tokens). Detection via Decko session cookie at the Nginx layer. See B-7.
 
@@ -176,7 +176,7 @@ R1–R4 fits the post-2026-05-23 contract window; R5–R6 are post-launch. R1 id
 
 ## Cross-references
 
-- `project_atomspace_mirror_implementation_plan_2026_05_08.md` — sibling AtomSpace plan, same Alex Peake spec style. Card 17161 in Magi Archive.
+- `project_atomspace_mirror_implementation_plan_2026_05_08.md` — sibling AtomSpace plan, same Alex Peake spec style. Card 17161 on the internal source wiki.
 - `project_hyperon_wiki_lovable_engagement_2026_05_04.md` — Lovable port context; Sandra's funnel-to-ASI-Create intent is documented there.
 - `project_metta_runtime_pilot_source1_2026_05_08.md` — Hyperon runtime HEAD `3f76dc46` v0.2.10 pinning; 0.2.x quirks for A-7.
 - `project_atomspace_phase4_pilot_2026_05_05.md` — V7-1 [AUTH-ON-READ-MIRROR] read-tool gate; PATCH-5 8-tool read surface.

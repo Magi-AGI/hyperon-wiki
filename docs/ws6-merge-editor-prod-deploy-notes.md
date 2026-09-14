@@ -1,8 +1,9 @@
 # WS6 — Production Deploy & Migration Notes
 
 For deploying `feature/ws6-merge-editor` (PR #25) to **wiki.hyperon.dev** after merge to
-`main`. Prod EC2 `54.183.80.144`; app `~/hyperon-wiki`; Ruby 3.2.3 (rbenv); Decko on :3000
-behind nginx. Both prod and dev run `RAILS_ENV=production`.
+`main`. Prod EC2 host `<deck-host>` (from the server-access handoff); app `~/hyperon-wiki`;
+Ruby 3.2.3 (rbenv); Decko on :3000 behind nginx. Both prod and dev run
+`RAILS_ENV=production`.
 
 Shell preamble (run once per session):
 ```bash

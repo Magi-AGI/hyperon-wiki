@@ -116,7 +116,7 @@ export MCP_API_KEY=test-api-key
 # Optional (defaults provided)
 export MCP_JWT_ENABLED=true
 export JWT_KEY_ID=test-key-001
-export JWT_ISSUER=magi-archive-test
+export JWT_ISSUER=<deck-name>-test
 export JWT_EXPIRY=3600
 export MCP_TOKEN_TTL=3600
 ```

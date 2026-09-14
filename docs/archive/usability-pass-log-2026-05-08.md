@@ -387,8 +387,8 @@ Started 2026-06-05. Junction: `Ecosystem+Magi+Magi Full` (ID 7180, **Published**
 
 - **7180 (Published parent)** — `+AI` proposal (7999) + `+AI+tag` (8000): standard breadcrumb (replacing `← Back to`), lifted TL;DR, "On this page" TOC (4 entries) with `id="magi-..."` anchors.
 - **7182 / 7186** (MAGUS Framework / Partnerships and Applications) — no edit needed (clean).
-- **7184 (Tools and Assistants)** — converted plain-text `wiki.magi-agi.org` to an explicit `https://` anchor (host 301s http→https; was render-time auto-linked to bare http).
-- **7187 (Status)** — converted `wiki.magi-agi.org` + `mcp.magi-agi.org` plain-text mentions to explicit `https://` anchors; de-linked the `{{RawData|view:link}}` pointer (reader-inaccessible) to plain text ("held in the Hyperon Wiki raw-source archive"); created `…+Status and Resources+last_verified` (PlainText, ID 7998, `2026-06-05`), inlined.
+- **7184 (Tools and Assistants)** — converted a plain-text sibling-wiki hostname to an explicit `https://` anchor (host 301s http→https; was render-time auto-linked to bare http).
+- **7187 (Status)** — converted two plain-text sibling hostnames (wiki and MCP) to explicit `https://` anchors; de-linked the `{{RawData|view:link}}` pointer (reader-inaccessible) to plain text ("held in the Hyperon Wiki raw-source archive"); created `…+Status and Resources+last_verified` (PlainText, ID 7998, `2026-06-05`), inlined.
 
 ---
 
@@ -444,7 +444,7 @@ ECAN · PLN · MORK · DAS · AtomSpace · Hyperon Experimental · OpenCog Legac
 - 5 cards walked: 7180 (Published parent — via `+AI` 7999/8000), 7182, 7184, 7186, 7187 + new sibling 7998. 2 subcards needed no edit.
 - Parent needs Anna's merge (breadcrumb + TL;DR + TOC); the 7184/7187 link edits are live.
 - URL: https://wiki.hyperon.dev/Ecosystem+Magi+Magi_Full
-- Note: the magi-agi.org hosts (the separate Magi Archive wiki + its MCP) are intentional external references; upgraded to https, kept as links.
+- Note: the sibling-side hosts (the separate internal source wiki + its MCP) are intentional external references; upgraded to https, kept as links.
 
 ### Batch 13 — Semantic Parsing Full (ready for Anna review)
 

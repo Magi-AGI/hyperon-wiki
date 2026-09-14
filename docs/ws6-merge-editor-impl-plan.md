@@ -88,7 +88,7 @@
 ## Branching (Codex condition)
 Use an **isolated worktree** so the active branch's 18 untracked files are never entangled:
 ```
-git -C E:/GitHub/Magi-AGI/hyperon-wiki worktree add ../hyperon-wiki-ws6 -b feature/ws6-merge-editor main
+git -C <hyperon-wiki-checkout> worktree add ../hyperon-wiki-ws6 -b feature/ws6-merge-editor main
 ```
 Work happens in `../hyperon-wiki-ws6` off clean `main`. (Confirm `origin/main` is fetched before any push — local `origin/main` did not resolve during inspection.)
 

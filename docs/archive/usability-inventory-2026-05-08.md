@@ -580,7 +580,7 @@ Read-only inventory feeding the usability pass on Lake's behalf, in response to 
 
 **Bracket leaks**: none.
 **RawData links**: none.
-**External URLs** (1 ⚠️ SUSPICIOUS): `http://wiki.magi-agi.org` ⚠️ SUSPICIOUS — verify (real domain but auto-link rendered without `https://`; the wiki itself is the Magi Archive — likely fine as an http→https redirect, but the cardinality of the bare-http rendering is worth flagging).
+**External URLs** (1 ⚠️ SUSPICIOUS): a sibling-wiki host, auto-link rendered without `https://` ⚠️ SUSPICIOUS — verify (real domain; likely fine as an http→https redirect, but the cardinality of the bare-http rendering is worth flagging).
 **Diagram opportunity**: yes — the 5-tool MCP architecture (Magi Assistant GM + Discord + Foundry + Smart Glasses + Magi Archive MCP) with their data flows (Discord audio → STT → MCP, Foundry browser → WebSocket → MCP, etc.) is a natural system diagram.
 **Undefined-on-first-use** (5): MCP (Model Context Protocol — defined inline parenthetically), Foundry VTT, VITURE Beast XR (specific brand), Tailscale VPN, Soundex / Metaphone (phonetic-matching algorithms).
 
@@ -596,7 +596,7 @@ Read-only inventory feeding the usability pass on Lake's behalf, in response to 
 
 **Bracket leaks**: none.
 **RawData links** (1): inline `RawData` link.
-**External URLs** (3): `medium.com/singularitynet/neoterics-...`. Plus 2 ⚠️ SUSPICIOUS — verify: `http://wiki.magi-agi.org` and `http://mcp.magi-agi.org` — same bare-http auto-link rendering issue. These are real Magi-side hosts but should be `https://`.
+**External URLs** (3): `medium.com/singularitynet/neoterics-...`. Plus 2 ⚠️ SUSPICIOUS — verify: two sibling-side hosts (wiki and MCP) with the same bare-http auto-link rendering issue. These are real hosts but should be `https://`.
 **Diagram opportunity**: yes — the 6-phase 5-year roadmap (SingularityNET Integration → Social Agents → Ownership/Marketplace → AI GM → Distribution Platform → Non-Gaming) is begging for a horizontal timeline diagram. The Four Differentiators (Transparency / Consistency / Plasticity / Corrigibility) would also benefit from a 4-quadrant visual.
 **Undefined-on-first-use** (4): MAGUS M2-M4 milestones (referenced without explanation of milestone numbering), STT (Speech-to-Text — assumed), Decko (the wiki platform — used without expansion), schema-first codegen.
 

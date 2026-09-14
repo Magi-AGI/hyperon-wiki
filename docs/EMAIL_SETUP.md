@@ -1,4 +1,10 @@
-# Email Setup for Magi Archive (Decko)
+# Email Setup for a Decko Deck
+
+> **Inherited template — placeholders only.** This guide came from a sibling Decko deck and
+> is queued for rewrite. The SMTP provider guidance is generic and reusable; every host,
+> key path, deck root, service name, and mail domain is a `<placeholder>`. Real values come
+> from the **server-access handoff** (the Administrator card and its children), not from a
+> repository file. Never commit SMTP credentials.
 
 This guide explains how to configure email for account creation, password resets, and other email-based features in your Decko instance.
 
@@ -59,8 +65,8 @@ Choose one of these providers and get your credentials:
 SSH into your production server and edit `.env.production`:
 
 ```bash
-ssh -i ~/.ssh/magi-archive-key.pem ubuntu@54.219.9.17
-cd /home/ubuntu/magi-archive
+ssh -i <ssh-key-path> <ssh-user>@<deck-host>
+cd <deck-root>
 nano .env.production
 ```
 
@@ -68,11 +74,11 @@ Add these variables (using credentials from your chosen provider):
 
 ```bash
 # Email Configuration
-MAILER_HOST=magi-archive.up.railway.app
+MAILER_HOST=<deck-public-domain>
 MAILER_PROTOCOL=https
 SMTP_ADDRESS=smtp.sendgrid.net
 SMTP_PORT=587
-SMTP_DOMAIN=magi-archive.up.railway.app
+SMTP_DOMAIN=<deck-public-domain>
 SMTP_USERNAME=apikey
 SMTP_PASSWORD=your-sendgrid-api-key-here
 SMTP_AUTHENTICATION=plain
@@ -86,16 +92,16 @@ Upload the updated `config/application.rb` file to production:
 
 ```bash
 # From your local machine
-scp -i ~/.ssh/magi-archive-key.pem config/application.rb ubuntu@54.219.9.17:/home/ubuntu/magi-archive/config/
+scp -i <ssh-key-path> config/application.rb <ssh-user>@<deck-host>:<deck-root>/config/
 ```
 
 ### 3. Restart the Application
 
 ```bash
-ssh -i ~/.ssh/magi-archive-key.pem ubuntu@54.219.9.17
-cd /home/ubuntu/magi-archive
+ssh -i <ssh-key-path> <ssh-user>@<deck-host>
+cd <deck-root>
 # If using systemd service:
-sudo systemctl restart magi-archive
+sudo systemctl restart <deck-service>
 
 # If using Railway:
 # Push to git and Railway will auto-deploy
@@ -106,10 +112,10 @@ sudo systemctl restart magi-archive
 After configuration, test email delivery using Rails console:
 
 ```bash
-ssh -i ~/.ssh/magi-archive-key.pem ubuntu@54.219.9.17
-cd /home/ubuntu/magi-archive
+ssh -i <ssh-key-path> <ssh-user>@<deck-host>
+cd <deck-root>
 set -a && source .env.production && set +a
-PATH="/home/ubuntu/.rbenv/shims:$PATH" bundle exec rails console
+PATH="<rbenv-shims>:$PATH" bundle exec rails console
 ```
 
 In the Rails console:
@@ -122,7 +128,7 @@ ActionMailer::Base.smtp_settings
 # Send a test email (replace with your email)
 Card::Mailer.mail(
   to: 'your-email@example.com',
-  from: 'noreply@magi-archive.up.railway.app',
+  from: 'noreply@<deck-public-domain>',
   subject: 'Test Email',
   body: 'If you receive this, email is working!'
 ).deliver_now
@@ -171,8 +177,8 @@ To prevent spam signups, you may want to add reCAPTCHA:
 
 1. **Check logs**:
    ```bash
-   ssh -i ~/.ssh/magi-archive-key.pem ubuntu@54.219.9.17
-   tail -100 /home/ubuntu/magi-archive/log/production.log
+   ssh -i <ssh-key-path> <ssh-user>@<deck-host>
+   tail -100 <deck-root>/log/production.log
    ```
 
 2. **Verify SMTP credentials** are correct in `.env.production`

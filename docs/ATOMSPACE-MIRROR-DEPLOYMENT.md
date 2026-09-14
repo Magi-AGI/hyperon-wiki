@@ -9,8 +9,8 @@ production (GAIA / SingularityNET RFP). Canonical design: **Card 17120** (System
 
 ## Topology (Phase 5, same-user)
 
-All three long-running processes and the Rails web process run as the **same Unix user (`ubuntu`)**,
-co-located on the prod app host. This is the approved Phase-5 topology and needs no shared-group work:
+All three long-running processes and the Rails web process run as the **same Unix user
+(`<app-user>` — the account the Decko app already runs as)**, co-located on the prod app host. This is the approved Phase-5 topology and needs no shared-group work:
 the sidecar creates its run dir `0700` and its socket `0600`, and every peer (web read client, drain
 worker) is the same user, so it can traverse and connect. If org policy later forces distinct users,
 the sidecar's hardcoded `os.chmod(run_dir, 0o700)` must become configurable (a sidecar code change) —
@@ -26,19 +26,24 @@ out of scope here.
 
 Unit + env templates live in `deploy/systemd/`. Copy each `*.service.example` to
 `/etc/systemd/system/<name>.service`, copy `atomspace-mirror.env.example` to
-`/home/ubuntu/atomspace-mirror.env` (`chmod 0600`, `chown ubuntu:ubuntu`), `systemctl daemon-reload`.
+`<ops-env-file>` (`chmod 0600`, owned by `<app-user>`), `systemctl daemon-reload`.
+
+> Concrete values for `<app-user>`, `<deck-root>`, `<ops-env-file>`, and `<rbenv-shims>`
+> come from the server-access handoff (the Administrator card and its children), not from
+> this file.
 
 **Two env files, distinct roles (Codex C1):**
-- **App env** `/home/ubuntu/hyperon-wiki/.env.production` — the existing file the web/jobs units
+- **App env** `<deck-root>/.env.production` — the existing file the web/jobs units
   already source: `DB_USERNAME`, `DATABASE_PASSWORD`, `DB_HOST`, `SECRET_KEY_BASE`, `RAILS_ENV`, and
   (at activation) the **`ATOMSPACE_MIRRORING_ENABLED` master gate**. The drain + drift units source it
   too (they need DB credentials). This is where the activation gate lives — the web hook reads it, not
   the atomspace file.
-- **Ops env** `/home/ubuntu/atomspace-mirror.env` — sidecar/drift tunables only (`SIDECAR_*`,
-  `ATOMSPACE_DRIFT_READ_TIMEOUT`, RYW bounds). No DB creds, no app secrets.
+- **Ops env** `<ops-env-file>` (the `atomspace-mirror.env` file created above) — sidecar/drift
+  tunables only (`SIDECAR_*`, `ATOMSPACE_DRIFT_READ_TIMEOUT`, RYW bounds). No DB creds, no app secrets.
 
-**Ruby is rbenv** (per `docs/AWS-DEPLOYMENT.md`): the units call `/home/ubuntu/.rbenv/shims/bundle` and
-put the shims on `PATH` — `/usr/bin/env bundle` would miss the rbenv-managed Ruby.
+**Ruby is rbenv** (per `docs/AWS-DEPLOYMENT.md`): the units call `<rbenv-shims>/bundle` and
+put `<rbenv-shims>` (and `<rbenv-bin>`) on `PATH` — `/usr/bin/env bundle` would miss the
+rbenv-managed Ruby.
 
 **Do NOT `systemctl enable` the sidecar or drain units** (they intentionally ship without
 `[Install]`): a host reboot must never auto-start an empty in-memory Space or resume the drain into it.
@@ -87,7 +92,7 @@ window; either way reads stay gated by the readiness check.
 4. **Start the sidecar (empty Space).** `systemctl start atomspace-mirror-sidecar`. Verify
    `GET /space_stats` `atom_count == 0` and `/health/watermark` reachable over the Unix socket.
 5. **Activate the hook, drain still paused.** Set `ATOMSPACE_MIRRORING_ENABLED=true` in the **app env
-   file** `/home/ubuntu/hyperon-wiki/.env.production` (the file web/jobs actually source — NOT
+   file** `<deck-root>/.env.production` (the file web/jobs actually source — NOT the ops env
    `atomspace-mirror.env`), then restart **web** and **every write-capable worker** (any
    delayed_job/jobs/runner/cron unit that can save a card). Do NOT start the drain yet. The save hook
    now enqueues forward `mirror_outbox` rows; the read-consistency port binds. Reads still fail closed

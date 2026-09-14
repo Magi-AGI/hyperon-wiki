@@ -1,6 +1,6 @@
 # Atomspace Integration Architecture
 
-**Project**: magi-archive Hyperon Atomspace Backend
+**Project**: Hyperon Wiki — Hyperon Atomspace Backend
 **Timeline**: Phase 3-4 (Month 3-9, 2026)
 **Status**: **Conceptual Sketch (Cluster-Pilot Reframed 2026-04-29)** — see "Cluster-Pilot Reframing" section below before treating any code block as runnable.
 **Last Updated**: 2026-04-29
@@ -51,7 +51,7 @@ The Phase 3 / Phase 4 diagrams below show **legacy aspirational architecture** r
 
 ## Executive Summary
 
-This document outlines the architecture for integrating Hyperon Atomspace as the backend knowledge graph for magi-archive. **As reframed by the 2026-04-29 cluster pilot, Phase 3 is a read-only semantic mirror — Decko/Rails/PostgreSQL remains the source of truth.** The integration enables symbolic reasoning and semantic queries beyond what PostgreSQL can trivially answer; distributed knowledge management via MORK is design-stage.
+This document outlines the architecture for integrating Hyperon Atomspace as the backend knowledge graph for the Hyperon Wiki. **As reframed by the 2026-04-29 cluster pilot, Phase 3 is a read-only semantic mirror — Decko/Rails/PostgreSQL remains the source of truth.** The integration enables symbolic reasoning and semantic queries beyond what PostgreSQL can trivially answer; distributed knowledge management via MORK is design-stage.
 
 **Key Decision**: This integration is **conditional** - only proceed if Phase 3 prototype proves Atomspace provides clear value over PostgreSQL **on a read-only mirror, with explicit caveats around PLN completeness (No-Go theorem)**.
 

@@ -1,8 +1,17 @@
-# AWS EC2 Deployment Guide for Magi-Archive
+# AWS EC2 Deployment Guide (Decko deck template)
 
-**Last Updated**: 2025-10-16
+**Last Updated**: 2026-09-08
 **Target Platform**: AWS EC2 + RDS PostgreSQL
 **Alternative to**: Railway (simpler but less control)
+
+> **Inherited template — placeholders only.** This walkthrough was written for a sibling
+> Decko deck, not for the Hyperon Wiki, and is queued for rewrite. Every host, key, path,
+> and domain is now a `<placeholder>`. Do not treat any value here as this wiki's
+> configuration. Real deployment values come from the **server-access handoff** — the
+> Administrator card and its children — not from a repository file.
+>
+> Verified facts about the Hyperon Wiki you may rely on: it is served at
+> `wiki.hyperon.dev` and is PostgreSQL-backed (`postgresql` adapter, `pg` gem).
 
 ---
 
@@ -126,8 +135,8 @@ With free tier: **$0-5/month** for first year!
 2. **Configuration**:
    - Engine: **PostgreSQL 15**
    - Template: **Free tier** (first year) or **Production** (multi-AZ)
-   - DB instance identifier: `magi-archive-db`
-   - Master username: `decko_admin`
+   - DB instance identifier: `<rds-instance>`
+   - Master username: `<db-user>`
    - Master password: `[generate secure password, save to password manager]`
 
 3. **Instance configuration**:
@@ -138,13 +147,13 @@ With free tier: **$0-5/month** for first year!
 4. **Connectivity**:
    - VPC: Default VPC
    - Public access: **No** (will connect from EC2 only)
-   - VPC security group: Create new → `magi-archive-db-sg`
+   - VPC security group: Create new → `<db-security-group>`
 
 5. **Database authentication**:
    - Password authentication
 
 6. **Additional configuration**:
-   - Initial database name: `magi_archive_production`
+   - Initial database name: `<db-name>`
    - Backup retention: **7 days** (free tier: 1 day)
    - ✓ Enable automatic backups
    - Backup window: **03:00-04:00 UTC** (off-peak)
@@ -156,10 +165,10 @@ With free tier: **$0-5/month** for first year!
 
 Once created, note these values:
 ```
-Endpoint: magi-archive-db.cz6yeqqqqs2l.us-west-1.rds.amazonaws.com
+Endpoint: <rds-endpoint>
 Port: 5432
-Database name: magi_archive_production
-Username: decko_admin
+Database name: <db-name>
+Username: <db-user>
 Password: [your secure password]
 ```
 
@@ -171,7 +180,7 @@ Password: [your secure password]
 
 1. **AWS Console → EC2 → Launch Instance**
 
-2. **Name**: `magi-archive-web`
+2. **Name**: `<ec2-instance>`
 
 3. **Application and OS Images (AMI)**:
    - **Ubuntu Server 22.04 LTS** (free tier eligible)
@@ -183,17 +192,17 @@ Password: [your secure password]
 
 5. **Key pair (login)**:
    - Click "Create new key pair"
-   - Name: `magi-archive-key`
+   - Name: `<ssh-key-name>`
    - Type: RSA
    - Format: `.pem` (for SSH)
-   - Download and save securely: `~/magi-archive-key.pem`
-   - Set permissions: `chmod 400 ~/magi-archive-key.pem`
+   - Download and save securely: `<ssh-key-path>`
+   - Set permissions: `chmod 400 <ssh-key-path>`
 
 6. **Network settings**:
    - VPC: Default
    - Auto-assign public IP: **Enable**
    - Firewall (security groups): **Create new**
-   - Security group name: `magi-archive-web-sg`
+   - Security group name: `<web-security-group>`
    - Rules:
      - ✓ SSH (port 22) - Source: **My IP** (for security)
      - ✓ HTTP (port 80) - Source: **Anywhere** (0.0.0.0/0)
@@ -213,20 +222,20 @@ Password: [your secure password]
 1. **EC2 → Elastic IPs → Allocate Elastic IP address**
 2. Click **Allocate**
 3. Select the new IP → Actions → **Associate Elastic IP address**
-4. Instance: Select `magi-archive-web`
+4. Instance: Select `<ec2-instance>`
 5. Click **Associate**
 
-**Note the Elastic IP**: `54.219.9.17'
+**Note the Elastic IP**: `<deck-host>`
 
 #### 3.3 Configure Security Groups
 
 **Allow EC2 to connect to RDS**:
 
-1. **RDS → Databases → magi-archive-db → Connectivity & security**
-2. Click on security group: `magi-archive-db-sg`
+1. **RDS → Databases → `<rds-instance>` → Connectivity & security**
+2. Click on security group: `<db-security-group>`
 3. **Inbound rules → Edit inbound rules → Add rule**:
    - Type: **PostgreSQL** (port 5432)
-   - Source: **Custom** → Select `magi-archive-web-sg` (EC2 security group)
+   - Source: **Custom** → Select `<web-security-group>` (EC2 security group)
    - Description: "Allow EC2 web server access"
 4. **Save rules**
 
@@ -238,19 +247,19 @@ Password: [your secure password]
 
 ```bash
 # From your local machine
-# Recommended: add an SSH config so you can use `ssh magi-archive`
+# Recommended: add an SSH config so you can use `ssh <deck-alias>`
 # ~/.ssh/config
-#   Host magi-archive
-#     HostName 54.219.9.17
+#   Host <deck-alias>
+#     HostName <deck-host>
 #     User ubuntu
-#     IdentityFile ~/.ssh/magi-archive-key.pem
+#     IdentityFile <ssh-key-path>
 #     IdentitiesOnly yes
 
 # Connect using alias
-ssh magi-archive
+ssh <deck-alias>
 
 # Or connect explicitly if you prefer flags
-ssh -i ~/.ssh/magi-archive-key.pem ubuntu@54.219.9.17
+ssh -i <ssh-key-path> <ssh-user>@<deck-host>
 ```
 
 If connection refused, check:
@@ -299,8 +308,8 @@ gem install bundler
 sudo apt install -y postgresql-client-14
 
 # Test connection to RDS
-psql -h magi-archive-db.xxxxxxxxxx.us-east-1.rds.amazonaws.com \
-     -U decko_admin -d magi_archive_production
+psql -h <rds-endpoint> \
+     -U <db-user> -d <db-name>
 
 # Enter password when prompted
 # Type \q to exit
@@ -319,17 +328,17 @@ If connection fails:
 
 **Option A: Create New Deck**
 ```bash
-cd /home/ubuntu
+cd /home/<app-user>
 gem install decko
-decko new magi-archive
-cd magi-archive
+decko new <deck-name>
+cd <deck-name>
 ```
 
 **Option B: Clone from GitLab**
 ```bash
-cd /home/ubuntu
-git clone https://gitlab.com/yourusername/magi-archive.git
-cd magi-archive
+cd /home/<app-user>
+git clone <repo-url>
+cd <deck-name>
 bundle install
 ```
 
@@ -342,16 +351,16 @@ production:
   adapter: postgresql
   encoding: unicode
   pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  database: magi_archive_production
-  username: decko_admin
+  database: <db-name>
+  username: <db-user>
   password: <%= ENV['DATABASE_PASSWORD'] %>
-  host: magi-archive-db.xxxxxxxxxx.us-east-1.rds.amazonaws.com
+  host: <rds-endpoint>
   port: 5432
 ```
 
 #### 5.3 Set Environment Variables
 
-Create `/home/ubuntu/magi-archive/.env.production`:
+Create `<deck-root>/.env.production`:
 
 ```bash
 # Rails
@@ -369,7 +378,7 @@ DECKO_HOST=yourdomain.com  # Or Elastic IP for now
 
 **Generate SECRET_KEY_BASE**:
 ```bash
-cd /home/ubuntu/magi-archive
+cd <deck-root>
 bundle exec rails secret
 # Copy output to .env.production
 ```
@@ -377,7 +386,7 @@ bundle exec rails secret
 #### 5.4 Initialize Database
 
 ```bash
-cd /home/ubuntu/magi-archive
+cd <deck-root>
 
 # Load environment
 export $(cat .env.production | xargs)
@@ -402,7 +411,7 @@ bundle exec rails assets:precompile RAILS_ENV=production
 # Start server (test)
 bundle exec puma -C config/puma.rb -e production
 
-# In browser, visit: http://52.x.x.x:3000
+# In browser, visit: http://<deck-host>:3000
 # (Use your Elastic IP)
 ```
 
@@ -425,20 +434,20 @@ sudo apt install -y nginx
 
 #### 6.2 Configure Nginx as Reverse Proxy
 
-Create `/etc/nginx/sites-available/magi-archive`:
+Create `/etc/nginx/sites-available/<deck-service>`:
 
 ```nginx
 upstream puma {
-  server unix:///home/ubuntu/magi-archive/tmp/sockets/puma.sock;
+  server unix://<deck-root>/tmp/sockets/puma.sock;
 }
 
 server {
   listen 80;
   server_name yourdomain.com www.yourdomain.com;  # Or use Elastic IP
 
-  root /home/ubuntu/magi-archive/public;
-  access_log /var/log/nginx/magi-archive-access.log;
-  error_log /var/log/nginx/magi-archive-error.log;
+  root <deck-root>/public;
+  access_log /var/log/nginx/<deck-service>-access.log;
+  error_log /var/log/nginx/<deck-service>-error.log;
 
   location ^~ /assets/ {
     gzip_static on;
@@ -463,13 +472,13 @@ server {
 
 **For IP-only access** (no domain yet):
 ```nginx
-server_name 52.x.x.x;  # Replace with your Elastic IP
+server_name <deck-host>;  # Replace with your Elastic IP
 ```
 
 #### 6.3 Enable Site
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/magi-archive /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/<deck-service> /etc/nginx/sites-enabled/
 sudo rm /etc/nginx/sites-enabled/default  # Remove default site
 sudo nginx -t  # Test configuration
 sudo systemctl restart nginx
@@ -490,13 +499,13 @@ port ENV.fetch("PORT") { 3000 } if ENV['RAILS_ENV'] != 'production'
 environment ENV.fetch("RAILS_ENV") { "development" }
 
 if ENV['RAILS_ENV'] == 'production'
-  bind 'unix:///home/ubuntu/magi-archive/tmp/sockets/puma.sock'
+  bind 'unix://<deck-root>/tmp/sockets/puma.sock'
 
-  pidfile '/home/ubuntu/magi-archive/tmp/pids/puma.pid'
-  state_path '/home/ubuntu/magi-archive/tmp/pids/puma.state'
+  pidfile '<deck-root>/tmp/pids/puma.pid'
+  state_path '<deck-root>/tmp/pids/puma.state'
 
-  stdout_redirect '/home/ubuntu/magi-archive/log/puma.stdout.log',
-                  '/home/ubuntu/magi-archive/log/puma.stderr.log',
+  stdout_redirect '<deck-root>/log/puma.stdout.log',
+                  '<deck-root>/log/puma.stderr.log',
                   true
 
   workers ENV.fetch("WEB_CONCURRENCY") { 2 }
@@ -508,8 +517,8 @@ plugin :tmp_restart
 
 Create socket directory:
 ```bash
-mkdir -p /home/ubuntu/magi-archive/tmp/sockets
-mkdir -p /home/ubuntu/magi-archive/tmp/pids
+mkdir -p <deck-root>/tmp/sockets
+mkdir -p <deck-root>/tmp/pids
 ```
 
 ---
@@ -518,19 +527,19 @@ mkdir -p /home/ubuntu/magi-archive/tmp/pids
 
 #### 7.1 Create Systemd Service
 
-Create `/etc/systemd/system/magi-archive.service`:
+Create `/etc/systemd/system/<deck-service>.service`:
 
 ```ini
 [Unit]
-Description=Magi Archive Decko Application
+Description=Decko Application
 After=network.target
 
 [Service]
 Type=simple
 User=ubuntu
-WorkingDirectory=/home/ubuntu/magi-archive
-EnvironmentFile=/home/ubuntu/magi-archive/.env.production
-ExecStart=/home/ubuntu/.rbenv/shims/bundle exec puma -C config/puma.rb
+WorkingDirectory=<deck-root>
+EnvironmentFile=<deck-root>/.env.production
+ExecStart=<rbenv-shims>/bundle exec puma -C config/puma.rb
 Restart=always
 RestartSec=10
 
@@ -542,20 +551,20 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable magi-archive
-sudo systemctl start magi-archive
+sudo systemctl enable <deck-service>
+sudo systemctl start <deck-service>
 
 # Check status
-sudo systemctl status magi-archive
+sudo systemctl status <deck-service>
 
 # View logs
-sudo journalctl -u magi-archive -f
+sudo journalctl -u <deck-service> -f
 ```
 
 #### 7.3 Test Access
 
 Visit in browser:
-- **HTTP**: `http://52.x.x.x` (or `http://yourdomain.com`)
+- **HTTP**: `http://<deck-host>` (or `http://yourdomain.com`)
 
 Should see Decko welcome page!
 
@@ -570,12 +579,12 @@ Should see Decko welcome page!
 **In your domain registrar** (Namecheap, GoDaddy, etc.):
 1. Add **A Record**:
    - Host: `@` (root domain)
-   - Value: `52.x.x.x` (your Elastic IP)
+   - Value: `<deck-host>` (your Elastic IP)
    - TTL: 300
 
 2. Add **A Record** for www:
    - Host: `www`
-   - Value: `52.x.x.x`
+   - Value: `<deck-host>`
    - TTL: 300
 
 Wait 5-60 minutes for DNS propagation.
@@ -586,7 +595,7 @@ Wait 5-60 minutes for DNS propagation.
 3. **Create record**:
    - Record name: blank (root)
    - Type: A
-   - Value: `52.x.x.x`
+   - Value: `<deck-host>`
 4. Update nameservers at registrar to Route53 nameservers
 
 #### 8.2 Install Certbot (Let's Encrypt)
@@ -636,7 +645,7 @@ sudo certbot renew --dry-run
    - Or use Rails console:
 
 ```bash
-cd /home/ubuntu/magi-archive
+cd <deck-root>
 bundle exec rails console -e production
 
 # Create user (syntax depends on Decko's auth system)
@@ -676,7 +685,7 @@ sudo chown -R developer1:developer1 /home/developer1/.ssh
 ```
 
 Update security group to allow SSH from their IP:
-- **EC2 → Security Groups → magi-archive-web-sg**
+- **EC2 → Security Groups → `<web-security-group>`**
 - **Inbound rules → Edit → Add rule**:
   - Type: SSH
   - Source: `their.ip.address/32`
@@ -691,15 +700,15 @@ Update security group to allow SSH from their IP:
 Already configured! RDS automatically backs up database.
 
 **Manual snapshot**:
-1. **RDS → Databases → magi-archive-db**
+1. **RDS → Databases → `<rds-instance>`**
 2. **Actions → Take snapshot**
-3. Name: `magi-archive-pre-update-2025-10-16`
+3. Name: `<snapshot-name>`
 
 #### 10.2 Application Code Backups
 
 **Push to GitLab** (best practice):
 ```bash
-cd /home/ubuntu/magi-archive
+cd <deck-root>
 git add .
 git commit -m "Production deployment"
 git push origin main
@@ -718,18 +727,18 @@ sudo apt install -y awscli
 aws configure
 
 # Daily backup script
-cat > /home/ubuntu/backup-uploads.sh <<'EOF'
+cat > /home/<app-user>/backup-uploads.sh <<'EOF'
 #!/bin/bash
-aws s3 sync /home/ubuntu/magi-archive/public/uploads \
-  s3://magi-archive-backups/uploads/$(date +%Y-%m-%d)
+aws s3 sync <deck-root>/public/uploads \
+  s3://<backup-bucket>/uploads/$(date +%Y-%m-%d)
 EOF
 
-chmod +x /home/ubuntu/backup-uploads.sh
+chmod +x /home/<app-user>/backup-uploads.sh
 
 # Add to crontab
 crontab -e
 # Add line:
-0 3 * * * /home/ubuntu/backup-uploads.sh
+0 3 * * * /home/<app-user>/backup-uploads.sh
 ```
 
 **Option B: Store uploads in S3 directly**
@@ -745,21 +754,21 @@ Configure Decko to use S3 for uploads (recommended for production).
 
 **RDS Monitoring**:
 - Already enabled (Enhanced Monitoring)
-- Check **RDS → magi-archive-db → Monitoring** tab
+- Check **RDS → `<rds-instance>` → Monitoring** tab
 
 #### 10.5 System Updates
 
 **Monthly maintenance**:
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo systemctl restart magi-archive
+sudo systemctl restart <deck-service>
 sudo systemctl restart nginx
 ```
 
 **Check application logs**:
 ```bash
-tail -f /home/ubuntu/magi-archive/log/production.log
-sudo journalctl -u magi-archive -n 100
+tail -f <deck-root>/log/production.log
+sudo journalctl -u <deck-service> -n 100
 ```
 
 ---
@@ -770,9 +779,9 @@ sudo journalctl -u magi-archive -n 100
 
 ```bash
 # SSH to server
-ssh -i ~/magi-archive-key.pem ubuntu@52.x.x.x
+ssh -i <ssh-key-path> <ssh-user>@<deck-host>
 
-cd /home/ubuntu/magi-archive
+cd <deck-root>
 
 # Pull latest code
 git pull origin main
@@ -788,16 +797,16 @@ bundle exec rails db:migrate RAILS_ENV=production
 bundle exec rails assets:precompile RAILS_ENV=production
 
 # Restart application
-sudo systemctl restart magi-archive
+sudo systemctl restart <deck-service>
 
 # Check logs
-sudo journalctl -u magi-archive -f
+sudo journalctl -u <deck-service> -f
 ```
 
 ### Rails Console Access
 
 ```bash
-cd /home/ubuntu/magi-archive
+cd <deck-root>
 export $(cat .env.production | xargs)
 bundle exec rails console -e production
 ```
@@ -806,15 +815,15 @@ bundle exec rails console -e production
 
 **Backup**:
 ```bash
-pg_dump -h magi-archive-db.xxxxxxxxxx.us-east-1.rds.amazonaws.com \
-  -U decko_admin -d magi_archive_production \
+pg_dump -h <rds-endpoint> \
+  -U <db-user> -d <db-name> \
   > backup-$(date +%Y%m%d).sql
 ```
 
 **Restore**:
 ```bash
-psql -h magi-archive-db.xxxxxxxxxx.us-east-1.rds.amazonaws.com \
-  -U decko_admin -d magi_archive_production \
+psql -h <rds-endpoint> \
+  -U <db-user> -d <db-name> \
   < backup-20251016.sql
 ```
 
@@ -825,10 +834,10 @@ psql -h magi-archive-db.xxxxxxxxxx.us-east-1.rds.amazonaws.com \
 ### Application won't start
 ```bash
 # Check service status
-sudo systemctl status magi-archive
+sudo systemctl status <deck-service>
 
 # View logs
-sudo journalctl -u magi-archive -n 50
+sudo journalctl -u <deck-service> -n 50
 
 # Common issues:
 # - Database connection: Check .env.production credentials
@@ -839,7 +848,7 @@ sudo journalctl -u magi-archive -n 50
 ### Can't connect to database
 ```bash
 # Test from EC2
-psql -h [RDS_ENDPOINT] -U decko_admin -d magi_archive_production
+psql -h <rds-endpoint> -U <db-user> -d <db-name>
 
 # If fails:
 # - Check RDS security group allows EC2 security group
@@ -854,10 +863,10 @@ psql -h [RDS_ENDPOINT] -U decko_admin -d magi_archive_production
 ps aux | grep puma
 
 # Check socket exists:
-ls -la /home/ubuntu/magi-archive/tmp/sockets/
+ls -la <deck-root>/tmp/sockets/
 
 # Restart both:
-sudo systemctl restart magi-archive
+sudo systemctl restart <deck-service>
 sudo systemctl restart nginx
 ```
 

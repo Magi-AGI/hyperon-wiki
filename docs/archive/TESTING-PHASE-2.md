@@ -7,7 +7,7 @@ This guide walks through testing all Phase 2 features of the MCP API.
 ### 1. Install Dependencies
 
 ```bash
-cd magi-archive
+cd <deck-root>
 bundle install
 ```
 
@@ -25,7 +25,7 @@ export MCP_JWT_ENABLED=true
 
 # Optional (tests use defaults if not set)
 export JWT_KEY_ID=test-key-001
-export JWT_ISSUER=magi-archive-test
+export JWT_ISSUER=<deck-name>-test
 export JWT_EXPIRY=3600
 export MCP_TOKEN_TTL=3600
 
@@ -176,13 +176,13 @@ ruby test_jwt.rb
 **Expected Output**:
 ```
 Generated JWT Token:
-eyJhbGciOiJSUzI1NiIsImtpZCI6ImtleS0wMDEifQ.eyJzdWIiOiJ0ZXN0LWtleSIsInJvbGUiOiJhZG1pbiIsImlzcyI6Im1hZ2ktYXJjaGl2ZSIsImlhdCI6MTczMzEzNjAwMCwiZXhwIjoxNzMzMTM5NjAwLCJqdGkiOiI4ZjNhNGI1Yy0uLi4iLCJraWQiOiJrZXktMDAxIn0.signature...
+<redacted-example-jwt>
 
 Decoded Payload:
 {
   "sub": "test-key-123",
   "role": "admin",
-  "iss": "magi-archive",
+  "iss": "<deck-name>",
   "iat": 1733136000,
   "exp": 1733139600,
   "jti": "8f3a4b5c-...",
@@ -334,7 +334,7 @@ If you have the Decko server running, you can test the actual API endpoints.
 ### 1. Start Decko Server
 
 ```bash
-cd magi-archive
+cd <deck-root>
 bundle exec decko server
 ```
 

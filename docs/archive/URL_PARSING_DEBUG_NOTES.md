@@ -141,7 +141,7 @@ uri_class.instance_methods.include?(:interpret)  # => true
 ✅ Confirmed: Extension is properly integrated
 
 ### Test 4: Actual Rendering
-Created test card at https://wiki.magi-agi.org/example_test
+Created test card at `https://<wiki-host>/example_test`
 - Content: URLs with en-dashes and ellipses
 - Result: URLs still cut short at special characters
 - Cache cleared, card resaved - no change
@@ -236,7 +236,7 @@ Until the fix is working, users can:
 
 ### Our Custom Files
 ```
-magi-archive/
+<deck-root>/
 ├── mod/url_fixes/
 │   └── lib/card/content/chunk/uri_extensions.rb    # Our extension
 ├── config/initializers/url_parsing_fix.rb          # Loads extension

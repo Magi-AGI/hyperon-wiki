@@ -35,7 +35,7 @@ Phase 2 successfully upgraded the MCP API from MVP to production-ready quality w
 JWT_PRIVATE_KEY_PATH=/path/to/private_key.pem
 JWT_PUBLIC_KEY_PATH=/path/to/public_key.pem
 JWT_KEY_ID=key-001
-JWT_ISSUER=magi-archive
+JWT_ISSUER=<deck-name>
 JWT_EXPIRY=3600
 
 # Development (auto-generates ephemeral keys)
@@ -416,7 +416,7 @@ Based on Phase 2 plan, these features were intentionally deferred:
    JWT_PRIVATE_KEY_PATH=config/jwt_private.pem
    JWT_PUBLIC_KEY_PATH=config/jwt_public.pem
    JWT_KEY_ID=prod-001
-   JWT_ISSUER=magi-archive
+   JWT_ISSUER=<deck-name>
    MCP_JWT_ENABLED=true
    ```
 
@@ -459,12 +459,12 @@ Based on usage patterns and needs:
 
 ## Support
 
-**Documentation**:
-- [MCP-SPEC.md](MCP-SPEC.md) - Complete API specification
-- [MCP-IMPLEMENTATION.md](MCP-IMPLEMENTATION.md) - Phase 1 implementation
-- [MCP-PHASE-2-PLAN.md](MCP-PHASE-2-PLAN.md) - Phase 2 plan
-- [mod/mcp_api/README.md](../mod/mcp_api/README.md) - API usage guide
-- [spec/mcp_api/README.md](../spec/mcp_api/README.md) - Test suite guide
+**Documentation** (as referenced when this record was written):
+- `MCP-SPEC.md` — complete API specification. *No longer in this repository.*
+- `MCP-IMPLEMENTATION.md` — Phase 1 implementation. *No longer in this repository.*
+- [`MCP-PHASE-2-PLAN.md`](MCP-PHASE-2-PLAN.md) — Phase 2 plan (archived alongside this file)
+- [`mod/mcp_api/README.md`](../../mod/mcp_api/README.md) — API usage guide
+- [`spec/mcp_api/README.md`](../../spec/mcp_api/README.md) — test suite guide
 
 **Testing**:
 ```bash

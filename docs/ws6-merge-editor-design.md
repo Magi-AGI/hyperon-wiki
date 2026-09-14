@@ -216,6 +216,6 @@ Insert · delete · both-same change · real conflict · nested lists · tables 
 **Recommended, pending Lake's confirm:**
 1. **Proposal shape** — right-set `set/right/proposal.rb` with per-card type mirroring the parent's format (Codex), deferring a dedicated `Proposal` cardtype to v2 (vs Gemini's cardtype-now). *Implementer's lean: right-set v1, for content-format polymorphism.*
 2. **Generator stamp** — server-enforced `stamp_proposal_base` event (read-time proxy + override) over per-generator stamping. *(Recommended.)*
-3. **Where to commit** — create `feature/ws6-merge-editor` off `main` in `E:\GitHub\Magi-AGI\hyperon-wiki` and land this doc under `docs/` there? (Repo is currently on `feature/page-attribution-render`; confirm before I touch its working tree.)
+3. **Where to commit** — create `feature/ws6-merge-editor` off `main` in the `hyperon-wiki` checkout and land this doc under `docs/` there? (Repo is currently on `feature/page-attribution-render`; confirm before I touch its working tree.)
 
 **Next deliverable:** implementation plan (sequenced, testable increments) — after the above are confirmed.
