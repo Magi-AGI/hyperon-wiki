@@ -4,8 +4,10 @@ This document describes a directory that is **not** part of this documentation s
 not covered by it. It lives here, outside that directory, so the explanation is part of the
 committed documentation while the corpus itself stays ignored.
 
-`docs/archive/` (this directory) is the documentation archive. `scripts/archive/` at the
-repository root is something different: a historical research corpus.
+Two directories have similar names and are not the same thing.
+[`archive/`](archive/) is the documentation archive: completed phase records and shipped-fix
+write-ups from this documentation set. `scripts/archive/` at the repository root is
+something different — a historical research corpus, and the subject of this document.
 
 ## What it is
 
@@ -70,10 +72,10 @@ SNET-facing documentation set points into it.
 
 The corpus is **not** SNET-facing documentation. Nothing in the onboarding path links into
 it, and newcomers have no reason to read it. Current documentation starts at
-[`../../ONBOARDING.md`](../../ONBOARDING.md), with
-[`../DOCUMENTATION-MAP.md`](../DOCUMENTATION-MAP.md) as the index,
-[`../../README.md`](../../README.md) for developer setup, and
-[`../INGESTION-WORKFLOWS.md`](../INGESTION-WORKFLOWS.md) for the ingestion tooling.
+[`../ONBOARDING.md`](../ONBOARDING.md), with
+[`DOCUMENTATION-MAP.md`](DOCUMENTATION-MAP.md) as the index,
+[`../README.md`](../README.md) for developer setup, and
+[`INGESTION-WORKFLOWS.md`](INGESTION-WORKFLOWS.md) for the ingestion tooling.
 
 ## How it is tracked
 
@@ -89,7 +91,7 @@ Two consequences worth knowing:
 - Because the previously tracked files travel with the repository, sharing the whole
   repository externally shares them too, regardless of what this document says about scope.
 
-Before any external sharing that would include this directory — a whole-repository handoff,
+Before any external sharing that would include `scripts/archive/` — a whole-repository handoff,
 an export of the corpus, or relocating it out of the ignored path so it can be committed
 properly — it needs its own packaging decision and its own boundary pass against whichever
 copy is actually being shared. None of that is in scope for the current documentation

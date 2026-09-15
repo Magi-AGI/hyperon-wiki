@@ -26,7 +26,7 @@ WorkingDirectory=/home/ubuntu/hyperon-wiki
 EnvironmentFile=/home/ubuntu/hyperon-wiki/.env.production
 EnvironmentFile=-/home/ubuntu/atomspace-mirror.env
 Environment=RAILS_ENV=production
-# Prod uses rbenv (per docs/AWS-DEPLOYMENT.md): call the shim directly and put the shims on PATH so any
+# Prod uses rbenv (confirm the Ruby/rbenv environment via the server-access handoff): call the shim directly and put the shims on PATH so any
 # rake sub-shell resolves `ruby`/`bundle`. `/usr/bin/env bundle` would miss the rbenv-managed Ruby.
 Environment=PATH=/home/ubuntu/.rbenv/shims:/home/ubuntu/.rbenv/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=/home/ubuntu/.rbenv/shims/bundle exec rake atomspace_mirror:drain

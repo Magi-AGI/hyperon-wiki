@@ -6,7 +6,7 @@
 # and record-shaping logic is unit-testable WITHOUT a database. The `+proposal`
 # set events (set/right/proposal.rb) supply the Card-derived values and persist
 # the result; this module only computes content hashes and assembles/serializes
-# the provenance record described in docs/ws6-merge-editor-design.md §4.1.
+# the provenance record described in docs/merge-editor/ws6-merge-editor-design.md §4.1.
 require "digest"
 require "json"
 

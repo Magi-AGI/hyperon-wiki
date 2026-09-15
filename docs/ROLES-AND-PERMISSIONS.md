@@ -143,8 +143,11 @@ document recommends.
 user's roles by reading the *role's* member list, not anything stored on the user.
 Concretely, `Self::Role.generate_rolehash` looks for `<Role>+*members` (for example
 `Administrator+*members`, `Editor+*members`) and treats that as the source of truth.
-A `<User>+*roles` pointer, if you were tempted to create one as a shortcut, is never
-consulted by Decko's role resolution and will silently grant nothing. If you ever
+`<User>+*roles` is a **virtual card Decko computes** from that membership — useful to
+*read* when checking what someone has, but not an input: creating one as a shortcut grants
+nothing, because role resolution never consults it as a source. Administrator membership is
+tracked separately and is not reliably visible there, so check `Administrator+*members`
+directly when that is the role in question. If you ever
 need to inspect or script role membership at the card level, look at `<Role>+*members`
 on the relevant role card — but for ordinary role grants, use the account/role UI, not
 manual card edits, so you don't have to reason about this by hand.
@@ -174,7 +177,7 @@ not completing verification, or password resets aren't arriving, check SMTP deli
 before assuming a permissions problem.
 
 Provider setup, environment variables, and troubleshooting steps are in
-[`EMAIL_SETUP.md`](EMAIL_SETUP.md). That document is an inherited generic template —
+[`operations/EMAIL_SETUP.md`](operations/EMAIL_SETUP.md). That document is an inherited generic template —
 the SMTP *procedure* it describes is reusable, but concrete values (which provider,
 which credentials, which domain) are not reproduced here or there; they come from the
 server-access handoff, never from a repository file.
@@ -262,8 +265,12 @@ escalate.
   merge draft, optionally polish it, and apply. For new Drafts without a competing
   proposal, review and use the *Approve & Publish* action.
 - **Safety boundaries:** Editors do not apply `expert_approved` — that marker is
-  reserved for the `Expert` role. Published content should go through `+proposal` and
-  the merge workbench rather than direct edits, per `ONBOARDING.md` §4.
+  reserved for the `Expert` role. On changing published content: the `+proposal` and
+  merge-workbench path is the governed route and is what AI agents must use, but it was
+  built primarily for agents and is not yet a comfortable human authoring workflow. Where
+  the live permissions allow it, a direct editorial edit to a published card is a
+  legitimate human route; it simply carries no base, provenance, or merge-audit record, so
+  prefer the reviewed route for substantial rewrites. See `ONBOARDING.md` §4.
 - **Verification:** applying a merge and approving/publishing a card are two different
   actions with two different sets of evidence — do not check for one and assume the
   other happened.
@@ -285,6 +292,21 @@ escalate.
 
 ### Raw Data Analyst
 
+- **Intent:** this role serves two related purposes. It is for people who read the wiki's
+  source material and write grounded content from it, and it is for **researchers who need
+  AtomSpace backend access to run their own experiments** over that material. The broad
+  `RawData` read access is deliberate rather than accidental: someone working directly
+  against the AtomSpace already has wide visibility into the mirrored material, so
+  restricting the corresponding wiki cards would not create a real boundary. Treat this as
+  a high-trust role and grant it deliberately.
+- **Implementation caveat, current code:** holding the role does **not** by itself open the
+  AtomSpace read API. This is high-trust backend access, and it requires an
+  `mcp:atomspace:read` scope granted per principal *in addition to* ordinary card
+  permissions. In the current code that grant is arranged explicitly rather than following
+  from a role — holding Administrator does not imply it either — and it fails closed when
+  nothing is configured. So the role and the backend access must currently be arranged
+  separately. Whether the scope should become role-derived is an open
+  alignment item — see `docs/DOCUMENTATION-MAP.md` → Follow-up tasks.
 - **Prerequisites:** the `Raw Data Analyst` role, granted by an Administrator.
 - **What they can do:** per the live permission matrix, `RawData` read access is
   currently scoped to the `Raw Data Analyst` role (and Administrators). Create,
@@ -332,13 +354,18 @@ escalate.
   against the wiki's MCP server, authenticated as a Decko account with whatever
   permissions that account holds. Setup lives in the separate `hyperon-wiki-mcp`
   repository, not here.
-- **What they can do:** exactly what the authenticating Decko account's role and CRUD
-  permissions allow — nothing more. This is the point worth internalizing: MCP roles
-  (used for token authentication, role validation, and gating admin-only MCP
-  operations like delete/rename/trash) are a separate layer from Decko's `+*read` /
-  `+*create` / `+*update` / `+*delete` content-visibility rules. Content visibility is
-  always governed by Decko's permission rules on the card, not by which MCP role name
-  the client reports. A sufficiently privileged account can bypass the intended
+- **What they can do:** exactly what the authenticating Decko account's roles and CRUD
+  permissions allow — nothing more. Card operations run *as* that Decko account and check
+  its permission on the card, so content access is governed by Decko roles together with
+  the specific card and set rules that apply. **The MCP layer has no access model of its
+  own**, and nothing about it widens what the account can see. Destructive operations —
+  delete, rename, listing trash — carry a narrow additional guard requiring Administrator
+  standing rather than an ordinary card permission. Note also that **card and set
+  permission rules supersede broad role defaults** — a one-off card can be restricted to
+  Administrators even when the account's role would normally grant access (§4, §5).
+  Separately, AtomSpace backend reads require an explicit `mcp:atomspace:read` scope
+  granted per principal in addition to card permissions; see the Raw Data Analyst entry
+  above. A sufficiently privileged account can bypass the intended
   proposal/merge route entirely — nothing about the MCP layer prevents that
   technically. It's prevented by configuring agent accounts with least privilege and
   by editorial policy, not by a hard technical wall.
@@ -370,15 +397,16 @@ escalate.
   different handoffs; having one does not imply the other.
 - **What they do:** deploy code (`git pull` + asset refresh + app-server reload),
   apply migrations, monitor the running application, and handle the operational
-  runbooks in the operator section of `docs/DOCUMENTATION-MAP.md`.
+  runbooks indexed in `docs/DOCUMENTATION-MAP.md`.
 - **Normal workflow:** deploy code before updating cards when both change together, so
   a card never references a view that doesn't exist yet (`ONBOARDING.md` §7). Treat
   card content changes (layouts, headers, sidebars, index structure) as database
   state, changed through the wiki UI, MCP tools, or runner scripts — not through git.
 - **Safety boundaries:** no credentials, hosts, or infrastructure specifics belong in
-  this repository, ever. The three template docs in the operator section of
-  `docs/DOCUMENTATION-MAP.md` (`AWS-DEPLOYMENT.md`, `DECKO-DATABASE-ACCESS.md`,
-  `EMAIL_SETUP.md`) describe reusable *procedures* with placeholders; real values come
+  this repository, ever. `docs/OPERATIONS.md` records what is confirmed about running
+  this wiki and marks the rest as open; the two inherited template docs behind it
+  (`operations/DECKO-DATABASE-ACCESS.md` and `operations/EMAIL_SETUP.md`)
+  describe reusable *procedures* with placeholders. Real values come
   only from the server-access handoff.
 - **Verification:** after a deploy, confirm the application is actually serving the
   new code (not just that the deploy commands exited 0) before touching dependent
@@ -481,7 +509,7 @@ than assuming the rule change did only what you expected.
 This document deliberately does not include:
 
 - Credentials, passwords, tokens, API keys, or MFA details of any kind.
-- Real SMTP values — see [`EMAIL_SETUP.md`](EMAIL_SETUP.md) for the procedure, and the
+- Real SMTP values — see [`operations/EMAIL_SETUP.md`](operations/EMAIL_SETUP.md) for the procedure, and the
   server-access handoff for actual values.
 - Current role membership rosters. The mechanism (`<Role>+*members`) is documented
   above because understanding it is necessary to reason about how role grants work;
@@ -496,5 +524,5 @@ This document deliberately does not include:
 |---|---|
 | What's the editorial workflow these roles operate in? | `ONBOARDING.md` §4–§5 |
 | How do I set up an MCP client? | The [`hyperon-wiki-mcp`](https://github.com/Magi-AGI/hyperon-wiki-mcp) repository |
-| How is SMTP configured? | [`EMAIL_SETUP.md`](EMAIL_SETUP.md) |
+| How is SMTP configured? | [`operations/EMAIL_SETUP.md`](operations/EMAIL_SETUP.md) |
 | Where does this fit in the wider documentation set? | `docs/DOCUMENTATION-MAP.md` |

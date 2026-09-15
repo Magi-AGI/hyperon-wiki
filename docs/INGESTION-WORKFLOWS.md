@@ -226,5 +226,5 @@ because it is one.
 
 - [`../ONBOARDING.md`](../ONBOARDING.md) §4 — the editorial workflow these cards enter.
 - [`../ONBOARDING.md`](../ONBOARDING.md) §7 — roles, including who may create and read RawData.
-- [`DECKO-DATABASE-ACCESS.md`](DECKO-DATABASE-ACCESS.md) — the `decko runner` remote-console
+- [`operations/DECKO-DATABASE-ACCESS.md`](operations/DECKO-DATABASE-ACCESS.md) — the `decko runner` remote-console
   procedure the `.rb` ingesters rely on.

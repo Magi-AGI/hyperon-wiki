@@ -56,7 +56,7 @@ already.
 - **Status:** shipped/current (base Decko).
 - **Caveat:** compound-name folding has real gotchas (case-only renames are no-ops on
   shared keys, plural/singular folding can silently collide with an existing card) — see
-  `docs/DOCUMENTATION-MAP.md` → Developer / architecture, and ask before renaming a
+  the planned `DECKO-GOTCHAS.md` entry in `docs/DOCUMENTATION-MAP.md`, and ask before renaming a
   compound card if you are unsure.
 
 ### 3. Cardtypes and structured content
@@ -248,12 +248,12 @@ already.
 - **Who needs it:** editors/reviewers (day-to-day use); developers touching the
   editorial workflow.
 - **Where it lives:** `ONBOARDING.md` §4 (the narrative); the authoritative design detail
-  is `docs/ws6-merge-editor-design.md`, with phase-specific docs
-  (`ws6-merge-editor-phase4-ui-contract.md`, `-phase5-tinymce-gate.md`,
-  `-phase6-apply-gate.md`, `-phase8-capability-gating.md`) in `docs/DOCUMENTATION-MAP.md`
-  → Editor / reviewer.
+  is `docs/merge-editor/ws6-merge-editor-design.md`, with phase-specific docs
+  (`merge-editor/ws6-merge-editor-phase4-ui-contract.md`, `-phase5-tinymce-gate.md`,
+  `-phase6-apply-gate.md`, `-phase8-capability-gating.md`) indexed in
+  `docs/DOCUMENTATION-MAP.md` under *The merge editor (WS6)*.
 - **Status:** shipped/current.
-- **Verify/next:** `docs/ws6-merge-editor-design.md` before touching the editorial
+- **Verify/next:** `docs/merge-editor/ws6-merge-editor-design.md` before touching the editorial
   workflow's code.
 - **Caveat:** the old direct-overwrite path is **gone from the checked-in code**, not
   merely deprecated. `mod/editorial_review/set/right/ai_draft.rb` records that the
@@ -268,9 +268,10 @@ already.
 ### 4. Review Queue and trust markers
 
 - **What it is:** the Review Queue is a saved-search card (`Review Queue`, codename
-  `review_queue`) listing Draft cards awaiting review — and, in live/newer
-  configurations, possibly cards with an open unmerged proposal (confirm the current
-  query on the wiki rather than assuming). Trust markers — `ai_generated`,
+  `review_queue`) listing the work awaiting a human: Draft cards, **and** cards carrying a
+  `+proposal` child that has no `+merge audit` child yet — that is, proposals not yet
+  merged. Both are in the live query, read back from the wiki; the query itself is quoted
+  in [`FEATURE-PRIMERS.md`](FEATURE-PRIMERS.md) §4. Trust markers — `ai_generated`,
   `human_authored`, `transcript_derived`, `needs_review`, `ai_reviewed`,
   `human_approved`, `expert_approved` — render as pills and drive banners.
 - **Who needs it:** editors/reviewers working the queue; readers deciding how much weight
@@ -295,7 +296,7 @@ already.
 - **Who needs it:** AI agent operators, to avoid conflating the two; editors encountering
   either form mid-migration.
 - **Where it lives:** `ONBOARDING.md` §4 "A note on `<Card>+AI`"; migration mechanics in
-  `docs/ws6-merge-editor-phase7-plan.md` (the legacy `+AI` bridge).
+  `docs/merge-editor/ws6-merge-editor-phase7-plan.md` (the legacy `+AI` bridge).
 - **Status — three different things, three different statuses. Read them separately:**
 
   | Thing | Status |
@@ -330,16 +331,18 @@ already.
 - **Verify/next:** `mod/mcp_api/README.md` for the current endpoint list; the
   `hyperon-wiki-mcp` repo for setup and a known-quirks list worth reading before filing a
   bug.
-- **Caveat — read the role names carefully.** `mod/mcp_api/README.md` documents three
-  **MCP-token roles** (`user`, `gm`, `admin`) that are a distinct authorization layer from
-  the Decko content roles in `ROLES-AND-PERMISSIONS.md` (`Administrator`, `Editor`,
-  `Raw Data Analyst`, `Expert`) — see `ROLES-AND-PERMISSIONS.md` §3 "AI agent / MCP
-  operator" for how the two layers relate. Some of that README's terminology (`gm`,
-  "player-visible content", `+GM` card naming) reads as carried over from a sibling
-  game-content deck template rather than rewritten for Hyperon; treat the mechanism
-  (token roles gating admin-only operations like delete/rename/trash) as current, but
-  verify the exact role names and any "player"/"GM" framing against the live server
-  rather than assuming the README's wording is Hyperon-native.
+- **Caveat — read `mod/mcp_api/README.md` for endpoints, not for the permission model.**
+  An MCP request authenticates as a Decko account and runs as that account, so access is
+  governed by that account's Decko roles and by the `*read` / `*create` / `*update` /
+  `*delete` rules on the cards it touches — the same rules that apply in the browser. Card
+  and set rules supersede broad role defaults, so a one-off card can be restricted to
+  Administrators even when a role would otherwise grant access. A narrow guard does exist
+  on destructive operations (delete, rename, listing trash), which require Administrator
+  standing rather than an ordinary card permission. That README additionally carries
+  role-name and content terminology (`gm`, "player-visible content", `+GM` card naming)
+  carried over from a sibling game-content deck template rather than rewritten for Hyperon;
+  do not read those names as describing this wiki's access model. See
+  `ROLES-AND-PERMISSIONS.md` §3 "AI agent / MCP operator".
 
 ### 7. UI/navigation features
 
@@ -370,11 +373,11 @@ already.
 - **Who needs it:** developers/operators working on the AtomSpace integration track;
   SNET technical owners assessing what is real versus conceptual.
 - **Where it lives:**
-  - [`ATOMSPACE-MIRROR-DEPLOYMENT.md`](ATOMSPACE-MIRROR-DEPLOYMENT.md) — the Phase 5
+  - [`atomspace/ATOMSPACE-MIRROR-DEPLOYMENT.md`](atomspace/ATOMSPACE-MIRROR-DEPLOYMENT.md) — the Phase 5
     deploy/ops runbook for the mirror. **Source-level and deploy-gated**: its own header
     states "nothing here activates the mirror... activation is a separate, user-approved
     operation." Canonical design lives in wiki cards 17120/17161.
-  - [`ATOMSPACE-INTEGRATION.md`](ATOMSPACE-INTEGRATION.md) — a broader backend
+  - [`atomspace/ATOMSPACE-INTEGRATION.md`](atomspace/ATOMSPACE-INTEGRATION.md) — a broader backend
     integration architecture. **Explicitly self-described as a conceptual sketch**: its
     own "Cluster-Pilot Reframing" section lists corrections including an apocryphal
     `from hyperon import MCP` import that does not exist in the real package, and states
@@ -386,8 +389,8 @@ already.
   is source-level current, not yet activated in production. The **broader integration
   architecture** document is aspirational/conceptual by its own admission — do not cite
   its diagrams or code blocks as a description of what runs today.
-- **Verify/next:** read `ATOMSPACE-INTEGRATION.md`'s "Cluster-Pilot Reframing" section
-  before citing anything else in that file; read `ATOMSPACE-MIRROR-DEPLOYMENT.md`'s
+- **Verify/next:** read `atomspace/ATOMSPACE-INTEGRATION.md`'s "Cluster-Pilot Reframing" section
+  before citing anything else in that file; read `atomspace/ATOMSPACE-MIRROR-DEPLOYMENT.md`'s
   topology section before assuming any mirror process is running.
 - **Caveat:** do not conflate "code exists in this repository" with "mirror is active in
   production" — activation is a distinct, explicitly gated operational step this
@@ -445,7 +448,7 @@ Targeted behavioral fixes, each in its own small mod:
 | Which document covers a topic not listed here? | `DOCUMENTATION-MAP.md` |
 | How do I run ingestion safely? | `INGESTION-WORKFLOWS.md` |
 | How do I set up an MCP client? | The [`hyperon-wiki-mcp`](https://github.com/Magi-AGI/hyperon-wiki-mcp) repository |
-| How does the merge workbench actually work? | [`ws6-merge-editor-design.md`](ws6-merge-editor-design.md) |
+| How does the merge workbench actually work? | [`merge-editor/ws6-merge-editor-design.md`](merge-editor/ws6-merge-editor-design.md) |
 
 Open questions, gaps, or anything this page overclaims: raise them rather than working
 around them — several rows above explicitly ask you to re-verify against the live system

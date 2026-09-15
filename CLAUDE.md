@@ -99,8 +99,8 @@ The mods most worth understanding early:
 Source files carry unusually detailed rationale comments — several encode expensive lessons
 about Decko's loading and event model. Read them before refactoring.
 
-The merge-editor design record is in `docs/ws6-merge-editor-*.md`. If you are going to
-touch the editorial workflow, read `docs/ws6-merge-editor-design.md` first.
+The merge-editor design record is in `docs/merge-editor/ws6-merge-editor-*.md`. If you are going to
+touch the editorial workflow, read `docs/merge-editor/ws6-merge-editor-design.md` first.
 
 ---
 

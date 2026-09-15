@@ -7,7 +7,7 @@
 # workbench needs an unambiguous trigger — "this card IS a proposed replacement
 # for its parent's content, with a known base and a merge lifecycle." `+proposal`
 # is that trigger, and is author-neutral (humans can open peer-review proposals
-# too). `+AI` is left untouched. See docs/ws6-merge-editor-design.md §3.5/§4.1.
+# too). `+AI` is left untouched. See docs/merge-editor/ws6-merge-editor-design.md §3.5/§4.1.
 #
 # WHAT this file is: Phase 1, the MODEL layer only. It (1) aligns the proposal's
 # content format to its parent so later diffs compare like with like, and
@@ -179,7 +179,7 @@ end
 # overwrite stays live until Phase 6. Animated Bézier ribbons land in Phase 4.1;
 # this cut uses a single scrolling CSS grid (rows align across panes for free)
 # with static gutter connectors. Contract:
-# docs/ws6-merge-editor-phase4-ui-contract.md. BaseResolver / MergeWorkbench
+# docs/merge-editor/ws6-merge-editor-phase4-ui-contract.md. BaseResolver / MergeWorkbench
 # autoload from the mod lib dir (do NOT require_relative them here).
 
 # Static assets, emitted inline so Phase 4 takes no dependency on the Decko/

@@ -41,7 +41,9 @@ Unit + env templates live in `deploy/systemd/`. Copy each `*.service.example` to
 - **Ops env** `<ops-env-file>` (the `atomspace-mirror.env` file created above) — sidecar/drift
   tunables only (`SIDECAR_*`, `ATOMSPACE_DRIFT_READ_TIMEOUT`, RYW bounds). No DB creds, no app secrets.
 
-**Ruby is rbenv** (per `docs/AWS-DEPLOYMENT.md`): the units call `<rbenv-shims>/bundle` and
+**Ruby is rbenv on the deployed host** — confirm the shim path through the server-access
+handoff before activation, since this repository records no concrete paths. The units call
+`<rbenv-shims>/bundle` and
 put `<rbenv-shims>` (and `<rbenv-bin>`) on `PATH` — `/usr/bin/env bundle` would miss the
 rbenv-managed Ruby.
 

@@ -48,9 +48,21 @@ Then follow the row that matches you.
 | You are… | Read next | Then |
 |---|---|---|
 | A **reviewer or editor** — you will read, write, and approve content | §3 content model, §4 editorial workflow, §5 trust markers | The Review Queue on the wiki |
-| An **AI agent operator / MCP user** — you drive the wiki from Claude, Codex, Gemini/agy, or ChatGPT | §6 MCP overview | `hyperon-wiki-mcp` repo docs; `docs/DOCUMENTATION-MAP.md` → AI / MCP section |
-| An **operator, admin, or SNET technical owner** — you keep it running | §7 running the system | `docs/DOCUMENTATION-MAP.md` → operator section |
-| A **developer extending the system** | §8 extending the system | `README.md` (developer guide), `docs/DOCUMENTATION-MAP.md` → developer section |
+| An **AI agent operator / MCP user** — you drive the wiki from Claude, Codex, Gemini/agy, or ChatGPT | §6 MCP overview | `hyperon-wiki-mcp` repo docs; `docs/DOCUMENTATION-MAP.md` → *AI and MCP* |
+| An **operator, admin, or SNET technical owner** — you keep it running | §7 running the system | `docs/ROLE-BASED-ONBOARDING.md` → Operator; `docs/DOCUMENTATION-MAP.md` → *Operations — inherited templates* |
+| A **developer extending the system** | §8 extending the system | `README.md` (developer guide), then `docs/DOCUMENTATION-MAP.md` → *Subsystem and deep dive* for the merge-editor and AtomSpace design records |
+
+**Two companion primers go further than this file does**, and both assume §3 below:
+
+- [`docs/ROLE-BASED-ONBOARDING.md`](docs/ROLE-BASED-ONBOARDING.md) — a first-day and
+  first-week guide for each job: Administrator, Editor/reviewer, Expert, Raw Data Analyst,
+  AI agent operator, and operator/SNET technical owner. What the role is for, the normal
+  work loop, what not to do, and how to verify your own actions.
+- [`docs/FEATURE-PRIMERS.md`](docs/FEATURE-PRIMERS.md) — the same system introduced one
+  feature at a time, with a mental model, a first thing to try, and what usually goes wrong.
+
+Read whichever matches how you prefer to learn. This file stays the front door; those two
+are where the teaching happens.
 
 `docs/DOCUMENTATION-MAP.md` is the full documentation map. When you want "which file covers X", go
 there rather than browsing `docs/` directly — several files in that directory are
@@ -85,15 +97,20 @@ inventing new index scaffolding.
 
 ### The Review Queue
 
-**Review Queue** is a saved search card, not a separate application. It lists the work
-that is waiting for a human. **Draft cards are definitely listed.** In live or newer
-configurations the queue may *also* include cards carrying an open, unmerged proposal —
-this was left as a follow-up in the merge-editor deployment notes, so **confirm the current
-queue query on the wiki** rather than assuming *(to be confirmed)*.
+**Review Queue** is a saved search card, not a separate application. It lists the work that
+is waiting for a human: **Draft cards, and cards carrying an open proposal that has not yet
+been merged.** Both are in the live query, read back from the wiki:
 
-If a proposal you are expecting does not appear in the queue, that is not necessarily a
-fault: open `<Card>+proposal` directly instead. Clicking a queue row opens that card in a
-new tab, so you can queue several up at once.
+```json
+{"or":{"type":"draft","right_plus":["proposal",{"not":{"right_plus":"merge audit"}}]},
+ "sort":"create","dir":"asc"}
+```
+
+Read that as: *drafts, or cards with a `+proposal` child that does not yet have a
+`+merge audit` child* — in other words, proposals disappear from the queue once they have
+been merged. Oldest first.
+
+Clicking a queue row opens that card in a new tab, so you can queue several up at once.
 
 ---
 
@@ -189,9 +206,18 @@ investigation is still open — supporting paraconsistent reasoning, where contr
 findings can coexist until the evidence settles, without any of that provisional thinking
 leaking into the article a reader sees.
 
-The distinction that matters: **`+AI` is notes; `+proposal` is a change request.** Editorial
-policy requires published-content changes to follow the proposal/merge workflow; `+AI`
-scratch notes are not themselves a change request.
+The distinction that matters: **`+AI` is notes; `+proposal` is a change request.** An agent
+changing published content authors a `+proposal` and routes it through the merge workflow;
+`+AI` scratch notes are not themselves a change request and are never authorized to
+publish.
+
+**Who is expected to author proposals.** This path was built primarily for AI agents, so
+that agent-authored changes to published content carry provenance and pass the verifying
+gate. Human editors mostly *review and merge* proposals rather than writing them; their own
+work normally happens in Drafts, and where policy allows a direct edit to a published card,
+that remains a legitimate human route — it simply carries no base, provenance, or merge
+audit, so a substantial rewrite is worth routing through review. Humans can author a
+proposal when they want that audit trail; it is an advanced route rather than the default.
 
 ---
 
@@ -255,7 +281,7 @@ published-content changes through proposals.
 <https://github.com/Magi-AGI/hyperon-wiki-mcp>. That repo holds the
 per-client installers and a profile document for each client (Claude, Codex, Gemini, and
 ChatGPT), plus the tool specification and a list of known server quirks worth reading
-before you file a bug. See the AI / MCP section of `docs/DOCUMENTATION-MAP.md` for the map. This
+before you file a bug. See the *AI and MCP* section of `docs/DOCUMENTATION-MAP.md`. This
 document deliberately does not duplicate setup instructions, because duplicated setup
 docs drift.
 
@@ -296,8 +322,8 @@ expected. Do not treat a clean server working tree as a prerequisite for onboard
 reading these docs, or for getting started. Investigate it as part of normal operational
 hygiene, on its own schedule.
 
-Deployment specifics — server setup, database access, the mirror runbook — are in the
-operator section of `docs/DOCUMENTATION-MAP.md`. Read the caveats there first: some of
+Deployment specifics — server setup, database access, the mirror runbook — are indexed in
+`docs/DOCUMENTATION-MAP.md` under *Subsystem and deep dive*. Read the caveats there first: some of
 those files were inherited from a sibling Decko deck and still describe that system's
 hosts, database names, and defaults rather than this one. The database *engine* is not in
 doubt — it is PostgreSQL — but the host-specific values in those inherited files are, and
@@ -379,7 +405,7 @@ The parts of the codebase most worth understanding early:
 | `atomspace_mirror` | The Decko → Hyperon AtomSpace mirror work. |
 | `markdown_fixes`, `url_fixes`, `math_rendering`, `email_fixes`, `permission_propagation` | Targeted behavioural fixes. |
 
-The merge-editor design record is substantial and lives in `docs/ws6-merge-editor-*.md` —
+The merge-editor design record is substantial and lives in `docs/merge-editor/ws6-merge-editor-*.md` —
 design document, implementation plan, per-phase specifications for the workbench UI, the
 editor gate, and the apply gate, plus deployment notes. If you are going to touch the
 editorial workflow, read the design document before the code.
@@ -435,11 +461,13 @@ Work through this in order. It should take well under an hour.
 
 | Question | Go to |
 |---|---|
+| What is my job here, and how do I start doing it? | `docs/ROLE-BASED-ONBOARDING.md` |
+| How does each feature work, one at a time? | `docs/FEATURE-PRIMERS.md` |
 | Which document covers X? | `docs/DOCUMENTATION-MAP.md` |
 | What was described as a deliverable, and what exists today? | `docs/DELIVERABLES-SCOPE-MAPPING.md` |
 | What features/components exist, and how current are they? | `docs/FEATURES-AND-COMPONENTS.md` |
 | How do I set up a development environment? | `README.md` |
-| How does the merge editor actually work? | `docs/ws6-merge-editor-design.md` |
+| How does the merge editor actually work? | `docs/merge-editor/ws6-merge-editor-design.md` |
 | How do I connect my AI client? | The [`hyperon-wiki-mcp` repository](https://github.com/Magi-AGI/hyperon-wiki-mcp) |
 | What are the known MCP server quirks? | `SERVER-BUGS.md` in the [`hyperon-wiki-mcp` repository](https://github.com/Magi-AGI/hyperon-wiki-mcp) |
 

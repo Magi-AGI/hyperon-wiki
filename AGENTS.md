@@ -31,7 +31,7 @@
 
 ## Commit & Pull Request Guidelines
 - Commits: short, imperative subjects (e.g., "Add deck import job"); optional context body; reference issues (e.g., `Refs #123`).
-- PRs: summarize intent, list commands used to test, include screenshots/GIFs for UI changes, call out schema/migration changes, link supporting docs (e.g., `DECKO-DATABASE-ACCESS.md`), and note any manual deployment steps.
+- PRs: summarize intent, list commands used to test, include screenshots/GIFs for UI changes, call out schema/migration changes, link supporting docs (e.g., `docs/operations/DECKO-DATABASE-ACCESS.md`), and note any manual deployment steps.
 
 ## Security & Configuration Tips
 - Keep secrets out of the repo; use env vars or `.env.local`.

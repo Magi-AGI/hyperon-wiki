@@ -11,3 +11,28 @@ host. Ask an administrator for access, or wait for the card to be republished he
 
 This file is a pointer only — it carries no content of its own. Update the card, not this
 file.
+
+---
+
+## Status: an open content gap
+
+Stating this plainly, because a pointer to something you cannot reach is easy to mistake for
+a document:
+
+- **This file is a bootstrap pointer, not the canonical content.** It contains no API
+  description, no endpoint list, and no examples.
+- **The named card is not published to `wiki.hyperon.dev`.** It is held on an internal
+  source wiki, which this branch does not link. Without access to that wiki, the content is
+  unavailable.
+- **The read surface described by the card is source-level and not activated in
+  production.** The AtomSpace mirror implementation exists in `mod/atomspace_mirror/`;
+  activation is a separate, explicitly approved operation that has not been performed.
+- **This gap is a tracked open decision, not an oversight.** Whether to mirror the card
+  content into this repository, publish the card, retire this pointer, or leave it as it is
+  sits at [`DOCUMENTATION-MAP.md` → Follow-up task 5](DOCUMENTATION-MAP.md#5-decide-what-happens-to-the-two-agent-read-pointer-files),
+  which lays out the four options and what each would need.
+
+What this gap costs is not known. The mirror being unactivated does not establish that
+nobody needs this material — someone developing against the mirror, onboarding to that
+subsystem, or planning the activation sequence may well be held up by it. If that is you,
+say so, because that is the evidence the decision above is missing.
