@@ -466,6 +466,12 @@ Work through this in order. It should take well under an hour.
 | Which document covers X? | `docs/DOCUMENTATION-MAP.md` |
 | What was described as a deliverable, and what exists today? | `docs/DELIVERABLES-SCOPE-MAPPING.md` |
 | What features/components exist, and how current are they? | `docs/FEATURES-AND-COMPONENTS.md` |
+| I need the cardtypes, names, and tags in full | `docs/CONTENT-MODEL.md` |
+| I need every card the editorial workflow writes | `docs/EDITORIAL-WORKFLOW.md` |
+| I am reviewing something right now | `docs/REVIEW-QUEUE-GUIDE.md` |
+| I need to undo an edit or recover a deleted card | `docs/HISTORY-AND-ROLLBACK.md` |
+| How is the system put together? | `docs/ARCHITECTURE.md` |
+| Something in Decko behaved unexpectedly | `docs/DECKO-GOTCHAS.md` |
 | How do I set up a development environment? | `README.md` |
 | How does the merge editor actually work? | `docs/merge-editor/ws6-merge-editor-design.md` |
 | How do I connect my AI client? | The [`hyperon-wiki-mcp` repository](https://github.com/Magi-AGI/hyperon-wiki-mcp) |

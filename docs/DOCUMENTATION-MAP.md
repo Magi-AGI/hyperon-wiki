@@ -84,6 +84,12 @@ Consult these when the task calls for them. None is required reading on day one.
 | [`INGESTION-WORKFLOWS.md`](INGESTION-WORKFLOWS.md) | You are bringing source material into the wiki. The script inventory by source family, the two-stage export-then-ingest model, what an operator supplies out of band, and the safe first-run posture. **Required reading before any ingest run.** | current |
 | [`DELIVERABLES-SCOPE-MAPPING.md`](DELIVERABLES-SCOPE-MAPPING.md) | You are taking the system over and want to know what exists versus what is still an open decision. A built-work record mapping each described term to the work evidenced today. | current |
 | [`DECKO-SECTION-PATTERN.md`](DECKO-SECTION-PATTERN.md) | You are building a structured, multi-section article and want the established card pattern. | current |
+| [`CONTENT-MODEL.md`](CONTENT-MODEL.md) | You need the cardtypes, naming rules, index conventions, metadata subcards, and tag vocabulary in full, rather than the five-minute version. | current |
+| [`EDITORIAL-WORKFLOW.md`](EDITORIAL-WORKFLOW.md) | You need Stage A → B → C with the complete card-name contract — `+proposal`, `+base`, `+provenance`, `+mode`, `+merge draft`, `+merge audit` — plus what the apply gate does and does not verify. | current |
+| [`REVIEW-QUEUE-GUIDE.md`](REVIEW-QUEUE-GUIDE.md) | You are reviewing something: working the queue, reading confidence tiers and conflict hunks, what each apply refusal means, and recovering when the parent moved mid-review. | current |
+| [`HISTORY-AND-ROLLBACK.md`](HISTORY-AND-ROLLBACK.md) | You need to undo an edit, recover a deleted card, or understand what history means for content that should never have been visible. | current, with UI affordances unverified |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | You want the shape of the system: the code-versus-cards layers, the read path and write path drawn separately, and what each mod is responsible for. | current |
+| [`DECKO-GOTCHAS.md`](DECKO-GOTCHAS.md) | Something in Decko behaved unexpectedly, or you are about to rename a compound card, write a set file, or change a permission rule. | current |
 | [`SCRIPTS-RESEARCH-ARCHIVE.md`](SCRIPTS-RESEARCH-ARCHIVE.md) | You are wondering what the gitignored `scripts/archive/` corpus at the repository root is, or considering sharing the repository externally. States a boundary that applies today — not a historical record. | current |
 
 Also useful, outside `docs/`: `mod/review_queue_ui/README.md` for Review Queue behaviour, and
@@ -123,8 +129,8 @@ Index: [`atomspace/README.md`](atomspace/README.md).
 |---|---|---|
 | [`atomspace/ATOMSPACE-MIRROR-DEPLOYMENT.md`](atomspace/ATOMSPACE-MIRROR-DEPLOYMENT.md) | Deployment and operations runbook for the Decko → Hyperon AtomSpace write-through mirror. Names its canonical wiki cards. **Nothing in it activates the mirror** — activation is a separate, approved operation. | current |
 | [`atomspace/ATOMSPACE-INTEGRATION.md`](atomspace/ATOMSPACE-INTEGRATION.md) | Broader backend integration architecture. **Self-described as a conceptual sketch** — its own header warns that code blocks are not necessarily runnable. Read that warning first. | current, explicitly aspirational |
-| [`AGENT-READ-API.md`](AGENT-READ-API.md) | AtomSpace mirror agent read API. **Pointer only** — the canonical version is a wiki card named in the file header, not yet published to `wiki.hyperon.dev`. | current (mirror) |
-| [`AGENT-READ-YOUR-WRITES.md`](AGENT-READ-YOUR-WRITES.md) | Read-your-writes consistency for agents. **Pointer only**, same caveat. | current (mirror) |
+| [`AGENT-READ-API.md`](AGENT-READ-API.md) | AtomSpace mirror agent read API. **Pointer only** — the canonical version is a wiki card named in the file header, not yet published to `wiki.hyperon.dev`. Kept as an annotated stub for this handoff; see [Follow-up task 5](#5-the-two-agent-read-pointer-files). | current (annotated stub) |
+| [`AGENT-READ-YOUR-WRITES.md`](AGENT-READ-YOUR-WRITES.md) | Read-your-writes consistency for agents. **Pointer only**, same caveat, same disposition. | current (annotated stub) |
 
 Implementation lives in `mod/atomspace_mirror/`.
 
@@ -146,22 +152,28 @@ Claude, Codex, and Gemini/agy are the paths with months of production use behind
 The `mcp_api` build-out record — phase plans, completion notes, the phase-2 testing guide —
 is in [`archive/`](archive/).
 
-### Operations — inherited templates — [`operations/`](operations/)
+### Operations — verified supporting procedures — [`operations/`](operations/)
 
 **Start at [`OPERATIONS.md`](OPERATIONS.md)** — it records what is actually confirmed about
 running this wiki and marks everything else as open. The two documents below are supporting
-procedures behind it, indexed at [`operations/README.md`](operations/README.md).
+procedures behind it, indexed at [`operations/README.md`](operations/README.md). Both
+originated as generic templates carried over from a sibling deck; both have since been
+checked against this deployment's production evidence, on 2026-09-15, within a specific
+scope — environment bootstrap, rbenv PATH shape, `.env.production` presence, the stdin
+runner form, SMTP configuration inspection, and sign-up/account card lookups — not email
+delivery, UI-based account recovery, backups, restarts, deploys, or the platform-specific
+example scripts as written (Follow-up tasks 1a and 1b, both closed; see each document for
+the exact scope).
 
-Both carry generic procedures with `<placeholder>` values throughout. The *procedure* is
-reusable; every concrete value — hosts, keys, endpoints, paths — comes from the
-server-access handoff, never from a repository file. **Read the status column before
-following either of them.**
+Both still carry `<placeholder>` values throughout for every concrete value — hosts, keys,
+endpoints, paths. That is deliberate and permanent, not a sign the document is unfinished:
+concrete values come from the server-access handoff, never from a repository file.
 
 | Document | What it covers | Status |
 |---|---|---|
-| [`OPERATIONS.md`](OPERATIONS.md) | What is confirmed about operating this wiki — the two deploy layers and their ordering, PostgreSQL everywhere, the two separate handoffs, access-control shape, ingestion touching production, the mirror being unactivated — plus an explicit list of what still needs server-access confirmation. | current (skeleton) |
-| [`operations/DECKO-DATABASE-ACCESS.md`](operations/DECKO-DATABASE-ACCESS.md) | Running Decko/ActiveRecord scripts against a deck via remote console: environment bootstrap, `script/card runner`, quoting, Windows and Linux stdin workflows, troubleshooting. | template — see [Follow-up tasks](#follow-up-tasks) item 1a |
-| [`operations/EMAIL_SETUP.md`](operations/EMAIL_SETUP.md) | SMTP configuration for a Decko deck: provider options, environment variables, verification. Referenced from `ROLES-AND-PERMISSIONS.md` when account verification email fails. | template — see [Follow-up tasks](#follow-up-tasks) item 1b |
+| [`OPERATIONS.md`](OPERATIONS.md) | What is confirmed about operating this wiki — the two deploy layers and their ordering, PostgreSQL everywhere, the two separate handoffs, access-control shape, ingestion touching production, the mirror being unactivated, the confirmed SMTP provider, and the corrected remote-console invocation — plus an explicit list of what still needs server-access confirmation. | current (skeleton) |
+| [`operations/DECKO-DATABASE-ACCESS.md`](operations/DECKO-DATABASE-ACCESS.md) | Running Decko/ActiveRecord scripts against a deck via remote console: environment bootstrap, `ruby script/card runner`, quoting, Windows and Linux stdin workflows, troubleshooting. Verified against this deployment 2026-09-15 — see [Follow-up tasks](#follow-up-tasks) item 1a. | current, verified 2026-09-15 |
+| [`operations/EMAIL_SETUP.md`](operations/EMAIL_SETUP.md) | SMTP configuration for the Hyperon Wiki: confirmed provider (Gmail via `smtp.gmail.com`), confirmed sign-up/verification card existence, and an administrator recovery path for when email is failing that the document marks as unverified beyond that card existence. Referenced from `ROLES-AND-PERMISSIONS.md` when account verification email fails. See [Follow-up tasks](#follow-up-tasks) item 1b. | current, verified 2026-09-15 |
 
 A third inherited template, an EC2 and RDS deployment walkthrough, was **retired to
 [`archive/AWS-DEPLOYMENT.md`](archive/AWS-DEPLOYMENT.md)** — see Follow-up task 1c.
@@ -250,6 +262,7 @@ version**. Where a document names a canonical card, that card wins.
 |---|---|
 | **current** | Believed accurate and maintained. |
 | **current (draft)** | Accurate as far as it goes, but not yet reviewed or published; may carry its own unresolved notes. |
+| **current (annotated stub)** | A pointer file with no content of its own, kept deliberately and annotated to state the gap it points at. Accurate about what it is; not a substitute for the content. |
 | **template** | A generic Decko/Rails procedure carried over from a sibling deck, fully parameterized with `<placeholder>` values. The procedure is reusable; every concrete value comes from the server-access handoff. |
 | **historical** | Describes a completed phase, a past investigation, or a superseded plan. Kept for the record, in [`archive/`](archive/). |
 | *(to be confirmed)* | Not yet verified against the running production system. |
@@ -268,18 +281,22 @@ separate decisions, because the documents differ in how much this repository act
 depends on them. [`OPERATIONS.md`](OPERATIONS.md) now exists as the this-wiki runbook they
 were meant to feed into, and each item below says what would close it.
 
-**1a. `operations/DECKO-DATABASE-ACCESS.md` — verify, then drop the banner.**
+**1a. `operations/DECKO-DATABASE-ACCESS.md` — done, closed 2026-09-15.**
 Load-bearing: [`INGESTION-WORKFLOWS.md`](INGESTION-WORKFLOWS.md) points at it for the
-`decko runner` remote-console procedure the Ruby ingesters depend on. The procedure is sound
-and reusable; what is missing is confirmation against *this* deployment — the rbenv shim path
-shape, the production environment file, and `script/card runner` behaviour. **Needs server
-access.** Record that the procedure was confirmed; keep the values in the access handoff.
+remote-console procedure the Ruby ingesters depend on. A read-only production evidence check
+confirmed the rbenv shim path shape, the production environment file, and `script/card
+runner` behaviour — with one correction: `script/card` is not executable on this deployment,
+so the procedure now uses `ruby script/card runner`. The banner has been dropped in favor of
+a verified-procedure note; concrete values (host, key, deck root) remain in the server-access
+handoff, as always.
 
-**1b. `operations/EMAIL_SETUP.md` — confirm the provider, then rewrite around it.**
+**1b. `operations/EMAIL_SETUP.md` — done, closed 2026-09-15.**
 Load-bearing: referenced from [`ROLES-AND-PERMISSIONS.md`](ROLES-AND-PERMISSIONS.md) §1f,
-the path an administrator follows when signup verification email is failing. One fact —
-which SMTP provider this wiki uses — collapses four generic options into a real document.
-**Needs server access.** The provider name may be recorded; credentials never.
+the path an administrator follows when signup verification email is failing. A read-only
+production evidence check confirmed the provider — Gmail via `smtp.gmail.com` — collapsing
+the previous four-generic-options template into a document written around this deployment's
+actual configuration. The banner has been dropped; SMTP credentials remain in the
+server-access handoff, never recorded here.
 
 **1c. `AWS-DEPLOYMENT.md` — retired, done.** The EC2 and RDS walkthrough now lives in
 [`archive/AWS-DEPLOYMENT.md`](archive/AWS-DEPLOYMENT.md). It described standing up a new
@@ -310,20 +327,34 @@ Someone should decide whether the scope should become role-derived, and either i
 or record the explicit-grant model as the intended design. Until then, granting the role does
 **not** grant AtomSpace access, and operators should expect to arrange the two separately.
 
-### 4. Write the missing documents
+### 4. Write the missing documents — done
 
-See [Planned, not yet written](#planned-not-yet-written) below.
+All six are written and indexed under *Reference*. See
+[Planned, not yet written](#planned-not-yet-written) below for the two caveats carried from
+that pass and for what to do when a new gap is identified.
 
-### 5. Decide what happens to the two agent-read pointer files
+### 5. The two agent-read pointer files
+
+**Status: settled for this handoff package — the two files stay as annotated pointer stubs.
+This is not a blocking decision, and nothing in this package waits on it.**
 
 [`AGENT-READ-API.md`](AGENT-READ-API.md) and
 [`AGENT-READ-YOUR-WRITES.md`](AGENT-READ-YOUR-WRITES.md) are pointers with no content of
 their own. Each names a canonical card held on an internal source wiki and **not published
 to `wiki.hyperon.dev`**, so the material is unreachable to anyone without internal access.
-Both were annotated during Phase 5 to say so plainly; the underlying decision was
-deliberately left open and is **not** closed by that annotation.
+**That content gap is real and remains open** — the decision recorded here does not close it,
+and the card content is deliberately not imported into this SNET-facing branch.
 
-Four options, and none is blocked by the others:
+What is settled is only that the gap does not block the handoff, for three reasons:
+
+- The **AtomSpace mirror is not activated in production**, so nobody operating the wiki as
+  handed over depends on this material to run it.
+- Both files were annotated during Phase 5 to state the gap plainly, so a reader meets an
+  honest pointer rather than mistaking an empty file for a document.
+- Nothing on the newcomer path, the per-role path, or the operational path depends on the
+  missing content.
+
+Four options remain open for later, and none is blocked by the others:
 
 - **Mirror the content into these files**, keeping the card named as the source of truth.
   This is what the canonical-location policy above already describes — a repository copy for
@@ -336,29 +367,35 @@ Four options, and none is blocked by the others:
 - **Retire the stubs** and record the gap. More work than it looks: both are cited as the
   worked example of the canonical-location pattern in `../ONBOARDING.md` and in this
   document, so retiring them means rewriting that explanation as well.
-- **Leave them as they are**, annotated. The current state.
+- **Keep the annotated stubs** until usage evidence appears. **This is the current state and
+  the chosen default for this package.**
 
-**What the gap costs is not known.** The AtomSpace mirror being unactivated does not
-establish that nobody needs this material — someone developing against the mirror,
-onboarding to that subsystem, or planning activation may be held up by it. If that is you,
-say so; that is the evidence this decision is missing.
+**What the gap costs is still not known.** The mirror being unactivated does not establish
+that nobody needs this material — someone developing against the mirror, onboarding to that
+subsystem, or planning activation may be held up by it. If that is you, say so: that is the
+evidence this default is missing, and it is what would turn the question back into a live
+decision rather than a standing one.
 
 ---
 
 ## Planned, not yet written
 
-Identified as missing during the onboarding review. Listed so the gap is visible rather than
-discovered again later. **These files do not exist yet** — do not link to them as though they
-do.
+**All six documents identified as missing during the onboarding review have now been
+written**, from repository evidence alone: [`EDITORIAL-WORKFLOW.md`](EDITORIAL-WORKFLOW.md),
+[`REVIEW-QUEUE-GUIDE.md`](REVIEW-QUEUE-GUIDE.md), [`CONTENT-MODEL.md`](CONTENT-MODEL.md),
+[`HISTORY-AND-ROLLBACK.md`](HISTORY-AND-ROLLBACK.md), [`ARCHITECTURE.md`](ARCHITECTURE.md),
+and [`DECKO-GOTCHAS.md`](DECKO-GOTCHAS.md). They are indexed under *Reference* above.
 
-| Planned document | Would cover |
-|---|---|
-| `EDITORIAL-WORKFLOW.md` | A standalone editor-facing narrative of Stage A → B → C, with the **full card-name contract** (`+proposal`, `+base`, `+provenance`, `+mode`, `+merge draft`, `+audit`) — the part still missing. The narrative itself is now in `ONBOARDING.md` §4 and [`FEATURE-PRIMERS.md`](FEATURE-PRIMERS.md) §5. |
-| `REVIEW-QUEUE-GUIDE.md` | A reviewer's task guide: reading the workbench banners and conflict bands, and **recovering when the parent moved mid-review** — the part still missing. The day-to-day loop and verification habits are now in [`ROLE-BASED-ONBOARDING.md`](ROLE-BASED-ONBOARDING.md) → Editor / reviewer. |
-| `CONTENT-MODEL.md` | The cardtypes, index conventions, and tag vocabulary **in full**. Introduced in `ONBOARDING.md` §3 and §5 and in [`FEATURE-PRIMERS.md`](FEATURE-PRIMERS.md) §1–§3 and §6; a complete reference is still missing. Roles are covered in [`ROLES-AND-PERMISSIONS.md`](ROLES-AND-PERMISSIONS.md), not here. |
-| `HISTORY-AND-ROLLBACK.md` | A feature-level walkthrough of Decko's card history and rollback: reading a card's revisions, reverting a bad edit, and what history means for content that should never have been visible. Referenced as a gap by [`ROLES-AND-PERMISSIONS.md`](ROLES-AND-PERMISSIONS.md) §2 and introduced at primer depth in [`FEATURE-PRIMERS.md`](FEATURE-PRIMERS.md) §10. |
-| `ARCHITECTURE.md` | One section per mod, with the read path and the write path drawn separately. |
-| `DECKO-GOTCHAS.md` | The hard-won Decko rules currently scattered across source comments — compound-card naming behaviour, set-loading constraints, event-stage behaviour on API paths, and asset-pipeline traps. |
+Two caveats carried from that pass:
+
+- `HISTORY-AND-ROLLBACK.md` documents the history mechanism, which is confirmed, but marks
+  its UI affordances as unverified against the running wiki, and records that recent-changes
+  and watch/follow were not confirmed present.
+- None of the six required server access, and none records operational values. Where a topic
+  needed live evidence, it points to [`OPERATIONS.md`](OPERATIONS.md) rather than guessing.
+
+Nothing else is currently tracked as missing. When a gap is identified, add it back here with
+a line on what it would cover, so the gap is visible rather than rediscovered later.
 
 ---
 
@@ -373,9 +410,9 @@ rather than as an unfinished phase.
 |---|---|
 | 1 | **Done.** This map was rewritten from a by-audience index into the tiered structure above, leading with a five-document *Read these first* path. An empty `TODO.md` was removed. No files moved. |
 | 2 | **Done.** The nine WS6 documents now live in [`merge-editor/`](merge-editor/), with references updated across the documentation set and the `editorial_review` mod's source comments. `docs/` dropped from 24 files to 15. |
-| 3 | **Done.** The two AtomSpace documents now live in [`atomspace/`](atomspace/) and the three inherited templates in [`operations/`](operations/), with references updated across the documentation, the `mcp_api` mod, the `Gemfile`, and the systemd unit examples. `docs/` dropped from 15 files to 10. The two pointer-only `AGENT-READ-*` files were left in place pending the Phase 5 decision. |
+| 3 | **Done.** The two AtomSpace documents now live in [`atomspace/`](atomspace/) and the three inherited templates in [`operations/`](operations/), with references updated across the documentation, the `mcp_api` mod, the `Gemfile`, and the systemd unit examples. `docs/` dropped from 15 files to 10. The two pointer-only `AGENT-READ-*` files were left in place for the later Phase 5 decision; Phase 5 now keeps them as annotated, non-blocking stubs for this package. |
 | 4 | **Done.** The single-file `archive/fixes/` directory was flattened into [`archive/`](archive/), and `SCRIPTS-RESEARCH-ARCHIVE.md` moved out of the historical archive to [`SCRIPTS-RESEARCH-ARCHIVE.md`](SCRIPTS-RESEARCH-ARCHIVE.md), since it describes a current boundary rather than recording something that finished. |
-| 5 | **Done.** Decisions rather than moves. The two pointer-only `AGENT-READ-*` files were kept and annotated with an honest statement of the content gap; what to do about their canonical cards remains open as [Follow-up task 5](#5-decide-what-happens-to-the-two-agent-read-pointer-files). [`OPERATIONS.md`](OPERATIONS.md) was created as a skeleton of confirmed facts with explicit server-access gaps. The single inherited-template follow-up was split into per-document decisions (1a, 1b, 1c). The EC2 and RDS walkthrough was retired to [`archive/AWS-DEPLOYMENT.md`](archive/AWS-DEPLOYMENT.md), with its nine inbound references updated. `docs/` holds 12 files. |
+| 5 | **Done.** Decisions rather than moves. The two pointer-only `AGENT-READ-*` files were kept and annotated with an honest statement of the content gap; keeping them as annotated stubs is now the settled default for this package, with the longer-term question of their canonical cards tracked as a non-blocking [Follow-up task 5](#5-the-two-agent-read-pointer-files). [`OPERATIONS.md`](OPERATIONS.md) was created as a skeleton of confirmed facts with explicit server-access gaps. The single inherited-template follow-up was split into per-document decisions (1a, 1b, 1c). The EC2 and RDS walkthrough was retired to [`archive/AWS-DEPLOYMENT.md`](archive/AWS-DEPLOYMENT.md), with its nine inbound references updated. `docs/` holds 12 files. |
 
 Every move used **plain filesystem operations, deliberately not `git mv`**, so nothing is
 staged while the reorganization awaits review. Git records each move as a delete plus an add

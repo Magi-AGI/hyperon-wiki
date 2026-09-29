@@ -167,10 +167,10 @@ already.
 - **What it is:** Decko versions every card edit and supports rollback. Base Decko also
   typically ships recent-changes and watch/follow features.
 - **Who needs it:** editors auditing what changed; anyone recovering from a bad edit.
-- **Where it lives:** base Decko mechanism (history/revert). `ROLES-AND-PERMISSIONS.md`
-  §2 confirms history/rollback exists but explicitly defers a full walkthrough:
-  "a feature-level walkthrough of history/rollback belongs in a later documentation
-  pass."
+- **Where it lives:** base Decko mechanism (history/revert).
+  [`HISTORY-AND-ROLLBACK.md`](HISTORY-AND-ROLLBACK.md) is the feature-level walkthrough —
+  reading revisions, reverting an edit, recovering a deleted card, and what history means
+  for content that should never have been visible.
 - **Status:** history/revert — shipped/current (base Decko), confirmed used operationally
   (e.g. `get_card_history` in the MCP surface, Part 2 §6). Recent-changes and
   watch/follow — **not locally verified in this pass**; label as base Decko feature

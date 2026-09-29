@@ -1,163 +1,118 @@
-# Email Setup for a Decko Deck
+# Email Setup for the Hyperon Wiki
 
-> **Inherited template — placeholders only.** This guide came from a sibling Decko deck and
-> is queued for rewrite. The SMTP provider guidance is generic and reusable; every host,
-> key path, deck root, service name, and mail domain is a `<placeholder>`. Real values come
-> from the **server-access handoff** (the Administrator card and its children), not from a
-> repository file. Never commit SMTP credentials.
+> **Verified against production: 2026-09-15.** This guide originated as a generic template
+> carried over from a sibling Decko deck. The provider section below has been rewritten
+> around what a read-only production evidence check actually confirmed for this deployment
+> (see *Verified state* below). Host, key path, deck root, and any operational value that
+> is not itself one of the verified facts remain `<placeholder>`. Real values, and SMTP
+> credentials, live in the **server-access handoff** (the Administrator card and its
+> children), never in this repository. Never commit SMTP credentials.
 
-This guide explains how to configure email for account creation, password resets, and other email-based features in your Decko instance.
+This guide explains how email works for account creation, password resets, and other
+email-based features in the Hyperon Wiki's production deployment, and what to do when it
+fails.
 
-## Current Status
+## Verified state (2026-09-15)
 
-Email delivery is now **enabled** in `config/application.rb` but requires SMTP credentials to function.
+A read-only remote-console check of `.env.production` and a runner-based card lookup
+confirmed the following. No values were read, printed, or recorded beyond what's listed
+here — SMTP username and password are present but their values were not inspected and must
+never be documented.
 
-## SMTP Provider Options
+- Email delivery is **enabled**: `delivery_method: smtp`, `perform_deliveries: true`.
+- **Provider: Gmail**, via `smtp.gmail.com`, port `587`, authentication `plain`.
+- `.env.production` defines `MAILER_HOST`, `MAILER_PROTOCOL`, `SMTP_ADDRESS`,
+  `SMTP_AUTHENTICATION`, `SMTP_DOMAIN`, `SMTP_ENABLE_STARTTLS`, `SMTP_PASSWORD`,
+  `SMTP_PORT`, and `SMTP_USERNAME`.
+- SMTP username and password are set. Their values are not reproduced here or anywhere in
+  this repository — they live in the server-access handoff.
 
-Choose one of these providers and get your credentials:
+This is the current state, not a choice to preserve indefinitely. If this deployment ever
+needs to change providers, that is a separate operations decision — see *Changing the
+provider* below.
 
-### Option 1: SendGrid (Recommended for Production)
-- **Free Tier**: 100 emails/day
-- **Sign up**: https://sendgrid.com/pricing/
-- **Settings after signup**:
-  ```
-  SMTP_ADDRESS=smtp.sendgrid.net
-  SMTP_PORT=587
-  SMTP_DOMAIN=your-domain.com
-  SMTP_USERNAME=apikey
-  SMTP_PASSWORD=<your-sendgrid-api-key>
-  ```
+## Testing email configuration
 
-### Option 2: Mailgun
-- **Free Tier**: 100 emails/day (first 3 months)
-- **Sign up**: https://www.mailgun.com/pricing/
-- **Settings after signup**:
-  ```
-  SMTP_ADDRESS=smtp.mailgun.org
-  SMTP_PORT=587
-  SMTP_DOMAIN=your-domain.com
-  SMTP_USERNAME=<your-mailgun-username>
-  SMTP_PASSWORD=<your-mailgun-password>
-  ```
-
-### Option 3: Gmail (Simple but Limited)
-- **Free Tier**: ~500 emails/day
-- **Requires**: Gmail account + App Password (2FA must be enabled)
-- **Get App Password**: https://myaccount.google.com/apppasswords
-- **Settings**:
-  ```
-  SMTP_ADDRESS=smtp.gmail.com
-  SMTP_PORT=587
-  SMTP_DOMAIN=gmail.com
-  SMTP_USERNAME=your-email@gmail.com
-  SMTP_PASSWORD=<your-16-char-app-password>
-  ```
-
-### Option 4: Amazon SES (Production Scale)
-- **Free Tier**: 62,000 emails/month (if sent from EC2)
-- **Sign up**: https://aws.amazon.com/ses/
-- **More complex setup**: Requires verification, may start in sandbox mode
-
-## Configuration Steps
-
-### 1. Add SMTP Credentials to Production Environment
-
-SSH into your production server and edit `.env.production`:
+Use the verified remote-console procedure from
+[`DECKO-DATABASE-ACCESS.md`](DECKO-DATABASE-ACCESS.md) rather than `bundle exec rails
+console`, since `script/card` is not executable on this deployment and the runner form is
+confirmed to work:
 
 ```bash
-ssh -i <ssh-key-path> <ssh-user>@<deck-host>
-cd <deck-root>
-nano .env.production
+printf '%s\n' 'puts ActionMailer::Base.smtp_settings.slice(:address, :port, :authentication)' \
+  | ssh -T -i <ssh-key> <ssh-user>@<deck-host> \
+    'cd <deck-root> && set -a && . .env.production && set +a && \
+     export PATH=<rbenv-shims>:$PATH && ruby script/card runner -'
 ```
 
-Add these variables (using credentials from your chosen provider):
+`.slice(:address, :port, :authentication)` excludes credentials from the diagnostic output —
+do not print the full `smtp_settings` hash, since it can include `user_name` and `password`.
 
-```bash
-# Email Configuration
-MAILER_HOST=<deck-public-domain>
-MAILER_PROTOCOL=https
-SMTP_ADDRESS=smtp.sendgrid.net
-SMTP_PORT=587
-SMTP_DOMAIN=<deck-public-domain>
-SMTP_USERNAME=apikey
-SMTP_PASSWORD=your-sendgrid-api-key-here
-SMTP_AUTHENTICATION=plain
-```
+To send a live test email, use `Card::Mailer` from the same runner invocation, substituting
+a real recipient at the point of use rather than recording one here.
 
-**Important**: Replace the values above with your actual SMTP credentials!
+## Sign-up and verification cards (verified 2026-09-15)
 
-### 2. Deploy Updated Configuration
+A runner-based card lookup found the following sign-up-related cards on this deployment.
+**`acceptance email+*right+*structure` and `account approval email+*right+*structure` were
+both looked up and not found** — do not assume either exists, and do not treat the former as
+the default verification-email template on this deck.
 
-Upload the updated `config/application.rb` file to production:
+Cards confirmed present:
+- `Sign up` — a Cardtype. `Card.fetch("Sign_ups")` and `Card.fetch("Sign ups")` both resolve
+  to it.
+- `signup alert email` — an Email template.
+- `Signup Success` — a RichText card.
+- `*signup` — a RichText card.
+- `*account` and `*account links` — both exist.
 
-```bash
-# From your local machine
-scp -i <ssh-key-path> config/application.rb <ssh-user>@<deck-host>:<deck-root>/config/
-```
+Because the specific verification-email template card was not found where the previous
+version of this document assumed it, treat any claim about *which* card renders the
+verification email as unconfirmed until checked directly against this deployment (e.g. via
+the runner, or by searching the wiki UI for "email" and "signup" cards).
 
-### 3. Restart the Application
+## Recovering when email is down (administrator path)
 
-```bash
-ssh -i <ssh-key-path> <ssh-user>@<deck-host>
-cd <deck-root>
-# If using systemd service:
-sudo systemctl restart <deck-service>
+**Unverified from this evidence.** The read-only card lookup confirmed that the `Sign up`
+cardtype and the `*account` / `*account links` cards exist on this deployment. It did not
+confirm that a signup-approval action exists, that it can bypass email verification, or what
+it looks like in the UI. Do not treat the steps below as a tested procedure — they are an
+inference from card existence, not a confirmed workflow:
 
-# If using Railway:
-# Push to git and Railway will auto-deploy
-```
+1. The `Sign up` cardtype confirmed above is a plausible anchor for a sign-up surface in the
+   wiki UI — look for a `Sign_ups` or `Sign ups` listing (both names resolve to the same
+   cardtype) among pending accounts, if one exists.
+2. `*account` and `*account links` are confirmed to exist, but whether either exposes an
+   approval action that bypasses email verification was not checked.
 
-## Testing Email Configuration
+Before relying on this path during an actual outage, an administrator should verify directly
+in the wiki UI whether a signup-approval control exists at all, and what it does — this
+document does not establish that one does.
 
-After configuration, test email delivery using Rails console:
+## Changing the provider (future decision, not current state)
 
-```bash
-ssh -i <ssh-key-path> <ssh-user>@<deck-host>
-cd <deck-root>
-set -a && source .env.production && set +a
-PATH="<rbenv-shims>:$PATH" bundle exec rails console
-```
-
-In the Rails console:
-
-```ruby
-# Test email settings
-ActionMailer::Base.smtp_settings
-# => Should show your SMTP configuration
-
-# Send a test email (replace with your email)
-Card::Mailer.mail(
-  to: 'your-email@example.com',
-  from: 'noreply@<deck-public-domain>',
-  subject: 'Test Email',
-  body: 'If you receive this, email is working!'
-).deliver_now
-```
+The current production provider is Gmail via SMTP, confirmed above. If a future decision is
+made to switch — for example to a dedicated transactional-email provider such as SendGrid,
+Mailgun, or Amazon SES for higher volume — that is a new operations decision requiring its
+own credential provisioning and verification pass, not a continuation of this document. Any
+such change should update the *Verified state* section above once confirmed, rather than
+reintroducing a generic multi-provider options list here.
 
 ## Configuring Decko Email Templates
 
-Decko allows customization of email templates through cards:
-
-### Default Email Templates
-
-1. **Verification Email**: Sent when users sign up
-   - Card: `acceptance email+*right+*structure`
-   - View at: https://decko.org/acceptance_email+*right+*structure
-
-2. **Signup Alert Email**: Sent to admins when someone signs up
-   - Configure notification settings in Decko admin
-
-3. **Password Reset Email**: Sent when users request password reset
-   - Automatically handled by Decko
+Decko allows customization of email templates through cards. Only `signup alert email` was
+confirmed as an Email template on this deployment; edit it in the wiki UI to customize that
+message. `Signup Success` and `*signup` were confirmed present but as **RichText** cards, not
+Email templates — their role in the email flow, if any, was not verified in this pass, so do
+not edit them expecting to change outgoing email content. Password reset email is handled
+automatically by Decko's account flow.
 
 ### Customizing Email Sender
 
-In Decko web interface, you can configure:
+In the Decko web interface, you can configure:
 - **From Address**: Create or edit email configuration cards
 - **Reply-To**: Set in email configuration
 - **Email Templates**: Use card-based templates with HTML/Markdown
-
-Visit your Decko admin panel and search for "email" cards to customize.
 
 ## reCAPTCHA Setup (Optional)
 
@@ -185,7 +140,7 @@ To prevent spam signups, you may want to add reCAPTCHA:
 
 3. **Test SMTP connection** manually:
    ```bash
-   telnet smtp.sendgrid.net 587
+   telnet smtp.gmail.com 587
    # Should connect successfully
    ```
 
@@ -193,39 +148,31 @@ To prevent spam signups, you may want to add reCAPTCHA:
 
 ### Account Creation Not Working
 
-1. **Verify email is enabled**: Check that `config.action_mailer.perform_deliveries = true`
-2. **Check Decko permissions**: Ensure "Anyone" has permission to create Sign Up cards
-3. **Review Decko account settings**: Look for `*account_links` or `*signup` cards in admin
+1. **Verify email is enabled**: confirmed above (`perform_deliveries: true`)
+2. **Check Decko permissions**: Ensure "Anyone" has permission to create `Sign up` cards
+3. **Review Decko account settings**: Look for `*account`, `*account links`, or `*signup`
+   cards — all confirmed present on this deployment (see *Sign-up and verification cards*
+   above)
 
 ### Authentication Errors
 
-- Gmail: Make sure you're using an **App Password**, not your regular password
-- SendGrid: Username should be literally `apikey`, password is your API key
-- Mailgun: Use SMTP credentials from Mailgun dashboard, not API keys
+- Gmail (the confirmed provider on this deployment): make sure the account is using an
+  **App Password**, not the account's regular password — SMTP username/password values
+  themselves are never documented here, only in the server-access handoff.
+- If this deployment ever switches provider (see *Changing the provider* above), that
+  provider's own authentication conventions apply and are not generic Gmail rules.
 
-## Alternative: Disable Email Verification (Development Only)
+## Recovering when email is failing
 
-If you just want to test account creation without email verification:
-
-**Warning**: This is insecure for production!
-
-1. Set `config.action_mailer.perform_deliveries = false` in `config/application.rb`
-2. Create accounts directly via Rails console:
-   ```ruby
-   Card.create!(
-     name: 'user@example.com',
-     type_id: Card.fetch_id(:user),
-     content: ''
-   )
-   ```
+See *Recovering when email is down (administrator path)* above — that section is itself
+unverified beyond the card-existence checks it describes; there is no confirmed
+remote-console fallback for account recovery on this deployment.
 
 ## Next Steps
 
-After email is configured:
-1. Test account creation flow
-2. Customize email templates in Decko
-3. Set up monitoring for email delivery failures
-4. Consider setting up SPF/DKIM records for better deliverability
+1. Customize the `signup alert email` Email template as needed
+2. Set up monitoring for email delivery failures
+3. Consider setting up SPF/DKIM records for better deliverability
 
 ## Resources
 

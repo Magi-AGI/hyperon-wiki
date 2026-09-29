@@ -445,9 +445,11 @@ Recent-changes and watch/follow affordances are base Decko features that were **
 verified on this wiki** in the current documentation pass — check the UI directly rather
 than assuming they are wired up *(to be confirmed)*.
 
-**Deeper.** [`FEATURES-AND-COMPONENTS.md`](FEATURES-AND-COMPONENTS.md) Part 1 §9. A
-feature-level walkthrough of history and rollback is listed as a gap in
-[`DOCUMENTATION-MAP.md`](DOCUMENTATION-MAP.md) under Planned, not yet written.
+**Deeper.** [`HISTORY-AND-ROLLBACK.md`](HISTORY-AND-ROLLBACK.md) is the feature-level
+walkthrough — reading revisions, reverting a bad edit, recovering a deleted card, and what
+history means for content that should never have been visible. It carries the same
+*(to be confirmed)* caveat on UI affordances.
+[`FEATURES-AND-COMPONENTS.md`](FEATURES-AND-COMPONENTS.md) Part 1 §9 has the inventory entry.
 
 ---
 

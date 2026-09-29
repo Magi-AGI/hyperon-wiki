@@ -177,10 +177,13 @@ not completing verification, or password resets aren't arriving, check SMTP deli
 before assuming a permissions problem.
 
 Provider setup, environment variables, and troubleshooting steps are in
-[`operations/EMAIL_SETUP.md`](operations/EMAIL_SETUP.md). That document is an inherited generic template —
-the SMTP *procedure* it describes is reusable, but concrete values (which provider,
-which credentials, which domain) are not reproduced here or there; they come from the
-server-access handoff, never from a repository file.
+[`operations/EMAIL_SETUP.md`](operations/EMAIL_SETUP.md). That document was verified against
+read-only evidence on 2026-09-15 and is current for this Hyperon Wiki's SMTP provider facts —
+it is no longer just an inherited generic template. Concrete values (which credentials, which
+domain) are still not reproduced here or there; they come from the server-access handoff, never
+from a repository file. Verification covered the documented facts, not the delivery path itself:
+actual email delivery and the UI recovery flow (e.g. a password reset arriving) are not
+confirmed end-to-end by that evidence.
 
 ---
 
@@ -208,9 +211,9 @@ inline:
   [§5](#5-permission-propagation-what-changing-a-parent-rule-can-do), because this
   matters operationally, not just as trivia.
 - **History and rollback.** Every card edit is versioned and can be rolled back.
-  This document doesn't cover that mechanism in detail; a feature-level walkthrough of
-  history/rollback belongs in a later documentation pass (see
-  `docs/DOCUMENTATION-MAP.md` → Planned, not yet written).
+  This document doesn't cover that mechanism in detail —
+  [`HISTORY-AND-ROLLBACK.md`](HISTORY-AND-ROLLBACK.md) is the feature-level walkthrough,
+  including what history means for content that should never have been visible.
 
 ---
 

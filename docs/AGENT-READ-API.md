@@ -14,7 +14,7 @@ file.
 
 ---
 
-## Status: an open content gap
+## Status: a known content gap, deliberately left open
 
 Stating this plainly, because a pointer to something you cannot reach is easy to mistake for
 a document:
@@ -27,12 +27,16 @@ a document:
 - **The read surface described by the card is source-level and not activated in
   production.** The AtomSpace mirror implementation exists in `mod/atomspace_mirror/`;
   activation is a separate, explicitly approved operation that has not been performed.
-- **This gap is a tracked open decision, not an oversight.** Whether to mirror the card
-  content into this repository, publish the card, retire this pointer, or leave it as it is
-  sits at [`DOCUMENTATION-MAP.md` → Follow-up task 5](DOCUMENTATION-MAP.md#5-decide-what-happens-to-the-two-agent-read-pointer-files),
-  which lays out the four options and what each would need.
+- **This gap is known and accepted for this handoff, not an oversight — and it does not
+  block anything here.** Keeping this file as an annotated stub is the settled default for
+  the SNET handoff package: the mirror is not activated in production, so nobody operating
+  the wiki as handed over depends on this material, and the annotation above points at the
+  gap rather than hiding it. The longer-term options — mirror the card content into this
+  repository, publish or link the card, retire this pointer, or keep the annotated stub
+  until usage evidence appears — all remain open, and are laid out at
+  [`DOCUMENTATION-MAP.md` → Follow-up task 5](DOCUMENTATION-MAP.md#5-the-two-agent-read-pointer-files).
 
-What this gap costs is not known. The mirror being unactivated does not establish that
+What this gap costs is still not known. The mirror being unactivated does not establish that
 nobody needs this material — someone developing against the mirror, onboarding to that
 subsystem, or planning the activation sequence may well be held up by it. If that is you,
-say so, because that is the evidence the decision above is missing.
+say so, because that is the evidence the default above is missing.

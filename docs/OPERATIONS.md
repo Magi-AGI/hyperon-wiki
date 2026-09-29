@@ -99,6 +99,28 @@ Several agent sessions may be working at once, and uncommitted changes during th
 expected. Investigate it as ordinary hygiene on its own schedule, not as a blocker to
 onboarding or to reading these documents.
 
+### Email is enabled, and the provider is Gmail
+
+Confirmed via a read-only production evidence check on 2026-09-15: `delivery_method: smtp`,
+`perform_deliveries: true`, provider Gmail via `smtp.gmail.com` port `587`, plain
+authentication. SMTP username and password are set in `.env.production` but their values
+were not read and are never recorded here — they live in the server-access handoff. That
+check also performed sign-up/account card lookups, confirming several cards exist — it did
+not confirm email delivery itself or a working UI-based recovery procedure. Details and the
+card lookup are in [`operations/EMAIL_SETUP.md`](operations/EMAIL_SETUP.md), which marks the
+administrator recovery path as unverified.
+
+### The remote-console procedure is verified, with one correction
+
+Confirmed via the same 2026-09-15 check: `.env.production` exists, rbenv shims exist and
+must be prepended to `PATH`, and `ruby script/card runner -` works via stdin — **but only
+when invoked as `ruby script/card runner`**, since `script/card` is not executable in this
+deployment's checkout. That check covered the environment bootstrap, the rbenv PATH shape,
+`.env.production` presence, and the stdin runner form itself, run directly over SSH — not
+the platform-specific (PowerShell/Linux) example scripts as written. The full procedure,
+corrected command templates, and troubleshooting are in
+[`operations/DECKO-DATABASE-ACCESS.md`](operations/DECKO-DATABASE-ACCESS.md).
+
 ---
 
 ## Open — *(to be confirmed via server-access handoff)*
@@ -109,8 +131,6 @@ in the access handoff.
 
 | Area | What needs confirming |
 |---|---|
-| **SMTP provider** | Which provider this wiki actually uses. Account verification, password resets, and signup alerts all depend on it. [`operations/EMAIL_SETUP.md`](operations/EMAIL_SETUP.md) currently presents four generic options; one confirmed answer collapses it into a real document |
-| **Remote-console procedure** | Whether the documented sequence matches this deployment — the rbenv shim path shape, the presence and name of the production environment file, and `script/card runner` behaviour. [`operations/DECKO-DATABASE-ACCESS.md`](operations/DECKO-DATABASE-ACCESS.md) describes the procedure with placeholders; it has not been verified here |
 | **Service and restart procedure** | How the application server is supervised, and the correct way to reload or restart it after a deploy |
 | **Deploy procedure** | The exact sequence for pulling code, refreshing assets, and reloading — beyond the ordering rule above |
 | **Backup procedure** | What is backed up, how often, where it goes, and how a restore is performed and tested |
@@ -130,9 +150,10 @@ truth for hosts, keys, paths, endpoints, service names, provider accounts, and c
 It is a separate process from this documentation, and deliberately so. If you need production
 access, that is an access-handover conversation, not a documentation one.
 
-Two supporting templates remain in [`operations/`](operations/), both generic and
-placeholdered, both awaiting the verification listed above. A third — a from-scratch EC2 and
-RDS deployment walkthrough — was retired to
+Two supporting procedures remain in [`operations/`](operations/), each checked against this
+deployment on 2026-09-15 within the scope described in that document — still placeholdered
+for concrete access values. A third — a
+from-scratch EC2 and RDS deployment walkthrough — was retired to
 [`archive/AWS-DEPLOYMENT.md`](archive/AWS-DEPLOYMENT.md), since it described building a new
 deployment on a platform this wiki already runs on.
 
