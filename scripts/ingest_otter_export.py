@@ -340,7 +340,7 @@ def main():
     print(f"Output: {output_dir.absolute()}")
     print(f"{'='*60}")
     print(f"\nTo sync to wiki:")
-    print(f"  1. scp -r {output_dir} ubuntu@54.183.80.144:~/transcript_exports/")
+    print(f"  1. scp -r {output_dir} <ssh-user>@<wiki-host>:~/transcript_exports/")
     print(f"  2. ssh ... 'TRANSCRIPT_EXPORT_DIR=~/transcript_exports/{output_dir.name} ... decko runner scripts/ingest_transcripts.rb'")
 
 

@@ -2,6 +2,39 @@
 
 A Decko-based wiki for the Hyperon/Atomspace ecosystem. Built on top of [Decko](https://decko.org) (a Rails-based wiki engine where "everything is a card").
 
+## Start here
+
+New to this project? This file is the **developer** guide. Two other documents come first:
+
+- **[ONBOARDING.md](ONBOARDING.md)** — the front door for everyone: the content model, the
+  editorial workflow, the approval/trust markers, and separate paths for reviewers and
+  editors, AI/MCP users, operators, and developers.
+- **[docs/DOCUMENTATION-MAP.md](docs/DOCUMENTATION-MAP.md)** — the documentation map. Use
+  it to find the right document, and to see which files are current, historical, or
+  inherited from a sibling Decko deck.
+- **[docs/ROLES-AND-PERMISSIONS.md](docs/ROLES-AND-PERMISSIONS.md)** — administrator
+  onboarding, account/role assignment, and per-role workflows, if you're setting up
+  accounts or figuring out who can do what.
+- **[docs/FEATURES-AND-COMPONENTS.md](docs/FEATURES-AND-COMPONENTS.md)** — a feature/
+  component reference (base Decko concepts and Hyperon-specific features) for newcomers
+  and SNET technical owners, with a what/who/where/status/verify breakdown per item.
+
+The `scripts/` directory holds the source-ingestion tooling (chat archives, meeting
+transcripts, publications). See
+**[docs/INGESTION-WORKFLOWS.md](docs/INGESTION-WORKFLOWS.md)** before running any of it —
+the ingest stage writes to a live content database.
+
+Taking this system over? **[docs/DELIVERABLES-SCOPE-MAPPING.md](docs/DELIVERABLES-SCOPE-MAPPING.md)**
+maps each described deliverable to what is observably present today, and lists what is still
+an open decision.
+
+> **Note:** this wiki runs on **PostgreSQL**, in development, test, and production alike
+> (`config/database.yml` uses the `postgresql` adapter throughout, and the `Gemfile`
+> depends on `pg`). Generic Decko installation documentation often recommends MySQL —
+> ignore that here. Some *other* deployment details in `docs/` were inherited from a
+> sibling Decko deck and describe that system's infrastructure; see
+> [docs/DOCUMENTATION-MAP.md](docs/DOCUMENTATION-MAP.md) for which files those are.
+
 ---
 
 # SETUP & RUNNING
@@ -9,9 +42,13 @@ A Decko-based wiki for the Hyperon/Atomspace ecosystem. Built on top of [Decko](
 ## Prerequisites
 
 - Ruby 3.x (`rbenv` or `rvm` recommended)
-- MySQL 8.x (or MariaDB 10.x)
+- PostgreSQL (production runs 17.x; any recent 14+ server is fine locally)
 - Node.js (for asset compilation)
 - Bundler
+
+This deck uses PostgreSQL exclusively — `config/database.yml` sets `adapter: postgresql`
+for development, test, and production, and the `Gemfile` depends on `pg`. Decko's generic
+installation docs lean towards MySQL; do not follow that here.
 
 ## Local Installation
 
@@ -35,9 +72,12 @@ bundle exec rake db:create db:migrate
 bundle exec decko seed
 
 # Restore from a production backup .sql.gz
-zcat backup.sql.gz | mysql -u root -p hyperon_development
+zcat backup.sql.gz | psql hyperon_development
 bundle exec rake db:migrate    # apply any pending migrations
 ```
+
+Database dumps and backups are not stored in this repository; obtain any approved restore
+artifact through the secure access handover.
 
 Install mod assets (required after `bundle install` or adding a new mod):
 
@@ -112,7 +152,7 @@ This project has two layers that must stay in sync:
 | Layer | Where it lives | How to deploy |
 |---|---|---|
 | Ruby code (mods, views, SCSS, JS) | Git repo | `git pull` + server reload |
-| Card content (`*header`, `*sidebar`, layouts) | MySQL database | Edit via wiki admin UI or MCP tools |
+| Card content (`*header`, `*sidebar`, layouts) | PostgreSQL database | Edit via wiki admin UI or MCP tools |
 
 When both change at once (e.g. a new layout card + new Ruby view), deploy code **before** editing cards, so the new view exists when the card content references it.
 
@@ -173,19 +213,20 @@ jobs:
 
 Create this file at `.github/workflows/ci.yml` to enable it. The structural specs are self-contained (no Rails boot, no database) and run in under 100ms, making them well-suited for CI.
 
-For full rendering specs (Track 2) a MySQL service container is needed — add when the `spec/views/` suite is populated:
+For full rendering specs (Track 2) a PostgreSQL service container is needed — add when the `spec/views/` suite is populated:
 
 ```yaml
     services:
-      mysql:
-        image: mysql:8.0
+      postgres:
+        image: postgres:17
         env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: decko_test
-        ports: ['3306:3306']
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hyperon_test
+        ports: ['5432:5432']
+        options: --health-cmd="pg_isready -U postgres" --health-interval=10s --health-timeout=5s --health-retries=3
     env:
-      DATABASE_URL: mysql2://root:root@127.0.0.1/decko_test
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/hyperon_test
 ```
 
 ---

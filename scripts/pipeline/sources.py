@@ -1,8 +1,8 @@
 """Source readers for the raw data pipeline.
 
 Connectors to pull content directly from source platforms.
-The Mattermost connector wraps the existing MattermostExporter from
-the magi-archive repo.
+The Mattermost connector wraps `scripts/mattermost_exporter.py` in this
+repository.
 """
 
 import json
@@ -14,10 +14,10 @@ from typing import Optional
 
 
 # ---------------------------------------------------------------------------
-# Mattermost — wraps existing MattermostExporter from magi-archive repo
+# Mattermost — wraps scripts/mattermost_exporter.py in this repository
 # ---------------------------------------------------------------------------
 
-MAGI_ARCHIVE_REPO = Path(__file__).resolve().parents[2].parent / "magi-archive"
+SCRIPTS_DIR = Path(__file__).resolve().parents[1]
 
 # Channels relevant to the Hyperon Wiki
 HYPERON_CHANNELS = [
@@ -29,17 +29,13 @@ HYPERON_CHANNELS = [
 
 
 def _get_mattermost_exporter():
-    """Import and return the MattermostExporter class from magi-archive."""
-    exporter_path = MAGI_ARCHIVE_REPO / "mattermost_export.py"
+    """Import and return the MattermostExporter class from this repository."""
+    exporter_path = SCRIPTS_DIR / "mattermost_exporter.py"
     if not exporter_path.exists():
-        raise FileNotFoundError(
-            f"MattermostExporter not found at {exporter_path}. "
-            f"Expected the magi-archive repo at {MAGI_ARCHIVE_REPO}"
-        )
-    # Add magi-archive to path so we can import
-    if str(MAGI_ARCHIVE_REPO) not in sys.path:
-        sys.path.insert(0, str(MAGI_ARCHIVE_REPO))
-    from mattermost_export import MattermostExporter
+        raise FileNotFoundError(f"MattermostExporter not found at {exporter_path}")
+    if str(SCRIPTS_DIR) not in sys.path:
+        sys.path.insert(0, str(SCRIPTS_DIR))
+    from mattermost_exporter import MattermostExporter
     return MattermostExporter
 
 
@@ -89,17 +85,16 @@ def fetch_mattermost_channels(
 
         for channel in channels:
             try:
-                exporter.export_channel(
+                # Use the returned path. Rediscovering it by wildcard on the
+                # display name fails whenever the name carries punctuation,
+                # because the on-disk name has punctuation stripped.
+                json_file = exporter.export_channel(
                     channel, output_dir,
                     download_files=False,  # Skip files for raw data cards
                     after=after,
                 )
-                # Read back the exported JSON
-                channel_name = channel["display_name"].replace("/", "_").replace("\\", "_")
-                json_files = list(output_dir.rglob(f"*{channel_name}*.json"))
-                if json_files:
-                    data = json.loads(json_files[0].read_text(encoding="utf-8"))
-                    results.append(data)
+                data = json.loads(Path(json_file).read_text(encoding="utf-8"))
+                results.append(data)
             except Exception as e:
                 print(f"  Error exporting {channel['display_name']}: {e}")
 
@@ -133,7 +128,14 @@ def mattermost_channel_to_raw_text(channel_data: dict) -> str:
         if post.get("is_reply"):
             continue  # Replies are shown under their parent via threads
 
-        lines.append(f"**{post.get('username', '?')}** ({post.get('created', '?')})")
+        if post.get("orphan_reply"):
+            # Retained by the date filter although its thread root was not.
+            lines.append(
+                f"**{post.get('username', '?')}** ({post.get('created', '?')}) "
+                f"[reply; thread root {post.get('root_id', '?')} outside export window]"
+            )
+        else:
+            lines.append(f"**{post.get('username', '?')}** ({post.get('created', '?')})")
         lines.append(post.get("message", ""))
 
         # Add thread replies inline

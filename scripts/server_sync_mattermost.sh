@@ -4,11 +4,17 @@
 #
 # Setup (one-time, on the server):
 #   1. pip3 install mattermostdriver
-#   2. Copy export_mattermost.py and ingest_mattermost.rb to ~/hyperon-wiki/scripts/
-#   3. Set MATTERMOST_TOKEN in ~/hyperon-wiki/.env.mattermost
-#   4. Add cron job:
+#   2. Deploy the full repository checkout, so scripts/ arrives complete.
+#      If you copy individual files instead, all three are required — omitting
+#      the exporter module makes step 1 of this script fail at import:
+#        scripts/export_mattermost.py
+#        scripts/mattermost_exporter.py
+#        scripts/ingest_mattermost.rb
+#   3. Set MATTERMOST_TOKEN in <deck-root>/.env.mattermost
+#   4. Add cron job (substitute the deck root and log directory for this host —
+#      cron does not expand ~, so use absolute paths):
 #      crontab -e
-#      0 4 * * * /home/ubuntu/hyperon-wiki/scripts/server_sync_mattermost.sh >> /home/ubuntu/logs/mattermost_sync.log 2>&1
+#      0 4 * * * <deck-root>/scripts/server_sync_mattermost.sh >> <log-dir>/mattermost_sync.log 2>&1
 #
 # Or run manually:
 #   ~/hyperon-wiki/scripts/server_sync_mattermost.sh

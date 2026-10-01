@@ -3,7 +3,7 @@
 # MergeWorkbench — pure Phase 4 payload builder for the merge workbench view.
 #
 # Turns an already-resolved base + the three content strings into the FROZEN
-# schemaVersion-1 payload (docs/ws6-merge-editor-phase4-ui-contract.md §3) that
+# schemaVersion-1 payload (docs/merge-editor/ws6-merge-editor-phase4-ui-contract.md §3) that
 # the workbench view serializes into its JSON island and the client renders +
 # previews. No Card / DB / permissions: the view does the I/O (BaseResolver +
 # parent content) and hands the result here, so this stays unit-testable with no

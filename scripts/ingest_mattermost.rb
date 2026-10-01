@@ -5,9 +5,9 @@
 # complete, unfiltered RawData cards in the Decko database.
 #
 # Run via:
-#   cat scripts/ingest_mattermost.rb | ssh -T -i ~/.ssh/hyperon-key.pem ubuntu@54.183.80.144 \
+#   cat scripts/ingest_mattermost.rb | ssh -T -i <ssh-key-path> <ssh-user>@<wiki-host> \
 #     'export PATH="$HOME/.rbenv/bin:$HOME/.rbenv/shims:$PATH" && eval "$(rbenv init -)" && \
-#      cd ~/hyperon-wiki && set -a && source .env.production && set +a && \
+#      cd <deck-root> && set -a && source .env.production && set +a && \
 #      RAILS_ENV=production bundle exec decko runner -'
 #
 # Or copy to server and run:
@@ -24,7 +24,7 @@ require 'json'
 # ============================================================
 
 # Path to the Mattermost export directory on the server.
-# Upload exports via: scp -i ~/.ssh/hyperon-key.pem -r mattermost_exports/ ubuntu@54.183.80.144:~/
+# Upload exports via: scp -i <ssh-key-path> -r mattermost_exports/ <ssh-user>@<wiki-host>:~/
 EXPORT_DIR = ENV.fetch("MATTERMOST_EXPORT_DIR",
   File.expand_path("~/mattermost_exports/latest"))
 
@@ -51,7 +51,14 @@ def format_post(post, threads)
   created = (post["created"] || "?")[0..18]
   message = escape_html(post["message"] || "")
 
-  lines << "<p><strong>#{username}</strong> (#{created})</p>"
+  if post["orphan_reply"]
+    # Retained by the date filter although its thread root was not.
+    root_ref = escape_html(post["root_id"] || "?")
+    lines << "<p><strong>#{username}</strong> (#{created}) " \
+             "<em>[reply; thread root #{root_ref} outside export window]</em></p>"
+  else
+    lines << "<p><strong>#{username}</strong> (#{created})</p>"
+  end
   lines << "<p>#{message}</p>"
 
   # Thread replies

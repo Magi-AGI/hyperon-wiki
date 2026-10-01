@@ -3,7 +3,7 @@
 module Atomspace
   # L10 observability adapter seam (Lane C). Phase 4 default writes structured JSON to
   # Rails.logger; deployment-time adapters (CloudWatch/Prometheus/Loki/PagerDuty/SNS) are
-  # wired per docs/ATOMSPACE-MIRROR-DEPLOYMENT.md. Signal classes per L10.
+  # wired per docs/atomspace/ATOMSPACE-MIRROR-DEPLOYMENT.md. Signal classes per L10.
   module Observability
     SIGNAL_CLASSES = {
       3 => "sidecar_apply",

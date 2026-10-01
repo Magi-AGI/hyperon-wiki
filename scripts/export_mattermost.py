@@ -19,17 +19,14 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 
-# Add magi-archive to path for the MattermostExporter
-MAGI_ARCHIVE = Path(__file__).resolve().parents[1].parent / "magi-archive"
-if MAGI_ARCHIVE.exists():
-    sys.path.insert(0, str(MAGI_ARCHIVE))
+# The exporter lives in this repository — see scripts/mattermost_exporter.py.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 try:
-    from mattermost_export import MattermostExporter
-except ImportError:
-    print(f"ERROR: Could not import MattermostExporter.")
-    print(f"Expected magi-archive repo at: {MAGI_ARCHIVE}")
-    print(f"Install: pip install mattermostdriver")
+    from mattermost_exporter import MattermostExporter
+except ImportError as exc:
+    print(f"ERROR: Could not import MattermostExporter: {exc}")
+    print(f"Install dependencies: pip install mattermostdriver")
     sys.exit(1)
 
 

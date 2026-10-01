@@ -12,7 +12,7 @@
 # and stops with it, reads fail closed (MirrorReadiness -> sidecar_unreachable / sidecar_empty_post_
 # restart / sidecar_below_expected), and recovery is the COORDINATED REBUILD runbook (restart sidecar
 # fresh -> bootstrap -> verify -> resume drain). This relies on a REAL ALERT SINK to page an operator
-# when the sidecar drops and reads start 503-ing -- see docs/ATOMSPACE-MIRROR-DEPLOYMENT.md.
+# when the sidecar drops and reads start 503-ing -- see docs/atomspace/ATOMSPACE-MIRROR-DEPLOYMENT.md.
 [Unit]
 Description=AtomSpace Mirror sidecar (Level 3, in-memory PyListSpace)
 After=network-online.target

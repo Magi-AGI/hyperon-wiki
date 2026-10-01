@@ -8,7 +8,7 @@
 # verifies BOTH the original proposal hash (what was reviewed) and the merge-draft
 # hash (what gets applied), plus the parent/base optimistic locks. Storing the
 # polish here instead of overwriting +proposal is the audit-chain decision (Codex)
-# in docs/ws6-merge-editor-phase5-tinymce-gate.md.
+# in docs/merge-editor/ws6-merge-editor-phase5-tinymce-gate.md.
 #
 # This set: (1) mirrors the draft's content type to the proposal's so the standard
 # ?view=edit dispatches the right native editor (RichText -> TinyMCE, Markdown ->
@@ -175,7 +175,7 @@ end
 # Triggered by the apply_to_parent param on a merge-draft save. Runs a four-fold
 # gate INSIDE the save transaction; if any check fails it adds an error and the
 # whole act rolls back — never a partial parent write. Replaces the blunt
-# merge_ai_draft overwrite. Spec: docs/ws6-merge-editor-phase6-apply-gate.md.
+# merge_ai_draft overwrite. Spec: docs/merge-editor/ws6-merge-editor-phase6-apply-gate.md.
 event :apply_merge_draft, :finalize, on: :update,
       when: proc { Env.params[:apply_to_parent] == "true" } do
   proposal = left

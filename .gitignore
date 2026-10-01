@@ -119,5 +119,10 @@ __pycache__/
 /publication_texts/
 /transcript_exports/
 
-# Archived one-off ingestion scratch and state trackers
+# Archived research corpus, one-off ingestion scratch, and state trackers.
+# Ignored so newly generated scratch does not creep into version control.
+# Files already tracked here from earlier work stay tracked; this rule only
+# affects untracked ones. Nothing new inside this directory should be staged.
+# The committed explanation of what the corpus is lives outside it, in
+# docs/archive/SCRIPTS-RESEARCH-ARCHIVE.md.
 /scripts/archive/

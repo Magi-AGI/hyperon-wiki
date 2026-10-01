@@ -6,11 +6,15 @@
 #
 # Prerequisites:
 #   - MATTERMOST_TOKEN env var set (or will prompt)
-#   - SSH key at ~/.ssh/hyperon-key.pem
+#   - Connection details for the wiki host, from the server-access handoff:
+#       HYPERON_WIKI_HOST      SSH host (required)
+#       HYPERON_WIKI_SSH_KEY   SSH private-key path (required)
+#       HYPERON_WIKI_SSH_USER  SSH user (optional, default: ubuntu)
+#       HYPERON_WIKI_REMOTE_DIR  deck root on the host (optional, default: ~/hyperon-wiki)
 #   - Python with mattermostdriver: pip install mattermostdriver
 #
 # This script:
-#   1. Runs mattermost_export.py to pull channels from chat.singularitynet.io
+#   1. Runs export_mattermost.py to pull channels from chat.singularitynet.io
 #   2. Uploads the export to the Hyperon Wiki server
 #   3. Runs ingest_mattermost.rb via Decko card runner to write to the DB
 
@@ -18,10 +22,26 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
-MAGI_ARCHIVE_DIR="$(dirname "$REPO_DIR")/magi-archive"
-SERVER_IP="54.183.80.144"
-SSH_KEY="$HOME/.ssh/hyperon-key.pem"
-SSH_CMD="ssh -T -i $SSH_KEY ubuntu@$SERVER_IP"
+
+: "${HYPERON_WIKI_HOST:?Set HYPERON_WIKI_HOST to the wiki SSH host}"
+: "${HYPERON_WIKI_SSH_KEY:?Set HYPERON_WIKI_SSH_KEY to the SSH private-key path}"
+HYPERON_WIKI_SSH_USER="${HYPERON_WIKI_SSH_USER:-ubuntu}"
+HYPERON_WIKI_REMOTE_DIR="${HYPERON_WIKI_REMOTE_DIR:-~/hyperon-wiki}"
+
+SSH_KEY="$HYPERON_WIKI_SSH_KEY"
+SSH_TARGET="${HYPERON_WIKI_SSH_USER}@${HYPERON_WIKI_HOST}"
+
+# Arrays, not a string: a key path or remote dir containing spaces must stay a
+# single argument. `$SSH_CMD ...` would word-split it.
+SSH_CMD=(ssh -T -i "$SSH_KEY" "$SSH_TARGET")
+SCP_CMD=(scp -i "$SSH_KEY")
+
+# Single-quote the remote deck path so the remote shell treats it as one word.
+# `~` is left outside the quotes so the remote shell still expands it.
+case "$HYPERON_WIKI_REMOTE_DIR" in
+  "~/"*) REMOTE_DIR_Q="~/'${HYPERON_WIKI_REMOTE_DIR#\~/}'" ;;
+  *)     REMOTE_DIR_Q="'${HYPERON_WIKI_REMOTE_DIR}'" ;;
+esac
 
 # Parse args
 CHANNEL_FILTER=""
@@ -61,19 +81,24 @@ echo "  Exported $CHANNEL_COUNT channels to $EXPORT_DIR"
 # Step 2: Upload exports to server
 echo ""
 echo "[Step 2/3] Uploading to server..."
-$SSH_CMD "mkdir -p ~/mattermost_exports"
-scp -i "$SSH_KEY" -r "$EXPORT_DIR" "ubuntu@$SERVER_IP:~/mattermost_exports/"
+"${SSH_CMD[@]}" "mkdir -p ~/mattermost_exports"
+"${SCP_CMD[@]}" -r "$EXPORT_DIR" "$SSH_TARGET:~/mattermost_exports/"
 
-# Create a 'latest' symlink
-REMOTE_DIR="~/mattermost_exports/$(basename $EXPORT_DIR)"
-$SSH_CMD "ln -sfn $REMOTE_DIR ~/mattermost_exports/latest"
+# Create a 'latest' symlink.
+# The target is relative on purpose: `latest` and the export directory are
+# siblings in ~/mattermost_exports, so a bare basename resolves correctly.
+# An absolute '~/...' target would have to be quoted for spaces, and quoting
+# the leading ~ stops the remote shell expanding it — leaving a dangling link
+# whose target is the literal string "~/mattermost_exports/...".
+EXPORT_BASENAME="$(basename "$EXPORT_DIR")"
+"${SSH_CMD[@]}" "ln -sfn '$EXPORT_BASENAME' ~/mattermost_exports/latest"
 echo "  Uploaded and linked as ~/mattermost_exports/latest"
 
 # Step 3: Run ingestion
 echo ""
 echo "[Step 3/3] Running ingestion on server..."
-cat "$SCRIPT_DIR/ingest_mattermost.rb" | $SSH_CMD \
-  'export PATH="$HOME/.rbenv/bin:$HOME/.rbenv/shims:$PATH" && eval "$(rbenv init -)" && cd ~/hyperon-wiki && set -a && source .env.production && set +a && RAILS_ENV=production bundle exec decko runner -'
+cat "$SCRIPT_DIR/ingest_mattermost.rb" | "${SSH_CMD[@]}" \
+  "export PATH=\"\$HOME/.rbenv/bin:\$HOME/.rbenv/shims:\$PATH\" && eval \"\$(rbenv init -)\" && cd $REMOTE_DIR_Q && set -a && source .env.production && set +a && RAILS_ENV=production bundle exec decko runner -"
 
 echo ""
 echo "=================================================="

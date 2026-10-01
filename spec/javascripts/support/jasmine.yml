@@ -28,7 +28,6 @@ css_files:
     # - "**/*.{css,scss}"
 # THIS IS IMPORTANT!!
 include_dir: "mod"
-#- /home/ubuntu/magi-archive/spec/javascripts/support/mod/script/lib/javascript
 # path to parent directory of spec_files
 # relative path from Rails.root
 #

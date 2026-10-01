@@ -37,7 +37,7 @@ gem "reverse_markdown" # HTML to Markdown conversion (Phase 2)
 # ATOMSPACE MIRROR (Phase 5)
 # In-process cron for the Level 5 drift stream monitors (Section 2 cadences), run by the
 # `rake atomspace_mirror:drift_schedule` daemon. DriftSchedule.install lazily requires it; declaring
-# it here makes the drift-schedule systemd service launchable. See docs/ATOMSPACE-MIRROR-DEPLOYMENT.md.
+# it here makes the drift-schedule systemd service launchable. See docs/atomspace/ATOMSPACE-MIRROR-DEPLOYMENT.md.
 gem "rufus-scheduler", "~> 3.9"
 
 

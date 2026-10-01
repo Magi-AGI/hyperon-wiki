@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # BaseResolver — determines the 3-way merge BASE for a +proposal card and how
-# much to trust it (WS6 three-tier confidence; docs/ws6-merge-editor-design.md
+# much to trust it (WS6 three-tier confidence; docs/merge-editor/ws6-merge-editor-design.md
 # §4.2). Pure tier logic lives in `classify`; DB I/O in `resolve`, which reuses
 # the canonical RevisionSnapshot helper rather than forking revision logic.
 #

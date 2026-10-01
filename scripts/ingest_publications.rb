@@ -2,9 +2,9 @@
 # Ingest publication full texts into the Hyperon Wiki as RawData cards.
 #
 # Run via:
-#   cat scripts/ingest_publications.rb | ssh -T -i ~/.ssh/hyperon-key.pem ubuntu@54.183.80.144 \
+#   cat scripts/ingest_publications.rb | ssh -T -i <ssh-key-path> <ssh-user>@<wiki-host> \
 #     'export PATH="$HOME/.rbenv/bin:$HOME/.rbenv/shims:$PATH" && eval "$(rbenv init -)" && \
-#      cd ~/hyperon-wiki && set -a && source .env.production && set +a && \
+#      cd <deck-root> && set -a && source .env.production && set +a && \
 #      RAILS_ENV=production bundle exec decko runner -'
 
 require 'json'

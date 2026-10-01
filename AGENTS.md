@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- Magi Archive is a Decko (Rails) deck. Core config in `config/` (mail, caching, storage in `config/application.rb`; DB per environment in `config/database.yml`).
+- This repository is the Hyperon Wiki, a Decko (Rails) deck served at `wiki.hyperon.dev` and backed by PostgreSQL. Core config in `config/` (mail, caching, storage in `config/application.rb`; DB per environment in `config/database.yml`).
 - Custom features live in `mod/<feature>/` (Ruby sets in `mod/<feature>/set/`, assets in `mod/<feature>/assets/`, Rake tasks in `mod/<feature>/lib/tasks/`).
 - Generated uploads sync to `files/` — treat as build output; never edit directly.
 - Tests in `spec/`; browser harness utilities in `spec/javascripts/support/`.
@@ -15,7 +15,7 @@
 - `script/card create "Card Name"` — scaffold a card.
 - `bundle exec thin start -R config.ru` — production-like smoke test.
 - Tests: `bundle exec rspec` or `script/decko_rspec`.
-- Remote runner (Decko host): `cd /home/ubuntu/magi-archive && set -a && . .env.production && set +a && export PATH=/home/ubuntu/.rbenv/shims:/home/ubuntu/.rbenv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin && script/card runner ...` (avoids PATH/env issues when calling via SSH).
+- Remote runner (Decko host): `cd <deck-root> && set -a && . .env.production && set +a && export PATH=<rbenv-shims>:<rbenv-bin>:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin && script/card runner ...` (avoids PATH/env issues when calling via SSH).
 
 ## Coding Style & Naming Conventions
 - Ruby: idiomatic, 2-space indentation, trailing newline, snake_case filenames (e.g., `mod/agents/set/self.rb`).
@@ -31,7 +31,7 @@
 
 ## Commit & Pull Request Guidelines
 - Commits: short, imperative subjects (e.g., "Add deck import job"); optional context body; reference issues (e.g., `Refs #123`).
-- PRs: summarize intent, list commands used to test, include screenshots/GIFs for UI changes, call out schema/migration changes, link supporting docs (e.g., `DECKO-DATABASE-ACCESS.md`), and note any manual deployment steps.
+- PRs: summarize intent, list commands used to test, include screenshots/GIFs for UI changes, call out schema/migration changes, link supporting docs (e.g., `docs/operations/DECKO-DATABASE-ACCESS.md`), and note any manual deployment steps.
 
 ## Security & Configuration Tips
 - Keep secrets out of the repo; use env vars or `.env.local`.
