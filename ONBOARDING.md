@@ -27,16 +27,26 @@ The wiki holds curated encyclopedic content about Hyperon (MeTTa, PLN, ECAN, Ato
 MORK, and related work), the source material that content was derived from, and an
 editorial workflow that keeps AI-assisted contributions under human approval.
 
-### The two domains are deliberately separate
+### The domains and access surfaces are deliberately separate
 
-| Domain | What it is |
+There are several related surfaces around the Hyperon Wiki. Some are public web domains,
+some are development targets, and some are tool/API domains used by agents. Keep them
+separate when reading, operating, or debugging the system:
+
+| Surface | Role |
 |---|---|
-| `wiki.hyperon.dev` | **The wiki.** This system. Everything in this document. |
-| `hyperon.dev` | **A separate landing site.** A different property with its own content and its own lifecycle. |
+| `wiki.hyperon.dev` | **The production wiki.** This Decko system, its public pages, its cards, and the editorial workflows described in this document. |
+| `hyperon.dev` | **A separate landing site.** A different property with its own content and lifecycle. It is not the wiki, and this handoff does not operate it. |
+| Local or private development wiki targets, such as `http://localhost:3000` or a private dev clone | **Development and verification surfaces.** Use these for local code work, tests, and safe reproduction. Do not treat a local/dev result as production evidence unless the step explicitly says it was checked against `wiki.hyperon.dev`. |
+| This git repository | **The code and offline handoff source.** Merging here changes source files and documentation. It does not by itself publish card content, deploy production, restart services, or activate experimental systems. |
+| The wiki database / cards | **The live content layer.** Layouts, sidebars, permission rules, index structure, and articles are cards. They are changed through the wiki UI, MCP tools, or runner scripts, not by editing Markdown files in this repository. |
+| `mod/mcp_api` in this repository | **The server-side JSON API behind the MCP tool surface.** It enforces the wiki's authentication, roles, permissions, rate limits, and card operations. |
+| The `hyperon-wiki-mcp` client/tooling repository and configured MCP tool names | **Agent access surfaces.** Claude, Codex, Gemini/agy, ChatGPT, or another MCP client may expose tools under client-local names. Those names are not web domains; they point wherever that client's profile is configured to point, so verify the target before writing. |
 
-This split is **intentional, not a gap**. The wiki is reachable at `wiki.hyperon.dev`;
-the landing site is maintained separately. Please do not file the separation as a defect
-or "fix" it by merging the two.
+This separation is **intentional, not a gap**. Do not file these boundaries as defects or
+"fix" them by merging the landing site, production wiki, dev clones, source repository,
+card database, and MCP tooling into one mental bucket. Most operational mistakes here come
+from treating one surface as evidence for another.
 
 ---
 
