@@ -3,40 +3,66 @@
 require_relative "../mcp/user_authenticator"
 
 module McpApi
-  # Decides which principals receive the mcp:atomspace:read scope (the dedicated AtomSpace read
-  # toolset / L9 read API) at token-mint time.
+  # Decides which principals receive the AtomSpace scopes (the dedicated AtomSpace toolset /
+  # L9 read API + the card-scoped B3 admin quarantine surface) at token-mint time.
   #
-  # == POLICY REV4 (owner decision) -- supersedes REV3
+  # == POLICY REV5 (owner decision) -- supersedes REV4
   #
-  # The AtomSpace mirror IS the raw-data surface, so read scope follows the two principal classes
-  # that are already entitled to raw data inside Decko, plus an explicit escape hatch:
+  # OWNER DIRECTION (recorded verbatim in intent): admins and `Raw Data Analyst` principals are
+  # TRUSTED WITH FULL AtomSpace BACKEND ACCESS. The near-term goal is a working two-way
+  # Decko card <-> AtomSpace atom migration path for the demo; granular separation between read,
+  # write, and admin AtomSpace scopes is DEPRIORITIZED relative to getting that path functional.
+  # Scope plumbing is retained (three distinct scope strings, each independently checked at the
+  # surface) so the separation can be re-tightened later without a re-architecture -- but policy
+  # today hands all three to the same two principal classes.
   #
-  #   1. ADMIN principals. Decko administrators already bypass card read rules, so withholding
-  #      the mirror's read scope from them protected nothing while making the L9 surface
-  #      unusable for the operators it exists for.
-  #   2. `Raw Data Analyst` principals -- the Decko role designed for full raw-data access, which
-  #      is precisely what AtomSpace access represents.
-  #   3. EXPLICIT allowlist via ENV ATOMSPACE_READ_GRANTS (comma-separated principal ids matching
-  #      the JWT `sub`, e.g. "user:Administrator,key:9f3c..."). Retained for service accounts,
-  #      API keys, and one-off manual grants.
+  # Scopes minted:
   #
-  # REV3 was "explicit allowlist only; NOT derived from role or admin". That guardrail is
-  # retired for admin / Raw Data Analyst. Two things it protected are NOT retired:
+  #   mcp:atomspace:read   -- L9 card-scoped + aggregate reads
+  #   mcp:atomspace:write  -- (forward-looking) card -> atom mutation surface
+  #   mcp:atomspace:admin  -- card-scoped B3 quarantine (DESTRUCTIVE; removes atoms from the Space)
   #
-  #   * mcp:admin remains a SEPARATE scope. Read scope never implies it, so the quarantine
-  #     endpoints (which require mcp:atomspace:read AND mcp:admin) stay admin-only: a Raw Data
-  #     Analyst gets reads, never quarantine.
-  #   * API-key principals are auto-granted NOTHING -- allowlist only. See #scopes_for.
+  # Grant matrix:
   #
-  # Card-scoped responses are still filtered per-atom through Decko read rules
-  # (AtomspaceReadFilter -> Card::Auth.as + card.ok?(:read)). This module widens who may CALL
-  # the L9 surface; it does not widen what any caller may SEE. Admins pass that filter anyway
-  # via Decko's own admin bypass; a Raw Data Analyst sees exactly the cards their +*read rules
-  # already allow.
+  #   1. ADMIN principals            -> read + write + admin (policy-granted, no ENV entry needed)
+  #   2. `Raw Data Analyst` principals -> read + write + admin (policy-granted, no ENV entry needed)
+  #   3. ENV ATOMSPACE_READ_GRANTS   -> read ONLY. The allowlist stays a READ escape hatch for
+  #      service accounts / API keys / one-off manual grants; it never confers write or admin.
+  #      Comma-separated principal ids matching the JWT `sub` (e.g. "user:Administrator,key:9f3c").
+  #   4. API-key principals          -> allowlist only (NOTHING auto-granted). See #scopes_for.
+  #
+  # What REV5 changes vs REV4: REV4 minted read alone and left quarantine behind a generic
+  # `mcp:admin` scope that this module never minted -- making quarantine a permanent 403. REV5
+  # mints the NAMESPACED `mcp:atomspace:admin` instead, so the card-scoped B3 quarantine surface is
+  # reachable by exactly the principals the owner designated, and the generic `mcp:admin` scope is
+  # no longer involved in the AtomSpace surface at all.
+  #
+  # What REV5 does NOT change:
+  #
+  #   * The generic `mcp:admin` scope is still NEVER minted here. AtomSpace authority is namespaced.
+  #   * API-key principals are still auto-granted NOTHING -- allowlist only (read only).
+  #   * Card-scoped READ responses are still filtered per-atom through Decko read rules
+  #     (AtomspaceReadFilter -> Card::Auth.as + card.ok?(:read)). This module widens who may CALL
+  #     the L9 surface; it does not widen what any caller may SEE. Admins pass that filter via
+  #     Decko's own admin bypass; a Raw Data Analyst sees exactly what their +*read rules allow.
+  #   * Role/admin lookup failures FAIL CLOSED (deny scope, never 500 the auth endpoint).
+  #
+  # ACCEPTED RISK (owner-directed, REV5): a `Raw Data Analyst` who is NOT a Decko admin now holds
+  # mcp:atomspace:admin, so they can quarantine atoms scoped to a card whose content their +*read
+  # rules would hide. That is the explicit demo-velocity tradeoff above, not an oversight. Tighten
+  # by splitting the quarantine grant off #policy_granted_user? when granularity is re-prioritized.
   module AtomspaceGrants
-    SCOPE = "mcp:atomspace:read"
+    READ_SCOPE  = "mcp:atomspace:read"
+    WRITE_SCOPE = "mcp:atomspace:write"
+    ADMIN_SCOPE = "mcp:atomspace:admin"
 
-    # Decko role granted AtomSpace read scope by policy. Matched with case + separator folding
+    # Full backend access, in a stable order (token `scope` claim is a space-joined string).
+    FULL_SCOPES = [READ_SCOPE, WRITE_SCOPE, ADMIN_SCOPE].freeze
+
+    # Retained for pre-REV5 callers that referenced the single read scope constant.
+    SCOPE = READ_SCOPE
+
+    # Decko role granted full AtomSpace scopes by policy. Matched with case + separator folding
     # (see #normalize_role) because the role card may be titled "Raw Data Analyst",
     # "Raw-Data-Analyst", "raw_data_analyst", etc.
     RAW_DATA_ANALYST_ROLE = "Raw Data Analyst"
@@ -45,6 +71,9 @@ module McpApi
 
     # Scopes to embed in a freshly minted token.
     #
+    # Policy (admin / Raw Data Analyst) is evaluated BEFORE the ENV allowlist so an allowlisted
+    # admin is not silently downgraded to read-only by the narrower match.
+    #
     # @param principal_id [String] the JWT `sub` ("user:<name>" or "key:<id>")
     # @param user_card [Card, nil] the AUTHENTICATED Decko user card when the principal is a
     #   human. Deliberately nil for API-key principals: an API key's role is CALLER-SUPPLIED and
@@ -52,22 +81,23 @@ module McpApi
     #   (Mcp::ApiKeyManager.role_allowed?), while the legacy ENV MCP_API_KEY is permitted every
     #   role unconditionally (AuthController#allowed_role_for_key? returns true). A token
     #   claiming role "admin" from an API key is therefore self-asserted, not evidence of an
-    #   admin principal -- so a leaked key must not silently acquire the raw-data surface. Keys
-    #   that legitimately need it get an explicit "key:<id>" entry in ATOMSPACE_READ_GRANTS.
+    #   admin principal -- so a leaked key must not silently acquire the raw-data surface, let
+    #   alone the destructive quarantine surface. Keys that legitimately need reads get an
+    #   explicit "key:<id>" entry in ATOMSPACE_READ_GRANTS.
     # @return [Array<String>]
     def scopes_for(principal_id, user_card: nil)
-      return [SCOPE] if granted?(principal_id)
-      return [SCOPE] if policy_granted_user?(user_card)
+      return FULL_SCOPES.dup if policy_granted_user?(user_card)
+      return [READ_SCOPE] if granted?(principal_id)
 
       []
     end
 
-    # Explicit ENV allowlist match.
+    # Explicit ENV allowlist match. READ scope only -- never write, never admin.
     def granted?(principal_id)
       principal_id && list.include?(principal_id.to_s)
     end
 
-    # REV4 role-derived grant for human principals.
+    # REV5 role-derived FULL grant for human principals (admin or Raw Data Analyst).
     def policy_granted_user?(user_card)
       return false unless user_card
 

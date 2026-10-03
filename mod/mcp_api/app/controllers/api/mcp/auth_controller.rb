@@ -220,9 +220,11 @@ module Api
           role: role,
           api_key_id: api_key_id,
           expires_in: token_ttl,
-          # POLICY REV4: explicit ENV allowlist OR an admin / Raw Data Analyst principal. The
-          # AUTHENTICATED user card is passed (not the possibly-downgraded `role` argument) so
-          # the grant follows the principal, exactly as Decko's own admin read-bypass does.
+          # POLICY REV5: an admin / Raw Data Analyst principal receives the FULL AtomSpace scope
+          # set (read + write + the namespaced atomspace admin scope that gates card-scoped B3
+          # quarantine); the ENV allowlist grants read only. The AUTHENTICATED user card is passed
+          # (not the possibly-downgraded `role` argument) so the grant follows the principal,
+          # exactly as Decko's own admin read-bypass does.
           scopes: McpApi::AtomspaceGrants.scopes_for(api_key_id, user_card: user_card)
         )
       end
@@ -239,9 +241,10 @@ module Api
           role: role,
           api_key_id: api_key_id,
           expires_in: token_ttl,
-          # API keys stay EXPLICIT-ALLOWLIST-ONLY under REV4 (no user_card, so no role-derived
-          # grant). `role` here is caller-supplied and only checked against the key card's own
-          # allowed_roles metadata -- and the legacy ENV key is allowed every role
+          # API keys stay EXPLICIT-ALLOWLIST-ONLY under REV5 (no user_card, so no role-derived
+          # grant) and the allowlist is READ-only, so a key can never reach the destructive
+          # quarantine surface. `role` here is caller-supplied and only checked against the key
+          # card's own allowed_roles metadata -- and the legacy ENV key is allowed every role
           # unconditionally (see #allowed_role_for_key?) -- so role: "admin" on a key token is
           # self-asserted, not an admin principal. Service keys that need the raw-data surface
           # get an explicit "key:<id>" entry in ATOMSPACE_READ_GRANTS.

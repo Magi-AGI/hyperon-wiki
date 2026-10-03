@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-# Mint-path proof for POLICY REV4: the scope claim that actually lands in the issued JWT.
+# Mint-path proof for POLICY REV5: the scope claim that actually lands in the issued JWT.
 #
 # The grant matrix itself is unit-tested in spec/mcp_api/lib/atomspace_grants_spec.rb; this tier
 # proves AuthController wires the authenticated user card into AtomspaceGrants (and that the API
@@ -10,6 +10,10 @@ require "spec_helper"
 # user/password/role cards need seeding.
 RSpec.describe Api::Mcp::AuthController, type: :request do
   let(:user_card) { double("user_card", name: "Alice") }
+
+  read_scope  = "mcp:atomspace:read"
+  write_scope = "mcp:atomspace:write"
+  admin_scope = "mcp:atomspace:admin"
 
   around do |example|
     vars = %w[ATOMSPACE_READ_GRANTS MCP_API_KEY]
@@ -39,49 +43,59 @@ RSpec.describe Api::Mcp::AuthController, type: :request do
   end
 
   describe "human principals" do
-    it "mints mcp:atomspace:read for an admin with an EMPTY allowlist" do
+    it "mints the FULL AtomSpace scope set for an admin with an EMPTY allowlist" do
       allow(::Mcp::UserAuthenticator).to receive(:check_admin_status).with(user_card).and_return(true)
 
       authenticate_as(role: "admin")
 
       expect(response).to have_http_status(:created)
-      expect(minted_scopes).to include("mcp:atomspace:read")
+      expect(minted_scopes).to include(read_scope, write_scope, admin_scope)
     end
 
-    it "mints mcp:atomspace:read for a Raw Data Analyst with an EMPTY allowlist" do
+    it "mints the FULL AtomSpace scope set for a Raw Data Analyst with an EMPTY allowlist" do
       allow(::Mcp::UserAuthenticator).to receive(:get_user_roles)
         .with(user_card).and_return(["Raw Data Analyst"])
 
       authenticate_as(role: "user")
 
       expect(response).to have_http_status(:created)
-      expect(minted_scopes).to include("mcp:atomspace:read")
+      expect(minted_scopes).to include(read_scope, write_scope, admin_scope)
     end
 
-    # Quarantine (AtomspaceMirrorController#require_quarantine_scope!) needs read AND mcp:admin;
-    # a Raw Data Analyst must never acquire the second one from this policy.
-    it "does not mint mcp:admin for a Raw Data Analyst" do
+    # AtomSpace authority is NAMESPACED under REV5: quarantine needs mcp:atomspace:admin, and the
+    # generic mcp:admin scope is never minted by this policy for either principal class.
+    it "does not mint the generic mcp:admin scope for a Raw Data Analyst" do
       allow(::Mcp::UserAuthenticator).to receive(:get_user_roles)
         .with(user_card).and_return(["Raw Data Analyst"])
 
       authenticate_as(role: "user")
 
-      expect(minted_scopes).to eq(["mcp:atomspace:read"])
+      expect(minted_scopes).not_to include("mcp:admin")
+    end
+
+    it "does not mint the generic mcp:admin scope for an admin principal either" do
+      allow(::Mcp::UserAuthenticator).to receive(:check_admin_status).with(user_card).and_return(true)
+
+      authenticate_as(role: "admin")
+
+      expect(minted_scopes).not_to include("mcp:admin")
     end
 
     it "mints NO atomspace scope for an ordinary user" do
       authenticate_as(role: "user")
 
       expect(response).to have_http_status(:created)
-      expect(minted_scopes).not_to include("mcp:atomspace:read")
+      expect(minted_scopes).not_to include(read_scope)
     end
 
-    it "still honors an explicit allowlist entry for an ordinary user" do
+    # The ENV allowlist stays READ-only: it must not hand an ordinary user the write or the
+    # destructive quarantine scope.
+    it "still honors an explicit allowlist entry for an ordinary user, READ only" do
       ENV["ATOMSPACE_READ_GRANTS"] = "user:Alice"
 
       authenticate_as(role: "user")
 
-      expect(minted_scopes).to eq(["mcp:atomspace:read"])
+      expect(minted_scopes).to eq([read_scope])
     end
   end
 
@@ -95,22 +109,23 @@ RSpec.describe Api::Mcp::AuthController, type: :request do
     end
 
     # allowed_role_for_key? returns true for EVERY role on the legacy key, so role: "admin" here
-    # is self-asserted. REV4 keeps keys allowlist-only precisely so that cannot become raw-data
-    # access.
+    # is self-asserted. REV5 keeps keys allowlist-only precisely so that cannot become raw-data
+    # access -- let alone the DESTRUCTIVE quarantine surface.
     it "mints NO atomspace scope for a role:admin API key absent an allowlist entry" do
       post "/api/mcp/auth", params: { api_key: legacy_key, role: "admin" }, as: :json
 
       expect(response).to have_http_status(:created)
-      expect(minted_scopes).not_to include("mcp:atomspace:read")
+      expect(minted_scopes).not_to include(read_scope)
+      expect(minted_scopes).not_to include(admin_scope)
     end
 
-    it "mints the scope when the key principal IS allowlisted" do
+    it "mints the READ scope ONLY when the key principal IS allowlisted" do
       ENV["ATOMSPACE_READ_GRANTS"] = "key:#{legacy_key.slice(0, 8)}"
 
       post "/api/mcp/auth", params: { api_key: legacy_key, role: "user" }, as: :json
 
       expect(response).to have_http_status(:created)
-      expect(minted_scopes).to eq(["mcp:atomspace:read"])
+      expect(minted_scopes).to eq([read_scope])
     end
   end
 end

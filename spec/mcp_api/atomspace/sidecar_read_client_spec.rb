@@ -86,9 +86,64 @@ RSpec.describe Atomspace::SidecarReadClient do
     expect(described_class.watermark_meta).to eq(atomspace_watermark: 42, monitor_status: "healthy", staleness_seconds: 0.0)
   end
 
-  it "quarantine fails closed (ServiceUnavailable) until the sidecar B3 admin surface lands" do
-    expect { client.quarantine_list }.to raise_error(Atomspace::ServiceUnavailable, /B3/)
-    expect { client.quarantine_delete(1) }.to raise_error(Atomspace::ServiceUnavailable, /B3/)
+  # POLICY REV5: quarantine is wired to the sidecar's real card-scoped B3 admin surface.
+  describe "card-scoped B3 admin quarantine (POLICY REV5)" do
+    it "quarantine_list POSTs /admin/list_card_scoped_atoms with a strict integer card_id" do
+      stub_transport([:post, "/admin/list_card_scoped_atoms"] =>
+        [200, { "card_id" => 5, "atoms" => [{ "atom" => "DeckoCard", "fields" => [["Id", 5]] }] }])
+      result = client.quarantine_list(card_id: "5")
+      expect(calls.last).to eq([:post, "/admin/list_card_scoped_atoms", { "card_id" => 5 }])
+      expect(result["card_id"]).to eq(5)
+      expect(result["atoms"].length).to eq(1)
+    end
+
+    it "quarantine_delete POSTs /admin/quarantine_card_scoped_atoms and returns the removal audit" do
+      stub_transport([:post, "/admin/quarantine_card_scoped_atoms"] =>
+        [200, { "card_id" => 5, "removed" => [{ "atom" => "DeckoCard", "fields" => [["Id", 5]] }],
+                "removed_count" => 1 }])
+      result = client.quarantine_delete(card_id: 5)
+      expect(calls.last).to eq([:post, "/admin/quarantine_card_scoped_atoms", { "card_id" => 5 }])
+      expect(result["removed_count"]).to eq(1)
+      expect(result["removed"].length).to eq(1)
+    end
+
+    # A DESTRUCTIVE boundary must never coerce its target ("abc" -> 0 would quarantine card 0).
+    it "rejects a non-integer / non-positive card_id with InvalidRequest, issuing NO request" do
+      stub_transport
+      ["abc", "12x", "", nil, "0", "-3"].each do |bad|
+        expect { client.quarantine_delete(card_id: bad) }
+          .to raise_error(Atomspace::InvalidRequest, /card_id/), "expected #{bad.inspect} rejected"
+      end
+      expect(calls).to be_empty
+    end
+
+    it "fails closed on a non-200, a socket error, or an inconsistent response shape" do
+      [[500, nil],
+       [200, { "card_id" => 5, "removed" => [], "removed_count" => 2 }],          # count != length
+       [200, { "card_id" => 9, "removed" => [], "removed_count" => 0 }],          # echoed id mismatch
+       [200, { "card_id" => 5, "removed_count" => 0 }],                           # removed missing
+       [200, { "card_id" => 5, "removed" => [], "removed_count" => "0" }]].each do |response|
+        stub_transport([:post, "/admin/quarantine_card_scoped_atoms"] => response)
+        expect { client.quarantine_delete(card_id: 5) }
+          .to raise_error(Atomspace::ServiceUnavailable), "expected #{response.inspect} to fail closed"
+      end
+
+      Atomspace::SidecarReadClient.transport = ->(_v, _p, _b) { raise Errno::ECONNREFUSED }
+      expect { client.quarantine_delete(card_id: 5) }
+        .to raise_error(Atomspace::ServiceUnavailable, /unreachable/)
+      expect { client.quarantine_list(card_id: 5) }
+        .to raise_error(Atomspace::ServiceUnavailable, /unreachable/)
+    end
+
+    it "fails closed when the list response is non-200 or malformed" do
+      [[503, nil],
+       [200, { "card_id" => 9, "atoms" => [] }],   # echoed id mismatch
+       [200, { "card_id" => 5 }]].each do |response|
+        stub_transport([:post, "/admin/list_card_scoped_atoms"] => response)
+        expect { client.quarantine_list(card_id: 5) }
+          .to raise_error(Atomspace::ServiceUnavailable), "expected #{response.inspect} to fail closed"
+      end
+    end
   end
 
   it "a non-200 from the sidecar fails closed (ServiceUnavailable, never 500)" do

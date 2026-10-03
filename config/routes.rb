@@ -84,7 +84,8 @@ Decko.application.routes.draw do
       end
 
       # AtomSpace mirror read API (Lane C, Level 9) -- Api::Mcp::AtomspaceMirrorController.
-      # Gated by the mcp:atomspace:read scope; quarantine additionally requires mcp:admin.
+      # Gated by the mcp:atomspace:read scope; the card-scoped B3 quarantine surface additionally
+      # requires the namespaced mcp:atomspace:admin scope (POLICY REV5).
       # MUST be drawn here (before `mount Decko::Engine => '/'`) so it isn't shadowed by the
       # Decko card catch-all -- an append-initializer runs after the mount and 404s to a card.
       scope :atomspace_mirror, controller: "atomspace_mirror" do
@@ -96,8 +97,11 @@ Decko.application.routes.draw do
         get  'get_card_provenance',   action: :get_card_provenance
         get  'list_references',       action: :list_references
         get  'list_atoms_by_type',    action: :list_atoms_by_type
-        get  'quarantine',            action: :quarantine_index
-        post 'quarantine/:id/delete', action: :quarantine_delete
+        # Card-scoped B3 admin quarantine (sidecar /admin/list_card_scoped_atoms +
+        # /admin/quarantine_card_scoped_atoms). card_id is constrained to digits so a non-numeric
+        # target 404s at the router rather than reaching a destructive action.
+        get  'quarantine/card/:card_id',        action: :quarantine_index, constraints: { card_id: /\d+/ }
+        post 'quarantine/card/:card_id/delete', action: :quarantine_delete, constraints: { card_id: /\d+/ }
       end
 
       # Admin endpoints (admin role required)

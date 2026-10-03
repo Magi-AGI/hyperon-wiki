@@ -56,12 +56,24 @@ module Atomspace
       { atom_count: all.size, types: atom_count_by_type, mirror_lag: 0 }
     end
 
-    def quarantine_list
-      []
+    # ---- card-scoped B3 admin quarantine (POLICY REV5) ----
+    # Mirrors the sidecar's real admin contract rather than faking a global inventory.
+    def quarantine_list(card_id:)
+      cid = Integer(card_id.to_s.strip, 10)
+      { "card_id" => cid, "atoms" => all.select { |a| a.card_id.to_s == cid.to_s }.map(&:to_h) }
+    rescue ArgumentError, TypeError
+      raise InvalidRequest, "card_id must be an integer: #{card_id.inspect}"
     end
 
-    def quarantine_delete(_id)
-      true
+    def quarantine_delete(card_id:)
+      cid = Integer(card_id.to_s.strip, 10)
+      raise InvalidRequest, "card_id must be a positive integer: #{card_id.inspect}" unless cid.positive?
+
+      removed = all.select { |a| a.card_id.to_s == cid.to_s }
+      self.class.seed!(all - removed)
+      { "card_id" => cid, "removed" => removed.map(&:to_h), "removed_count" => removed.length }
+    rescue ArgumentError, TypeError
+      raise InvalidRequest, "card_id must be an integer: #{card_id.inspect}"
     end
 
     private

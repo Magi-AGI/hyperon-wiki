@@ -108,16 +108,73 @@ module Atomspace
       { atom_count: raw["atom_count"], types: raw.fetch("by_kind", {}), mirror_lag: 0 }
     end
 
-    # ---- quarantine: FAIL CLOSED until the sidecar B3 admin surface lands (Codex) ----
-    def quarantine_list
-      raise ServiceUnavailable, "quarantine unavailable: sidecar admin (B3) surface not implemented"
+    # ---- card-scoped B3 admin quarantine (POLICY REV5) ----
+    # Wired to the sidecar's real admin surface, which is card-scoped and Unix-socket ONLY (404 over
+    # TCP; the payloads are content-bearing and the quarantine call mutates the Space):
+    #
+    #   POST /admin/list_card_scoped_atoms      -> {card_id, atoms: [{atom, fields}, ...]}
+    #   POST /admin/quarantine_card_scoped_atoms -> {card_id, removed: [{atom, fields}, ...], removed_count}
+    #
+    # There is no global quarantine inventory upstream: orphan remediation is per-card by design.
+
+    # Read-only audit of a card's scoped atom set.
+    def quarantine_list(card_id:)
+      cid = strict_card_id(card_id)
+      status, parsed = self.class.request(:post, "/admin/list_card_scoped_atoms", { "card_id" => cid })
+      unless status == 200 && parsed.is_a?(Hash) && parsed["card_id"] == cid && parsed["atoms"].is_a?(Array)
+        raise ServiceUnavailable,
+              "sidecar /admin/list_card_scoped_atoms(#{cid}) failed or returned an inconsistent " \
+              "response (HTTP #{status}): #{(parsed || {}).inspect[0, 200]}"
+      end
+
+      parsed
+    rescue *SOCKET_ERRORS => e
+      raise ServiceUnavailable, "sidecar unreachable: #{e.class}: #{e.message}"
     end
 
-    def quarantine_delete(_id)
-      raise ServiceUnavailable, "quarantine unavailable: sidecar admin (B3) surface not implemented"
+    # DESTRUCTIVE: removes every atom scoped to card_id from the Space and returns the removed atoms'
+    # audit JSON -- the ONLY durable evidence (PyListSpace is in-memory, so the removal is otherwise
+    # lost on restart). The WHOLE mutating contract is validated and any deviation fails CLOSED.
+    def quarantine_delete(card_id:)
+      cid = strict_card_id(card_id)
+      status, parsed = self.class.request(:post, "/admin/quarantine_card_scoped_atoms", { "card_id" => cid })
+      validate_quarantine_response!(cid, status, parsed)
+      parsed
+    rescue *SOCKET_ERRORS => e
+      raise ServiceUnavailable, "sidecar unreachable: #{e.class}: #{e.message}"
     end
 
     private
+
+    # STRICT integer parse for a DESTRUCTIVE admin boundary. Never .to_i-coerce ("abc" -> 0,
+    # "12x" -> 12) the target of an atom-removal call; a non-integer / non-positive id is a 400
+    # InvalidRequest, never a quarantine of card 0 or a truncated id.
+    def strict_card_id(card_id)
+      n = begin
+        Integer(card_id.to_s.strip, 10)
+      rescue ArgumentError, TypeError
+        raise InvalidRequest, "quarantine card_id must be an integer, got #{card_id.inspect}"
+      end
+      raise InvalidRequest, "quarantine card_id must be a positive integer, got #{card_id.inspect}" unless n.positive?
+
+      n
+    end
+
+    # Validate the whole mutating-call contract: HTTP 200, the ECHOED card_id matches the one we asked
+    # to quarantine, removed is an Array, removed_count is an Integer, and the count matches the array
+    # length. Any deviation -> ServiceUnavailable (fail closed), never a silent partial success.
+    def validate_quarantine_response!(cid, status, parsed)
+      unless status == 200 && parsed.is_a?(Hash)
+        raise ServiceUnavailable, "sidecar quarantine(#{cid}) failed (HTTP #{status}): #{(parsed || {}).inspect[0, 200]}"
+      end
+
+      removed = parsed["removed"]
+      count = parsed["removed_count"]
+      return if removed.is_a?(Array) && count.is_a?(Integer) && count == removed.length && parsed["card_id"] == cid
+
+      raise ServiceUnavailable,
+            "sidecar quarantine(#{cid}) returned an inconsistent response: #{parsed.inspect[0, 200]}"
+    end
 
     def read(op, **filters)
       body = { op: op }.merge(filters.compact)
