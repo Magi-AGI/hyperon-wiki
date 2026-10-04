@@ -47,9 +47,11 @@ module Atomspace
       @account = account
     end
 
+    # NOTE quarantine_list / quarantine_delete are CARD-SCOPED (keyword card_id:) under POLICY REV5
+    # -- they map onto the sidecar's card-scoped B3 admin endpoints, which have no global form.
     %i[query_atoms get_card_atom get_card_provenance list_references list_atoms_by_type
        atom_types atom_count_by_type space_stats quarantine_list quarantine_delete].each do |m|
-      define_method(m) { |*| raise NotImplementedError, "#{m} not implemented for #{self.class}" }
+      define_method(m) { |*, **| raise NotImplementedError, "#{m} not implemented for #{self.class}" }
     end
   end
 

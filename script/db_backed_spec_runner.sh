@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
 #
-# db_backed_spec_runner.sh — run DB-backed Decko integration specs against a
-# disposable local Postgres, with an explicit bootstrap order.
+# db_backed_spec_runner.sh — run DB-backed Decko specs against a DISPOSABLE local
+# Postgres, with an explicit bootstrap order.
 #
-# WHY THIS EXISTS. The editorial_review integration specs need a real Decko
-# database. Getting one up is not obvious: a fresh schema has to be loaded from
-# the installed `card` gem, migrated, seeded, and fed the mod's coded data in a
-# specific order, and one unrelated initializer has to sit out the bootstrap.
-# That sequence was previously rediscovered by trial and error and lived only in
-# throwaway attempt scripts. It lives here now so the gate is reproducible
-# rather than folklore.
+# Ported into this repo (hyperon-wiki-phase5-go-live) from the sibling
+# hyperon-wiki-local-prod-aligned worktree and retargeted at the Phase 5 /
+# POLICY REV5 AtomSpace spec set. The bootstrap sequence and every safety guard
+# are carried over unchanged; only the default spec list and the mod fed to
+# `card:eat` differ.
+#
+# WHY THIS EXISTS. The MCP API request specs need a real Decko database. Getting
+# one up is not obvious: a fresh schema has to be loaded from the installed
+# `card` gem, migrated, seeded, and fed the mods' coded data in a specific order,
+# and one unrelated initializer has to sit out the bootstrap. That sequence was
+# previously rediscovered by trial and error and lived only in throwaway attempt
+# scripts. It lives here now so the gate is reproducible rather than folklore.
 #
 # SAFETY POSTURE. This script does two destructive things — it `rm -rf`s a
 # scratch directory and it DROPS AND RECREATES a database — and both targets are
@@ -21,6 +26,9 @@
 #   - DB container/name/user must all look explicitly disposable (a test/local
 #     marker in the name), and the container must be a running LOCAL Docker
 #     container. Remote/prod/dev-looking names are refused outright.
+#   - The DB container is additionally refused if it is one of the LIVE local
+#     stack containers, or if the target DB name is the live deck database
+#     (`hyperon_production`). The prod-aligned local stack must never be touched.
 #   - Local secret files (.env*, *.key, *.pem, credentials) are excluded from the
 #     tree staged into the container.
 #
@@ -38,9 +46,9 @@
 # USAGE. Invoke through bash. Tracked files under script/ in this repo are mode
 # 644, so this file is deliberately NOT executable and is not run as ./script/...
 #
-#   bash script/db_backed_spec_runner.sh                  # all three integration files
-#   bash script/db_backed_spec_runner.sh spec/integration/editorial_review_proposal_spec.rb
-#   bash script/db_backed_spec_runner.sh spec/integration/x_spec.rb --example "some name"
+#   bash script/db_backed_spec_runner.sh                  # the REV5 AtomSpace spec set
+#   bash script/db_backed_spec_runner.sh spec/mcp_api/lib/atomspace_grants_spec.rb
+#   bash script/db_backed_spec_runner.sh spec/x_spec.rb --example "some name"
 #
 #   SKIP_BOOTSTRAP=1 bash script/db_backed_spec_runner.sh ...  # reuse the existing DB
 #
@@ -75,15 +83,20 @@ DECKO_TEST_DB_USER="${DECKO_TEST_DB_USER:-hyperon_test}"
 DECKO_TEST_DB_PASSWORD="${DECKO_TEST_DB_PASSWORD:-cp006c_test_password}"
 DECKO_TEST_BUNDLE_VOL="${DECKO_TEST_BUNDLE_VOL:-cp006c-decko-spec-bundle}"
 DECKO_TEST_BUNDLE_APP_VOL="${DECKO_TEST_BUNDLE_APP_VOL:-cp006c-decko-spec-bundle-app}"
+# Mods whose coded data must be eaten before the specs run.
+DECKO_TEST_EAT_MODS="${DECKO_TEST_EAT_MODS:-editorial_review}"
 # Sibling of the repo rather than /tmp: Docker Desktop on Windows cannot bind
 # mount a Git-Bash /tmp path, and this keeps the scratch copy outside the repo
 # so it is never picked up by git or by a spec glob.
 DECKO_TEST_SCRATCH="${DECKO_TEST_SCRATCH:-$(dirname "$REPO_ROOT")/.decko-spec-worktree}"
 
+# POLICY REV5 / Phase 5 AtomSpace spec set: the grant matrix, the mint path, the
+# sidecar read-client contract, and the L9 + card-scoped-quarantine controller.
 DEFAULT_SPECS=(
-  spec/integration/editorial_review_proposal_spec.rb
-  spec/integration/editorial_review_merge_draft_spec.rb
-  spec/integration/editorial_review_capability_gating_spec.rb
+  spec/mcp_api/lib/atomspace_grants_spec.rb
+  spec/mcp_api/controllers/auth_controller_atomspace_scope_spec.rb
+  spec/mcp_api/atomspace/sidecar_read_client_spec.rb
+  spec/mcp_api/controllers/atomspace_mirror_controller_spec.rb
 )
 SPEC_ARGS=("$@")
 [ ${#SPEC_ARGS[@]} -eq 0 ] && SPEC_ARGS=("${DEFAULT_SPECS[@]}")
@@ -131,6 +144,18 @@ do
     *) die "DB $label '$value' must contain a disposable marker (decko-spec/cp006/test/local/scratch)" ;;
   esac
 done
+
+# --- guard 3: never the LIVE prod-aligned local stack ------------------------
+# The *local* markers accepted above ("local") would otherwise let the live
+# hyperon-local-backup-* containers through. The live deck DB is a restored
+# production dump: it is read-only territory for this script, always.
+case "$DECKO_TEST_DB_CONTAINER" in
+  *hyperon-local-backup*|*hyperon-local-mailpit*)
+    die "DB container '$DECKO_TEST_DB_CONTAINER' is part of the LIVE local stack (restored prod dump)" ;;
+esac
+if [ "$DECKO_TEST_DB_NAME" = "hyperon_production" ]; then
+  die "DB name 'hyperon_production' is the live deck database"
+fi
 
 if ! docker ps --filter "name=^/${DECKO_TEST_DB_CONTAINER}$" --format '{{.Names}}' | grep -q .; then
   die "DB container '${DECKO_TEST_DB_CONTAINER}' is not a running local Docker container.
@@ -181,7 +206,7 @@ fi
 #   2. load the card gem's schema into the empty DB
 #   3. rake db:migrate
 #   4. rake card:seed                       (core cards)
-#   5. rake card:eat -- -m editorial_review -p real   (this mod's coded data)
+#   5. rake card:eat -- -m <mod> -p real    (each mod's coded data)
 #   6. rspec
 #
 # config/initializers/cardtype_button_fix.rb is moved aside for steps 4-5 only.
@@ -200,6 +225,7 @@ docker run --rm --network "$DECKO_TEST_NETWORK" \
   -e DATABASE_PASSWORD="$DECKO_TEST_DB_PASSWORD" \
   -e DECK_ORIGIN=http://localhost:3000 \
   -e SKIP_BOOTSTRAP="${SKIP_BOOTSTRAP:-0}" \
+  -e DECKO_TEST_EAT_MODS="$DECKO_TEST_EAT_MODS" \
   "$DECKO_TEST_IMAGE" bash -lc '
     set -euo pipefail
     ruby -v
@@ -228,7 +254,9 @@ RUBY
 
       bundle exec rake db:migrate
       bundle exec rake card:seed
-      bundle exec rake card:eat -- -m editorial_review -p real
+      for mod in ${DECKO_TEST_EAT_MODS}; do
+        bundle exec rake card:eat -- -m "$mod" -p real
+      done
       restore_init
       trap - EXIT
       echo "bootstrap_complete=true"

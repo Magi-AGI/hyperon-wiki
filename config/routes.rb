@@ -84,7 +84,8 @@ Decko.application.routes.draw do
       end
 
       # AtomSpace mirror read API (Lane C, Level 9) -- Api::Mcp::AtomspaceMirrorController.
-      # Gated by the mcp:atomspace:read scope; quarantine additionally requires mcp:admin.
+      # Gated by the mcp:atomspace:read scope; the card-scoped B3 quarantine surface additionally
+      # requires the namespaced mcp:atomspace:admin scope (POLICY REV5).
       # MUST be drawn here (before `mount Decko::Engine => '/'`) so it isn't shadowed by the
       # Decko card catch-all -- an append-initializer runs after the mount and 404s to a card.
       scope :atomspace_mirror, controller: "atomspace_mirror" do
@@ -96,8 +97,22 @@ Decko.application.routes.draw do
         get  'get_card_provenance',   action: :get_card_provenance
         get  'list_references',       action: :list_references
         get  'list_atoms_by_type',    action: :list_atoms_by_type
-        get  'quarantine',            action: :quarantine_index
-        post 'quarantine/:id/delete', action: :quarantine_delete
+        # Card-scoped B3 admin quarantine (sidecar /admin/list_card_scoped_atoms +
+        # /admin/quarantine_card_scoped_atoms). card_id is constrained to digits so a non-numeric
+        # target 404s at the router rather than reaching a destructive action.
+        #
+        # `format: false` is REQUIRED, not cosmetic. Rails' default trailing `(.:format)` segment is
+        # applied BEFORE the :card_id constraint is matched, so without it a request for
+        # `quarantine/card/1.9` parses as card_id="1", format="9" -- the digit constraint passes on
+        # the truncated value and the surface silently answers for card 1 instead of rejecting an
+        # ambiguous target. That also bypasses the read client's deliberately strict card_id parse
+        # (the one that refuses .to_i coercion at an admin boundary) because the router has already
+        # discarded the suffix. Disabling the format segment makes `card/1.9` a 404 at the router,
+        # which is the documented contract above.
+        get  'quarantine/card/:card_id',        action: :quarantine_index,
+                                                constraints: { card_id: /\d+/ }, format: false
+        post 'quarantine/card/:card_id/delete', action: :quarantine_delete,
+                                                constraints: { card_id: /\d+/ }, format: false
       end
 
       # Admin endpoints (admin role required)

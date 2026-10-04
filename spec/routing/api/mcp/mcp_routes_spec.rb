@@ -170,4 +170,47 @@ RSpec.describe "MCP API Routes", type: :routing do
       end
     end
   end
+
+  describe "AtomSpace card-scoped quarantine routes (B3 admin surface)" do
+    it "routes GET quarantine/card/:card_id to atomspace_mirror#quarantine_index" do
+      expect(get: "/api/mcp/atomspace_mirror/quarantine/card/5").to route_to(
+        controller: "api/mcp/atomspace_mirror",
+        action: "quarantine_index",
+        card_id: "5"
+      )
+    end
+
+    it "routes POST quarantine/card/:card_id/delete to atomspace_mirror#quarantine_delete" do
+      expect(post: "/api/mcp/atomspace_mirror/quarantine/card/5/delete").to route_to(
+        controller: "api/mcp/atomspace_mirror",
+        action: "quarantine_delete",
+        card_id: "5"
+      )
+    end
+
+    it "does not route a non-numeric card_id to the quarantine actions" do
+      expect(get: "/api/mcp/atomspace_mirror/quarantine/card/abc")
+        .not_to route_to(controller: "api/mcp/atomspace_mirror", action: "quarantine_index")
+      expect(post: "/api/mcp/atomspace_mirror/quarantine/card/abc/delete").not_to be_routable
+    end
+
+    it "retires the pre-REV5 global quarantine forms" do
+      expect(get: "/api/mcp/atomspace_mirror/quarantine")
+        .not_to route_to(controller: "api/mcp/atomspace_mirror", action: "quarantine_index")
+      expect(post: "/api/mcp/atomspace_mirror/quarantine/5/delete").not_to be_routable
+    end
+
+    # Regression: Rails' implicit `(.:format)` segment is applied BEFORE the :card_id constraint,
+    # so without `format: false` a request for `card/1.9` parsed as card_id="1" + format="9" and the
+    # admin surface silently answered for card 1 instead of rejecting an ambiguous target. Verified
+    # against the running local stack: GET card/1.9, card/2.json and card/1.xml each returned 200
+    # for the truncated id before `format: false` was added.
+    it "refuses a format-suffixed card_id instead of silently truncating it" do
+      expect(get: "/api/mcp/atomspace_mirror/quarantine/card/1.9")
+        .not_to route_to(controller: "api/mcp/atomspace_mirror", action: "quarantine_index")
+      expect(get: "/api/mcp/atomspace_mirror/quarantine/card/2.json")
+        .not_to route_to(controller: "api/mcp/atomspace_mirror", action: "quarantine_index")
+      expect(post: "/api/mcp/atomspace_mirror/quarantine/card/1.9/delete").not_to be_routable
+    end
+  end
 end

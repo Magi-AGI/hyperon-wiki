@@ -115,22 +115,53 @@ RSpec.describe Api::Mcp::AtomspaceMirrorController, type: :request do
     end
   end
 
-  describe "quarantine matrix (mcp:atomspace:read + mcp:admin)" do
-    it "denies scope-without-admin (403)" do
-      get "/api/mcp/atomspace_mirror/quarantine", headers: auth(scope: "mcp:atomspace:read")
+  # POLICY REV5: the card-scoped B3 quarantine surface requires mcp:atomspace:read AND the
+  # NAMESPACED mcp:atomspace:admin. The generic mcp:admin scope is no longer involved (it was never
+  # minted, which made quarantine a permanent 403 under REV4).
+  describe "quarantine matrix (mcp:atomspace:read + mcp:atomspace:admin)" do
+    it "denies read-only (403)" do
+      get "/api/mcp/atomspace_mirror/quarantine/card/5", headers: auth(scope: "mcp:atomspace:read")
       expect(response).to have_http_status(:forbidden)
     end
 
-    it "denies admin-without-scope (403)" do
-      get "/api/mcp/atomspace_mirror/quarantine", headers: auth(role: "admin", scope: "mcp:admin")
+    it "denies atomspace-admin without read (403)" do
+      get "/api/mcp/atomspace_mirror/quarantine/card/5",
+          headers: auth(role: "admin", scope: "mcp:atomspace:admin")
       expect(response).to have_http_status(:forbidden)
     end
 
-    it "allows scope + admin" do
-      Atomspace::FakeReadClient.seed!([])
-      get "/api/mcp/atomspace_mirror/quarantine",
+    # The generic mcp:admin scope must NOT satisfy the namespaced gate.
+    it "denies the generic mcp:admin scope even alongside read (403)" do
+      get "/api/mcp/atomspace_mirror/quarantine/card/5",
           headers: auth(role: "admin", scope: "mcp:atomspace:read mcp:admin")
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it "allows read + atomspace-admin (passes auth to readiness/client)" do
+      Atomspace::FakeReadClient.seed!([])
+      get "/api/mcp/atomspace_mirror/quarantine/card/5",
+          headers: auth(role: "admin", scope: "mcp:atomspace:read mcp:atomspace:admin")
       expect(response).not_to have_http_status(:forbidden)
+      expect(JSON.parse(response.body)["results"]).to include("card_id" => 5)
+    end
+
+    it "allows the DESTRUCTIVE delete with read + atomspace-admin and echoes the removal audit" do
+      Atomspace::FakeReadClient.seed!([
+        Atomspace::Atom.new(type: "DeckoCard", card_id: 5, fields: { "Name" => "c5" })
+      ])
+      post "/api/mcp/atomspace_mirror/quarantine/card/5/delete",
+           headers: auth(role: "admin", scope: "mcp:atomspace:read mcp:atomspace:admin")
+      expect(response).not_to have_http_status(:forbidden)
+      results = JSON.parse(response.body)["results"]
+      expect(results["card_id"]).to eq(5)
+      expect(results["removed_count"]).to eq(1)
+      expect(results["removed"].length).to eq(1)
+    end
+
+    it "denies the DESTRUCTIVE delete to a read-only caller (403)" do
+      post "/api/mcp/atomspace_mirror/quarantine/card/5/delete",
+           headers: auth(scope: "mcp:atomspace:read")
+      expect(response).to have_http_status(:forbidden)
     end
   end
 
@@ -212,10 +243,19 @@ RSpec.describe Api::Mcp::AtomspaceMirrorController, type: :request do
 
     it "503s admin quarantine when mirroring is disabled" do
       not_ready("mirroring_disabled")
-      get "/api/mcp/atomspace_mirror/quarantine",
-          headers: auth(role: "admin", scope: "mcp:atomspace:read mcp:admin")
+      get "/api/mcp/atomspace_mirror/quarantine/card/5",
+          headers: auth(role: "admin", scope: "mcp:atomspace:read mcp:atomspace:admin")
       expect(response).to have_http_status(503)
       expect(JSON.parse(response.body)["error"]).to eq("mirror_not_ready")
+    end
+
+    # Authorization BEFORE readiness also holds on the destructive path: a read-only caller gets 403,
+    # never a readiness signal that would leak mirror state.
+    it "still 403s the destructive quarantine delete (scope gate precedes readiness)" do
+      not_ready("mirroring_disabled")
+      post "/api/mcp/atomspace_mirror/quarantine/card/5/delete",
+           headers: auth(scope: "mcp:atomspace:read")
+      expect(response).to have_http_status(:forbidden)
     end
 
     it "still 403s (scope gate precedes readiness) for a no-scope caller even when not ready" do

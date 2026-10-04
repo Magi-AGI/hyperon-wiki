@@ -12,7 +12,10 @@ require_relative "../../concerns/atomspace_read_filter"
 module Api
   module Mcp
     # Lane C, Level 9 read surface. Lives in mod/mcp_api (NOT Lane A's mod/atomspace_mirror
-    # engine). Gated by the mcp:atomspace:read scope; quarantine additionally needs mcp:admin.
+    # engine). Gated by the mcp:atomspace:read scope; the card-scoped B3 quarantine surface
+    # additionally needs the NAMESPACED mcp:atomspace:admin scope (POLICY REV5 -- the generic
+    # mcp:admin scope is never minted for the AtomSpace surface, which made quarantine a
+    # permanent 403 under REV4).
     # Auth-on-read via Card::Auth.as multi-card filter (Invariant 9). Read-your-writes via the
     # L7 ReadConsistencyPort. Aggregate tools are gate-only (no card-scoped payload).
     class AtomspaceMirrorController < BaseController
@@ -91,14 +94,22 @@ module Api
         render_global(read_client.space_stats)
       end
 
-      # --- admin quarantine (mcp:atomspace:read + mcp:admin) ---
+      # --- admin quarantine, CARD-SCOPED (mcp:atomspace:read + mcp:atomspace:admin) ---
+      # Backed by the sidecar's B3 admin surface (Unix-socket only):
+      #   GET  quarantine/card/:card_id        -> POST /admin/list_card_scoped_atoms
+      #   POST quarantine/card/:card_id/delete -> POST /admin/quarantine_card_scoped_atoms (DESTRUCTIVE)
+      # There is no global quarantine inventory in the sidecar contract: B3 is card-scoped by design
+      # (Space-but-not-Postgres orphan remediation is always per-card), so the route is too.
       def quarantine_index
-        render_global(read_client.quarantine_list)
+        render_global(read_client.quarantine_list(card_id: params.require(:card_id)))
       end
 
+      # DESTRUCTIVE: removes every atom scoped to card_id from the in-memory Space. The sidecar
+      # returns the removed atoms' audit JSON, which is echoed back to the caller as the ONLY durable
+      # evidence (PyListSpace is in-memory). card_id is validated strictly in the read client -- never
+      # .to_i-coerced at a destructive boundary.
       def quarantine_delete
-        read_client.quarantine_delete(params.require(:id))
-        head :no_content
+        render_global(read_client.quarantine_delete(card_id: params.require(:card_id)))
       end
 
       private
@@ -187,8 +198,9 @@ module Api
       end
 
       def require_quarantine_scope!
-        granted = token_scopes.include?("mcp:atomspace:read") && token_scopes.include?("mcp:admin")
-        render_forbidden("mcp:atomspace:read + mcp:admin required") unless granted
+        granted = token_scopes.include?("mcp:atomspace:read") &&
+                  token_scopes.include?("mcp:atomspace:admin")
+        render_forbidden("mcp:atomspace:read + mcp:atomspace:admin required") unless granted
       end
 
       # Fail-closed read-readiness gate. Renders 503 mirror_not_ready (halting the action) unless the
