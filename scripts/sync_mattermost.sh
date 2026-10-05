@@ -98,7 +98,7 @@ echo "  Uploaded and linked as ~/mattermost_exports/latest"
 echo ""
 echo "[Step 3/3] Running ingestion on server..."
 cat "$SCRIPT_DIR/ingest_mattermost.rb" | "${SSH_CMD[@]}" \
-  "export PATH=\"\$HOME/.rbenv/bin:\$HOME/.rbenv/shims:\$PATH\" && eval \"\$(rbenv init -)\" && cd $REMOTE_DIR_Q && set -a && source .env.production && set +a && RAILS_ENV=production bundle exec decko runner -"
+  "export PATH=\"\$HOME/.rbenv/bin:\$HOME/.rbenv/shims:\$PATH\" && eval \"\$(rbenv init -)\" && cd $REMOTE_DIR_Q && set -a && source .env.production && set +a && MATTERMOST_INGEST=1 RAILS_ENV=production bundle exec decko runner -"
 
 echo ""
 echo "=================================================="

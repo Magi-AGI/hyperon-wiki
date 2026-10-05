@@ -126,3 +126,7 @@ __pycache__/
 # The committed explanation of what the corpus is lives outside it, in
 # docs/archive/SCRIPTS-RESEARCH-ARCHIVE.md.
 /scripts/archive/
+
+# Hermes agent scratch: session snapshots, logs, quarantined probe records,
+# and rescued patches. Local working state only - never part of a commit.
+.hermes/
