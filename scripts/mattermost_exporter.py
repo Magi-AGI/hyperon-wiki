@@ -141,11 +141,81 @@ class MattermostExporter:
         print(f"OK {len(channels)} channels found")
         return channels
 
+    def _channel_dirname(self, channel: Dict, output_dir: Path) -> str:
+        """Return a unique, filesystem-safe directory name for a channel.
+
+        Mattermost display names are NOT unique — two channels may share one.
+        Deriving the directory purely from the display name made the second
+        such channel silently overwrite the first one's JSON: the export
+        reported N channels while only N-1 survived on disk, and the loser's
+        code snippets were left orphaned in the winner's directory.
+
+        Uniqueness is keyed on the channel ID, so re-exporting the same channel
+        reuses its directory, while a *different* channel with the same display
+        name is disambiguated by its slug, then its ID prefix, then a counter.
+        """
+        registry = getattr(self, "_channel_dirs", None)
+        if registry is None:
+            registry = {}
+            self._channel_dirs = registry
+
+        channel_id = channel.get("id", "")
+
+        def sanitize(value: str) -> str:
+            cleaned = (value or "").replace("/", "_").replace("\\", "_")
+            return "".join(c for c in cleaned if c.isalnum() or c in " _-").strip()
+
+        base = (sanitize(channel.get("display_name", ""))
+                or sanitize(channel.get("name", ""))
+                or f"channel-{channel_id[:8]}".strip("-")
+                or "channel")
+
+        def available(candidate: str) -> bool:
+            owner = registry.get(candidate)
+            if owner is not None:
+                return owner == channel_id
+            # Unclaimed this run, but a directory left by an earlier pass may
+            # already hold a different channel's export.
+            existing = output_dir / candidate
+            if not existing.is_dir():
+                return True
+            for json_path in existing.glob("*.json"):
+                try:
+                    found = json.loads(json_path.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    continue
+                other = (found.get("channel") or {}).get("id")
+                if other and other != channel_id:
+                    return False
+            return True
+
+        if available(base):
+            registry[base] = channel_id
+            return base
+
+        slug = sanitize(channel.get("name", ""))
+        candidates = []
+        if slug and slug != base:
+            candidates.append(f"{base}-{slug}")
+        if channel_id:
+            candidates.append(f"{base}-{channel_id[:8]}")
+
+        suffix = 2
+        while True:
+            for candidate in candidates:
+                if available(candidate):
+                    registry[candidate] = channel_id
+                    print(f"  NOTE Display name {channel.get('display_name')!r} already "
+                          f"claimed by another channel; writing to {candidate!r}")
+                    return candidate
+            candidates = [f"{base}-{suffix}"]
+            suffix += 1
+
     def export_channel(self, channel: Dict, output_dir: Path,
                        download_files: bool = True,
                        after: Optional[datetime] = None,
                        before: Optional[datetime] = None) -> Path:
-        """Export one channel to `<output_dir>/<safe name>/<safe name>.json`.
+        """Export one channel to `<output_dir>/<unique name>/<unique name>.json`.
 
         Posts are written oldest-first with a stable `idx`. Fenced code blocks
         are split into sibling `NNNN_code.txt` files, and attachments are
@@ -153,12 +223,14 @@ class MattermostExporter:
 
         Returns the path of the JSON file written. Callers must use this rather
         than reconstructing it from the channel's display name — the on-disk
-        name has punctuation stripped, so a name like `Q&A / general` will not
-        round-trip.
+        name has punctuation stripped and may be disambiguated for uniqueness,
+        so a name like `Q&A / general` will not round-trip.
         """
         channel_name = channel["display_name"].replace("/", "_").replace("\\", "_")
         print(f"\n{'=' * 60}")
         print(f"Exporting: {channel_name}")
+        print(f"  slug={channel.get('name', '?')} type={channel.get('type', '?')} "
+              f"id={channel.get('id', '?')}")
         print(f"{'=' * 60}")
 
         after_ts = after.timestamp() if after else None
@@ -184,7 +256,7 @@ class MattermostExporter:
 
         print(f"  Total posts: {len(all_posts)}")
 
-        safe_name = "".join(c for c in channel_name if c.isalnum() or c in " _-").strip()
+        safe_name = self._channel_dirname(channel, output_dir)
         channel_dir = output_dir / safe_name
         channel_dir.mkdir(parents=True, exist_ok=True)
 
