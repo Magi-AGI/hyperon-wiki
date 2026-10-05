@@ -22,6 +22,19 @@
 #     MATTERMOST_INGEST_REPORT=/tmp/ingest_plan.json \
 #     bundle exec decko runner scripts/ingest_mattermost.rb
 #
+# DELTA PLANNER (Phase 1 - dry run only, refuses to run with writes enabled):
+#   MATTERMOST_INGEST=1 MATTERMOST_INGEST_DRY_RUN=1 MATTERMOST_INGEST_DELTA=1 \
+#     MATTERMOST_INGEST_REPORT=/tmp/delta_plan.json \
+#     bundle exec decko runner scripts/ingest_mattermost.rb
+#
+#   Delta mode compares a sha256 of each rendered card against the live card's
+#   stored content and classifies it as skip-unchanged / update / create. The
+#   per-card "Exported:" timestamp is excluded from the hash, because it changes
+#   on every export and would otherwise mark ~94% of cards dirty with identical
+#   bodies. There is deliberately NO delta write path yet: setting
+#   MATTERMOST_INGEST_DELTA=1 without MATTERMOST_INGEST_DRY_RUN=1 aborts before
+#   any database access.
+#
 # PRIVATE CHANNELS:
 #   Mattermost private channels (type "P") are ingested like any other channel,
 #   but each resulting card (index and every chunk) also gets a
@@ -60,6 +73,30 @@ DRY_RUN = %w[1 true yes on].include?(
 
 # Optional path for a machine-readable plan/result report.
 REPORT_PATH = ENV["MATTERMOST_INGEST_REPORT"]
+
+# ------------------------------------------------------------
+# Delta planning (Phase 1: analysis only, no write path)
+# ------------------------------------------------------------
+# When set, every rendered card is hashed and compared against the live card's
+# stored content so unchanged cards can be skipped instead of rewritten.
+DELTA = %w[1 true yes on].include?(
+  ENV.fetch("MATTERMOST_INGEST_DELTA", "").strip.downcase
+)
+
+# Phase 1 has no delta write path. Refusing here - before any card is fetched
+# or rendered - is the whole safety story: there is no code path in which
+# DELTA can reach a database write.
+if DELTA && !DRY_RUN
+  abort <<~MSG
+    MATTERMOST_INGEST_DELTA=1 requires MATTERMOST_INGEST_DRY_RUN=1.
+
+    The delta planner is analysis-only (Phase 1). No delta write path exists
+    yet, so running it with writes enabled would silently fall back to the
+    full-rewrite behaviour it is meant to replace. Aborting before any
+    database access.
+  MSG
+end
+
 
 # Files that live in an export dir but are not channel payloads.
 NON_CHANNEL_FILES = %w[export_summary.json verification_report.json].freeze
@@ -220,8 +257,205 @@ end
 STATS = {
   created: 0, updated: 0, errors: 0, planned_create: 0, planned_update: 0, cards: [],
   perm_created: 0, perm_updated: 0, perm_errors: 0,
-  planned_perm_create: 0, planned_perm_update: 0, perms: []
+  planned_perm_create: 0, planned_perm_update: 0, perms: [],
+  skipped_unchanged: 0, perm_skipped_unchanged: 0
 }
+
+# ============================================================
+# Delta hashing
+# ============================================================
+
+require "digest"
+require "set"
+
+# The per-card "Exported:" line carries the export run's timestamp, so it
+# changes on every export even when no post did. Measured on two real snapshots
+# it alone accounted for 182 of 193 "changed" cards. Excluding it from the hash
+# is what makes the delta honest; it is NOT removed from the written content,
+# so this changes nothing about what a real ingest would store.
+EXPORTED_HEADER_RE = %r{^[ \t]*<p><strong>Exported:</strong>[^\n]*</p>\x0D?\x0A?}.freeze
+
+def normalize_for_hash(content)
+  content.to_s.gsub(EXPORTED_HEADER_RE, "")
+end
+
+def content_hash(content)
+  Digest::SHA256.hexdigest(normalize_for_hash(content))
+end
+
+# Fetch a live card's stored content, or nil when the card does not exist.
+# Read-only: never instantiates a change.
+def live_content(name)
+  return nil unless defined?(Card)
+
+  card = begin
+    Card::Auth.as_bot { Card.fetch(name) }
+  rescue StandardError
+    nil
+  end
+  return nil if card.nil? || card.trash
+
+  card.content.to_s
+end
+
+# A read rule's *items*, not its raw content.
+#
+# The write path sets content to "[[Party]]", but a read rule is a List card
+# and Decko normalizes that to the bare "Party" on save. Comparing the raw
+# string would therefore report every already-correct rule as an update
+# forever (measured: 17 of 17 on a deck whose rules were all correct).
+# Items are the actual semantics of the rule, so they are what we compare.
+#
+# Returns nil when the rule card does not exist, which the caller
+# distinguishes from an existing-but-wrong rule.
+def live_rule_items(name)
+  return nil unless defined?(Card)
+
+  card = begin
+    Card::Auth.as_bot { Card.fetch(name) }
+  rescue StandardError
+    nil
+  end
+  return nil if card.nil? || card.trash
+
+  items = begin
+    card.item_names
+  rescue StandardError
+    nil
+  end
+  # Fall back to parsing the raw content for non-List storage.
+  items ||= card.content.to_s.scan(/\[\[([^\]]+)\]\]/).flatten
+  items = [card.content.to_s] if items.empty? && !card.content.to_s.strip.empty?
+
+  items.map { |i| i.to_s.strip }.reject(&:empty?)
+end
+
+# Why does this card differ? Derived from the rendered vs live content so the
+# report is reviewable without re-reading both bodies.
+POSTS_IN_CHUNK_RE = %r{<p><strong>Posts in chunk:</strong>\s*(\d+)</p>}.freeze
+POSTS_RE = %r{<p><strong>Posts:</strong>\s*(\d+)</p>}.freeze
+
+def body_after_header(content)
+  i = content.to_s.index("<hr>")
+  i ? content.to_s[(i + 4)..] : content.to_s
+end
+
+def post_count_marker(content)
+  m = POSTS_IN_CHUNK_RE.match(content.to_s) || POSTS_RE.match(content.to_s)
+  m && m[1].to_i
+end
+
+def change_reason(live, rendered)
+  return "missing_card" if live.nil?
+
+  if body_after_header(normalize_for_hash(live)) ==
+     body_after_header(normalize_for_hash(rendered))
+    return "channel_meta_changed"
+  end
+
+  before = post_count_marker(live)
+  after  = post_count_marker(rendered)
+  if before && after && after > before
+    "posts_added"
+  elsif before && after && after < before
+    "posts_removed"
+  else
+    "post_edited"
+  end
+end
+
+# Live cards under PARENT_CARD that the plan does not account for.
+#
+# Identity is Decko's key, not the display name: the deck stores this branch as
+# "RawData+mattermost+..." while PARENT_CARD is "Raw Data+mattermost", and both
+# resolve to the same key. Comparing raw strings reports every card as both an
+# orphan and a create. Compound Decko cards can also carry a NULL name column,
+# so descendants are walked by left_id rather than matched by name prefix.
+#
+# Report only. Nothing is deleted, in delta mode or otherwise.
+def live_descendant_names(parent_name)
+  return [] unless defined?(Card)
+
+  Card::Auth.as_bot do
+    parent = begin
+      Card.fetch(parent_name)
+    rescue StandardError
+      nil
+    end
+    return [] unless parent
+
+    names = []
+    frontier = [parent.id]
+    seen = {}
+    until frontier.empty?
+      batch = Card.where(left_id: frontier).to_a
+      frontier = []
+      batch.each do |c|
+        next if seen[c.id]
+
+        seen[c.id] = true
+        frontier << c.id
+        next if c.trash
+
+        names << c.name.to_s
+      end
+    end
+    names
+  end
+end
+
+def find_orphans(_channels)
+  return [] unless defined?(Card)
+
+  planned_keys = STATS[:cards].map { |c| name_key(c[:name]) }.to_set
+  rule_keys = STATS[:perms].map { |p| name_key(p[:rule]) }.to_set
+
+  live_descendant_names(PARENT_CARD).reject do |nm|
+    key = name_key(nm)
+    planned_keys.include?(key) || rule_keys.include?(key) ||
+      # "+*self" set cards exist only to hold the "+*read" rule below them.
+      nm.end_with?("+*self")
+  end.map { |nm| { name: nm, key: name_key(nm) } }
+end
+
+# Planned vs live chunk count per channel. A growing count means new chunk
+# cards plus an index rewrite; a shrinking one leaves orphan chunks behind.
+# Reported so a chunk cascade is visible before any write (§5.3).
+def chunk_count_changes(channels)
+  return [] unless defined?(Card)
+
+  live_keys = live_descendant_names(PARENT_CARD).map { |nm| name_key(nm) }.to_set
+
+  channels.filter_map do |ch|
+    planned = STATS[:cards].count do |c|
+      c[:name].to_s.start_with?("#{ch[:card_name]}+chunk-")
+    end
+
+    live = (1..).lazy.map { |i| name_key("#{ch[:card_name]}+chunk-#{i}") }
+                     .take_while { |k| live_keys.include?(k) }.to_a.length
+
+    next if planned == live
+
+    { channel_id: ch[:id], display_name: ch[:display],
+      card_name: ch[:card_name], live_chunks: live, planned_chunks: planned,
+      delta: planned - live }
+  end
+end
+
+# A channel whose planned card name is absent from the live deck. Phase 1
+# reports; it never re-files a card (§5.1 of the design).
+def find_name_binding_conflicts(channels)
+  return [] unless defined?(Card)
+
+  live_keys = live_descendant_names(PARENT_CARD).map { |nm| name_key(nm) }.to_set
+  channels.reject { |ch| live_keys.include?(name_key(ch[:card_name])) }
+          .map do |ch|
+    { channel_id: ch[:id], display_name: ch[:display], slug: ch[:slug],
+      planned_card_name: ch[:card_name], planned_key: name_key(ch[:card_name]),
+      label_reason: ch[:label_reason], reason: "planned_name_absent_from_live" }
+  end
+end
+
 
 # ============================================================
 # Private-channel permissions
@@ -268,6 +502,44 @@ def restrict_card_to_private_party(card_name)
 
   party = resolve_private_party!
   rule_name = self_read_rule_name(card_name)
+
+  if DELTA
+    # Gate on the rule's current items: an already-correct rule is 0 writes,
+    # while a tampered or missing one still shows up as work to do.
+    #
+    # Compared as items, not raw content: Decko stores the written
+    # "[[Party]]" as the bare "Party", so a literal string compare marks
+    # every correct rule dirty on every run. Key-normalized so a display-name
+    # variant of the same party is not treated as a difference.
+    desired = "[[#{party[:name]}]]"
+    live_items = live_rule_items(rule_name)
+
+    if live_items
+      live_keys = live_items.map { |i| name_key(i) }
+      if live_keys == [name_key(party[:name])]
+        STATS[:perm_skipped_unchanged] += 1
+        STATS[:perms] << { card: card_name, rule: rule_name, party: party[:name],
+                           action: "skip-unchanged", reason: "rule_matches",
+                           live_items: live_items }
+        return
+      end
+
+      STATS[:planned_perm_update] += 1
+      STATS[:perms] << { card: card_name, rule: rule_name, party: party[:name],
+                         action: "update", reason: "rule_value_differs",
+                         live_items: live_items,
+                         content_before: live_items.join(", "),
+                         content_after: desired }
+      puts "  [delta] would set read rule: #{rule_name} -> #{party[:name]}"
+    else
+      STATS[:planned_perm_create] += 1
+      STATS[:perms] << { card: card_name, rule: rule_name, party: party[:name],
+                         action: "create", reason: "rule_missing",
+                         content_before: nil, content_after: desired }
+      puts "  [delta] would create read rule: #{rule_name} -> #{party[:name]}"
+    end
+    return
+  end
 
   if DRY_RUN
     exists = card_exists?(rule_name)
@@ -322,6 +594,44 @@ def card_exists?(name)
 end
 
 def create_or_update_card(name, content, type_code = :raw_data)
+  if DELTA
+    # Analysis only. DELTA implies DRY_RUN (enforced at load), so this branch
+    # can never fall through to a write.
+    live = live_content(name)
+    rendered_hash = content_hash(content)
+
+    if live && content_hash(live) == rendered_hash
+      STATS[:skipped_unchanged] += 1
+      STATS[:cards] << {
+        name: name, action: "skip-unchanged", reason: "content_identical",
+        chars_before: live.length, chars_after: content.length,
+        hash_before: rendered_hash, hash_after: rendered_hash
+      }
+      return
+    end
+
+    reason = change_reason(live, content)
+    if live
+      STATS[:planned_update] += 1
+      STATS[:cards] << {
+        name: name, action: "update", reason: reason,
+        chars_before: live.length, chars_after: content.length,
+        hash_before: content_hash(live), hash_after: rendered_hash
+      }
+      puts "  [delta] would update: #{name} (#{reason}, " \
+           "#{live.length} -> #{content.length} chars)"
+    else
+      STATS[:planned_create] += 1
+      STATS[:cards] << {
+        name: name, action: "create", reason: reason,
+        chars_before: nil, chars_after: content.length,
+        hash_before: nil, hash_after: rendered_hash
+      }
+      puts "  [delta] would create: #{name} (#{content.length} chars)"
+    end
+    return
+  end
+
   if DRY_RUN
     # Read-only: classify the write without performing it.
     exists = card_exists?(name)
@@ -559,13 +869,25 @@ def run!
   end
 
   total_cards = STATS[:cards].length
+  orphans = DELTA ? find_orphans(channels) : []
+  name_conflicts = DELTA ? find_name_binding_conflicts(channels) : []
   puts "\n#{'=' * 60}"
   puts DRY_RUN ? "Dry run complete - nothing was written." : "Ingestion complete!"
   puts "Total channels: #{channels.length}"
   puts "  public:  #{channels.count { |c| c[:type] != 'P' }}"
   puts "  private: #{channels.count { |c| c[:type] == 'P' }}"
   puts "Total cards: #{total_cards}"
-  if DRY_RUN
+  if DELTA
+    puts "  skipped unchanged: #{STATS[:skipped_unchanged]}"
+    puts "  would create:      #{STATS[:planned_create]}"
+    puts "  would update:      #{STATS[:planned_update]}"
+    puts "  orphaned:          #{orphans.length}"
+    puts "Private read rules: #{STATS[:perms].length}"
+    puts "  skipped unchanged: #{STATS[:perm_skipped_unchanged]}"
+    puts "  would create:      #{STATS[:planned_perm_create]}"
+    puts "  would update:      #{STATS[:planned_perm_update]}"
+    puts "Name binding conflicts: #{name_conflicts.length}"
+  elsif DRY_RUN
     puts "  would create: #{STATS[:planned_create]}"
     puts "  would update: #{STATS[:planned_update]}"
     puts "Private read rules: #{STATS[:perms].length}"
@@ -584,6 +906,9 @@ def run!
 
   if REPORT_PATH
     report = {
+      mode: (DELTA ? "delta" : (DRY_RUN ? "full-dry-run" : "full-write")),
+      baseline: (DELTA ? "live-content-hash" : nil),
+      hash_normalization: (DELTA ? ["exported_at_header_excluded"] : nil),
       dry_run: DRY_RUN,
       export_dir: EXPORT_DIR,
       parent_card: PARENT_CARD,
@@ -591,6 +916,7 @@ def run!
       restrict_private: RESTRICT_PRIVATE,
       private_read_party: (RESTRICT_PRIVATE ? resolve_private_party! : nil),
       channel_count: channels.length,
+      channels_total: channels.length,
       public_channels: channels.count { |c| c[:type] != "P" },
       private_channels: channels.count { |c| c[:type] == "P" },
       total_posts: channels.sum { |c| c[:posts].to_i },
@@ -610,6 +936,29 @@ def run!
       cards: STATS[:cards],
       permissions: STATS[:perms]
     }
+
+    if DELTA
+      report[:cards_summary] = {
+        total: total_cards,
+        skipped_unchanged: STATS[:skipped_unchanged],
+        planned_create: STATS[:planned_create],
+        planned_update: STATS[:planned_update],
+        orphaned: orphans.length
+      }
+      report[:permissions_summary] = {
+        total: STATS[:perms].length,
+        skipped_unchanged: STATS[:perm_skipped_unchanged],
+        planned_create: STATS[:planned_perm_create],
+        planned_update: STATS[:planned_perm_update]
+      }
+      report[:orphans] = orphans
+      report[:name_binding_conflicts] = name_conflicts
+      report[:chunk_count_changes] = chunk_count_changes(channels)
+      report[:reasons] = STATS[:cards].group_by { |c| c[:reason] }
+                                      .transform_values(&:length)
+      report[:cards_detail] = STATS[:cards].reject { |c| c[:action] == "skip-unchanged" }
+    end
+
     File.write(REPORT_PATH, JSON.pretty_generate(report))
     puts "Report written to #{REPORT_PATH}"
   end
