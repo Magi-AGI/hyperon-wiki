@@ -60,6 +60,13 @@ export HYPERON_WIKI_REMOTE_DIR="~/deck root/hyperon-wiki"
 mkdir -p "$WORK/my keys"
 : > "$WORK/my keys/wiki key.pem"
 
+# sync_transcripts.sh refuses to run without this, because a real run writes to
+# the live wiki. The checks below only evaluate its connection-setup and symlink
+# blocks against fake ssh/scp shims - nothing is contacted - so the opt-in is
+# set here to let the structural checks proceed. The gate itself is verified
+# separately by check_write_gate below.
+export TRANSCRIPT_SYNC_CONFIRM=1
+
 fail=0
 
 pass() { echo "PASS  $1"; }
@@ -188,6 +195,42 @@ check_line_endings() {
   fi
 }
 
+# --- Part 4: the production write gate -------------------------------------
+# sync_transcripts.sh performs a real production ingest, so it must refuse to
+# run unless explicitly opted into. Verified by running it with the opt-in
+# cleared and no credentials: it must exit non-zero and say so before doing
+# anything. Nothing is contacted - the gate fires first.
+check_write_gate() {
+  local target="$1"
+  local name="${target##*/}"
+  local out rc
+
+  out="$(env -u TRANSCRIPT_SYNC_CONFIRM \
+         -u HYPERON_WIKI_HOST -u HYPERON_WIKI_SSH_KEY \
+         bash "$target" 2>&1)" && rc=0 || rc=$?
+
+  if [ "$rc" -eq 0 ]; then
+    bad "$name: ran without TRANSCRIPT_SYNC_CONFIRM=1"
+    return
+  fi
+  pass "$name: refuses to run without TRANSCRIPT_SYNC_CONFIRM=1"
+
+  case "$out" in
+    *"Refusing to run"*)
+      pass "$name: explains why it refused" ;;
+    *)
+      bad "$name: refused without explaining ($out)" ;;
+  esac
+
+  # The refusal must come before any export/upload step announces itself.
+  case "$out" in
+    *"[Step 1/3]"*|*"[Step 2/3]"*|*"[Step 3/3]"*)
+      bad "$name: started a sync step before the gate fired" ;;
+    *)
+      pass "$name: gate fires before any export or upload step" ;;
+  esac
+}
+
 for s in sync_mattermost.sh sync_transcripts.sh server_sync_mattermost.sh; do
   check_line_endings "$REPO_ROOT/scripts/$s"
 done
@@ -196,6 +239,7 @@ check_args "$REPO_ROOT/scripts/sync_mattermost.sh"
 check_args "$REPO_ROOT/scripts/sync_transcripts.sh"
 check_symlink "$REPO_ROOT/scripts/sync_mattermost.sh" "mattermost_exports"
 check_symlink "$REPO_ROOT/scripts/sync_transcripts.sh" "transcript_exports"
+check_write_gate "$REPO_ROOT/scripts/sync_transcripts.sh"
 
 if [ "$fail" -eq 0 ]; then
   echo "ALL CHECKS PASSED"

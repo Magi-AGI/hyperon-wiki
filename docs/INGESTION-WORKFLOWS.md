@@ -63,8 +63,42 @@ one ingester.
 | `scripts/export_otter.py` | Pulls transcripts from Otter.ai via an unofficial client (see `scripts/otterai/`). |
 | `scripts/ingest_otter_export.py` | Converts *manually* exported Otter `.txt`/`.srt` files into the standard JSON format. Use this when API export is unavailable. |
 | `scripts/parse_readai_reports.py` | Parses Read.ai meeting report data into the same JSON format. |
-| `scripts/ingest_transcripts.rb` | Reads transcript JSON and creates RawData cards. Run under `decko runner`. |
-| `scripts/sync_transcripts.sh` | Chains export → upload → ingest for the Fireflies path. |
+| `scripts/ingest_transcripts.rb` | Reads transcript JSON and creates RawData cards. Run under `decko runner`. Gated behind `TRANSCRIPT_INGEST=1`; supports dry-run and a report-only delta planner (see *Transcript ingest safety* below). |
+| `scripts/sync_transcripts.sh` | Chains export → upload → ingest for the Fireflies path. Writes to production, so it refuses to run without `TRANSCRIPT_SYNC_CONFIRM=1`. |
+
+#### Transcript ingest safety
+
+`ingest_transcripts.rb` follows the same interlocks as the Mattermost ingester, for the
+same reason: inside a Decko process `Card` is always defined, so a guard based on that
+would make *merely loading* the file write cards to the live deck.
+
+| Variable | Effect |
+|---|---|
+| `TRANSCRIPT_INGEST=1` | Required under `decko runner`. Without it, loading the file defines its functions and does nothing. |
+| `TRANSCRIPT_INGEST_DRY_RUN=1` | Plans and reports every card that *would* be written; no database writes. |
+| `TRANSCRIPT_INGEST_DELTA=1` | Report-only delta planner: hashes each rendered card against the live card and classifies it skip-unchanged / update / create. **Requires `TRANSCRIPT_INGEST_DRY_RUN=1` and aborts before any database access otherwise** — there is no delta write path. |
+| `TRANSCRIPT_INGEST_REPORT=<path>` | Writes a machine-readable JSON plan/result report. |
+
+Preview a run without touching the deck:
+
+```bash
+TRANSCRIPT_INGEST=1 TRANSCRIPT_INGEST_DRY_RUN=1 TRANSCRIPT_INGEST_DELTA=1 \
+  TRANSCRIPT_INGEST_REPORT=/tmp/transcript_delta.json \
+  RAILS_ENV=production bundle exec decko runner scripts/ingest_transcripts.rb
+```
+
+Delta mode also labels — never deletes or re-files — orphaned live cards, per-transcript
+chunk changes (naming the exact stale and new chunk cards, so a transcript that now needs
+fewer chunks is explicit rather than a bare count), and a name-binding manifest.
+`report["write_readiness"]` summarises what still blocks a write mode.
+
+Two correctness fixes ride along with the guards. Card names are now sanitized the same way
+as Mattermost channel names, so a meeting title containing `+` no longer silently becomes
+extra Decko name parts; and two transcripts of the same meeting on the same date are
+disambiguated by transcript ID instead of overwriting each other. Note that the deck stores
+this branch as `RawData+transcripts` while the script's constant reads `Raw Data+transcripts`
+— the same Decko key, different spellings — which is why every identity comparison in the
+planner goes through `name_key` rather than raw strings.
 
 ### Publications and books
 
@@ -78,7 +112,7 @@ one ingester.
 
 | Path | What it is |
 |---|---|
-| `scripts/tests/` | Offline regression coverage. `test_mattermost_exporter.py` stubs the Mattermost client and drives the exporter from fixtures; `verify_ssh_quoting.sh` proves the sync wrappers preserve paths containing spaces using fake `ssh`/`scp` shims. Neither touches a network, a credential, or the wiki. |
+| `scripts/tests/` | Offline regression coverage. `test_mattermost_exporter.py` stubs the Mattermost client and drives the exporter from fixtures; `test_ingest_mattermost_*.rb` and `test_ingest_transcripts_delta.rb` cover the ingest guards, card naming, delta hashing and chunk/orphan classification with no Decko and no database; `verify_ssh_quoting.sh` proves the sync wrappers preserve paths containing spaces using fake `ssh`/`scp` shims. None touches a network, a credential, or the wiki. |
 | `scripts/pipeline/` (8 files: `__init__`, `__main__`, `cli`, `extractor`, `sources`, `topics`, `transcript_sources`, `writer`) | The Python raw-data pipeline package — source adapters, extraction, topic handling, and the writer. Has its own CLI: `python -m scripts.pipeline.cli`. |
 | `scripts/otterai/` (3 files: `__init__`, `exceptions`, `otterai`) | A vendored client for Otter.ai's internal API, used by `export_otter.py`. Third-party in origin. |
 

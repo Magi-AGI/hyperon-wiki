@@ -4,7 +4,20 @@
 # Usage:
 #   ./scripts/sync_transcripts.sh [--filter MEETING_NAME]
 #
+# THIS SCRIPT WRITES TO THE LIVE WIKI and must be opted into explicitly:
+#   TRANSCRIPT_SYNC_CONFIRM=1 ./scripts/sync_transcripts.sh
+#
+# Without that variable it stops before exporting anything. Running it is a
+# production change: step 3 ingests into the live Decko database with writes
+# enabled. Preview first with the dry-run/delta planner, which never writes:
+#
+#   # on the deck host, against an already-uploaded export
+#   TRANSCRIPT_INGEST=1 TRANSCRIPT_INGEST_DRY_RUN=1 TRANSCRIPT_INGEST_DELTA=1 \
+#     TRANSCRIPT_INGEST_REPORT=/tmp/transcript_delta.json \
+#     RAILS_ENV=production bundle exec decko runner scripts/ingest_transcripts.rb
+#
 # Prerequisites:
+#   - TRANSCRIPT_SYNC_CONFIRM=1 (explicit opt-in; this script writes to prod)
 #   - FIREFLIES_API_KEY env var set (or will prompt)
 #   - Connection details for the wiki host, from the server-access handoff:
 #       HYPERON_WIKI_HOST      SSH host (required)
@@ -16,12 +29,35 @@
 # This script:
 #   1. Runs export_transcripts.py to pull full transcripts from Fireflies.ai
 #   2. Uploads the export to the Hyperon Wiki server
-#   3. Runs ingest_transcripts.rb via Decko card runner to write to the DB
+#   3. Runs ingest_transcripts.rb via Decko runner to write to the DB
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Explicit opt-in gate. This wrapper performs a real production ingest, so it
+# must never run as a side effect of being invoked by a scheduler, a wrapper
+# script, a shell-history recall or an agent sweeping the scripts directory.
+if [ "${TRANSCRIPT_SYNC_CONFIRM:-}" != "1" ]; then
+  cat >&2 <<'MSG'
+Refusing to run: sync_transcripts.sh writes to the LIVE Hyperon Wiki.
+
+It exports from Fireflies, uploads to the deck host, and runs
+ingest_transcripts.rb with database writes ENABLED.
+
+To preview without writing anything, run the planner on the deck host instead:
+
+  TRANSCRIPT_INGEST=1 TRANSCRIPT_INGEST_DRY_RUN=1 TRANSCRIPT_INGEST_DELTA=1 \
+    TRANSCRIPT_INGEST_REPORT=/tmp/transcript_delta.json \
+    RAILS_ENV=production bundle exec decko runner scripts/ingest_transcripts.rb
+
+To proceed with the real write:
+
+  TRANSCRIPT_SYNC_CONFIRM=1 ./scripts/sync_transcripts.sh
+MSG
+  exit 1
+fi
 
 : "${HYPERON_WIKI_HOST:?Set HYPERON_WIKI_HOST to the wiki SSH host}"
 : "${HYPERON_WIKI_SSH_KEY:?Set HYPERON_WIKI_SSH_KEY to the SSH private-key path}"
@@ -106,10 +142,13 @@ EXPORT_BASENAME="$(basename "$EXPORT_DIR")"
 echo "  Uploaded and linked as ~/transcript_exports/latest"
 
 # Step 3: Run ingestion
+# TRANSCRIPT_INGEST=1 is required: ingest_transcripts.rb refuses to run when it
+# is merely loaded, so the runner has to opt in. Without it this step would
+# stream the script over stdin and silently do nothing.
 echo ""
 echo "[Step 3/3] Running ingestion on server..."
 cat "$SCRIPT_DIR/ingest_transcripts.rb" | "${SSH_CMD[@]}" \
-  "export PATH=\"\$HOME/.rbenv/bin:\$HOME/.rbenv/shims:\$PATH\" && eval \"\$(rbenv init -)\" && cd $REMOTE_DIR_Q && set -a && source .env.production && set +a && RAILS_ENV=production bundle exec decko runner -"
+  "export PATH=\"\$HOME/.rbenv/bin:\$HOME/.rbenv/shims:\$PATH\" && eval \"\$(rbenv init -)\" && cd $REMOTE_DIR_Q && set -a && source .env.production && set +a && TRANSCRIPT_INGEST=1 RAILS_ENV=production bundle exec decko runner -"
 
 echo ""
 echo "=================================================="
