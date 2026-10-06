@@ -237,6 +237,19 @@ end
 # prefix: the deck stores this branch as "RawData+transcripts" while
 # PARENT_CARD is "Raw Data+transcripts", and compound Decko cards can carry a
 # NULL name column. Report only; nothing here deletes.
+# True only when a Decko card API is actually reachable in this process.
+# Evaluated lazily (never at load time) so that merely loading this file still
+# cannot touch the deck - see the RUN_REQUESTED note at the bottom of the file.
+#
+# This matters for honesty, not safety: outside a Decko runner there is no live
+# baseline at all, so every planned card trivially looks like a create and
+# every orphan/chunk query trivially returns empty. A delta report that claimed
+# baseline "live-content-hash" in that situation would read as "nothing to
+# reconcile" when the truth is "nothing was compared".
+def card_api_available?
+  defined?(Card) ? true : false
+end
+
 def live_descendant_names(parent_name)
   return [] unless defined?(Card)
 
@@ -936,6 +949,14 @@ def run!
   puts "Total cards: #{total_cards}"
 
   if DELTA
+    unless card_api_available?
+      puts "\n!! NO LIVE BASELINE: the Card API is not available in this " \
+           "process, so nothing was compared against the deck."
+      puts "!! Every card below is reported as a create and every " \
+           "orphan/chunk count is trivially zero."
+      puts "!! Re-run under `decko runner` to get a real reconciliation.\n"
+    end
+
     puts "  skipped unchanged: #{STATS[:skipped_unchanged]}"
     puts "  would create:      #{STATS[:planned_create]}"
     puts "  would update:      #{STATS[:planned_update]}"
@@ -996,7 +1017,10 @@ def run!
   if REPORT_PATH
     report = {
       mode: (DELTA ? "delta" : (DRY_RUN ? "full-dry-run" : "full-write")),
-      baseline: (DELTA ? "live-content-hash" : nil),
+      baseline: (if DELTA
+                   card_api_available? ? "live-content-hash" : "none-no-card-api"
+                 end),
+      baseline_available: (DELTA ? card_api_available? : nil),
       hash_normalization: (DELTA ? ["none_required_no_export_timestamp"] : nil),
       dry_run: DRY_RUN,
       export_dir: EXPORT_DIR,
@@ -1034,15 +1058,22 @@ def run!
       # One place a reviewer can look to answer "is this safe to write yet?".
       report[:write_readiness] = {
         write_path_implemented: false,
+        baseline_compared: card_api_available?,
         blocking: {
           shrinking_chunk_transcripts: shrinks.length,
           stale_chunk_cards: shrinks.sum { |c| c[:stale_chunk_cards].length },
-          unexpected_planned_chunks: orphan_stats[:unexpected]
+          unexpected_planned_chunks: orphan_stats[:unexpected],
+          no_live_baseline: card_api_available? ? 0 : 1
         },
         stale_chunk_cards: shrinks.flat_map { |c| c[:stale_chunk_cards] }.sort,
         note: "Report-only. Orphans and stale chunks are labelled, never " \
               "deleted or re-filed. Delta mode has no write path and aborts " \
-              "unless TRANSCRIPT_INGEST_DRY_RUN=1."
+              "unless TRANSCRIPT_INGEST_DRY_RUN=1." +
+              (card_api_available? ? "" : " WARNING: no Card API in this " \
+               "process, so NOTHING was compared against the live deck. " \
+               "Every card below is reported as a create and every " \
+               "orphan/chunk count is trivially zero. Re-run under " \
+               "`decko runner` before treating this as a reconciliation.")
       }
       report[:reasons] = STATS[:cards].group_by { |c| c[:reason] }
                                       .transform_values(&:length)

@@ -703,9 +703,17 @@ class TestDryRunPlanning < Minitest::Test
       assert status.success?, err
       data = JSON.parse(File.read(report))
       assert_equal "delta", data["mode"]
-      assert_equal "live-content-hash", data["baseline"]
+      # No Decko here, so there is no live baseline to hash against. The report
+      # must say so rather than labelling the run "live-content-hash", which
+      # would make an uncompared run look like a clean reconciliation.
+      assert_equal "none-no-card-api", data["baseline"]
+      assert_equal false, data["baseline_available"]
+      assert_equal false, data["write_readiness"]["baseline_compared"]
+      assert_equal 1, data["write_readiness"]["blocking"]["no_live_baseline"]
       assert_equal false, data["write_readiness"]["write_path_implemented"]
       assert_match(/never deleted or re-filed/, data["write_readiness"]["note"])
+      assert_match(/NOTHING was compared/, data["write_readiness"]["note"])
+      assert_match(/NO LIVE BASELINE/, out)
       assert_equal "missing_card", data["cards"].first["reason"]
       refute_nil data["cards"].first["hash_after"]
       assert_match(/DELTA PLAN - report only/, out)
