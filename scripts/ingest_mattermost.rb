@@ -22,7 +22,7 @@
 #     MATTERMOST_INGEST_REPORT=/tmp/ingest_plan.json \
 #     bundle exec decko runner scripts/ingest_mattermost.rb
 #
-# DELTA PLANNER (Phase 1 - dry run only, refuses to run with writes enabled):
+# DELTA PLANNER (Phases 1+3 - dry run only, refuses to run with writes enabled):
 #   MATTERMOST_INGEST=1 MATTERMOST_INGEST_DRY_RUN=1 MATTERMOST_INGEST_DELTA=1 \
 #     MATTERMOST_INGEST_REPORT=/tmp/delta_plan.json \
 #     bundle exec decko runner scripts/ingest_mattermost.rb
@@ -34,6 +34,17 @@
 #   bodies. There is deliberately NO delta write path yet: setting
 #   MATTERMOST_INGEST_DELTA=1 without MATTERMOST_INGEST_DRY_RUN=1 aborts before
 #   any database access.
+#
+#   Phase 3 adds report-only classification on top of that plan:
+#     - every orphaned live card is labelled (stale_chunk, superseded_by_rename,
+#       relabeled_channel, nesting_stub, vanished_channel, ...)
+#     - per-channel chunk changes name the exact stale and new chunk cards, so a
+#       shrinking channel (e.g. PLN: 7 live chunks, 5 planned) is explicit
+#       instead of being a bare count
+#     - a name-binding manifest records which live card each channel binds to
+#       and what supersedes/shadows it
+#     - report["write_readiness"] summarises what still blocks a write mode
+#   Phase 3 only labels. It never deletes, trashes or re-files a card.
 #
 # PRIVATE CHANNELS:
 #   Mattermost private channels (type "P") are ingested like any other channel,
@@ -376,6 +387,21 @@ end
 def live_descendant_names(parent_name)
   return [] unless defined?(Card)
 
+  @live_descendant_cache ||= {}
+  cached = @live_descendant_cache[parent_name]
+  return cached if cached
+
+  @live_descendant_cache[parent_name] = compute_live_descendant_names(parent_name)
+end
+
+# One tree walk per parent, memoized by the caller above.
+#
+# Phase 1 walked the tree once per report section (orphans, chunk counts,
+# name bindings). Three walks mean three snapshots, so the sections could in
+# principle disagree with each other if the deck changed mid-run. They now
+# share one snapshot, which also makes the report ~3x cheaper on a 1,274-card
+# branch.
+def compute_live_descendant_names(parent_name)
   Card::Auth.as_bot do
     parent = begin
       Card.fetch(parent_name)
@@ -404,55 +430,317 @@ def live_descendant_names(parent_name)
   end
 end
 
-def find_orphans(_channels)
+# ============================================================
+# Phase 3: orphan / chunk-shrink / name-binding classification
+# ============================================================
+#
+# Phase 1 reported orphans as one flat list. On the first real deck that was
+# 20 entries, and the flat list is unreadable in the way that matters: it
+# mixes cards whose content simply moved to a new name (harmless) with chunk
+# cards that a shrinking channel stranded (the thing we need to act on).
+# Reading it, you cannot tell which is which without hand-diffing 1,274 names.
+#
+# Everything in this section LABELS. Nothing deletes, re-files or writes.
+# The functions take the planned/live name lists explicitly so they can be
+# unit-tested with no Decko and no database.
+
+# Matches the trailing part of a chunk card. Accepts both the display form
+# ("chunk-6") and Decko's key form ("chunk_6"), because orphan names arrive
+# as stored names while planned names are built by this script.
+CHUNK_PART_RE = /\Achunk[-_](\d+)\z/.freeze
+
+# How many name parts PARENT_CARD occupies. Descendant parts are taken by
+# count rather than by string prefix: the deck stores this branch as
+# "RawData+mattermost" while PARENT_CARD is "Raw Data+mattermost" - the same
+# key, different strings - so a prefix match would strip nothing.
+PARENT_PART_COUNT = PARENT_CARD.split("+").length
+
+def name_parts(full_name)
+  full_name.to_s.split("+")
+end
+
+def relative_parts(full_name)
+  name_parts(full_name).drop(PARENT_PART_COUNT)
+end
+
+# ["LLM","PLN","chunk-1"] -> [["LLM","PLN"], 1]
+# ["PLN"]                 -> [["PLN"], nil]
+def split_chunk_parts(parts)
+  m = parts.length > 1 ? CHUNK_PART_RE.match(parts.last.to_s) : nil
+  m ? [parts[0..-2], m[1].to_i] : [parts, nil]
+end
+
+# base card key => Set of chunk indexes present in the given name list.
+def chunk_index_by_base(names)
+  names.each_with_object({}) do |n, acc|
+    parts = name_parts(n)
+    next unless parts.length > 1
+
+    m = CHUNK_PART_RE.match(parts.last.to_s)
+    next unless m
+
+    (acc[name_key(parts[0..-2].join("+"))] ||= Set.new) << m[1].to_i
+  end
+end
+
+# The name this card's content would live under today, if it is an artifact of
+# the pre-fix nested naming.
+#
+# A channel whose display name contained "+" ("LLM+PLN") used to be filed as
+# separate name parts, giving "<parent>+LLM+PLN" - a child of a channel card
+# that never existed. sanitize_name_part now collapses "+" to "-", so the same
+# channel is filed as "<parent>+LLM-PLN". Re-running the live card's parts
+# through the real sanitizer and the real key function tells us, without
+# guessing at key normalization, that the two names denote one channel.
+#
+# Returns nil for single-part channels (nothing to collapse).
+def superseding_name(full_name)
+  channel_parts, chunk_idx = split_chunk_parts(relative_parts(full_name))
+  return nil if channel_parts.length < 2
+
+  collapsed = sanitize_name_part(channel_parts.join("+"))
+  return nil if collapsed.nil?
+
+  base = "#{PARENT_CARD}+#{collapsed}"
+  chunk_idx ? "#{base}+chunk-#{chunk_idx}" : base
+end
+
+# Label each orphan. Pure: no Card, no DB.
+#
+# Classifications, in the order they are tested:
+#   stale_chunk            - channel is still ingested but now needs fewer
+#                            chunks; this card is above the new high-water
+#                            mark. THE SHRINK CASE.
+#   superseded_by_rename   - content is now filed under the sanitized name.
+#   relabeled_channel      - channel still exists but its card was
+#                            disambiguated (duplicate display names).
+#   vanished_channel_chunk - chunk of a channel card that is itself orphaned.
+#   nesting_stub           - left-hand stub that only existed to host a
+#                            pre-fix nested channel ("<parent>+LLM").
+#   vanished_channel       - no exported channel maps to this card.
+def classify_orphans(orphans, planned_names, channels)
+  planned_keys = planned_names.map { |n| name_key(n) }.to_set
+  planned_chunks = chunk_index_by_base(planned_names)
+  orphan_keys = orphans.map { |o| o[:key] }.to_set
+
+  # Channels whose card name was disambiguated: the bare display name they
+  # *would* have used is very likely sitting in the deck from an earlier run.
+  bare_label_keys = {}
+  channels.each do |ch|
+    next if ch[:label_reason].to_s == "display_name"
+
+    bare = sanitize_name_part(ch[:display].to_s)
+    next unless bare
+
+    bare_label_keys[name_key("#{PARENT_CARD}+#{bare}")] = ch
+  end
+
+  classified = orphans.map do |orphan|
+    entry = orphan.dup
+    parts = name_parts(orphan[:name])
+    _channel_parts, chunk_idx = split_chunk_parts(relative_parts(orphan[:name]))
+    base_name = chunk_idx ? parts[0..-2].join("+") : nil
+    base_key = base_name && name_key(base_name)
+
+    superseded = superseding_name(orphan[:name])
+    superseded = nil unless superseded && planned_keys.include?(name_key(superseded))
+
+    entry[:chunk_index] = chunk_idx
+    entry[:base_card] = base_name
+    entry[:superseded_by] = superseded
+
+    entry[:classification], entry[:detail] =
+      if chunk_idx && base_key && planned_keys.include?(base_key)
+        planned = planned_chunks[base_key] || Set.new
+        if planned.include?(chunk_idx)
+          # Planned and live, yet reported orphan: should be impossible.
+          # Surfaced rather than swallowed so it cannot pass silently.
+          ["unexpected_planned_chunk",
+           "chunk-#{chunk_idx} is in the plan but was reported as an orphan"]
+        else
+          ["stale_chunk",
+           "channel is still ingested but now needs only #{planned.length} " \
+           "chunk(s); chunk-#{chunk_idx} is above the new high-water mark"]
+        end
+      elsif superseded
+        ["superseded_by_rename", "content is now filed as #{superseded}"]
+      elsif bare_label_keys[orphan[:key]]
+        ch = bare_label_keys[orphan[:key]]
+        ["relabeled_channel",
+         "channel is now filed as #{ch[:card_name]} (#{ch[:label_reason]})"]
+      elsif chunk_idx && base_key && orphan_keys.include?(base_key)
+        ["vanished_channel_chunk",
+         "chunk of orphaned channel card #{base_name}"]
+      else
+        ["vanished_channel", "no exported channel maps to this card"]
+      end
+
+    entry
+  end
+
+  # A pre-fix nested ingest also left the left-hand stub behind:
+  # "<parent>+LLM" exists only because "<parent>+LLM+PLN" was created under
+  # it. Those stubs are structure, not lost channels, so they are relabeled
+  # once their descendants are known to be superseded.
+  stub_keys = classified.flat_map do |e|
+    next [] unless %w[superseded_by_rename relabeled_channel
+                      vanished_channel_chunk].include?(e[:classification])
+
+    parts = relative_parts(e[:name])
+    (1...parts.length).map { |i| name_key("#{PARENT_CARD}+#{parts.first(i).join('+')}") }
+  end.to_set
+
+  classified.each do |e|
+    next unless e[:classification] == "vanished_channel"
+    next unless stub_keys.include?(e[:key])
+
+    e[:classification] = "nesting_stub"
+    e[:detail] = "left-hand stub of a renamed nested channel; holds no exported channel"
+  end
+
+  classified
+end
+
+def orphan_summary(classified)
+  by_class = classified.group_by { |o| o[:classification] }
+                       .transform_values(&:length)
+  {
+    total: classified.length,
+    by_classification: by_class,
+    # The only class that needs a decision before a delta write: a live chunk
+    # card that the new plan no longer covers.
+    stale_chunks: classified.select { |o| o[:classification] == "stale_chunk" }
+                            .map { |o| o[:name] }.sort,
+    needs_attention: classified.count { |o| o[:classification] == "stale_chunk" },
+    unexpected: classified.count { |o| o[:classification] == "unexpected_planned_chunk" }
+  }
+end
+
+def find_orphans(channels)
   return [] unless defined?(Card)
 
   planned_keys = STATS[:cards].map { |c| name_key(c[:name]) }.to_set
   rule_keys = STATS[:perms].map { |p| name_key(p[:rule]) }.to_set
 
-  live_descendant_names(PARENT_CARD).reject do |nm|
+  raw = live_descendant_names(PARENT_CARD).reject do |nm|
     key = name_key(nm)
     planned_keys.include?(key) || rule_keys.include?(key) ||
       # "+*self" set cards exist only to hold the "+*read" rule below them.
       nm.end_with?("+*self")
   end.map { |nm| { name: nm, key: name_key(nm) } }
+
+  classify_orphans(raw, STATS[:cards].map { |c| c[:name] }, channels)
 end
 
-# Planned vs live chunk count per channel. A growing count means new chunk
-# cards plus an index rewrite; a shrinking one leaves orphan chunks behind.
-# Reported so a chunk cascade is visible before any write (§5.3).
-def chunk_count_changes(channels)
-  return [] unless defined?(Card)
-
-  live_keys = live_descendant_names(PARENT_CARD).map { |nm| name_key(nm) }.to_set
+# Planned vs live chunk count per channel, and exactly which chunk cards the
+# difference refers to.
+#
+# Phase 1 counted live chunks with a take_while over consecutive indexes from
+# 1, so a gap (chunk-1 trashed, 2..7 present) reported 0 live chunks and hid
+# the shrink entirely. This counts the chunk cards that actually exist and
+# names them, which is what makes a shrink reviewable.
+def chunk_changes(channels, live_names, planned_names)
+  live_idx = chunk_index_by_base(live_names)
+  plan_idx = chunk_index_by_base(planned_names)
+  actions = STATS[:cards].each_with_object({}) do |c, h|
+    h[name_key(c[:name])] = c[:action]
+  end
 
   channels.filter_map do |ch|
-    planned = STATS[:cards].count do |c|
-      c[:name].to_s.start_with?("#{ch[:card_name]}+chunk-")
-    end
+    base_key = name_key(ch[:card_name])
+    live = (live_idx[base_key] || Set.new).to_a.sort
+    plan = (plan_idx[base_key] || Set.new).to_a.sort
+    next if live == plan
 
-    live = (1..).lazy.map { |i| name_key("#{ch[:card_name]}+chunk-#{i}") }
-                     .take_while { |k| live_keys.include?(k) }.to_a.length
+    stale = (live - plan).sort
+    added = (plan - live).sort
+    direction =
+      if stale.any? && added.any? then "resegmented"
+      elsif stale.any? then "shrink"
+      else "grow"
+      end
 
-    next if planned == live
+    index_action = actions[base_key]
+    index_consistent = index_action == "skip-unchanged"
+    note =
+      if stale.empty?
+        "new chunk cards only; the index card gains links and strands nothing"
+      elsif index_consistent
+        "the live index card already lists only the planned chunks, so these " \
+        "chunk cards are ALREADY stranded in the live deck - a delta write " \
+        "neither creates nor repairs that condition"
+      else
+        "the index card will be rewritten to drop these chunk links; the " \
+        "chunk cards themselves would be left in place (report-only)"
+      end
 
-    { channel_id: ch[:id], display_name: ch[:display],
-      card_name: ch[:card_name], live_chunks: live, planned_chunks: planned,
-      delta: planned - live }
+    { channel_id: ch[:id], display_name: ch[:display], card_name: ch[:card_name],
+      private: ch[:type] == "P",
+      live_chunks: live.length, planned_chunks: plan.length,
+      delta: plan.length - live.length, direction: direction,
+      live_chunk_indexes: live, planned_chunk_indexes: plan,
+      stale_chunk_cards: stale.map { |i| "#{ch[:card_name]}+chunk-#{i}" },
+      new_chunk_cards: added.map { |i| "#{ch[:card_name]}+chunk-#{i}" },
+      live_index_gaps: ((1..(live.max || 0)).to_a - live),
+      index_card: ch[:card_name], index_card_action: index_action,
+      index_already_consistent: index_consistent, note: note }
   end
 end
 
-# A channel whose planned card name is absent from the live deck. Phase 1
-# reports; it never re-files a card (§5.1 of the design).
+def chunk_count_changes(channels)
+  return [] unless defined?(Card)
+
+  chunk_changes(channels, live_descendant_names(PARENT_CARD),
+                STATS[:cards].map { |c| c[:name] })
+end
+
+# Which live card each exported channel binds to, and what else in the deck
+# claims that channel's content. This is the card-identity manifest: a rename
+# is only safe to act on once you can see both ends of it.
+#
+# Report only. Phase 1/3 never re-file a card (§5.1 of the design).
+def name_binding_manifest(channels, live_names, classified_orphans)
+  live_keys = live_names.map { |n| name_key(n) }.to_set
+  superseded_by_target = classified_orphans.group_by do |o|
+    o[:superseded_by] && name_key(o[:superseded_by])
+  end
+  relabeled = classified_orphans.select { |o| o[:classification] == "relabeled_channel" }
+
+  channels.map do |ch|
+    key = name_key(ch[:card_name])
+    live_present = live_keys.include?(key)
+    supersedes = (superseded_by_target[key] || []).map { |o| o[:name] }.sort
+    # A disambiguated channel may also be shadowed by the bare display name.
+    bare = sanitize_name_part(ch[:display].to_s)
+    shadowed = if bare && ch[:label_reason].to_s != "display_name"
+                 relabeled.select { |o| o[:key] == name_key("#{PARENT_CARD}+#{bare}") }
+                          .map { |o| o[:name] }.sort
+               else
+                 []
+               end
+
+    { channel_id: ch[:id], display_name: ch[:display], slug: ch[:slug],
+      planned_card_name: ch[:card_name], planned_key: key,
+      label_reason: ch[:label_reason], private: ch[:type] == "P",
+      live_present: live_present,
+      binding: (live_present ? "bound" : "new_card"),
+      supersedes_live_cards: supersedes,
+      shadowed_by_live_cards: shadowed,
+      notable: (!live_present || ch[:label_reason].to_s != "display_name" ||
+                supersedes.any? || shadowed.any?) }
+  end
+end
+
+# A channel whose planned card name is absent from the live deck.
 def find_name_binding_conflicts(channels)
   return [] unless defined?(Card)
 
-  live_keys = live_descendant_names(PARENT_CARD).map { |nm| name_key(nm) }.to_set
-  channels.reject { |ch| live_keys.include?(name_key(ch[:card_name])) }
-          .map do |ch|
-    { channel_id: ch[:id], display_name: ch[:display], slug: ch[:slug],
-      planned_card_name: ch[:card_name], planned_key: name_key(ch[:card_name]),
-      label_reason: ch[:label_reason], reason: "planned_name_absent_from_live" }
+  manifest = name_binding_manifest(channels, live_descendant_names(PARENT_CARD),
+                                   find_orphans(channels))
+  manifest.reject { |m| m[:live_present] }.map do |m|
+    m.slice(:channel_id, :display_name, :slug, :planned_card_name, :planned_key,
+            :label_reason).merge(reason: "planned_name_absent_from_live",
+                                 supersedes_live_cards: m[:supersedes_live_cards])
   end
 end
 
@@ -869,8 +1157,14 @@ def run!
   end
 
   total_cards = STATS[:cards].length
+  live_names = DELTA ? live_descendant_names(PARENT_CARD) : []
+  planned_names = STATS[:cards].map { |c| c[:name] }
   orphans = DELTA ? find_orphans(channels) : []
-  name_conflicts = DELTA ? find_name_binding_conflicts(channels) : []
+  orphan_stats = DELTA ? orphan_summary(orphans) : nil
+  chunk_changes_list = DELTA ? chunk_changes(channels, live_names, planned_names) : []
+  binding_manifest = DELTA ? name_binding_manifest(channels, live_names, orphans) : []
+  name_conflicts = DELTA ? binding_manifest.reject { |m| m[:live_present] } : []
+  shrinks = chunk_changes_list.select { |c| c[:stale_chunk_cards].any? }
   puts "\n#{'=' * 60}"
   puts DRY_RUN ? "Dry run complete - nothing was written." : "Ingestion complete!"
   puts "Total channels: #{channels.length}"
@@ -881,12 +1175,55 @@ def run!
     puts "  skipped unchanged: #{STATS[:skipped_unchanged]}"
     puts "  would create:      #{STATS[:planned_create]}"
     puts "  would update:      #{STATS[:planned_update]}"
-    puts "  orphaned:          #{orphans.length}"
     puts "Private read rules: #{STATS[:perms].length}"
     puts "  skipped unchanged: #{STATS[:perm_skipped_unchanged]}"
     puts "  would create:      #{STATS[:planned_perm_create]}"
     puts "  would update:      #{STATS[:planned_perm_update]}"
-    puts "Name binding conflicts: #{name_conflicts.length}"
+
+    # Orphans, broken out by what they actually are. A flat count hid the
+    # difference between a harmless rename artifact and a stranded chunk.
+    puts "\nOrphaned live cards: #{orphans.length} (report-only, nothing is deleted)"
+    orphan_stats[:by_classification].sort_by { |_, v| -v }.each do |cls, n|
+      puts "  #{cls.to_s.ljust(24)} #{n}"
+    end
+
+    puts "\nChunk count changes: #{chunk_changes_list.length}"
+    chunk_changes_list.each do |c|
+      puts "  #{c[:display_name]} [#{c[:direction]}] live=#{c[:live_chunks]} " \
+           "planned=#{c[:planned_chunks]} (#{format('%+d', c[:delta])})"
+      puts "    stale: #{c[:stale_chunk_cards].join(', ')}" if c[:stale_chunk_cards].any?
+      puts "    new:   #{c[:new_chunk_cards].join(', ')}" if c[:new_chunk_cards].any?
+      puts "    gaps in live chunk numbering: #{c[:live_index_gaps].join(', ')}" if c[:live_index_gaps].any?
+    end
+
+    if shrinks.any?
+      puts "\n#{'!' * 60}"
+      puts "SHRINKING CHUNKS - #{shrinks.length} channel(s) would strand chunk cards:"
+      shrinks.each do |c|
+        puts "  #{c[:card_name]}: #{c[:live_chunks]} live -> #{c[:planned_chunks]} planned"
+        c[:stale_chunk_cards].each { |n| puts "    STALE: #{n}" }
+        puts "    #{c[:note]}"
+      end
+      puts "A delta write would leave these cards in place and unreferenced."
+      puts "Phase 3 reports this; it does not delete or re-file. Decide before"
+      puts "enabling write mode."
+      puts "!" * 60
+    end
+
+    notable = binding_manifest.select { |m| m[:notable] }
+    puts "\nName bindings: #{binding_manifest.length} channel(s), " \
+         "#{name_conflicts.length} not yet present live, #{notable.length} notable"
+    notable.each do |m|
+      puts "  #{m[:planned_card_name]} [#{m[:binding]}/#{m[:label_reason]}]"
+      m[:supersedes_live_cards].each { |n| puts "    supersedes live: #{n}" }
+      m[:shadowed_by_live_cards].each { |n| puts "    shadowed by live: #{n}" }
+    end
+
+    if orphan_stats[:unexpected].positive?
+      puts "\nWARNING: #{orphan_stats[:unexpected]} orphan(s) classified " \
+           "'unexpected_planned_chunk'. The plan and the orphan scan disagree; " \
+           "investigate before trusting this report."
+    end
   elsif DRY_RUN
     puts "  would create: #{STATS[:planned_create]}"
     puts "  would update: #{STATS[:planned_update]}"
@@ -952,8 +1289,25 @@ def run!
         planned_update: STATS[:planned_perm_update]
       }
       report[:orphans] = orphans
+      report[:orphan_summary] = orphan_stats
       report[:name_binding_conflicts] = name_conflicts
-      report[:chunk_count_changes] = chunk_count_changes(channels)
+      report[:name_binding_manifest] = binding_manifest
+      report[:chunk_count_changes] = chunk_changes_list
+      report[:chunk_shrinks] = shrinks
+      # One place a reviewer can look to answer "is this safe to write yet?".
+      report[:write_readiness] = {
+        phase: 3,
+        write_path_implemented: false,
+        blocking: {
+          shrinking_chunk_channels: shrinks.length,
+          stale_chunk_cards: shrinks.sum { |c| c[:stale_chunk_cards].length },
+          unexpected_planned_chunks: orphan_stats[:unexpected]
+        },
+        stale_chunk_cards: shrinks.flat_map { |c| c[:stale_chunk_cards] }.sort,
+        note: "Report-only. Orphans and stale chunks are labelled, never " \
+              "deleted or re-filed. Delta mode has no write path and aborts " \
+              "unless MATTERMOST_INGEST_DRY_RUN=1."
+      }
       report[:reasons] = STATS[:cards].group_by { |c| c[:reason] }
                                       .transform_values(&:length)
       report[:cards_detail] = STATS[:cards].reject { |c| c[:action] == "skip-unchanged" }
