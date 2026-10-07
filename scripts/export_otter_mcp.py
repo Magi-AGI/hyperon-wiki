@@ -24,15 +24,31 @@ server returns on `initialize` is echoed on every later request as
 `Mcp-Session-Id`, and the negotiated protocol version as
 `MCP-Protocol-Version`.
 
+TOOL NAMES ARE RESOLVED AT RUNTIME
+The live server (otter-mcp-server 1.26.0) names its tools `otter_search`,
+`otter_fetch` and `otter_get_user_info`, but earlier/other deployments expose
+the bare `search`/`fetch`/`get_user_info`. Hardcoding either spelling breaks
+against the other, so `tools/list` is consulted and each logical tool is
+mapped onto whatever the server actually advertises (see TOOL_ALIASES and
+resolve_tool_names). Only `search` and `fetch` are required.
+
 WHY SWEEPS INSTEAD OF A LISTING CALL
-The server exposes only `search` and `fetch` (plus `get_user_info`). There is
-no list-everything endpoint and no pagination cursor: `search` answers a query
-with the matched set and nothing tells you what it left out. A single broad
-query therefore cannot enumerate an archive. This exporter instead issues many
+There is no list-everything endpoint: `search` answers a query with the
+matched set and nothing tells you what it left out. A single broad query
+therefore cannot enumerate an archive. This exporter instead issues many
 NARROW sweeps — one per calendar month, with an empty query, plus any extra
 `--query` terms — and merges them, de-duplicating by conversation id. Month
 windows are mutually exclusive by construction, so coverage comes from the
 calendar rather than from trusting one result set to be complete.
+
+`search` IS PAGINATED, so each window must be drained
+A `search` reply carries `next_cursor` alongside `results`, and `page_size`
+caps a page at 25. Reading only the first page would silently truncate every
+month that holds more conversations than one page — the month windows would
+look complete while dropping the tail. `search()` therefore follows the cursor
+until a page comes back empty, the cursor stops changing, a page adds no new
+ids, or `max_pages` is hit; paginated calls send only `cursor`/`page_size`
+because the server preserves the original query and filters.
 
 `search` returns metadata only; the transcript text requires a `fetch` per
 conversation id. Both tools double-wrap their payload: the outer MCP content
@@ -72,6 +88,28 @@ MCP_PROTOCOL_VERSION = "2025-06-18"
 CLIENT_INFO = {"name": "magi-transcripts-otter", "version": "1.0"}
 
 SOURCE_SERVICE = "otter.ai"
+
+# Logical tool name -> spellings seen in the wild, best first. The live server
+# prefixes everything with `otter_`; older/self-hosted builds use bare names.
+# resolve_tool_names() also accepts any unlisted prefix (e.g. `otterai_fetch`)
+# by matching on the trailing segment, so a future rename degrades to a
+# warning-free match instead of a hard failure.
+TOOL_ALIASES = {
+    "search": ("otter_search", "search"),
+    "fetch": ("otter_fetch", "fetch"),
+    "get_user_info": ("otter_get_user_info", "get_user_info"),
+}
+
+# Without these two there is nothing to export; get_user_info is optional.
+REQUIRED_TOOLS = ("search", "fetch")
+
+# `page_size` is capped at 25 server-side; ask for the maximum so a month
+# window is drained in as few calls as possible.
+SEARCH_PAGE_SIZE = 25
+
+# Hard stop on cursor following, so a server that always returns a cursor
+# cannot spin forever.
+MAX_SEARCH_PAGES = 200
 
 # Otter was founded in 2016; nothing in an account predates it.
 ARCHIVE_EPOCH = "2016-01-01"
@@ -248,6 +286,48 @@ def _first_text(envelope: dict):
     return None
 
 
+def resolve_tool_names(available) -> dict:
+    """Map logical tool names onto the names this server actually exposes.
+
+    Matching runs in three passes, strictest first:
+      1. an exact alias hit (`otter_search`, then `search`);
+      2. a suffix match on `_`-separated segments, so an unanticipated prefix
+         like `otterai_search` still resolves;
+      3. nothing — the logical name is absent from the returned mapping.
+
+    Suffix matching deliberately requires a segment boundary: `research` must
+    not be mistaken for `search`.
+
+    `available` may be the tools/list payload (dicts with a "name") or a plain
+    list of names. Returns {logical: actual} containing only resolved tools.
+    """
+    names = []
+    for entry in available or []:
+        name = entry.get("name") if isinstance(entry, dict) else entry
+        if isinstance(name, str) and name:
+            names.append(name)
+
+    resolved = {}
+    for logical, aliases in TOOL_ALIASES.items():
+        actual = next((a for a in aliases if a in names), None)
+        if actual is None:
+            # Any prefix, provided it ends on the logical name at a segment
+            # boundary. Shortest wins, so `otter_search` beats a longer
+            # coincidence if both somehow appear.
+            candidates = sorted(
+                (n for n in names
+                 if n == logical or n.endswith("_" + logical)),
+                key=len)
+            actual = candidates[0] if candidates else None
+        if actual:
+            resolved[logical] = actual
+    return resolved
+
+
+def missing_required_tools(resolved) -> list:
+    return [name for name in REQUIRED_TOOLS if name not in (resolved or {})]
+
+
 class OtterMcpClient:
     """Minimal MCP client for Otter's streamable-HTTP endpoint.
 
@@ -266,6 +346,10 @@ class OtterMcpClient:
         self.protocol_version = MCP_PROTOCOL_VERSION
         self.server_info = {}
         self.tools = []
+        # Populated by list_tools(); until then calls fall back to the
+        # logical name so a caller that skips discovery still works against a
+        # server using the bare spellings.
+        self.tool_names = {}
         self._counter = 0
         self.call_count = 0
 
@@ -330,7 +414,16 @@ class OtterMcpClient:
         result = self._send(build_rpc_request(
             "tools/list", {}, request_id=self._next_id()))
         self.tools = result.get("tools") or []
+        self.tool_names = resolve_tool_names(self.tools)
         return self.tools
+
+    def tool_name(self, logical: str) -> str:
+        """Actual server-side name for a logical tool.
+
+        Falls back to the logical name when discovery has not run, so the
+        client stays usable without a tools/list round trip.
+        """
+        return (self.tool_names or {}).get(logical, logical)
 
     def call_tool(self, name: str, arguments: dict = None):
         result = self._send(build_rpc_request(
@@ -341,27 +434,101 @@ class OtterMcpClient:
     # -- Otter tools ------------------------------------------------------
 
     def get_user_info(self):
-        return self.call_tool("get_user_info", {})
+        return self.call_tool(self.tool_name("get_user_info"), {})
 
-    def search(self, query: str = "", **filters) -> list:
+    @staticmethod
+    def _search_rows(payload) -> tuple:
+        """Split a search payload into (rows, next_cursor).
+
+        The server answers {"results": [...], "next_cursor": "..."}, but a
+        bare list and a result-less payload are both tolerated so one odd
+        reply cannot abort a sweep.
+        """
+        if isinstance(payload, list):
+            return payload, ""
+        if not isinstance(payload, dict):
+            return [], ""
+        rows = payload.get("results")
+        if not isinstance(rows, list):
+            # Some deployments nest the real payload under "result".
+            inner = payload.get("result")
+            if isinstance(inner, dict) and isinstance(inner.get("results"),
+                                                      list):
+                rows = inner["results"]
+                cursor = inner.get("next_cursor") or ""
+                return rows, str(cursor or "")
+            rows = []
+        cursor = payload.get("next_cursor") or ""
+        return rows, str(cursor or "")
+
+    def search(self, query: str = "", page_size: int = SEARCH_PAGE_SIZE,
+               max_pages: int = MAX_SEARCH_PAGES, **filters) -> list:
+        """Run one search and drain its cursor, returning every row.
+
+        Reading only the first page would cap each month window at page_size
+        conversations and silently drop the rest, so the cursor is followed
+        until the server stops offering new rows. Pagination calls carry only
+        `cursor` (plus page_size): the server preserves the original query and
+        filters, and re-sending them alongside a cursor is not supported.
+
+        Looping stops on an empty page, an unchanged/absent cursor, a page
+        that contributes no new ids (a server that ignores the cursor would
+        otherwise repeat page one forever), or max_pages.
+        """
         args = {"query": query or ""}
         for key, value in filters.items():
             if value not in (None, "", []):
                 args[key] = value
-        payload = self.call_tool("search", args)
-        if isinstance(payload, dict):
-            results = payload.get("results")
-            if isinstance(results, list):
-                return results
-            return []
-        if isinstance(payload, list):
-            return payload
-        return []
+        if page_size:
+            args["page_size"] = page_size
+
+        tool = self.tool_name("search")
+        rows = []
+        seen_ids = set()
+        seen_cursors = set()
+        cursor = ""
+
+        for _ in range(max(1, max_pages)):
+            if cursor:
+                page_args = {"cursor": cursor}
+                if page_size:
+                    page_args["page_size"] = page_size
+            else:
+                page_args = args
+
+            page_rows, next_cursor = self._search_rows(
+                self.call_tool(tool, page_args))
+            if not page_rows:
+                break
+
+            new_here = 0
+            for row in page_rows:
+                key = None
+                if isinstance(row, dict):
+                    key = normalise_conversation_id(
+                        row.get("id") or row.get("url"))
+                if key:
+                    if key in seen_ids:
+                        continue
+                    seen_ids.add(key)
+                rows.append(row)
+                new_here += 1
+
+            if not new_here:
+                # The cursor is not advancing; stop rather than spin.
+                break
+            if not next_cursor or next_cursor in seen_cursors:
+                break
+            seen_cursors.add(next_cursor)
+            cursor = next_cursor
+
+        return rows
 
     def fetch(self, conversation_id: str) -> dict:
         # The tool rejects URLs outright, so normalise first.
         payload = self.call_tool(
-            "fetch", {"id": normalise_conversation_id(conversation_id)})
+            self.tool_name("fetch"),
+            {"id": normalise_conversation_id(conversation_id)})
         if not isinstance(payload, dict):
             raise McpError(
                 f"fetch returned {type(payload).__name__}, expected an object")
@@ -663,7 +830,12 @@ def otter_to_record(fetched: dict, search_row: dict = None
     title = str(pick("title") or "Untitled Otter conversation").strip()
     full_text = fetched.get("text") or ""
     sentences = parse_transcript_text(full_text)
-    speakers = []
+
+    # Prefer the invite list the server supplies; fall back to the speaker
+    # labels parsed out of the transcript. Otter's diarised labels are often
+    # just "Speaker 1", so calendar_participants carries the real names.
+    speakers = _as_str_list(metadata.get("calendar_participants")
+                            or search_row.get("calendar_participants"))
     for turn in sentences:
         name = turn.get("speaker_name") or ""
         if name and name not in speakers and name != "Unknown":
@@ -704,11 +876,25 @@ def _token_provider():
 
 
 def run_sweeps(client: OtterMcpClient, plan: list, verbose: bool = True,
-               pause: float = 0.0) -> tuple:
-    """Execute a sweep plan and merge the results by conversation id."""
+               pause: float = 0.0, stop_after: int = 0) -> tuple:
+    """Execute a sweep plan and merge the results by conversation id.
+
+    `stop_after` short-circuits once that many unique conversations are known.
+    A smoke run with --limit 3 otherwise sweeps (and paginates) every month
+    back to the archive epoch just to throw nearly all of it away, which is a
+    lot of needless live API traffic. Full exports pass 0 and sweep everything.
+
+    A `stop_after` run also walks the plan NEWEST window first: the plan is
+    built oldest-first, so a limited run would otherwise grind through every
+    empty month back to 2016 before reaching any real conversation. Order is
+    irrelevant to a full export (every window runs and results are merged by
+    id), so this only changes which slice a truncated run samples.
+    """
     batches = []
     failures = []
-    for index, sweep in enumerate(plan, start=1):
+    stopped_early = False
+    ordered = list(reversed(plan)) if stop_after else list(plan)
+    for index, sweep in enumerate(ordered, start=1):
         try:
             results = client.search(
                 query=sweep.get("query", ""),
@@ -719,18 +905,32 @@ def run_sweeps(client: OtterMcpClient, plan: list, verbose: bool = True,
             # One bad window must not abandon the rest of the archive.
             failures.append({"sweep": sweep["label"], "error": str(exc)})
             if verbose:
-                print(f"  [{index}/{len(plan)}] {sweep['label']}: "
+                print(f"  [{index}/{len(ordered)}] {sweep['label']}: "
                       f"FAILED ({exc})")
             continue
         batches.append((sweep["label"], results))
         if verbose:
-            print(f"  [{index}/{len(plan)}] {sweep['label']}: "
+            print(f"  [{index}/{len(ordered)}] {sweep['label']}: "
                   f"{len(results)} row(s)")
+
+        if stop_after:
+            known = len({normalise_conversation_id(r.get("id") or r.get("url"))
+                         for _, rows in batches for r in rows
+                         if isinstance(r, dict)} - {""})
+            if known >= stop_after:
+                stopped_early = True
+                if verbose:
+                    print(f"  stopping sweeps early: {known} unique "
+                          f"conversation(s) is enough for the requested limit")
+                break
+
         if pause:
             time.sleep(pause)
 
     merged, stats = merge_sweep_results(batches)
     stats["sweep_failures"] = failures
+    stats["sweeps_executed"] = len(batches) + len(failures)
+    stats["stopped_early"] = stopped_early
     return merged, stats
 
 
@@ -751,11 +951,21 @@ def _connect() -> OtterMcpClient:
     names = [t.get("name") for t in client.list_tools()]
     print(f"Connected to Otter MCP ({client.server_info.get('name', 'server')})"
           f"; tools: {', '.join(n for n in names if n)}")
-    for required in ("search", "fetch"):
-        if required not in names:
-            raise SystemExit(
-                f"ERROR: the MCP server does not expose a {required!r} tool; "
-                f"available: {names}")
+
+    missing = missing_required_tools(client.tool_names)
+    if missing:
+        raise SystemExit(
+            f"ERROR: the MCP server exposes no tool matching "
+            f"{missing} (tried aliases "
+            f"{[TOOL_ALIASES[m] for m in missing]}); available: {names}")
+
+    # Say which spelling was picked: a silent alias swap is hard to debug when
+    # the server renames a tool again.
+    mapped = ", ".join(f"{logical}->{actual}"
+                       for logical, actual in sorted(client.tool_names.items())
+                       if actual != logical)
+    if mapped:
+        print(f"  tool name mapping: {mapped}")
     return client
 
 
@@ -792,7 +1002,8 @@ def cmd_export(output_dir: Path, from_date: str, to_date: str, queries,
     else:
         plan = build_sweep_plan(from_date, to_date, queries, split_months)
         print(f"Sweeping {len(plan)} window(s)/term(s)...")
-        merged, stats = run_sweeps(client, plan)
+        # A limited run only needs enough ids to satisfy the limit.
+        merged, stats = run_sweeps(client, plan, stop_after=limit)
 
     ids = list(merged)
     if limit:

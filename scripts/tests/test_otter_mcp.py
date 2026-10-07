@@ -709,16 +709,33 @@ class FakeTransport:
 
     Signature matches the real transport: (url, body, headers) ->
     (status, headers, text).
+
+    tools/list advertises the LIVE server's prefixed names
+    (`otter_search`/`otter_fetch`/`otter_get_user_info`) by default, so every
+    test exercises the alias resolution the real server needs. Canned results
+    and calls_for() are keyed by the logical name, matched against the tail of
+    whatever the tool is actually called.
     """
 
+    LIVE_TOOL_NAMES = ("otter_search", "otter_fetch", "otter_get_user_info")
+
     def __init__(self, tool_results=None, session_id="sess-1",
-                 sse=False, status=200):
+                 sse=False, status=200, tool_names=None):
         self.tool_results = tool_results or {}
         self.session_id = session_id
         self.sse = sse
         self.status = status
+        self.tool_names = (list(self.LIVE_TOOL_NAMES) if tool_names is None
+                           else list(tool_names))
         self.requests = []
         self.headers_seen = []
+
+    @staticmethod
+    def _logical(name):
+        for logical in ("get_user_info", "search", "fetch"):
+            if name == logical or name.endswith("_" + logical):
+                return logical
+        return name
 
     def __call__(self, url, body, headers):
         payload = json.loads(body.decode("utf-8"))
@@ -735,13 +752,13 @@ class FakeTransport:
                       "serverInfo": {"name": "otter-mcp", "version": "1.0"},
                       "capabilities": {"tools": {}}}
         elif method == "tools/list":
-            result = {"tools": [{"name": "get_user_info"},
-                                {"name": "search"},
-                                {"name": "fetch"}]}
+            result = {"tools": [{"name": n} for n in self.tool_names]}
         elif method == "tools/call":
             name = payload["params"]["name"]
             args = payload["params"].get("arguments") or {}
             entry = self.tool_results.get(name)
+            if entry is None:
+                entry = self.tool_results.get(self._logical(name))
             if callable(entry):
                 result = entry(args)
             elif entry is None:
@@ -762,10 +779,18 @@ class FakeTransport:
         return self.status, resp_headers, text
 
     def calls_for(self, tool):
+        wanted = self._logical(tool)
         return [r["params"].get("arguments") or {}
                 for r in self.requests
                 if r.get("method") == "tools/call"
-                and r["params"]["name"] == tool]
+                and self._logical(r["params"]["name"]) == wanted]
+
+    def tool_calls_by_name(self, tool):
+        """Exact server-side names used for calls to a logical tool."""
+        wanted = self._logical(tool)
+        return [r["params"]["name"] for r in self.requests
+                if r.get("method") == "tools/call"
+                and self._logical(r["params"]["name"]) == wanted]
 
 
 def make_meeting(i, start="2026-03-04 10:00:00", title=None):
@@ -835,7 +860,44 @@ class McpClientTests(unittest.TestCase):
         client = self.client(t)
         client.initialize()
         names = [tool["name"] for tool in client.list_tools()]
-        self.assertEqual(names, ["get_user_info", "search", "fetch"])
+        # The live server prefixes every tool with `otter_`.
+        self.assertEqual(names, ["otter_search", "otter_fetch",
+                                 "otter_get_user_info"])
+        self.assertEqual(client.tool_names, {
+            "search": "otter_search",
+            "fetch": "otter_fetch",
+            "get_user_info": "otter_get_user_info",
+        })
+
+    def test_calls_use_the_servers_actual_tool_names(self):
+        t = FakeTransport({"search": wrap_twice({"results": []}),
+                           "fetch": wrap_twice({"id": "a", "text": ""})})
+        client = self.client(t)
+        client.initialize()
+        client.list_tools()
+        client.search("x")
+        client.fetch("a")
+        self.assertEqual(t.tool_calls_by_name("search"), ["otter_search"])
+        self.assertEqual(t.tool_calls_by_name("fetch"), ["otter_fetch"])
+
+    def test_bare_tool_names_still_work(self):
+        # An older/self-hosted deployment without the `otter_` prefix.
+        t = FakeTransport({"search": wrap_twice({"results": []})},
+                          tool_names=["search", "fetch", "get_user_info"])
+        client = self.client(t)
+        client.initialize()
+        client.list_tools()
+        client.search("x")
+        self.assertEqual(t.tool_calls_by_name("search"), ["search"])
+
+    def test_calls_fall_back_to_logical_names_without_discovery(self):
+        # No list_tools() call: the client must still be usable.
+        t = FakeTransport({"search": wrap_twice({"results": []})},
+                          tool_names=["search", "fetch"])
+        client = self.client(t)
+        client.initialize()
+        client.search("x")
+        self.assertEqual(t.tool_calls_by_name("search"), ["search"])
 
     def test_search_unwraps_double_wrapped_results(self):
         meetings = [make_meeting(1), make_meeting(2)]
@@ -958,6 +1020,182 @@ class MonthWindowTests(unittest.TestCase):
     def test_otter_date_format_is_slash_separated(self):
         self.assertEqual(ex.to_otter_date("2026-03-04"), "2026/03/04")
         self.assertEqual(ex.to_otter_date(date(2026, 3, 4)), "2026/03/04")
+
+
+class ToolNameResolutionTests(unittest.TestCase):
+    def test_live_prefixed_names_resolve(self):
+        resolved = ex.resolve_tool_names(
+            [{"name": "otter_search"}, {"name": "otter_fetch"},
+             {"name": "otter_get_user_info"}])
+        self.assertEqual(resolved, {"search": "otter_search",
+                                    "fetch": "otter_fetch",
+                                    "get_user_info": "otter_get_user_info"})
+        self.assertEqual(ex.missing_required_tools(resolved), [])
+
+    def test_bare_names_resolve(self):
+        resolved = ex.resolve_tool_names(["search", "fetch", "get_user_info"])
+        self.assertEqual(resolved, {"search": "search", "fetch": "fetch",
+                                    "get_user_info": "get_user_info"})
+
+    def test_plain_string_list_is_accepted(self):
+        self.assertEqual(
+            ex.resolve_tool_names(["otter_search", "otter_fetch"]),
+            {"search": "otter_search", "fetch": "otter_fetch"})
+
+    def test_unanticipated_prefix_resolves_by_suffix(self):
+        resolved = ex.resolve_tool_names(["otterai_v2_search", "acme_fetch"])
+        self.assertEqual(resolved["search"], "otterai_v2_search")
+        self.assertEqual(resolved["fetch"], "acme_fetch")
+
+    def test_substring_without_a_segment_boundary_is_not_a_match(self):
+        # "research" ends with "search" textually but is a different tool.
+        resolved = ex.resolve_tool_names(["research", "prefetch"])
+        self.assertNotIn("search", resolved)
+        self.assertNotIn("fetch", resolved)
+        self.assertEqual(ex.missing_required_tools(resolved),
+                         ["search", "fetch"])
+
+    def test_exact_alias_beats_a_suffix_match(self):
+        resolved = ex.resolve_tool_names(["weird_legacy_search", "search",
+                                          "fetch"])
+        self.assertEqual(resolved["search"], "search")
+
+    def test_prefixed_alias_is_preferred_over_bare(self):
+        # Both spellings present: the documented live name wins.
+        resolved = ex.resolve_tool_names(["search", "otter_search", "fetch"])
+        self.assertEqual(resolved["search"], "otter_search")
+
+    def test_missing_tools_are_reported(self):
+        resolved = ex.resolve_tool_names(["otter_search"])
+        self.assertEqual(ex.missing_required_tools(resolved), ["fetch"])
+
+    def test_empty_and_malformed_input_is_safe(self):
+        for bad in (None, [], [{}], [None], [{"name": ""}], [123]):
+            self.assertEqual(
+                ex.missing_required_tools(ex.resolve_tool_names(bad)),
+                ["search", "fetch"], msg=f"for {bad!r}")
+
+    def test_get_user_info_is_optional(self):
+        resolved = ex.resolve_tool_names(["otter_search", "otter_fetch"])
+        self.assertEqual(ex.missing_required_tools(resolved), [])
+        self.assertNotIn("get_user_info", resolved)
+
+
+class SearchPaginationTests(unittest.TestCase):
+    """`search` must drain next_cursor or every month window is truncated."""
+
+    def client(self, transport):
+        client = ex.OtterMcpClient(lambda: "tok", transport=transport)
+        client.initialize()
+        client.list_tools()
+        return client
+
+    def test_cursor_is_followed_until_exhausted(self):
+        pages = [
+            {"results": [make_meeting(1), make_meeting(2)],
+             "next_cursor": "c1"},
+            {"results": [make_meeting(3)], "next_cursor": "c2"},
+            {"results": [make_meeting(4)]},
+        ]
+
+        def search(args):
+            if not args.get("cursor"):
+                return wrap_twice(pages[0])
+            return wrap_twice(pages[{"c1": 1, "c2": 2}[args["cursor"]]])
+
+        t = FakeTransport({"search": search})
+        rows = self.client(t).search("", created_after="2026/01/01")
+        self.assertEqual([r["id"] for r in rows],
+                         [make_meeting(i)["id"] for i in (1, 2, 3, 4)])
+        self.assertEqual(len(t.calls_for("search")), 3)
+
+    def test_pagination_calls_send_only_the_cursor(self):
+        def search(args):
+            if not args.get("cursor"):
+                return wrap_twice({"results": [make_meeting(1)],
+                                   "next_cursor": "c1"})
+            return wrap_twice({"results": [make_meeting(2)]})
+
+        t = FakeTransport({"search": search})
+        self.client(t).search("topic", created_after="2026/01/01",
+                              created_before="2026/01/31")
+        first, second = t.calls_for("search")
+        self.assertEqual(first["query"], "topic")
+        self.assertEqual(first["created_after"], "2026/01/01")
+        self.assertNotIn("cursor", first)
+        # The server preserves the original query/filters for a cursor call;
+        # re-sending them is not supported.
+        self.assertEqual(second["cursor"], "c1")
+        self.assertNotIn("query", second)
+        self.assertNotIn("created_after", second)
+
+    def test_page_size_is_requested_within_the_server_cap(self):
+        t = FakeTransport({"search": wrap_twice({"results": []})})
+        self.client(t).search("x")
+        self.assertEqual(t.calls_for("search")[0]["page_size"],
+                         ex.SEARCH_PAGE_SIZE)
+        self.assertLessEqual(ex.SEARCH_PAGE_SIZE, 25)
+
+    def test_a_server_ignoring_the_cursor_does_not_loop_forever(self):
+        # Same page and a fresh cursor every time: the no-new-ids guard must
+        # break the loop instead of spinning to max_pages.
+        counter = {"n": 0}
+
+        def search(args):
+            counter["n"] += 1
+            return wrap_twice({"results": [make_meeting(1)],
+                               "next_cursor": f"c{counter['n']}"})
+
+        t = FakeTransport({"search": search})
+        rows = self.client(t).search("x")
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(len(t.calls_for("search")), 2)
+
+    def test_repeated_cursor_value_stops_the_loop(self):
+        def search(args):
+            idx = 2 if args.get("cursor") else 1
+            return wrap_twice({"results": [make_meeting(idx)],
+                               "next_cursor": "same"})
+
+        t = FakeTransport({"search": search})
+        rows = self.client(t).search("x")
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(len(t.calls_for("search")), 2)
+
+    def test_max_pages_bounds_the_walk(self):
+        def search(args):
+            # Always new ids and a new cursor: only max_pages can stop this.
+            n = len(t.calls_for("search")) + 1
+            return wrap_twice({"results": [make_meeting(n)],
+                               "next_cursor": f"c{n}"})
+
+        t = FakeTransport({"search": search})
+        rows = self.client(t).search("x", max_pages=3)
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(len(t.calls_for("search")), 3)
+
+    def test_duplicate_rows_across_pages_are_collapsed(self):
+        def search(args):
+            if not args.get("cursor"):
+                return wrap_twice({"results": [make_meeting(1),
+                                               make_meeting(2)],
+                                   "next_cursor": "c1"})
+            return wrap_twice({"results": [make_meeting(2), make_meeting(3)]})
+
+        t = FakeTransport({"search": search})
+        rows = self.client(t).search("x")
+        self.assertEqual([r["id"] for r in rows],
+                         [make_meeting(i)["id"] for i in (1, 2, 3)])
+
+    def test_empty_first_page_returns_nothing(self):
+        t = FakeTransport({"search": wrap_twice({"results": []})})
+        self.assertEqual(self.client(t).search("x"), [])
+        self.assertEqual(len(t.calls_for("search")), 1)
+
+    def test_payload_nested_under_result_is_handled(self):
+        t = FakeTransport({"search": wrap_twice(
+            {"result": {"results": [make_meeting(1)]}})})
+        self.assertEqual(len(self.client(t).search("x")), 1)
 
 
 class SweepPlanTests(unittest.TestCase):
@@ -1112,6 +1350,66 @@ class RunSweepsTests(unittest.TestCase):
         self.assertEqual(len(stats["sweep_failures"]), 1)
         self.assertEqual(stats["sweep_failures"][0]["sweep"], "month:2026-02")
 
+    def test_a_full_export_sweeps_every_window(self):
+        t = FakeTransport({"search": wrap_twice({"results": []})})
+        client = ex.OtterMcpClient(lambda: "tok", transport=t)
+        client.initialize()
+        plan = ex.build_sweep_plan("2026-01-01", "2026-06-30")
+        merged, stats = ex.run_sweeps(client, plan, verbose=False)
+        self.assertEqual(len(t.calls_for("search")), 6)
+        self.assertFalse(stats["stopped_early"])
+
+    def test_stop_after_halts_once_enough_ids_are_known(self):
+        def search(args):
+            return wrap_twice({"results": [make_meeting(1), make_meeting(2),
+                                           make_meeting(3)]})
+
+        t = FakeTransport({"search": search})
+        client = ex.OtterMcpClient(lambda: "tok", transport=t)
+        client.initialize()
+        plan = ex.build_sweep_plan("2016-01-01", "2026-06-30")
+        self.assertGreater(len(plan), 100)
+        merged, stats = ex.run_sweeps(client, plan, verbose=False,
+                                      stop_after=3)
+        # One window already satisfies the limit, so the other ~125 months of
+        # live API traffic must not happen.
+        self.assertEqual(len(t.calls_for("search")), 1)
+        self.assertTrue(stats["stopped_early"])
+        self.assertGreaterEqual(len(merged), 3)
+
+    def test_stop_after_sweeps_newest_months_first(self):
+        seen = []
+
+        def search(args):
+            seen.append(args.get("created_after"))
+            return wrap_twice({"results": [make_meeting(len(seen))]})
+
+        t = FakeTransport({"search": search})
+        client = ex.OtterMcpClient(lambda: "tok", transport=t)
+        client.initialize()
+        plan = ex.build_sweep_plan("2026-01-01", "2026-06-30")
+        ex.run_sweeps(client, plan, verbose=False, stop_after=1)
+        # Newest window first, not January 2016 onwards.
+        self.assertEqual(seen, ["2026/06/01"])
+
+    def test_stop_after_keeps_going_until_the_limit_is_reachable(self):
+        def search(args):
+            # Only the oldest window in the plan holds anything.
+            if args.get("created_after") == "2026/01/01":
+                return wrap_twice({"results": [make_meeting(1)]})
+            return wrap_twice({"results": []})
+
+        t = FakeTransport({"search": search})
+        client = ex.OtterMcpClient(lambda: "tok", transport=t)
+        client.initialize()
+        plan = ex.build_sweep_plan("2026-01-01", "2026-04-30")
+        merged, stats = ex.run_sweeps(client, plan, verbose=False,
+                                      stop_after=5)
+        # The limit is never reached, so every window still runs.
+        self.assertEqual(len(t.calls_for("search")), 4)
+        self.assertFalse(stats["stopped_early"])
+        self.assertEqual(len(merged), 1)
+
 
 # ---------------------------------------------------------------------------
 # Normalisation
@@ -1218,6 +1516,23 @@ class RecordMappingTests(unittest.TestCase):
         self.assertEqual(record.meeting_name, "Untitled Otter conversation")
         self.assertEqual(record.transcript_url, "https://otter.ai/u/X1")
         self.assertEqual(record.date, "")
+
+    def test_calendar_participants_are_preferred_over_speaker_labels(self):
+        # Otter's diarised labels are usually "Speaker 1"; the invite list
+        # carries the real names, so both end up on the record.
+        meeting = make_meeting(7)
+        fetched = make_transcript(meeting)
+        fetched["metadata"]["calendar_participants"] = ["Ada L", "Grace H"]
+        record = ex.otter_to_record(fetched, meeting)
+        self.assertEqual(record.participants[:2], ["Ada L", "Grace H"])
+        self.assertIn("Speaker 1", record.participants)
+
+    def test_calendar_participants_are_not_duplicated(self):
+        meeting = make_meeting(8)
+        fetched = make_transcript(meeting)
+        fetched["metadata"]["calendar_participants"] = ["Speaker 1"]
+        record = ex.otter_to_record(fetched, meeting)
+        self.assertEqual(record.participants.count("Speaker 1"), 1)
 
     def test_action_items_of_mixed_shapes_normalise_to_strings(self):
         record = ex.otter_to_record(
