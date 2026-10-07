@@ -22,14 +22,31 @@ Credential store (never the repo):
 Usage:
     # 1. Register a client and print the URL to open in a browser
     python scripts/readai_oauth.py register
-    python scripts/readai_oauth.py authorize
+    python scripts/readai_oauth.py authorize --open
 
-    # 2. Paste the code Read AI gives you back
-    python scripts/readai_oauth.py exchange --code <AUTH_CODE>
+    # 2. Approve in the browser, then paste the FULL post-approval URL
+    python scripts/readai_oauth.py exchange --redirect-url "<URL>"
 
     # 3. Thereafter: print a valid access token, refreshing if needed
     python scripts/readai_oauth.py token
     python scripts/readai_oauth.py status
+
+"SESSION DATA NOT FOUND" IS EXPECTED, NOT A FAILURE
+The registered redirect target, https://api.read.ai/oauth/ui, is Read AI's
+browser-side OAuth playground. Its own "Start OAuth Flow" button mints a PKCE
+code_verifier in JavaScript and keeps it in sessionStorage; its callback
+handler then refuses to render the code unless it finds that same
+sessionStorage entry. Because this script starts the flow itself (and holds
+the only copy of the verifier on disk), sessionStorage is empty and the page
+renders "Session Data Not Found" after you click "Allow Access". The
+authorization code is still present in the page's address bar as ?code=...,
+so pass that whole URL to 'exchange --redirect-url'. Never click that page's
+"Try Again" link: it restarts the flow with a browser-generated verifier this
+script cannot reproduce, and discards the code you already earned.
+
+A loopback redirect (http://127.0.0.1:PORT/...) would avoid the dance, but
+Read AI's documentation instructs that redirect_uris be left unmodified, so
+it is not assumed to be accepted.
 
 TOKEN LIFECYCLE WARNING
 Read AI access tokens expire in ~10 minutes and refresh tokens are SINGLE USE:
@@ -54,6 +71,7 @@ import argparse
 import urllib.error
 import urllib.parse
 import urllib.request
+import webbrowser
 from pathlib import Path
 
 # Canonical resource identifier for the Read AI MCP server. The protected
@@ -335,13 +353,53 @@ def build_authorize_url(creds: dict, verifier: str,
     )
 
 
-def cmd_authorize(resource: str = None) -> None:
+def _preflight_authorize_url(url: str) -> str:
+    """GET the authorize URL without following redirects to catch a dead client.
+
+    A healthy request 302s toward Read AI's hosted login page. A client_id the
+    authorization server has never seen comes back as invalid_client, which in
+    a browser renders as "The requested OAuth 2.0 Client does not exist" —
+    catching it here saves the user a confusing round trip.
+    """
+    class _NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *args, **kwargs):
+            return None
+
+    opener = urllib.request.build_opener(_NoRedirect)
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with opener.open(request, timeout=30) as response:
+            status = response.status
+            location = response.headers.get("Location", "")
+    except urllib.error.HTTPError as exc:
+        status = exc.code
+        location = exc.headers.get("Location", "")
+    except (urllib.error.URLError, TimeoutError) as exc:
+        return f"skipped (network: {exc})"
+
+    if status in (301, 302, 303, 307, 308):
+        query = urllib.parse.parse_qs(urllib.parse.urlsplit(location).query)
+        error = (query.get("error") or [""])[0]
+        if error:
+            return f"FAILED ({error}) — re-run 'register'"
+        return "ok (server accepted the client and is redirecting to login)"
+    if status == 200:
+        return "ok (server rendered a page directly)"
+    return f"unexpected HTTP {status}"
+
+
+def cmd_authorize(resource: str = None, open_browser: bool = False) -> None:
     creds = load_credentials()
     if not creds.get("client_id"):
         raise SystemExit(
             "ERROR: no registered client. Run "
             "'python scripts/readai_oauth.py register' first."
         )
+
+    if creds.get("pending_verifier"):
+        print("NOTE: a previous 'authorize' is still pending. Generating a new "
+              "URL invalidates the old one — do not use any URL you copied "
+              "earlier.\n")
 
     verifier = generate_code_verifier()
     state = secrets.token_urlsafe(24)
@@ -353,6 +411,46 @@ def cmd_authorize(resource: str = None) -> None:
     save_credentials(creds)
 
     url = build_authorize_url(creds, verifier, state, resource)
+    _emit_authorize_url(url, open_browser)
+
+
+def cmd_url(open_browser: bool = False) -> None:
+    """Re-print the CURRENT pending authorization URL without rotating PKCE.
+
+    Use this when the URL was lost or mangled in copy/paste; re-running
+    'authorize' would invalidate the verifier that matches an already-issued
+    code.
+    """
+    creds = load_credentials()
+    if not creds.get("client_id"):
+        raise SystemExit(
+            "ERROR: no registered client. Run "
+            "'python scripts/readai_oauth.py register' first."
+        )
+    verifier = creds.get("pending_verifier")
+    if not verifier:
+        raise SystemExit(
+            "ERROR: no pending authorization. Run "
+            "'python scripts/readai_oauth.py authorize' first."
+        )
+    url = build_authorize_url(creds, verifier, creds["pending_state"],
+                              creds.get("pending_resource") or None)
+    _emit_authorize_url(url, open_browser)
+
+
+def _emit_authorize_url(url: str, open_browser: bool) -> None:
+    """Print the consent URL, write it to a file, and optionally open it.
+
+    The URL is ~360 characters and wraps in a terminal; copying a wrapped line
+    truncates the client_id and the server then reports invalid_client. Writing
+    it to a file and offering --open removes that failure mode.
+    """
+    url_file = credential_dir() / "authorize_url.txt"
+    url_file.parent.mkdir(parents=True, exist_ok=True)
+    url_file.write_text(url + "\n", encoding="utf-8")
+
+    print(f"Client preflight: {_preflight_authorize_url(url)}")
+    print()
 
     print("=" * 72)
     print("ACTION REQUIRED — open this URL in a browser and sign in to Read AI")
@@ -360,10 +458,37 @@ def cmd_authorize(resource: str = None) -> None:
     print()
     print(url)
     print()
-    print("Read AI will show you an authorization code after you approve.")
-    print("Copy it, then run:")
+    print(f"Saved to: {url_file}")
+    print("(Copy from that file, or re-run with --open, rather than copying "
+          "a wrapped terminal line — a truncated client_id surfaces as "
+          "'invalid_client'.)")
     print()
-    print("  python scripts/readai_oauth.py exchange --code <AUTH_CODE>")
+    if open_browser:
+        print("Opening the default browser...")
+        webbrowser.open(url)
+        print()
+    print("-" * 72)
+    print("EXPECTED: after you click 'Allow Access', https://api.read.ai/oauth/ui")
+    print("will render:  \"Session Data Not Found\"")
+    print()
+    print("That error is HARMLESS here and is not a failure of this flow.")
+    print("That page is Read AI's standalone browser playground: its own")
+    print("'Start OAuth Flow' button generates a PKCE verifier in the browser and")
+    print("stashes it in sessionStorage, then its callback handler refuses to")
+    print("render unless it finds that sessionStorage entry. We start the flow")
+    print("from this script instead, so sessionStorage is legitimately empty --")
+    print("but the authorization code is still delivered, in the page URL.")
+    print()
+    print("Do NOT click 'Try Again' (it restarts with a browser-side verifier")
+    print("that this script does not hold, and your code is discarded).")
+    print("-" * 72)
+    print()
+    print("Instead, copy the FULL address-bar URL of that error page and run:")
+    print()
+    print("  python scripts/readai_oauth.py exchange --redirect-url \"<PASTED_URL>\"")
+    print()
+    print("(--redirect-url pulls out code and state and verifies state for you.")
+    print(" If you prefer, 'exchange --code <AUTH_CODE>' still works.)")
     print()
     print("The PKCE verifier and state are saved locally; do not run "
           "'authorize' again until you have exchanged this code.")
@@ -405,7 +530,73 @@ def _store_token_response(creds: dict, resp: dict) -> dict:
     return creds
 
 
-def cmd_exchange(code: str, state: str = None) -> None:
+def _parse_redirect_url(redirect_url: str) -> tuple:
+    """Extract (code, state) from a pasted post-approval address-bar URL.
+
+    Read AI's hosted redirect target (https://api.read.ai/oauth/ui) is a
+    browser-side playground that only renders the code when it finds a
+    code_verifier it generated itself in sessionStorage. When the flow is
+    started from this script that entry is absent, so the page shows
+    "Session Data Not Found" — but the authorization server still appended
+    ?code=...&state=... to the URL, so the code is recoverable from the
+    address bar. Accepts a bare query string or fragment form too.
+    """
+    text = (redirect_url or "").strip().strip('"').strip("'")
+    if not text:
+        raise SystemExit("ERROR: --redirect-url was empty.")
+
+    parts = urllib.parse.urlsplit(text)
+    query = dict(urllib.parse.parse_qsl(parts.query, keep_blank_values=True))
+    # Some providers return parameters in the fragment; merge it as a fallback.
+    if parts.fragment:
+        for key, value in urllib.parse.parse_qsl(parts.fragment,
+                                                 keep_blank_values=True):
+            query.setdefault(key, value)
+    if not query and "=" in text:
+        # The user pasted only the query string, e.g. "code=...&state=...".
+        query = dict(urllib.parse.parse_qsl(text.lstrip("?#"),
+                                            keep_blank_values=True))
+
+    if query.get("error"):
+        raise SystemExit(
+            f"ERROR: the authorization server returned an error instead of a "
+            f"code: {query['error']}"
+            + (f" — {query['error_description']}"
+               if query.get("error_description") else "")
+            + "\nRe-run 'authorize --open' to start a fresh consent."
+        )
+
+    code = query.get("code")
+    if not code:
+        raise SystemExit(
+            "ERROR: no 'code' parameter found in the URL you pasted.\n"
+            "Paste the FULL address-bar URL of the page you landed on after "
+            "clicking 'Allow Access' — it must contain '?code='.\n"
+            "If the URL has no code, the consent did not complete; re-run "
+            "'authorize --open'."
+        )
+    return code, query.get("state")
+
+
+def cmd_exchange(code: str = None, state: str = None,
+                 redirect_url: str = None) -> None:
+    if redirect_url:
+        parsed_code, parsed_state = _parse_redirect_url(redirect_url)
+        if code and code != parsed_code:
+            raise SystemExit(
+                "ERROR: --code and the code inside --redirect-url disagree; "
+                "pass only one of them."
+            )
+        code = parsed_code
+        # A state parsed out of the real redirect is trustworthy, so prefer it
+        # over nothing and let the comparison below actually run.
+        state = state or parsed_state
+    if not code:
+        raise SystemExit(
+            "ERROR: provide either --code <AUTH_CODE> or "
+            "--redirect-url \"<FULL_URL_AFTER_APPROVAL>\"."
+        )
+
     creds = load_credentials()
     verifier = creds.get("pending_verifier")
     if not verifier:
@@ -418,7 +609,10 @@ def cmd_exchange(code: str, state: str = None) -> None:
         state, expected_state
     ):
         raise SystemExit(
-            "ERROR: state mismatch — possible CSRF. Restart with 'authorize'."
+            "ERROR: state mismatch — this code belongs to a different "
+            "authorization attempt (for example one started from Read AI's "
+            "own 'Start OAuth Flow' button, whose PKCE verifier lives only in "
+            "the browser). Run 'authorize --open' and approve again."
         )
 
     form = {
@@ -569,9 +763,23 @@ def main():
     p_auth.add_argument("--resource", default=None,
                         help=f"RFC 8707 resource indicator, e.g. "
                              f"{READAI_MCP_RESOURCE}")
+    p_auth.add_argument("--open", action="store_true", dest="open_browser",
+                        help="Launch the default browser on the consent URL")
+
+    p_url = sub.add_parser(
+        "url", help="Re-print the pending consent URL (does not rotate PKCE)"
+    )
+    p_url.add_argument("--open", action="store_true", dest="open_browser",
+                       help="Launch the default browser on the consent URL")
 
     p_ex = sub.add_parser("exchange", help="Exchange an authorization code")
-    p_ex.add_argument("--code", required=True)
+    p_ex.add_argument("--code", default=None,
+                      help="The authorization code by itself")
+    p_ex.add_argument("--redirect-url", default=None, dest="redirect_url",
+                      help="The FULL address-bar URL you landed on after "
+                           "clicking 'Allow Access' (works even when the page "
+                           "shows 'Session Data Not Found'); code and state "
+                           "are parsed out of it")
     p_ex.add_argument("--state", default=None)
 
     sub.add_parser("token", help="Print a valid access token (refreshes)")
@@ -585,9 +793,11 @@ def main():
     elif args.command == "register":
         register_client(args.client_name, args.redirect_uri, args.scope)
     elif args.command == "authorize":
-        cmd_authorize(args.resource)
+        cmd_authorize(args.resource, args.open_browser)
+    elif args.command == "url":
+        cmd_url(args.open_browser)
     elif args.command == "exchange":
-        cmd_exchange(args.code, args.state)
+        cmd_exchange(args.code, args.state, args.redirect_url)
     elif args.command == "token":
         print(get_access_token())
     elif args.command == "refresh":
