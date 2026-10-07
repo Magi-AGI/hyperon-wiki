@@ -944,7 +944,15 @@ def run!
   shrinks = chunk_changes_list.select { |c| c[:stale_chunk_cards].any? }
 
   puts "\n#{'=' * 60}"
-  puts DRY_RUN ? "Dry run complete - nothing was written." : "Ingestion complete!"
+  if DRY_RUN
+    puts "Dry run complete - nothing was written."
+  elsif STATS[:errors].positive?
+    # "Ingestion complete!" next to a pile of errors is how a half-written
+    # deck gets signed off. Say plainly that it failed.
+    puts "Ingestion FAILED: #{STATS[:errors]} card(s) errored."
+  else
+    puts "Ingestion complete!"
+  end
   puts "Total transcripts: #{transcripts.length}"
   puts "Total cards: #{total_cards}"
 
@@ -1102,4 +1110,10 @@ end
 # path opts in explicitly via TRANSCRIPT_INGEST=1.
 RUN_REQUESTED = ENV["TRANSCRIPT_INGEST"] == "1"
 
-run! if $PROGRAM_NAME == __FILE__ || RUN_REQUESTED
+if $PROGRAM_NAME == __FILE__ || RUN_REQUESTED
+  errors = run!
+  # run! counts per-card failures but used to return them into the void, so a
+  # run where EVERY card blew up still exited 0 and any wrapper (sync script,
+  # CI step, cron) read total failure as success. Propagate it.
+  exit(1) if errors.to_i.positive?
+end
