@@ -457,5 +457,328 @@ class DiscoveryURLTests(unittest.TestCase):
             self.assertFalse(parts.fragment)
 
 
+# ---------------------------------------------------------------------------
+# Read AI REST export: pagination, normalisation, token handling
+# ---------------------------------------------------------------------------
+
+def make_readai_meeting(i, start_ms=1790614437657, title=None, turns=None,
+                        with_rich=False):
+    meeting = {
+        "id": f"01M3MEZZRS3GBVD60CPWH8C{i:03d}",
+        "start_time_ms": start_ms,
+        "end_time_ms": start_ms + 3600000,
+        "scheduled_start_time_ms": start_ms,
+        "scheduled_end_time_ms": start_ms + 3600000,
+        "title": title or f"Read Meeting {i}",
+        "participants": [
+            {"name": "Alice", "email": "a@example.com",
+             "invited": True, "attended": True},
+            {"name": "Bob", "email": None, "invited": False, "attended": True},
+            {"name": None, "email": None, "invited": True, "attended": False},
+        ],
+        "owner": {"name": "Alice", "email": "a@example.com"},
+        "report_url": f"https://app.read.ai/analytics/meetings/{i}",
+        "platform": "zoom",
+        "platform_id": "123456789",
+        "folders": ["01FOLDER"],
+        "live_enabled": True,
+        "access_level": "owner",
+    }
+    if turns is not None:
+        meeting["transcript"] = {
+            "speakers": [{"name": "Alice"}, {"name": "Bob"}],
+            "text": "flat blob",
+            "turns": turns,
+        }
+    if with_rich:
+        meeting.update({
+            "summary": "Overall summary.",
+            "chapter_summaries": [
+                {"title": "Intro", "description": "Greetings."},
+                {"title": "Design", "description": "Decisions."},
+            ],
+            "action_items": ["Ship it", "Write docs"],
+            "key_questions": ["Is it ready?"],
+            "topics": ["architecture", "timeline"],
+            "metrics": {"read_score": 80, "sentiment": "positive",
+                        "engagement": 0.5},
+        })
+    return meeting
+
+
+class ReadAIPaginationTests(unittest.TestCase):
+    """Read AI pages with an opaque cursor; page/offset params are ignored."""
+
+    def _recorder(self, pages):
+        calls = []
+
+        def fake_request(url, token_provider):
+            token_provider()  # exercise the per-request token path
+            calls.append(url)
+            query = urllib.parse.parse_qs(urllib.parse.urlsplit(url).query)
+            cursor = (query.get("cursor") or [None])[0]
+            for index, page in enumerate(pages):
+                page_cursor = (None if index == 0
+                               else pages[index - 1]["data"][-1]["id"])
+                if cursor == page_cursor:
+                    return page
+            raise AssertionError(f"unexpected cursor {cursor!r}")
+
+        return fake_request, calls
+
+    def test_walks_every_cursor_page(self):
+        pages = [
+            {"object": "list", "url": "/v1/meetings", "has_more": True,
+             "data": [make_readai_meeting(i) for i in range(0, 10)]},
+            {"object": "list", "url": "/v1/meetings", "has_more": True,
+             "data": [make_readai_meeting(i) for i in range(10, 20)]},
+            {"object": "list", "url": "/v1/meetings", "has_more": False,
+             "data": [make_readai_meeting(20)]},
+        ]
+        fake, calls = self._recorder(pages)
+        out = ts.readai_list_meetings(lambda: "tok", api_request=fake)
+
+        self.assertEqual(len(out), 21)
+        self.assertEqual(len({m["id"] for m in out}), 21)
+        self.assertEqual(len(calls), 3)
+        # First request carries no cursor; later ones chain off the last id.
+        self.assertNotIn("cursor=", calls[0])
+        self.assertIn("cursor=" + pages[0]["data"][-1]["id"], calls[1])
+
+    def test_stops_when_has_more_false_even_with_full_page(self):
+        pages = [{"object": "list", "url": "/v1/meetings", "has_more": False,
+                  "data": [make_readai_meeting(i) for i in range(10)]}]
+        fake, calls = self._recorder(pages)
+        out = ts.readai_list_meetings(lambda: "tok", api_request=fake)
+        self.assertEqual(len(out), 10)
+        self.assertEqual(len(calls), 1)
+
+    def test_page_size_clamped_to_api_cap(self):
+        captured = []
+
+        def fake(url, token_provider):
+            captured.append(url)
+            return {"has_more": False, "data": []}
+
+        ts.readai_list_meetings(lambda: "tok", limit=500, api_request=fake)
+        self.assertIn(f"limit={ts.READAI_MAX_PAGE_SIZE}", captured[0])
+        self.assertEqual(ts.READAI_MAX_PAGE_SIZE, 10)
+
+    def test_stalled_cursor_does_not_loop_or_duplicate(self):
+        """A server that ignores the cursor must not yield infinite repeats."""
+        same = {"object": "list", "url": "/v1/meetings", "has_more": True,
+                "data": [make_readai_meeting(i) for i in range(10)]}
+        calls = []
+
+        def fake(url, token_provider):
+            calls.append(url)
+            return same
+
+        out = ts.readai_list_meetings(lambda: "tok", api_request=fake,
+                                      max_pages=50)
+        self.assertEqual(len(out), 10)
+        self.assertEqual(len({m["id"] for m in out}), 10)
+        self.assertLess(len(calls), 4)
+
+    def test_date_filters_are_sent_as_start_datetime_bounds(self):
+        captured = []
+
+        def fake(url, token_provider):
+            captured.append(url)
+            return {"has_more": False, "data": []}
+
+        ts.readai_list_meetings(lambda: "tok",
+                                start_datetime_gte="2026-01-01T00:00:00Z",
+                                start_datetime_lte="2026-02-01T23:59:59Z",
+                                api_request=fake)
+        query = urllib.parse.parse_qs(
+            urllib.parse.urlsplit(captured[0]).query)
+        self.assertEqual(query["start_datetime_gte"],
+                         ["2026-01-01T00:00:00Z"])
+        self.assertEqual(query["start_datetime_lte"],
+                         ["2026-02-01T23:59:59Z"])
+
+
+class ReadAIExpandQueryTests(unittest.TestCase):
+    def test_expand_uses_bracketed_repeated_parameter(self):
+        """`expand=` (unbracketed) returns HTTP 200 with no rich content."""
+        query = ts.readai_expand_query(["transcript", "summary"])
+        self.assertEqual(query, "expand[]=transcript&expand[]=summary")
+
+    def test_default_sections_request_transcript_but_not_recording(self):
+        self.assertIn("transcript", ts.READAI_EXPAND_SECTIONS)
+        # A signed recording URL is credential-like and must not be persisted.
+        self.assertNotIn("recording_download", ts.READAI_EXPAND_SECTIONS)
+
+    def test_get_meeting_builds_expanded_url(self):
+        seen = {}
+
+        def fake(url, token_provider):
+            seen["url"] = url
+            return {}
+
+        ts.readai_get_meeting("01ABC", lambda: "tok", api_request=fake)
+        self.assertIn("/v1/meetings/01ABC?", seen["url"])
+        self.assertIn("expand[]=transcript", seen["url"])
+
+
+class ReadAINormalisationTests(unittest.TestCase):
+    def test_turns_become_ordered_speaker_sentences(self):
+        turns = [
+            {"start_time_ms": 3000, "end_time_ms": 4000,
+             "speaker": {"name": "Bob"}, "text": "Bye."},
+            {"start_time_ms": 1000, "end_time_ms": 2000,
+             "speaker": {"name": "Alice"}, "text": "Hello."},
+        ]
+        record = ts.readai_to_record(
+            make_readai_meeting(1, turns=turns, with_rich=True))
+
+        self.assertEqual(record.source_service, "read.ai")
+        self.assertEqual([s["speaker_name"] for s in record.sentences],
+                         ["Alice", "Bob"])
+        # Chronological order, not API order.
+        self.assertTrue(record.full_text.startswith("Alice: Hello."))
+        self.assertIn("Bob: Bye.", record.full_text)
+
+    def test_missing_speaker_name_falls_back_to_unknown(self):
+        turns = [{"start_time_ms": 1, "end_time_ms": 2, "speaker": None,
+                  "text": "Anon."}]
+        record = ts.readai_to_record(make_readai_meeting(2, turns=turns))
+        self.assertEqual(record.sentences[0]["speaker_name"], "Unknown")
+
+    def test_epoch_ms_maps_to_utc_iso_date_and_duration(self):
+        meeting = make_readai_meeting(3, start_ms=1790614437657, turns=[])
+        record = ts.readai_to_record(meeting)
+        self.assertEqual(record.date, "2026-09-28")
+        self.assertEqual(record.duration_minutes, 60)
+
+    def test_rich_sections_fold_into_summary_and_keywords(self):
+        record = ts.readai_to_record(
+            make_readai_meeting(4, turns=[], with_rich=True))
+        self.assertIn("Overall summary.", record.summary)
+        self.assertIn("Intro", record.summary)
+        self.assertIn("Is it ready?", record.summary)
+        self.assertEqual(record.action_items, ["Ship it", "Write docs"])
+        self.assertEqual(record.keywords, ["architecture", "timeline"])
+
+    def test_live_enabled_does_not_mark_record_live(self):
+        """`live_enabled` is a feature flag, not an in-progress capture."""
+        meeting = make_readai_meeting(5, turns=[])
+        self.assertTrue(meeting["live_enabled"])
+        record = ts.readai_to_record(meeting)
+        self.assertFalse(record.is_live)
+
+    def test_participants_drop_nameless_entries(self):
+        record = ts.readai_to_record(make_readai_meeting(6, turns=[]))
+        self.assertEqual(record.participants, ["Alice", "Bob"])
+
+    def test_flat_text_used_when_turns_absent(self):
+        meeting = make_readai_meeting(7, turns=[])
+        meeting["transcript"]["turns"] = []
+        record = ts.readai_to_record(meeting)
+        self.assertEqual(record.full_text, "flat blob")
+
+    def test_untitled_meeting_still_yields_a_card_name(self):
+        meeting = make_readai_meeting(8, turns=[])
+        meeting["title"] = None
+        record = ts.readai_to_record(meeting)
+        self.assertEqual(record.meeting_name, "Untitled Read AI Meeting")
+        self.assertIn("Raw Data+transcripts+", record.card_name())
+
+    def test_has_transcript_detects_download_disabled_meetings(self):
+        self.assertFalse(ts.readai_has_transcript({"transcript": None}))
+        self.assertFalse(ts.readai_has_transcript(
+            {"transcript": {"turns": [], "text": ""}}))
+        self.assertTrue(ts.readai_has_transcript(
+            {"transcript": {"turns": [{"text": "hi"}]}}))
+
+
+class ReadAITokenHandlingTests(unittest.TestCase):
+    def test_token_resolved_per_request_not_once_per_export(self):
+        """~10-minute tokens expire mid-walk, so every call re-resolves."""
+        minted = []
+
+        def provider():
+            minted.append(len(minted))
+            return f"tok-{len(minted)}"
+
+        pages = [
+            {"has_more": True,
+             "data": [make_readai_meeting(i) for i in range(10)]},
+            {"has_more": False, "data": [make_readai_meeting(10)]},
+        ]
+        state = {"n": 0}
+
+        def fake(url, token_provider):
+            token_provider()
+            page = pages[state["n"]]
+            state["n"] = min(state["n"] + 1, len(pages) - 1)
+            return page
+
+        ts.readai_list_meetings(provider, api_request=fake)
+        self.assertEqual(len(minted), 2)
+
+    def test_http_error_message_omits_bearer_token(self):
+        import urllib.error
+        import io
+
+        def boom(*args, **kwargs):
+            raise urllib.error.HTTPError(
+                "https://api.read.ai/v1/meetings", 401, "Unauthorized", {},
+                io.BytesIO(b'{"detail":"expired"}'))
+
+        original = ts.urllib.request.urlopen
+        ts.urllib.request.urlopen = boom
+        try:
+            with self.assertRaises(RuntimeError) as ctx:
+                ts._readai_request("https://api.read.ai/v1/meetings",
+                                   lambda: "SUPERSECRETTOKEN")
+        finally:
+            ts.urllib.request.urlopen = original
+
+        message = str(ctx.exception)
+        self.assertNotIn("SUPERSECRETTOKEN", message)
+        self.assertIn("401", message)
+        self.assertIn("/v1/meetings", message)
+
+
+class ReadAIExportArtifactTests(unittest.TestCase):
+    def test_export_refuses_to_write_inside_the_repository(self):
+        from scripts import export_readai as er
+        repo_root = Path(er.__file__).resolve().parents[1]
+        with self.assertRaises(SystemExit):
+            er._assert_outside_repo(repo_root / "publication_texts" / "x")
+
+    def test_default_output_dir_is_outside_the_repository(self):
+        from scripts import export_readai as er
+        repo_root = Path(er.__file__).resolve().parents[1]
+        out = er.default_output_dir()
+        with self.assertRaises(ValueError):
+            out.resolve().relative_to(repo_root)
+        self.assertIn("readai_", out.name)
+
+    def test_iso_bounds_cover_whole_days(self):
+        from scripts import export_readai as er
+        self.assertEqual(er._iso_bound("2026-01-02"), "2026-01-02T00:00:00Z")
+        self.assertEqual(er._iso_bound("2026-01-02", end_of_day=True),
+                         "2026-01-02T23:59:59Z")
+        self.assertEqual(er._iso_bound(""), "")
+
+    def test_saved_records_contain_no_credential_material(self):
+        turns = [{"start_time_ms": 1, "end_time_ms": 2,
+                  "speaker": {"name": "Alice"}, "text": "Hello."}]
+        record = ts.readai_to_record(
+            make_readai_meeting(9, turns=turns, with_rich=True))
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            save_transcripts_json([record], out)
+            blob = "\n".join(p.read_text(encoding="utf-8")
+                             for p in out.glob("*.json"))
+        for marker in ("access_token", "refresh_token", "Bearer",
+                       "client_secret"):
+            self.assertNotIn(marker, blob)
+        self.assertIn("read.ai", blob)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

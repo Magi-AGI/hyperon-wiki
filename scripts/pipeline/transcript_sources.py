@@ -3,21 +3,28 @@
 Primary: Fireflies.ai GraphQL API — provides full transcripts with speaker
 labels, timestamps, summaries, and action items.
 
+Also primary: Read AI REST API — full transcripts with speaker turns,
+summaries, chapters, action items, topics and key questions. Read AI issues no
+static API keys; access is OAuth 2.1 (see scripts/readai_oauth.py), so these
+helpers take a `token_provider` callable instead of a key string.
+
 Secondary: Otter.ai email summaries via Gmail (summaries only, not full
 transcripts — full Otter API requires Business plan).
 
 Environment variables:
     FIREFLIES_API_KEY  — API key from https://app.fireflies.ai/integrations/custom/fireflies
     OTTER_API_KEY      — (future) Otter.ai API key if Business plan available
+    (Read AI uses the OAuth credential store, not an environment variable.)
 """
 
 import json
 import re
 import html
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -423,6 +430,242 @@ def _parse_fireflies_date(date_raw) -> str:
         except (ValueError, OSError):
             pass
     return str(date_raw)
+
+
+# ---------------------------------------------------------------------------
+# Read AI REST API (OAuth 2.1 — see scripts/readai_oauth.py)
+# ---------------------------------------------------------------------------
+
+READAI_API_BASE = "https://api.read.ai/v1"
+
+# Read AI caps a listing page at 10 rows and ignores larger values rather than
+# erroring, so a bigger limit silently yields 10 and an unwary caller concludes
+# it has reached the end of the account.
+READAI_MAX_PAGE_SIZE = 10
+
+# Read AI's listing returns metadata only. Rich content is opt-in per section
+# via repeated `expand[]` query parameters. NOTE: the bracketed form is
+# required — `?expand=transcript` is accepted with HTTP 200 and silently
+# returns the unexpanded record, which looks like "this account has no
+# transcripts" instead of "you asked the wrong way".
+READAI_EXPAND_SECTIONS = (
+    "summary",
+    "chapter_summaries",
+    "action_items",
+    "key_questions",
+    "topics",
+    "transcript",
+    "metrics",
+)
+
+# `recording_download` is deliberately NOT requested by default: it mints a
+# short-lived signed media URL, which is credential-like material we do not
+# want persisted into a JSON artifact that outlives its own expiry.
+
+
+def readai_expand_query(sections=READAI_EXPAND_SECTIONS) -> str:
+    """Build the repeated expand[] query string Read AI actually honours."""
+    return "&".join(
+        f"expand[]={urllib.parse.quote(str(s))}" for s in sections
+    )
+
+
+def readai_list_meetings(
+    token_provider,
+    limit: int = READAI_MAX_PAGE_SIZE,
+    start_datetime_gte: str = None,
+    start_datetime_lte: str = None,
+    max_pages: int = 500,
+    api_request=None,
+) -> list[dict]:
+    """List every Read AI meeting, walking the cursor to the end.
+
+    Read AI paginates with an opaque `cursor` parameter rather than
+    page/offset. The other candidates (page, offset, per_page, page_size,
+    starting_after, after) are all accepted with HTTP 200 and ignored, each
+    returning page one forever — so a page/offset loop either spins until
+    max_pages or re-exports the same 10 meetings. The cursor is the id of the
+    last row of the previous page.
+
+    `token_provider` is a zero-argument callable returning a bearer token. It
+    is called once per request rather than once per export because Read AI
+    access tokens live ~10 minutes and a full transcript walk takes longer.
+    """
+    collected: list[dict] = []
+    seen_ids: set[str] = set()
+    cursor = None
+    request = api_request or _readai_request
+
+    for _ in range(max_pages):
+        params = [f"limit={int(min(limit, READAI_MAX_PAGE_SIZE))}"]
+        if start_datetime_gte:
+            params.append(
+                "start_datetime_gte=" + urllib.parse.quote(start_datetime_gte))
+        if start_datetime_lte:
+            params.append(
+                "start_datetime_lte=" + urllib.parse.quote(start_datetime_lte))
+        if cursor:
+            params.append("cursor=" + urllib.parse.quote(str(cursor)))
+
+        payload = request(
+            f"{READAI_API_BASE}/meetings?" + "&".join(params), token_provider)
+        rows = payload.get("data") or []
+
+        fresh = [r for r in rows if r.get("id") not in seen_ids]
+        if rows and not fresh:
+            # The cursor stopped advancing. Returning here beats looping
+            # max_pages times and appending the same meetings repeatedly.
+            break
+        for row in fresh:
+            seen_ids.add(row.get("id"))
+        collected.extend(fresh)
+
+        if not payload.get("has_more") or not rows:
+            break
+        cursor = rows[-1].get("id")
+        if not cursor:
+            break
+
+    return collected
+
+
+def readai_get_meeting(meeting_id: str, token_provider,
+                       sections=READAI_EXPAND_SECTIONS,
+                       api_request=None) -> dict:
+    """Fetch one meeting with rich sections expanded."""
+    request = api_request or _readai_request
+    url = (f"{READAI_API_BASE}/meetings/{urllib.parse.quote(str(meeting_id))}"
+           f"?{readai_expand_query(sections)}")
+    return request(url, token_provider)
+
+
+def _readai_request(url: str, token_provider) -> dict:
+    """GET a Read AI endpoint with a freshly resolved bearer token."""
+    token = token_provider()
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "Authorization": f"Bearer {token}",
+            "User-Agent": "magi-transcripts-readai/1.0",
+        },
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response:
+            body = response.read().decode("utf-8")
+            return json.loads(body) if body.strip() else {}
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")[:400]
+        # Report the URL but never the Authorization header.
+        raise RuntimeError(
+            f"Read AI API error HTTP {exc.code} for "
+            f"{urllib.parse.urlsplit(url).path}: {detail}"
+        ) from None
+    except (urllib.error.URLError, TimeoutError) as exc:
+        raise RuntimeError(
+            f"Read AI network failure for "
+            f"{urllib.parse.urlsplit(url).path}: {exc}"
+        ) from None
+
+
+def readai_to_record(meeting: dict) -> TranscriptRecord:
+    """Convert a Read AI meeting (expanded) to a TranscriptRecord."""
+    transcript = meeting.get("transcript") or {}
+    turns = transcript.get("turns") or []
+
+    # Read AI returns turns in an unspecified order; the first turn of the
+    # sample export was the speaker saying goodbye. Sort by start time so the
+    # rendered transcript reads in the order the meeting actually happened.
+    sentences = [
+        {
+            "speaker_name": ((t.get("speaker") or {}).get("name")
+                             or "Unknown"),
+            "text": t.get("text", "") or "",
+            "start_time": t.get("start_time_ms"),
+            "end_time": t.get("end_time_ms"),
+        }
+        for t in sorted(turns, key=lambda t: (t.get("start_time_ms") or 0))
+    ]
+
+    start_ms = meeting.get("start_time_ms") or meeting.get(
+        "scheduled_start_time_ms")
+    end_ms = meeting.get("end_time_ms") or meeting.get(
+        "scheduled_end_time_ms")
+
+    duration_min = 0
+    if start_ms and end_ms and end_ms > start_ms:
+        duration_min = round((end_ms - start_ms) / 60000)
+
+    participants = [
+        p.get("name") for p in (meeting.get("participants") or [])
+        if p.get("name")
+    ]
+
+    action_items = [str(a) for a in (meeting.get("action_items") or []) if a]
+    topics = [str(t) for t in (meeting.get("topics") or []) if t]
+
+    summary = meeting.get("summary") or ""
+    chapters = meeting.get("chapter_summaries") or []
+    if chapters:
+        rendered = "\n".join(
+            f"- {c.get('title', '').strip()}: {c.get('description', '').strip()}"
+            for c in chapters
+            if isinstance(c, dict) and (c.get("title") or c.get("description"))
+        )
+        if rendered:
+            summary = (summary + "\n\nChapters:\n" + rendered).strip()
+
+    questions = [str(q) for q in (meeting.get("key_questions") or []) if q]
+    if questions:
+        summary = (summary + "\n\nKey questions:\n"
+                   + "\n".join(f"- {q}" for q in questions)).strip()
+
+    record = TranscriptRecord(
+        meeting_name=meeting.get("title") or "Untitled Read AI Meeting",
+        date=_readai_date(start_ms),
+        source_service="read.ai",
+        summary=summary,
+        action_items=action_items,
+        duration_minutes=duration_min,
+        participants=participants,
+        keywords=topics,
+        transcript_id=meeting.get("id", "") or "",
+        transcript_url=meeting.get("report_url", "") or "",
+        sentences=sentences,
+        # Read AI's `live_enabled` advertises that live features were on for the
+        # meeting, not that this record is a partial in-progress capture, so it
+        # must not be mapped onto is_live — doing so would make every
+        # live-enabled meeting look unfinished and get skipped by the exporter.
+        is_live=False,
+    )
+    if transcript.get("text") and not sentences:
+        # Fall back to the flat transcript blob when turns are absent.
+        record.full_text = transcript["text"]
+    record.build_full_text()
+    return record
+
+
+def _readai_date(start_ms) -> str:
+    """Convert Read AI epoch milliseconds to an ISO date (UTC)."""
+    if not start_ms:
+        return ""
+    try:
+        return datetime.fromtimestamp(
+            float(start_ms) / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
+    except (ValueError, OSError, OverflowError):
+        return ""
+
+
+def readai_has_transcript(meeting: dict) -> bool:
+    """True when an expanded meeting actually carries transcript content.
+
+    Read AI returns HTTP 200 with `transcript: null` for meetings whose owner
+    has not enabled downloads, so emptiness is a normal per-meeting state
+    rather than an error worth aborting a 51-meeting walk over.
+    """
+    transcript = meeting.get("transcript") or {}
+    return bool(transcript.get("turns") or transcript.get("text"))
 
 
 # ---------------------------------------------------------------------------
