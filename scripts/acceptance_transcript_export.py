@@ -24,6 +24,10 @@ import argparse
 from pathlib import Path
 from datetime import datetime, timezone
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from pipeline.transcript_card_names import assign_card_names  # noqa: E402
+
 REQUIRED_FIELDS = (
     "meeting_name", "date", "source_service", "summary", "action_items",
     "full_text", "duration_minutes", "participants", "keywords",
@@ -180,10 +184,6 @@ def main(argv):
             if parsed.year < 2015:
                 failures.append(f"{path.name}: implausible date {date_value}")
 
-        # Card name collisions would overwrite each other on ingest.
-        name = record.get("meeting_name") or ""
-        card = f"Raw Data+transcripts+{name}+{date_value}"
-        card_names.setdefault(card, []).append(path.name)
 
         # A repeated transcript_id means a merge deduped on the wrong key.
         tid = record.get("transcript_id")
@@ -214,6 +214,23 @@ def main(argv):
         url = record.get("transcript_url") or ""
         if url and not url.startswith("https://"):
             failures.append(f"{path.name}: non-https transcript_url")
+
+    # Plan card names with the real ingest algorithm (a port of
+    # scripts/ingest_transcripts.rb). Two transcripts of the same recurring
+    # meeting on the same date are normal and get disambiguated by
+    # transcript id; only a name the real algorithm cannot make unique is a
+    # genuine overwrite risk.
+    disambiguated = 0
+    try:
+        plans = assign_card_names(r for _p, r in parsed_records)
+    except ValueError as exc:
+        failures.append(f"card-name planning failed: {exc}")
+        plans = []
+
+    for (path, _record), plan in zip(parsed_records, plans):
+        card_names.setdefault(plan["card_key"], []).append(path.name)
+        if plan["label_reason"] != "meeting_name":
+            disambiguated += 1
 
     for card, files in sorted(card_names.items()):
         if len(files) > 1:
@@ -268,6 +285,8 @@ def main(argv):
     print(f"empty transcripts : {empty_text}")
     print(f"no participants   : {no_participants}")
     print(f"unique card names : {len(card_names)}")
+    print(f"disambiguated     : {disambiguated} "
+          f"(same title+date, split by transcript id)")
     print(f"unique transcript ids : {len(transcript_ids)}")
     print(f"secret markers    : "
           f"{'NONE' if not any('secret marker' in f for f in failures) else 'FOUND'}")

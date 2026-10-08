@@ -16,6 +16,10 @@ import json
 from pathlib import Path
 from datetime import datetime, timezone
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from pipeline.transcript_card_names import assign_card_names  # noqa: E402
+
 REQUIRED_FIELDS = (
     "meeting_name", "date", "source_service", "summary", "action_items",
     "full_text", "duration_minutes", "participants", "keywords",
@@ -59,7 +63,7 @@ def main(argv):
 
     failures = []
     warnings = []
-    card_names = {}
+    planned_records = []
     conversation_ids = {}
     dates = []
     total_chars = 0
@@ -112,10 +116,10 @@ def main(argv):
             if parsed.year < 2015:
                 failures.append(f"{path.name}: implausible date {date_value}")
 
-        # Card name collisions would overwrite each other on ingest.
-        name = record.get("meeting_name") or ""
-        card = f"Raw Data+transcripts+{name}+{date_value}"
-        card_names.setdefault(card, []).append(path.name)
+        # Card names are planned with the real ingest algorithm below, once
+        # every record is loaded: disambiguation is a whole-export decision,
+        # not a per-record one.
+        planned_records.append((path, record))
 
         cid = record.get("transcript_id") or ""
         if not cid:
@@ -151,6 +155,24 @@ def main(argv):
         url = record.get("transcript_url") or ""
         if url and not url.startswith("https://"):
             failures.append(f"{path.name}: non-https transcript_url")
+
+    # Plan the card names exactly as scripts/ingest_transcripts.rb would.
+    # Two transcripts of the same recurring meeting on the same date are
+    # normal (and real: Otter records a rescheduled or split session under
+    # the same title); the ingest disambiguates them by transcript id. Only
+    # a name the real algorithm cannot make unique is a true collision.
+    card_names = {}
+    disambiguated = 0
+    try:
+        plans = assign_card_names(r for _p, r in planned_records)
+    except ValueError as exc:
+        failures.append(f"card-name planning failed: {exc}")
+        plans = []
+
+    for (path, _record), plan in zip(planned_records, plans):
+        card_names.setdefault(plan["card_key"], []).append(path.name)
+        if plan["label_reason"] != "meeting_name":
+            disambiguated += 1
 
     for card, files in sorted(card_names.items()):
         if len(files) > 1:
@@ -216,6 +238,8 @@ def main(argv):
     print(f"no participants   : {no_participants}")
     print(f"no summary        : {no_summary}")
     print(f"unique card names : {len(card_names)}")
+    print(f"disambiguated     : {disambiguated} "
+          f"(same title+date, split by transcript id)")
     print(f"unique conv ids   : {len(conversation_ids)}")
     if manifest:
         print(f"sweeps planned    : {manifest.get('sweeps_planned', '-')}")
