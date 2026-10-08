@@ -45,6 +45,8 @@ NON_RECORD_FILES = (
     "readai_export_manifest.json",
     "otter_export_manifest.json",
     "fireflies_export_manifest.json",
+    # Written by scripts/select_transcripts.py alongside a merged set.
+    "selection_manifest.json",
 )
 
 # Anything that would mean credential material leaked into an artifact.
@@ -72,13 +74,20 @@ def _load_manifest(export_dir: Path) -> dict:
 def _expected_service(export_dir: Path, override: str, records: list) -> str:
     """Resolve which source_service this export is supposed to carry.
 
-    Explicit --service wins. Otherwise trust export_summary.json's
+    Explicit --service wins. A selection manifest means the directory is a
+    deliberate cross-provider merge, so no single service is expected and
+    the uniformity check is skipped. Otherwise trust export_summary.json's
     `services` when it names exactly one provider. Failing that, fall back
     to the majority value in the records, which turns a stray mismatch into
     a pinpointed failure instead of flagging every single file.
     """
     if override:
         return override
+
+    # A merged set legitimately mixes providers; flagging every record
+    # against the majority provider would be pure noise.
+    if (export_dir / "selection_manifest.json").exists():
+        return ""
 
     summary_path = export_dir / "export_summary.json"
     if summary_path.exists():
