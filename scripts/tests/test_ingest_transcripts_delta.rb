@@ -27,6 +27,16 @@ INGEST = File.expand_path("../ingest_transcripts.rb", __dir__)
 # `$PROGRAM_NAME == __FILE__ || TRANSCRIPT_INGEST=1`, and neither holds here.
 load INGEST
 
+# Snapshot STATS the instant the load finishes. The load-time guard below has
+# to assert on *this*, not on live STATS: STATS is a global that the planner
+# tests in this same process legitimately mutate, so under a random seed that
+# schedules a planner test first, reading live STATS would report another
+# test's fixtures as a load-time side effect and fail for the wrong reason.
+STATS_AFTER_LOAD = {
+  cards: STATS[:cards].dup,
+  created: STATS[:created], updated: STATS[:updated], errors: STATS[:errors]
+}.freeze
+
 # ------------------------------------------------------------
 # 1. The load-time guard
 # ------------------------------------------------------------
@@ -35,9 +45,10 @@ class TestLoadTimeGuard < Minitest::Test
     # If the guard were `defined?(Card)` (or absent), merely loading the script
     # under Decko would ingest. The proof it did not run here: no card was
     # planned or written during `load INGEST` above.
-    assert_empty STATS[:cards],
+    assert_empty STATS_AFTER_LOAD[:cards],
                  "loading the script must not plan or write any card"
-    assert_equal 0, STATS[:created] + STATS[:updated] + STATS[:errors]
+    assert_equal 0, STATS_AFTER_LOAD[:created] + STATS_AFTER_LOAD[:updated] +
+                    STATS_AFTER_LOAD[:errors]
   end
 
   def test_run_requested_is_opt_in_only
@@ -399,6 +410,12 @@ class TestChunkAndOrphanClassification < Minitest::Test
        skipped_unchanged].each { |k| STATS[k] = 0 }
   end
 
+  # Leave the shared global as we found it, so no other test in this process
+  # observes this class's fixtures.
+  def teardown
+    STATS[:cards].clear
+  end
+
   def tr(id:, name:, date:, service: "fireflies.ai")
     { transcript_id: id, meeting_name: name, date: date, source_service: service }
   end
@@ -478,7 +495,84 @@ class TestChunkAndOrphanClassification < Minitest::Test
 
     c = chunk_changes(ts, live, planned).first
     assert c[:index_already_consistent]
-    assert_match(/ALREADY stranded/, c[:note])
+    # Under the default keep policy the note explains preservation rather than
+    # stranding; the "already stranded" wording belongs to the review policy.
+    assert_match(/preserved as-is/, c[:note])
+    assert_match(/already lists only the planned chunks/, c[:note])
+  end
+
+  # ------------------------------------------------------------
+  # Keep-stale-chunks policy (in-process, default = keep)
+  # ------------------------------------------------------------
+  def test_keep_policy_is_the_default
+    assert KEEP_STALE_CHUNKS,
+           "keeping stale chunks must be the default: losing content is " \
+           "worse than duplicating it"
+    assert_equal "keep", STALE_CHUNK_POLICY
+  end
+
+  def test_shrink_is_not_blocking_under_keep_policy
+    ts = [tr(id: "t1", name: "Standup", date: "2026-01-02")]
+    assign_transcript_labels(ts)
+    live = (1..5).map { |i| "#{base}+chunk-#{i}" } << base
+    planned = (1..3).map { |i| "#{base}+chunk-#{i}" } << base
+    STATS[:cards] = planned.map { |n| { name: n, action: "update" } }
+
+    c = chunk_changes(ts, live, planned).first
+    refute c[:blocking], "a shrink must not block a write under keep policy"
+    assert_equal "keep", c[:stale_chunk_policy]
+    assert c[:stale_chunks_preserved]
+  end
+
+  def test_keep_policy_still_names_every_stale_chunk_card
+    # Non-blocking must never mean invisible: the whole point of keeping is
+    # that a reviewer can still see what was left behind.
+    ts = [tr(id: "t1", name: "Standup", date: "2026-01-02")]
+    assign_transcript_labels(ts)
+    live = (1..5).map { |i| "#{base}+chunk-#{i}" } << base
+    planned = (1..3).map { |i| "#{base}+chunk-#{i}" } << base
+    STATS[:cards] = planned.map { |n| { name: n, action: "update" } }
+
+    c = chunk_changes(ts, live, planned).first
+    assert_equal ["#{base}+chunk-4", "#{base}+chunk-5"], c[:stale_chunk_cards]
+    assert_equal 5, c[:live_chunks]
+    assert_equal(-2, c[:delta])
+    assert_equal "shrink", c[:direction]
+  end
+
+  def test_keep_policy_note_promises_no_deletion
+    ts = [tr(id: "t1", name: "Standup", date: "2026-01-02")]
+    assign_transcript_labels(ts)
+    live = (1..4).map { |i| "#{base}+chunk-#{i}" } << base
+    planned = (1..2).map { |i| "#{base}+chunk-#{i}" } << base
+    STATS[:cards] = planned.map { |n| { name: n, action: "update" } }
+
+    note = chunk_changes(ts, live, planned).first[:note]
+    assert_match(/not\s+deleted, re-filed or rewritten/, note)
+    assert_match(/duplicat/i, note)
+  end
+
+  def test_no_destructive_card_operation_exists_in_the_script
+    # The policy is only credible if there is no code that could remove a
+    # card. Assert on the source: the only persistence calls are create!/
+    # update!, and no delete/destroy/trash-assignment path exists.
+    src = File.read(INGEST)
+    code = src.lines.reject { |l| l.strip.start_with?("#") }.join
+
+    %w[
+      destroy
+      delete_all
+      Card.delete
+      .delete!
+      update_attributes
+    ].each do |forbidden|
+      refute_includes code, forbidden,
+                      "#{forbidden} must not appear: stale chunks are never removed"
+    end
+    refute_match(/\.trash\s*=/, code, "nothing may move a card to the trash")
+    refute_match(/\btrash!/, code, "nothing may trash a card")
+    # Only reads of `trash` (skipping already-trashed cards) are allowed.
+    assert_match(/card\.trash/, code)
   end
 
   def test_stale_chunk_orphans_are_classified_and_only_labelled
@@ -493,8 +587,14 @@ class TestChunkAndOrphanClassification < Minitest::Test
     assert_equal base, classified.first[:base_card]
 
     summary = orphan_summary(classified)
-    assert_equal 1, summary[:needs_attention]
-    assert_equal ["#{base}+chunk-2"], summary[:stale_chunks]
+    # Default policy is keep: the stale chunk card is still named in the
+    # report, but it is not something to decide before a write.
+    assert_equal "keep", summary[:stale_chunk_policy]
+    assert_equal 0, summary[:needs_attention],
+                 "under the keep policy a stale chunk must not demand attention"
+    assert_equal ["#{base}+chunk-2"], summary[:stale_chunks],
+                 "the stale chunk card must stay visible in the report"
+    assert summary[:stale_chunks_preserved]
     assert_equal 0, summary[:unexpected]
   end
 
@@ -724,6 +824,95 @@ class TestDryRunPlanning < Minitest::Test
   def test_non_transcript_files_are_declared
     assert_includes NON_TRANSCRIPT_FILES, "export_summary.json"
     assert_includes NON_TRANSCRIPT_FILES, "verification_report.json"
+  end
+end
+
+# ------------------------------------------------------------
+# 8. The stale-chunk policy, end to end through the report
+# ------------------------------------------------------------
+# These drive the script as a subprocess so the real env parsing and the real
+# report serialization are exercised, including the review (=0) branch, which
+# the in-process tests cannot reach because the constant is frozen at load.
+class TestStaleChunkPolicyReport < Minitest::Test
+  def payload(name:, date:, id: "t1", text: "alice: hi\nbob: hey")
+    { "transcript_id" => id, "meeting_name" => name, "date" => date,
+      "source_service" => "fireflies.ai", "duration_minutes" => 30,
+      "participants" => ["alice"], "transcript_text" => text }
+  end
+
+  def delta(extra_env = {})
+    Dir.mktmpdir do |dir|
+      File.write("#{dir}/a.json",
+                 JSON.dump(payload(name: "Standup", date: "2026-01-02")))
+      report = File.join(dir, "delta.json")
+      out, err, status = Open3.capture3(
+        { "TRANSCRIPT_INGEST" => "1", "TRANSCRIPT_INGEST_DRY_RUN" => "1",
+          "TRANSCRIPT_INGEST_DELTA" => "1", "TRANSCRIPT_EXPORT_DIR" => dir,
+          "TRANSCRIPT_INGEST_REPORT" => report }.merge(extra_env),
+        RbConfig.ruby, INGEST
+      )
+      assert status.success?, "delta run failed: #{err}\n#{out}"
+      refute_match(/^  Created:|^  Updated:/, out,
+                   "a delta dry run must never report real writes")
+      yield JSON.parse(File.read(report)), out
+    end
+  end
+
+  def test_report_declares_the_keep_policy_by_default
+    delta do |data, out|
+      pol = data["stale_chunk_policy"]
+      assert_equal "keep", pol["policy"]
+      assert_equal "TRANSCRIPT_KEEP_STALE_CHUNKS", pol["env_var"]
+      assert_equal true, pol["keep_stale_chunks"]
+      assert_equal true, pol["preserved"]
+      assert_equal false, pol["destructive_path_exists"]
+      assert_equal false, pol["blocks_write"]
+      assert_match(/duplicat/i, pol["rationale"])
+      assert_match(/stale-chunk policy: keep/, out)
+    end
+  end
+
+  def test_keep_policy_zeroes_the_stale_chunk_blockers
+    delta do |data, _out|
+      wr = data["write_readiness"]
+      assert_equal "keep", wr["stale_chunk_policy"]
+      assert_equal 0, wr["blocking"]["shrinking_chunk_transcripts"]
+      assert_equal 0, wr["blocking"]["stale_chunk_cards"]
+      # Still acknowledged, never silently dropped.
+      refute_nil wr["acknowledged"]
+      assert_match(/PRESERVED and do not block a write/, wr["note"])
+      assert_match(/never deleted or re-filed/, wr["note"])
+    end
+  end
+
+  def test_review_policy_restores_stale_chunks_as_blockers
+    delta("TRANSCRIPT_KEEP_STALE_CHUNKS" => "0") do |data, _out|
+      assert_equal "review", data["stale_chunk_policy"]["policy"]
+      assert_equal false, data["stale_chunk_policy"]["keep_stale_chunks"]
+      assert_equal "review", data["write_readiness"]["stale_chunk_policy"]
+      assert_match(/POLICY=review/, data["write_readiness"]["note"])
+      # Even under review nothing is removed.
+      assert_equal false, data["stale_chunk_policy"]["destructive_path_exists"]
+      assert_equal true, data["stale_chunk_policy"]["preserved"]
+    end
+  end
+
+  def test_policy_accepts_the_usual_falsey_spellings
+    %w[0 false no off review].each do |v|
+      delta("TRANSCRIPT_KEEP_STALE_CHUNKS" => v) do |data, _out|
+        assert_equal "review", data["stale_chunk_policy"]["policy"],
+                     "#{v.inspect} must select the review policy"
+      end
+    end
+  end
+
+  def test_policy_defaults_to_keep_on_blank_or_unknown_values
+    ["", "   ", "1", "yes", "keep"].each do |v|
+      delta("TRANSCRIPT_KEEP_STALE_CHUNKS" => v) do |data, _out|
+        assert_equal "keep", data["stale_chunk_policy"]["policy"],
+                     "#{v.inspect} must keep stale chunks"
+      end
+    end
   end
 end
 

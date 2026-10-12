@@ -78,6 +78,7 @@ would make *merely loading* the file write cards to the live deck.
 | `TRANSCRIPT_INGEST_DRY_RUN=1` | Plans and reports every card that *would* be written; no database writes. |
 | `TRANSCRIPT_INGEST_DELTA=1` | Report-only delta planner: hashes each rendered card against the live card and classifies it skip-unchanged / update / create. **Requires `TRANSCRIPT_INGEST_DRY_RUN=1` and aborts before any database access otherwise** — there is no delta write path. |
 | `TRANSCRIPT_INGEST_REPORT=<path>` | Writes a machine-readable JSON plan/result report. |
+| `TRANSCRIPT_KEEP_STALE_CHUNKS` | Stale-chunk policy. **Default `1` (keep).** Preserves every live chunk card the new plan no longer covers and treats the shrink as report-only, so it does not block a write mode. Set `0` (or `false`/`no`/`off`/`review`) to restore the earlier behaviour where a shrink blocks pending review. |
 
 Preview a run without touching the deck:
 
@@ -91,6 +92,31 @@ Delta mode also labels — never deletes or re-files — orphaned live cards, pe
 chunk changes (naming the exact stale and new chunk cards, so a transcript that now needs
 fewer chunks is explicit rather than a bare count), and a name-binding manifest.
 `report["write_readiness"]` summarises what still blocks a write mode.
+
+##### Stale chunks are kept, not pruned
+
+When a re-transcribed meeting needs fewer chunk cards than the deck already holds, the
+leftover cards above the new high-water mark are classified `stale_chunk`. **The default
+policy is to keep them.** The two failure modes are not symmetrical: duplicated transcript
+text is an annoyance a later pass can tidy up, while dropping a chunk card destroys the only
+copy of whatever was in it. Risking duplication is the deliberate choice.
+
+Under the default `TRANSCRIPT_KEEP_STALE_CHUNKS=1`:
+
+- every stale chunk card is still named, in `report["stale_chunk_policy"]["stale_chunk_cards"]`,
+  in `report["orphan_summary"]["stale_chunks"]`, in each `report["chunk_shrinks"][*]` entry,
+  and on the console as `KEPT: <card>` — non-blocking never means invisible;
+- `report["write_readiness"]["blocking"]` reports `0` for both
+  `shrinking_chunk_transcripts` and `stale_chunk_cards`, while
+  `report["write_readiness"]["acknowledged"]` keeps the real counts;
+- the stale cards keep their original text and may duplicate text that also appears in the
+  planned chunks. Accepted.
+
+This setting decides **only whether a shrink blocks a write**. It cannot cause a card to be
+removed under either value: `ingest_transcripts.rb` has no delete, destroy, trash-assignment
+or prune path — the only persistence calls are `Card.create!` and `card.update!`. A test
+(`test_no_destructive_card_operation_exists_in_the_script`) asserts that against the source so
+a destructive path cannot be added unnoticed.
 
 Two correctness fixes ride along with the guards. Card names are now sanitized the same way
 as Mattermost channel names, so a meeting title containing `+` no longer silently becomes

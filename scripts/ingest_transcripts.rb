@@ -48,6 +48,10 @@
 #     - a name-binding manifest: which live card each export binds to
 #     - report["write_readiness"], summarising what still blocks a write mode
 #
+#   Stale chunk cards (the shrink case) are PRESERVED by default; see
+#   TRANSCRIPT_KEEP_STALE_CHUNKS below. Under the default keep policy a
+#   shrink is reported but does not block a write mode.
+#
 # Prerequisites:
 #   - Transcript JSON exports in EXPORT_DIR (produced by export_transcripts.py)
 #   - The RawData cardtype must exist on the wiki
@@ -101,6 +105,36 @@ if DELTA && !DRY_RUN
     database access.
   MSG
 end
+
+# ------------------------------------------------------------
+# Stale-chunk policy
+# ------------------------------------------------------------
+# What to do about a live chunk card that the new plan no longer covers -
+# the shrink case, where a transcript that used to need 5 chunk cards now
+# needs 3 and chunk-4/chunk-5 are left above the high-water mark.
+#
+#   TRANSCRIPT_KEEP_STALE_CHUNKS=1  (keep, THE DEFAULT)
+#     Preserve every stale chunk card exactly as it is. The shrink is still
+#     reported in full - every stale card is named - but it does NOT block a
+#     write mode. Accepted risk: a transcript may be represented by more
+#     chunk cards than it strictly needs, i.e. duplicated text.
+#
+#   TRANSCRIPT_KEEP_STALE_CHUNKS=0  (review)
+#     Treat a shrink as a blocker and require an explicit decision before
+#     any write mode. This was the previous behaviour.
+#
+# Keep is the default because the two failure modes are not symmetrical:
+# duplicated transcript text is an annoyance a later pass can tidy up, while
+# dropping a chunk card destroys the only copy of whatever was in it.
+#
+# IMPORTANT: this setting decides only whether a shrink BLOCKS A WRITE. It
+# does not - and cannot - cause a card to be removed. There is no delete,
+# destroy, trash or prune path for chunk cards in this script under either
+# setting; the only database calls are Card.create! and card.update!.
+KEEP_STALE_CHUNKS = !%w[0 false no off review].include?(
+  ENV.fetch("TRANSCRIPT_KEEP_STALE_CHUNKS", "1").strip.downcase
+)
+STALE_CHUNK_POLICY = KEEP_STALE_CHUNKS ? "keep" : "review"
 
 # Files that live in an export dir but are not transcript payloads.
 NON_TRANSCRIPT_FILES = %w[export_summary.json verification_report.json].freeze
@@ -519,14 +553,20 @@ end
 def orphan_summary(classified)
   by_class = classified.group_by { |o| o[:classification] }
                        .transform_values(&:length)
+  stale = classified.select { |o| o[:classification] == "stale_chunk" }
+                    .map { |o| o[:name] }.sort
   {
     total: classified.length,
     by_classification: by_class,
-    # The only class that needs a decision before a delta write: a live chunk
-    # card that the new plan no longer covers.
-    stale_chunks: classified.select { |o| o[:classification] == "stale_chunk" }
-                            .map { |o| o[:name] }.sort,
-    needs_attention: classified.count { |o| o[:classification] == "stale_chunk" },
+    # Always listed, under either policy: the reviewer sees every stale chunk
+    # card by name whether or not it blocks.
+    stale_chunks: stale,
+    stale_chunk_policy: STALE_CHUNK_POLICY,
+    stale_chunks_preserved: true,
+    # Under the keep policy a stale chunk card is an accepted, preserved
+    # leftover rather than a decision to make, so it needs no attention
+    # before a write. Under review it is the one class that does.
+    needs_attention: (KEEP_STALE_CHUNKS ? 0 : stale.length),
     unexpected: classified.count { |o| o[:classification] == "unexpected_planned_chunk" }
   }
 end
@@ -573,6 +613,13 @@ def chunk_changes(transcripts, live_names, planned_names)
     note =
       if stale.empty?
         "new chunk cards only; the index card gains links and strands nothing"
+      elsif KEEP_STALE_CHUNKS
+        "KEEP policy: these chunk cards are preserved as-is and are not " \
+        "deleted, re-filed or rewritten. The index card " \
+        "#{index_consistent ? 'already lists only the planned chunks' : 'will be rewritten to drop these chunk links'}, " \
+        "so the stale cards remain in the deck holding their original text, " \
+        "possibly duplicating text that is also in the planned chunks. " \
+        "Accepted in exchange for never dropping content."
       elsif index_consistent
         "the live index card already lists only the planned chunks, so these " \
         "chunk cards are ALREADY stranded in the live deck - a delta write " \
@@ -591,7 +638,10 @@ def chunk_changes(transcripts, live_names, planned_names)
       new_chunk_cards: added.map { |i| "#{t[:card_name]}+chunk-#{i}" },
       live_index_gaps: ((1..(live.max || 0)).to_a - live),
       index_card: t[:card_name], index_card_action: index_action,
-      index_already_consistent: index_consistent, note: note }
+      index_already_consistent: index_consistent,
+      stale_chunk_policy: STALE_CHUNK_POLICY,
+      stale_chunks_preserved: true,
+      blocking: (stale.any? && !KEEP_STALE_CHUNKS), note: note }
   end
 end
 
@@ -942,6 +992,8 @@ def run!
   binding_manifest = DELTA ? name_binding_manifest(transcripts, live_names, orphans) : []
   name_conflicts = DELTA ? binding_manifest.reject { |m| m[:live_present] } : []
   shrinks = chunk_changes_list.select { |c| c[:stale_chunk_cards].any? }
+  stale_chunk_names = shrinks.flat_map { |c| c[:stale_chunk_cards] }.sort
+  stale_chunk_total = stale_chunk_names.length
 
   puts "\n#{'=' * 60}"
   if DRY_RUN
@@ -968,6 +1020,9 @@ def run!
     puts "  skipped unchanged: #{STATS[:skipped_unchanged]}"
     puts "  would create:      #{STATS[:planned_create]}"
     puts "  would update:      #{STATS[:planned_update]}"
+    puts "  stale-chunk policy: #{STALE_CHUNK_POLICY} " \
+         "(TRANSCRIPT_KEEP_STALE_CHUNKS=#{KEEP_STALE_CHUNKS ? '1' : '0'}) - " \
+         "#{KEEP_STALE_CHUNKS ? 'stale chunk cards are preserved and do not block a write' : 'shrinks block a write pending review'}"
 
     puts "\nOrphaned live cards: #{orphans.length} (report-only, nothing is deleted)"
     orphan_stats[:by_classification].sort_by { |_, v| -v }.each do |cls, n|
@@ -985,17 +1040,35 @@ def run!
     end
 
     if shrinks.any?
-      puts "\n#{'!' * 60}"
-      puts "SHRINKING CHUNKS - #{shrinks.length} transcript(s) would strand chunk cards:"
-      shrinks.each do |c|
-        puts "  #{c[:card_name]}: #{c[:live_chunks]} live -> #{c[:planned_chunks]} planned"
-        c[:stale_chunk_cards].each { |n| puts "    STALE: #{n}" }
-        puts "    #{c[:note]}"
+      if KEEP_STALE_CHUNKS
+        puts "\n#{'-' * 60}"
+        puts "SHRINKING CHUNKS - #{shrinks.length} transcript(s), " \
+             "#{stale_chunk_total} stale chunk card(s) [policy=keep]"
+        shrinks.each do |c|
+          puts "  #{c[:card_name]}: #{c[:live_chunks]} live -> #{c[:planned_chunks]} planned"
+          c[:stale_chunk_cards].each { |n| puts "    KEPT: #{n}" }
+        end
+        puts "These cards are PRESERVED exactly as they are: not deleted,"
+        puts "not pruned, not re-filed. Their text stays in the deck and may"
+        puts "duplicate text in the planned chunks - accepted, because losing"
+        puts "content is worse than duplicating it."
+        puts "Policy: TRANSCRIPT_KEEP_STALE_CHUNKS=1 (default). This does NOT"
+        puts "block a write mode. Set =0 to treat shrinks as blockers."
+        puts "-" * 60
+      else
+        puts "\n#{'!' * 60}"
+        puts "SHRINKING CHUNKS - #{shrinks.length} transcript(s) would strand chunk cards:"
+        shrinks.each do |c|
+          puts "  #{c[:card_name]}: #{c[:live_chunks]} live -> #{c[:planned_chunks]} planned"
+          c[:stale_chunk_cards].each { |n| puts "    STALE: #{n}" }
+          puts "    #{c[:note]}"
+        end
+        puts "A delta write would leave these cards in place and unreferenced."
+        puts "This is reported, not acted on: nothing is deleted or re-filed."
+        puts "Decide before enabling write mode, or set"
+        puts "TRANSCRIPT_KEEP_STALE_CHUNKS=1 to keep them and proceed."
+        puts "!" * 60
       end
-      puts "A delta write would leave these cards in place and unreferenced."
-      puts "This is reported, not acted on: nothing is deleted or re-filed."
-      puts "Decide before enabling write mode."
-      puts "!" * 60
     end
 
     notable = binding_manifest.select { |m| m[:notable] }
@@ -1063,20 +1136,58 @@ def run!
       report[:name_binding_manifest] = binding_manifest
       report[:chunk_count_changes] = chunk_changes_list
       report[:chunk_shrinks] = shrinks
+      report[:stale_chunk_policy] = {
+        policy: STALE_CHUNK_POLICY,
+        env_var: "TRANSCRIPT_KEEP_STALE_CHUNKS",
+        keep_stale_chunks: KEEP_STALE_CHUNKS,
+        preserved: true,
+        destructive_path_exists: false,
+        shrinking_chunk_transcripts: shrinks.length,
+        stale_chunk_cards_total: stale_chunk_total,
+        stale_chunk_cards: stale_chunk_names,
+        blocks_write: (!KEEP_STALE_CHUNKS && stale_chunk_total.positive?),
+        rationale: (KEEP_STALE_CHUNKS ?
+          "Stale chunk cards are kept. Risking duplicated transcript text is " \
+          "preferred over any chance of cutting content that only exists in " \
+          "a stale chunk card. Nothing is deleted, pruned or re-filed." :
+          "Shrinks are treated as blockers pending review. Even here nothing " \
+          "is deleted: the script has no destructive path.")
+      }
       # One place a reviewer can look to answer "is this safe to write yet?".
       report[:write_readiness] = {
         write_path_implemented: false,
         baseline_compared: card_api_available?,
+        stale_chunk_policy: STALE_CHUNK_POLICY,
         blocking: {
-          shrinking_chunk_transcripts: shrinks.length,
-          stale_chunk_cards: shrinks.sum { |c| c[:stale_chunk_cards].length },
+          # Under the keep policy a shrink is an accepted outcome, not a
+          # blocker: the stale cards stay exactly where they are.
+          shrinking_chunk_transcripts: (KEEP_STALE_CHUNKS ? 0 : shrinks.length),
+          stale_chunk_cards: (KEEP_STALE_CHUNKS ? 0 : stale_chunk_total),
           unexpected_planned_chunks: orphan_stats[:unexpected],
           no_live_baseline: card_api_available? ? 0 : 1
         },
-        stale_chunk_cards: shrinks.flat_map { |c| c[:stale_chunk_cards] }.sort,
+        # Reported under either policy so the shrink never becomes invisible.
+        acknowledged: {
+          shrinking_chunk_transcripts: shrinks.length,
+          stale_chunk_cards: stale_chunk_total
+        },
+        stale_chunk_cards: stale_chunk_names,
         note: "Report-only. Orphans and stale chunks are labelled, never " \
               "deleted or re-filed. Delta mode has no write path and aborts " \
               "unless TRANSCRIPT_INGEST_DRY_RUN=1." +
+              (if KEEP_STALE_CHUNKS
+                 " STALE-CHUNK POLICY=keep (TRANSCRIPT_KEEP_STALE_CHUNKS): " \
+                 "the #{stale_chunk_total} stale chunk card(s) above are " \
+                 "PRESERVED and do not block a write. They stay in the deck " \
+                 "with their original text, which may duplicate text in the " \
+                 "planned chunks. Duplication is preferred over any risk of " \
+                 "dropping content. Set TRANSCRIPT_KEEP_STALE_CHUNKS=0 to " \
+                 "treat a shrink as a blocker again."
+               else
+                 " STALE-CHUNK POLICY=review: the #{stale_chunk_total} stale " \
+                 "chunk card(s) above block a write mode until decided. Set " \
+                 "TRANSCRIPT_KEEP_STALE_CHUNKS=1 to preserve them and proceed."
+               end) +
               (card_api_available? ? "" : " WARNING: no Card API in this " \
                "process, so NOTHING was compared against the live deck. " \
                "Every card below is reported as a create and every " \
