@@ -126,6 +126,27 @@ this branch as `RawData+transcripts` while the script's constant reads `Raw Data
 — the same Decko key, different spellings — which is why every identity comparison in the
 planner goes through `name_key` rather than raw strings.
 
+##### Reading the orphan count: `vanished_generations`
+
+`vanished_transcript` means only *no exported transcript maps to this card*. That single label
+covers several very different situations, and a bare count of it reads far worse than the
+reality: it invites "we lost N meetings" when most of those cards were never lost at all.
+`report["vanished_generations"]` therefore splits the label into naming generations:
+
+| Generation | What it means |
+|---|---|
+| `undated_legacy` | The card has no trailing `YYYY-MM-DD` part, so it predates dated naming or comes from a corpus that never used it. Usually an empty stub or a foreign corpus. |
+| `date_shifted` | The series *is* being re-ingested and a planned card for it sits within `DATE_SHIFT_TOLERANCE_DAYS` (3). An exporter date/timezone change filing the same meeting under an adjacent date — duplication, not loss. |
+| `series_renamed` | This series is not planned, but another series is planned on exactly this date. Very likely the same meeting re-titled upstream. |
+| `series_active` | The series is still ingested, but no planned date is near this one. A date genuinely dropped out of an otherwise live series. |
+| `unmatched` | No planned card for this series and nothing planned on that date. The real "we have no source for this" case. |
+
+Only `unmatched` is an unexplained gap, so the summary names those cards in full
+(`unmatched_cards`) and on the console, alongside `date_shifted_cards`. This is pure
+labelling derived from the planned names: it reads no card content, contacts nothing, and is
+strictly additive — `orphan_summary` counts are byte-identical with or without it, pinned by
+`test_generation_labels_never_change_the_orphan_classification_counts`.
+
 ### Publications and books
 
 | Script | What it does |

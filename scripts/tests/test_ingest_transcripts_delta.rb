@@ -916,3 +916,151 @@ class TestStaleChunkPolicyReport < Minitest::Test
   end
 end
 
+# ------------------------------------------------------------
+# Vanished-transcript generation sub-classification (report only)
+# ------------------------------------------------------------
+# "vanished_transcript" is one label over several very different situations.
+# These tests pin the sub-classification that tells them apart, because the
+# difference drives the pre-write decision: an exporter date shift duplicates
+# content, whereas an unmatched card is the only copy there is.
+class VanishedGenerationTest < Minitest::Test
+  PARENT = "Raw Data+transcripts"
+
+  def card(series, date = nil, chunk: nil)
+    n = date ? "#{PARENT}+#{series}+#{date}" : "#{PARENT}+#{series}"
+    chunk ? "#{n}+chunk-#{chunk}" : n
+  end
+
+  def vanished(name, planned)
+    by_series, by_date = series_date_index(planned)
+    vanished_generation(name, by_series, by_date)
+  end
+
+  def test_a_card_with_no_date_part_is_the_undated_legacy_generation
+    got = vanished(card("Standup"), [card("Standup", "2026-01-02")])
+    assert_equal "undated_legacy", got[:generation]
+    assert_nil got[:date]
+    assert_match(/pre-date naming generation/, got[:detail])
+  end
+
+  def test_a_multi_part_undated_name_is_still_undated_legacy
+    # A foreign corpus that never used dated names: the trailing part is not
+    # a date, so the whole thing is the series.
+    got = vanished("#{PARENT}+AGI 26+vid123+full", [card("Standup", "2026-01-02")])
+    assert_equal "undated_legacy", got[:generation]
+    assert_equal "AGI 26+vid123+full", got[:series]
+  end
+
+  def test_a_one_day_shift_in_an_active_series_is_date_shifted
+    # The exact observed case: the orphan sits one day after the planned date.
+    got = vanished(card("Weekly", "2026-03-13"), [card("Weekly", "2026-03-12")])
+    assert_equal "date_shifted", got[:generation]
+    assert_equal "2026-03-12", got[:nearest_planned_date]
+    assert_equal 1, got[:date_offset_days]
+    assert_match(/not lost content/, got[:detail])
+  end
+
+  def test_the_shift_window_is_bounded_and_falls_back_to_series_active
+    planned = [card("Weekly", "2026-03-01")]
+    assert_equal "date_shifted",
+                 vanished(card("Weekly", "2026-03-04"), planned)[:generation],
+                 "3 days is inside the tolerance"
+    outside = vanished(card("Weekly", "2026-03-05"), planned)
+    assert_equal "series_active", outside[:generation],
+                 "4 days is outside the tolerance"
+    # Even outside the window the evidence is reported, not dropped.
+    assert_equal "2026-03-01", outside[:nearest_planned_date]
+    assert_equal 4, outside[:date_offset_days]
+  end
+
+  def test_the_shift_is_direction_agnostic
+    %w[2026-03-11 2026-03-13].each do |d|
+      assert_equal "date_shifted",
+                   vanished(card("Weekly", d), [card("Weekly", "2026-03-12")])[:generation]
+    end
+  end
+
+  def test_an_unplanned_series_sharing_a_date_is_series_renamed
+    # Old title retired, a different series is planned on exactly that date.
+    got = vanished(card("Old Weekly Sync", "2026-03-26"),
+                   [card("Meeting @ Elowyn AI", "2026-03-26")])
+    assert_equal "series_renamed", got[:generation]
+    assert_match(/re-titled/, got[:detail])
+    refute_empty got[:planned_series_on_date]
+  end
+
+  def test_a_card_with_no_series_and_no_date_in_the_plan_is_unmatched
+    got = vanished(card("Gone Forever", "2026-03-03"),
+                   [card("Weekly", "2026-04-01")])
+    assert_equal "unmatched", got[:generation]
+    assert_match(/no planned card for this series/, got[:detail])
+  end
+
+  def test_a_chunk_cards_generation_follows_its_base_card
+    # The chunk suffix must not be mistaken for the series or the date.
+    got = vanished(card("Weekly", "2026-03-13", chunk: 2), [card("Weekly", "2026-03-12")])
+    assert_equal "date_shifted", got[:generation]
+    assert_equal "Weekly", got[:series]
+    assert_equal "2026-03-13", got[:date]
+  end
+
+  def test_a_malformed_date_cannot_raise
+    # Nothing in a report path may blow up on bad data.
+    got = vanished(card("Weekly", "2026-13-99"), [card("Weekly", "2026-03-12")])
+    refute_nil got[:generation]
+  end
+
+  def test_annotation_labels_only_vanished_entries_and_mutates_nothing_else
+    planned = [card("Weekly", "2026-03-12")]
+    classified = [
+      { name: card("Weekly", "2026-03-13"), classification: "vanished_transcript" },
+      { name: card("Weekly", "2026-03-12", chunk: 2), classification: "stale_chunk" }
+    ]
+    annotate_vanished_generations(classified, planned)
+
+    assert_equal "date_shifted", classified[0][:generation]
+    assert_nil classified[1][:generation],
+               "a stale_chunk must not be given a vanished generation"
+    assert_equal "stale_chunk", classified[1][:classification],
+                 "annotation must not change any existing classification"
+  end
+
+  def test_the_summary_counts_generations_and_names_what_matters
+    planned = [card("Weekly", "2026-03-12")]
+    classified = [
+      { name: card("Weekly", "2026-03-13"), classification: "vanished_transcript" },
+      { name: card("Legacy"), classification: "vanished_transcript" },
+      { name: card("Gone", "2026-01-01"), classification: "vanished_transcript" }
+    ]
+    annotate_vanished_generations(classified, planned)
+    summary = vanished_generation_summary(classified)
+
+    assert_equal 3, summary[:total]
+    assert_equal 1, summary[:by_generation]["date_shifted"]
+    assert_equal 1, summary[:by_generation]["undated_legacy"]
+    assert_equal 1, summary[:by_generation]["unmatched"]
+    # The two classes a reviewer must see by name.
+    assert_equal [card("Gone", "2026-01-01")], summary[:unmatched_cards]
+    assert_equal [card("Weekly", "2026-03-13")], summary[:date_shifted_cards]
+    assert_match(/Report-only/, summary[:note])
+  end
+
+  def test_the_summary_is_absent_when_nothing_vanished
+    assert_nil vanished_generation_summary(
+      [{ name: card("Weekly", "2026-03-12", chunk: 2), classification: "stale_chunk" }]
+    )
+  end
+
+  def test_generation_labels_never_change_the_orphan_classification_counts
+    planned = [card("Weekly", "2026-03-12")]
+    classified = [
+      { name: card("Weekly", "2026-03-13"), classification: "vanished_transcript" },
+      { name: card("Legacy"), classification: "vanished_transcript" }
+    ]
+    before = orphan_summary(classified)[:by_classification].dup
+    annotate_vanished_generations(classified, planned)
+    assert_equal before, orphan_summary(classified)[:by_classification],
+                 "sub-classification is additive: it must not reclassify anything"
+  end
+end
+

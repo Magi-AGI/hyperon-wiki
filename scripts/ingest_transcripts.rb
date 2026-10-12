@@ -59,6 +59,7 @@
 require 'json'
 require 'digest'
 require 'set'
+require 'date'
 
 # ============================================================
 # Configuration
@@ -550,6 +551,148 @@ def classify_orphans(orphans, planned_names, transcripts)
   classified
 end
 
+# ------------------------------------------------------------
+# Vanished-transcript generation sub-classification (report only)
+# ------------------------------------------------------------
+# "vanished_transcript" only says *no exported transcript maps to this card*.
+# That one label covers several very different situations, and the difference
+# matters a lot when deciding what to do before a write:
+#
+#   undated_legacy    - the card has no trailing date part at all, so it comes
+#                       from the pre-date naming generation (or from a corpus
+#                       that never used dated names). Usually an empty stub.
+#   date_shifted      - the series IS being re-ingested and a planned card for
+#                       the same series sits within DATE_SHIFT_TOLERANCE_DAYS.
+#                       Strongly suggests an exporter date/timezone change
+#                       rather than lost content: the same meeting is simply
+#                       being filed under an adjacent date.
+#   series_renamed    - the series is not in the plan, but some other series IS
+#                       planned on exactly this date. The meeting is very likely
+#                       the same one re-titled upstream.
+#   series_active     - the series is being re-ingested, but no planned date is
+#                       near this one. A date genuinely dropped out of a series
+#                       that otherwise still exports.
+#   unmatched         - no planned card for this series and nothing planned on
+#                       this date. The real "we have no source for this" case.
+#
+# This is pure labelling derived from the planned names; it reads no card
+# content, contacts nothing, and changes no decision the planner makes. It
+# exists so a reviewer can tell "162 vanished" apart from "162 lost meetings".
+DATE_PART_RE = /\A\d{4}-\d{2}-\d{2}\z/.freeze
+DATE_SHIFT_TOLERANCE_DAYS = 3
+
+# ["Standup","2026-01-02"] -> ["Standup", "2026-01-02"]
+# ["AGI 26","vid","full"]  -> ["AGI 26+vid+full", nil]
+def split_date_part(parts)
+  if parts.length > 1 && DATE_PART_RE.match?(parts.last.to_s)
+    [parts[0..-2].join("+"), parts.last.to_s]
+  else
+    [parts.join("+"), nil]
+  end
+end
+
+# series key => Set of dates, and date => Set of series keys, over a name list.
+def series_date_index(names)
+  by_series = {}
+  by_date = {}
+  names.each do |n|
+    base_parts, = split_chunk_parts(relative_parts(n))
+    series, date = split_date_part(base_parts)
+    next unless date
+
+    skey = name_key(series)
+    (by_series[skey] ||= Set.new) << date
+    (by_date[date] ||= Set.new) << skey
+  end
+  [by_series, by_date]
+end
+
+def days_between(one, other)
+  (Date.parse(one) - Date.parse(other)).to_i.abs
+rescue ArgumentError, TypeError
+  nil
+end
+
+# Nearest planned date for this series, as [distance_in_days, date].
+def nearest_planned_date(date, planned_dates)
+  planned_dates.filter_map { |d| (n = days_between(date, d)) && [n, d] }.min
+end
+
+def vanished_generation(name, planned_by_series, planned_by_date)
+  base_parts, = split_chunk_parts(relative_parts(name))
+  series, date = split_date_part(base_parts)
+  skey = name_key(series)
+
+  return { generation: "undated_legacy", series: series, date: nil,
+           detail: "no trailing date part; pre-date naming generation" } unless date
+
+  planned_dates = planned_by_series[skey]
+  if planned_dates&.any?
+    nearest = nearest_planned_date(date, planned_dates)
+    if nearest && nearest.first <= DATE_SHIFT_TOLERANCE_DAYS
+      return { generation: "date_shifted", series: series, date: date,
+               nearest_planned_date: nearest.last, date_offset_days: nearest.first,
+               detail: "same series is planned #{nearest.first} day(s) away on " \
+                       "#{nearest.last}; looks like an exporter date shift, not lost content" }
+    end
+    return { generation: "series_active", series: series, date: date,
+             nearest_planned_date: nearest&.last, date_offset_days: nearest&.first,
+             detail: "series is still ingested but no planned date is within " \
+                     "#{DATE_SHIFT_TOLERANCE_DAYS} day(s) of #{date}" }
+  end
+
+  other = (planned_by_date[date] || Set.new).reject { |k| k == skey }
+  if other.any?
+    return { generation: "series_renamed", series: series, date: date,
+             planned_series_on_date: other.to_a.sort,
+             detail: "this series is not planned, but #{other.length} other series " \
+                     "is planned on #{date}; likely the same meeting re-titled" }
+  end
+
+  { generation: "unmatched", series: series, date: date,
+    detail: "no planned card for this series and nothing planned on #{date}" }
+end
+
+# Attaches :generation (and its evidence) to every vanished_transcript entry.
+# Report-only: returns the same entries, annotated.
+def annotate_vanished_generations(classified, planned_names)
+  planned_by_series, planned_by_date = series_date_index(planned_names)
+  classified.each do |entry|
+    next unless entry[:classification] == "vanished_transcript"
+
+    info = vanished_generation(entry[:name], planned_by_series, planned_by_date)
+    entry[:generation] = info[:generation]
+    entry[:generation_detail] = info[:detail]
+    entry[:generation_series] = info[:series]
+    entry[:generation_date] = info[:date]
+    entry[:nearest_planned_date] = info[:nearest_planned_date] if info[:nearest_planned_date]
+    entry[:date_offset_days] = info[:date_offset_days] if info[:date_offset_days]
+  end
+end
+
+# Counts per generation, plus the names for the two classes a reviewer should
+# actually look at before a write.
+def vanished_generation_summary(classified)
+  vanished = classified.select { |o| o[:classification] == "vanished_transcript" }
+  return nil if vanished.empty?
+
+  by_gen = vanished.group_by { |o| o[:generation] }.transform_values(&:length)
+  {
+    total: vanished.length,
+    by_generation: by_gen,
+    date_shift_tolerance_days: DATE_SHIFT_TOLERANCE_DAYS,
+    # The only class with no upstream explanation at all.
+    unmatched_cards: vanished.select { |o| o[:generation] == "unmatched" }
+                             .map { |o| o[:name] }.sort,
+    # Same meeting under an adjacent date: fixing the exporter turns each of
+    # these into a plain update instead of a duplicate card.
+    date_shifted_cards: vanished.select { |o| o[:generation] == "date_shifted" }
+                                .map { |o| o[:name] }.sort,
+    note: "Report-only sub-classification of vanished_transcript. Nothing is " \
+          "deleted, re-filed or rewritten on the basis of these labels."
+  }
+end
+
 def orphan_summary(classified)
   by_class = classified.group_by { |o| o[:classification] }
                        .transform_values(&:length)
@@ -987,7 +1130,11 @@ def run!
   live_names = DELTA ? live_descendant_names(PARENT_CARD) : []
   planned_names = STATS[:cards].map { |c| c[:name] }
   orphans = DELTA ? find_orphans(transcripts) : []
+  # Report-only: splits the single "vanished_transcript" label into naming
+  # generations so the count can be read. Must run before orphan_summary.
+  annotate_vanished_generations(orphans, planned_names) if DELTA
   orphan_stats = DELTA ? orphan_summary(orphans) : nil
+  vanished_generations = DELTA ? vanished_generation_summary(orphans) : nil
   chunk_changes_list = DELTA ? chunk_changes(transcripts, live_names, planned_names) : []
   binding_manifest = DELTA ? name_binding_manifest(transcripts, live_names, orphans) : []
   name_conflicts = DELTA ? binding_manifest.reject { |m| m[:live_present] } : []
@@ -1027,6 +1174,22 @@ def run!
     puts "\nOrphaned live cards: #{orphans.length} (report-only, nothing is deleted)"
     orphan_stats[:by_classification].sort_by { |_, v| -v }.each do |cls, n|
       puts "  #{cls.to_s.ljust(26)} #{n}"
+    end
+
+    if vanished_generations
+      puts "\n  of the #{vanished_generations[:total]} vanished_transcript card(s), by naming generation:"
+      vanished_generations[:by_generation].sort_by { |_, v| -v }.each do |gen, n|
+        puts "    #{gen.to_s.ljust(24)} #{n}"
+      end
+      if vanished_generations[:date_shifted_cards].any?
+        puts "    date_shifted means the same series is planned within " \
+             "#{vanished_generations[:date_shift_tolerance_days]} day(s):"
+        puts "    an exporter date/timezone change duplicates rather than loses content."
+      end
+      if vanished_generations[:unmatched_cards].any?
+        puts "    unmatched - no planned series and nothing planned on that date:"
+        vanished_generations[:unmatched_cards].each { |n| puts "      #{n}" }
+      end
     end
 
     puts "\nChunk count changes: #{chunk_changes_list.length}"
@@ -1132,6 +1295,7 @@ def run!
       }
       report[:orphans] = orphans
       report[:orphan_summary] = orphan_stats
+      report[:vanished_generations] = vanished_generations if vanished_generations
       report[:name_binding_conflicts] = name_conflicts
       report[:name_binding_manifest] = binding_manifest
       report[:chunk_count_changes] = chunk_changes_list
