@@ -1064,3 +1064,248 @@ class VanishedGenerationTest < Minitest::Test
   end
 end
 
+
+# ------------------------------------------------------------
+# Foreign-corpus exclusion (report only)
+# ------------------------------------------------------------
+# The AGI 26 corpus is conference-video captions ingested by a different
+# pipeline, so no transcript export can ever match it: ~120 cards permanently
+# "vanished" through no fault of the deck, burying the one genuine gap under 3x
+# their own noise. These tests pin an exclusion that is enumerated (never
+# structural), anchored to the first name part, and that still counts and names
+# every card it excludes.
+class ForeignCorpusTest < Minitest::Test
+  PARENT = "Raw Data+transcripts"
+  # The one irreplaceable card in the real corpus: only the live deck has it.
+  ONLY_COPY = "#{PARENT}+Elowyn AI Meeting - Frag, EARTHwise, Magi+2026-03-03"
+
+  def card(series, date = nil, chunk: nil)
+    n = date ? "#{PARENT}+#{series}+#{date}" : "#{PARENT}+#{series}"
+    chunk ? "#{n}+chunk-#{chunk}" : n
+  end
+
+  def agi(*parts)
+    (["#{PARENT}+AGI 26"] + parts).join("+")
+  end
+
+  def test_the_real_agi26_name_shapes_are_all_matched
+    # The three shapes actually observed, plus the bare corpus parent.
+    [agi("wPwresMk5dg", "full"), agi("qRA1DoMCCSc", "090-120"),
+     agi("Ingestion Notes"), "#{PARENT}+AGI 26"].each do |name|
+      assert_equal "AGI 26", foreign_corpus(name), name
+    end
+  end
+
+  def test_the_stored_rawdata_spelling_matches_identically
+    # The deck stores "RawData+transcripts"; the constant reads "Raw Data".
+    # The rule must go through relative_parts/name_key, not a string prefix.
+    assert_equal "AGI 26",
+                 foreign_corpus("RawData+transcripts+AGI 26+wPwresMk5dg+full")
+  end
+
+  def test_key_normalization_accepts_the_spelling_variants
+    ["AGI-26", "agi 26", "AGI  26"].each do |variant|
+      assert_equal "AGI 26", foreign_corpus("#{PARENT}+#{variant}+vid+full"), variant
+    end
+  end
+
+  def test_a_real_meeting_series_whose_title_contains_agi_is_not_matched
+    # "AGI Strategy Biweekly" IS an exported series. A loose /AGI/ rule would
+    # start eating real meetings; this is the regression that must not happen.
+    assert_nil foreign_corpus(card("AGI Strategy Biweekly", "2026-09-02"))
+    assert_nil foreign_corpus(card("Magi Weekly", "2025-12-29"))
+  end
+
+  def test_the_one_genuinely_missing_meeting_is_never_matched
+    assert_nil foreign_corpus(ONLY_COPY)
+    assert_nil foreign_corpus("#{ONLY_COPY}+chunk-1")
+  end
+
+  def test_undated_legacy_meeting_stubs_are_not_matched
+    # The explicit difference from the rejected "no date part" rule: these are
+    # real meeting series and must stay in the signal.
+    ["MeTTa Study Group", "Meeting @ Elowyn AI", "Lake <> Alison check-in"].each do |s|
+      assert_nil foreign_corpus(card(s)), s
+    end
+  end
+
+  def test_a_name_with_no_relative_parts_returns_nil
+    assert_nil foreign_corpus(PARENT)
+    assert_nil foreign_corpus("RawData+transcripts")
+  end
+
+  def test_a_corpus_match_is_anchored_to_the_first_relative_part
+    assert_nil foreign_corpus("#{PARENT}+Weekly+AGI 26")
+    assert_nil foreign_corpus("#{PARENT}+Weekly+2026-03-12+AGI 26")
+  end
+
+  def test_annotation_labels_only_matching_entries_and_mutates_nothing_else
+    classified = [
+      { name: agi("vid", "full"), classification: "vanished_transcript",
+        generation: "undated_legacy" },
+      { name: ONLY_COPY, classification: "vanished_transcript", generation: "unmatched" },
+      { name: card("Weekly", "2026-03-12", chunk: 2), classification: "stale_chunk" }
+    ]
+    annotate_foreign_corpora(classified)
+
+    assert_equal "AGI 26", classified[0][:foreign_corpus]
+    assert_nil classified[1][:foreign_corpus], "the only copy must stay in the signal"
+    assert_nil classified[2][:foreign_corpus]
+    assert_equal %w[vanished_transcript vanished_transcript stale_chunk],
+                 classified.map { |e| e[:classification] },
+                 "annotation must not change any classification"
+    assert_equal ["undated_legacy", "unmatched", nil],
+                 classified.map { |e| e[:generation] },
+                 "annotation must not change any generation"
+  end
+
+  def test_foreign_corpus_exclusion_never_changes_the_orphan_summary_counts
+    classified = [
+      { name: agi("vid", "full"), classification: "vanished_transcript" },
+      { name: ONLY_COPY, classification: "vanished_transcript" },
+      { name: card("Weekly", "2026-03-12", chunk: 2), classification: "stale_chunk" }
+    ]
+    keys = [:total, :by_classification, :needs_attention, :unexpected]
+    before = orphan_summary(classified).slice(*keys)
+    annotate_foreign_corpora(classified)
+    after = orphan_summary(classified).slice(*keys)
+
+    assert_equal before, after,
+                 "foreign-corpus labelling is additive: raw counts must not move"
+  end
+
+  def test_the_summary_counts_and_names_every_excluded_card
+    classified = [
+      { name: agi("bbb", "full"), classification: "vanished_transcript" },
+      { name: agi("aaa", "000-030"), classification: "vanished_transcript" },
+      { name: ONLY_COPY, classification: "vanished_transcript" }
+    ]
+    annotate_foreign_corpora(classified)
+    summary = foreign_corpus_summary(classified)
+
+    assert_equal 2, summary[:total]
+    assert_equal({ "AGI 26" => 2 }, summary[:by_corpus])
+    assert_equal({ "vanished_transcript" => 2 }, summary[:by_classification])
+    assert_equal ["AGI 26"], summary[:exclusions]
+    assert_equal "TRANSCRIPT_FOREIGN_CORPORA", summary[:env_var]
+    # The "excluded is not invisible" guarantee: every name, verbatim.
+    assert_equal [agi("aaa", "000-030"), agi("bbb", "full")], summary[:cards]
+    assert_match(/Report-only/, summary[:note])
+    assert_match(/EXCLUDED FROM THE READABLE ORPHAN SIGNAL ONLY/, summary[:note])
+    assert_match(/counted and named here/, summary[:note])
+    assert_match(/no classification is changed/, summary[:note])
+  end
+
+  def test_the_summary_is_absent_when_nothing_is_foreign
+    classified = [{ name: ONLY_COPY, classification: "vanished_transcript" }]
+    annotate_foreign_corpora(classified)
+    assert_nil foreign_corpus_summary(classified)
+  end
+
+  def test_the_readable_signal_subtracts_only_the_foreign_cards
+    classified = [
+      { name: agi("v1", "full"), classification: "vanished_transcript" },
+      { name: agi("v2", "full"), classification: "vanished_transcript" },
+      { name: ONLY_COPY, classification: "vanished_transcript" },
+      { name: card("Weekly", "2026-03-13"), classification: "vanished_transcript" },
+      { name: card("Weekly", "2026-03-12", chunk: 2), classification: "stale_chunk" }
+    ]
+    annotate_foreign_corpora(classified)
+    s = orphan_summary(classified)
+
+    assert_equal 4, s[:by_classification]["vanished_transcript"], "raw count unchanged"
+    assert_equal 2, s[:by_classification_excluding_foreign]["vanished_transcript"]
+    assert_equal 1, s[:by_classification_excluding_foreign]["stale_chunk"]
+    assert_equal 2, s[:foreign_corpus]
+  end
+
+  def test_the_vanished_generation_summary_reports_both_totals
+    # AGI 26 cards genuinely have no date part, so they must still count as
+    # undated_legacy: re-labelling them would be a lie about the data.
+    planned = [card("Weekly", "2026-03-12")]
+    classified = [
+      { name: agi("v1", "full"), classification: "vanished_transcript" },
+      { name: agi("v2", "full"), classification: "vanished_transcript" },
+      { name: card("MeTTa Study Group"), classification: "vanished_transcript" },
+      { name: ONLY_COPY, classification: "vanished_transcript" }
+    ]
+    annotate_vanished_generations(classified, planned)
+    annotate_foreign_corpora(classified)
+    summary = vanished_generation_summary(classified)
+
+    assert_equal 4, summary[:total]
+    assert_equal 3, summary[:by_generation]["undated_legacy"], "raw count unchanged"
+    assert_equal 2, summary[:excluding_foreign_corpus][:total]
+    assert_equal 1, summary[:excluding_foreign_corpus][:by_generation]["undated_legacy"]
+    # The one real gap stays named whatever the exclusion does.
+    assert_equal [ONLY_COPY], summary[:unmatched_cards]
+  end
+
+  def test_the_exclusion_list_is_configurable_and_can_be_emptied
+    probe = <<~RUBY
+      puts FOREIGN_CORPORA.inspect
+      puts foreign_corpus("Raw Data+transcripts+AGI 26+vid+full").inspect
+      puts foreign_corpus("Raw Data+transcripts+Foo Corpus+x").inspect
+      puts foreign_corpus(
+        "Raw Data+transcripts+Elowyn AI Meeting - Frag, EARTHwise, Magi+x"
+      ).inspect
+    RUBY
+
+    run = lambda do |value|
+      Dir.mktmpdir do |dir|
+        script = File.join(dir, "probe.rb")
+        File.write(script, "load #{INGEST.inspect}\n#{probe}")
+        out, err, status = Open3.capture3({ "TRANSCRIPT_FOREIGN_CORPORA" => value },
+                                          RbConfig.ruby, script)
+        assert status.success?, "probe failed: #{err}"
+        out.lines.map(&:chomp)
+      end
+    end
+
+    # Disabled: today's behaviour restored exactly.
+    off = run.call("")
+    assert_equal "[]", off[0]
+    assert_equal "nil", off[1], "an empty list must exclude nothing"
+
+    # Semicolon is the separator, so a comma inside a real meeting title is safe.
+    on = run.call("AGI 26;Foo Corpus")
+    assert_equal '["AGI 26", "Foo Corpus"]', on[0]
+    assert_equal '"AGI 26"', on[1]
+    assert_equal '"Foo Corpus"', on[2]
+    assert_equal "nil", on[3], "a comma must not split an entry"
+  end
+
+  def test_the_delta_report_acknowledges_foreign_corpora_without_blocking
+    Dir.mktmpdir do |dir|
+      File.write("#{dir}/a.json", JSON.dump(
+                                    "transcript_id" => "t1", "meeting_name" => "Standup",
+                                    "date" => "2026-01-02", "duration_minutes" => 10,
+                                    "participants" => ["alice"], "transcript_text" => "hello"
+                                  ))
+      report = File.join(dir, "delta.json")
+      out, err, status = Open3.capture3(
+        { "TRANSCRIPT_INGEST" => "1", "TRANSCRIPT_INGEST_DRY_RUN" => "1",
+          "TRANSCRIPT_INGEST_DELTA" => "1", "TRANSCRIPT_EXPORT_DIR" => dir,
+          "TRANSCRIPT_INGEST_REPORT" => report },
+        RbConfig.ruby, INGEST
+      )
+      assert status.success?, "delta run failed: #{err}\n#{out}"
+      data = JSON.parse(File.read(report))
+      wr = data["write_readiness"]
+      # Acknowledged, never blocking: a foreign corpus is a permanent
+      # condition, not a decision someone has to make before a write.
+      assert_equal 0, wr["acknowledged"]["foreign_corpus_cards"]
+      refute wr["blocking"].key?("foreign_corpus_cards"),
+             "a foreign corpus must never block a write"
+    end
+  end
+
+  def test_no_destructive_card_operation_is_introduced
+    src = File.read(INGEST)
+    code = src.lines.reject { |l| l.strip.start_with?("#") }.join
+    %w[delete destroy trash= prune].each do |op|
+      refute_match(/\.#{Regexp.escape(op)}\b/, code,
+                   "the exclusion must not introduce a #{op} path")
+    end
+  end
+end

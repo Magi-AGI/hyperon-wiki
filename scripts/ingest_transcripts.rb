@@ -187,6 +187,28 @@ def name_key(full_name)
   end.join("+")
 end
 
+# ------------------------------------------------------------
+# Foreign corpora
+# ------------------------------------------------------------
+# Some cards under PARENT_CARD were ingested by a different pipeline and no
+# transcript exporter can ever produce them, so they are permanently
+# "vanished" through no fault of the deck. The known case is "AGI 26":
+# conference-video captions, not meeting transcripts, ~120 cards that bury the
+# single genuine gap under 3x their own noise.
+#
+# The list is enumerated, never inferred. A structural rule such as "anything
+# without a trailing date part" would also swallow real undated meeting stubs,
+# and - far worse - would silently hide any FUTURE genuinely lost card that
+# happened to lack a date. An enumerated list can only ever hide names an
+# operator typed in.
+#
+# Semicolon-separated because real meeting titles contain commas (e.g.
+# "Elowyn AI Meeting - Frag, EARTHwise, Magi"). Set to "" to disable.
+FOREIGN_CORPORA = ENV.fetch("TRANSCRIPT_FOREIGN_CORPORA", "AGI 26")
+                     .split(";").map(&:strip).reject(&:empty?).freeze
+# Compared through name_key so "AGI 26" / "AGI-26" / "agi 26" all agree.
+FOREIGN_CORPUS_KEYS = FOREIGN_CORPORA.to_h { |c| [name_key(c), c] }.freeze
+
 # Collects what happened (or would happen) for the final report.
 STATS = {
   created: 0, updated: 0, errors: 0,
@@ -676,6 +698,7 @@ def vanished_generation_summary(classified)
   vanished = classified.select { |o| o[:classification] == "vanished_transcript" }
   return nil if vanished.empty?
 
+  native = vanished.reject { |o| o[:foreign_corpus] }
   by_gen = vanished.group_by { |o| o[:generation] }.transform_values(&:length)
   {
     total: vanished.length,
@@ -689,7 +712,58 @@ def vanished_generation_summary(classified)
     date_shifted_cards: vanished.select { |o| o[:generation] == "date_shifted" }
                                 .map { |o| o[:name] }.sort,
     note: "Report-only sub-classification of vanished_transcript. Nothing is " \
-          "deleted, re-filed or rewritten on the basis of these labels."
+          "deleted, re-filed or rewritten on the basis of these labels.",
+    # Same split with the foreign corpora taken out, so the readable number is
+    # available without the raw one changing.
+    excluding_foreign_corpus: {
+      total: native.length,
+      by_generation: native.group_by { |o| o[:generation] }.transform_values(&:length)
+    }
+  }
+end
+
+# ------------------------------------------------------------
+# Foreign-corpus labelling (report only)
+# ------------------------------------------------------------
+# Which enumerated corpus this card belongs to, by its FIRST relative name
+# part. Anchored to the first part on purpose: "AGI 26" appearing deeper in a
+# name is not a foreign corpus, and a real exported series ("AGI Strategy
+# Biweekly") must never match. Pure string work: no Card, no IO.
+def foreign_corpus(full_name)
+  parts = relative_parts(full_name)
+  return nil if parts.empty?
+
+  FOREIGN_CORPUS_KEYS[name_key(parts.first)]
+end
+
+# Attaches :foreign_corpus where it applies. Report-only, and deliberately
+# leaves every existing key - :classification and :generation included -
+# exactly as it found them.
+def annotate_foreign_corpora(classified)
+  classified.each do |entry|
+    corpus = foreign_corpus(entry[:name])
+    entry[:foreign_corpus] = corpus if corpus
+  end
+end
+
+# Counts AND names every excluded card. Excluded from the readable signal must
+# never mean excluded from the data.
+def foreign_corpus_summary(classified)
+  foreign = classified.select { |o| o[:foreign_corpus] }
+  return nil if foreign.empty?
+
+  {
+    total: foreign.length,
+    by_corpus: foreign.group_by { |o| o[:foreign_corpus] }.transform_values(&:length),
+    by_classification: foreign.group_by { |o| o[:classification] }.transform_values(&:length),
+    exclusions: FOREIGN_CORPORA,
+    env_var: "TRANSCRIPT_FOREIGN_CORPORA",
+    cards: foreign.map { |o| o[:name] }.sort,
+    note: "Report-only. These cards belong to a corpus ingested by a different " \
+          "pipeline, so no transcript export can ever match them. They are " \
+          "EXCLUDED FROM THE READABLE ORPHAN SIGNAL ONLY: every one is counted " \
+          "and named here, no classification is changed, and nothing is " \
+          "deleted, re-filed or rewritten."
   }
 end
 
@@ -698,6 +772,7 @@ def orphan_summary(classified)
                        .transform_values(&:length)
   stale = classified.select { |o| o[:classification] == "stale_chunk" }
                     .map { |o| o[:name] }.sort
+  native = classified.reject { |o| o[:foreign_corpus] }
   {
     total: classified.length,
     by_classification: by_class,
@@ -710,7 +785,12 @@ def orphan_summary(classified)
     # leftover rather than a decision to make, so it needs no attention
     # before a write. Under review it is the one class that does.
     needs_attention: (KEEP_STALE_CHUNKS ? 0 : stale.length),
-    unexpected: classified.count { |o| o[:classification] == "unexpected_planned_chunk" }
+    unexpected: classified.count { |o| o[:classification] == "unexpected_planned_chunk" },
+    # Additive: the same counts with foreign corpora removed. Every key above
+    # keeps the value it had before foreign-corpus labelling existed.
+    foreign_corpus: classified.count { |o| o[:foreign_corpus] },
+    by_classification_excluding_foreign:
+      native.group_by { |o| o[:classification] }.transform_values(&:length)
   }
 end
 
@@ -1133,8 +1213,12 @@ def run!
   # Report-only: splits the single "vanished_transcript" label into naming
   # generations so the count can be read. Must run before orphan_summary.
   annotate_vanished_generations(orphans, planned_names) if DELTA
+  # Report-only: labels cards belonging to a corpus no exporter can produce.
+  # Must also run before the summaries, which read :foreign_corpus.
+  annotate_foreign_corpora(orphans) if DELTA
   orphan_stats = DELTA ? orphan_summary(orphans) : nil
   vanished_generations = DELTA ? vanished_generation_summary(orphans) : nil
+  foreign_corpora_stats = DELTA ? foreign_corpus_summary(orphans) : nil
   chunk_changes_list = DELTA ? chunk_changes(transcripts, live_names, planned_names) : []
   binding_manifest = DELTA ? name_binding_manifest(transcripts, live_names, orphans) : []
   name_conflicts = DELTA ? binding_manifest.reject { |m| m[:live_present] } : []
@@ -1190,6 +1274,24 @@ def run!
         puts "    unmatched - no planned series and nothing planned on that date:"
         vanished_generations[:unmatched_cards].each { |n| puts "      #{n}" }
       end
+    end
+
+    if foreign_corpora_stats
+      puts "\n  foreign corpora excluded from the orphan signal: " \
+           "#{foreign_corpora_stats[:total]} card(s)"
+      foreign_corpora_stats[:by_corpus].sort_by { |_, v| -v }.each do |corpus, n|
+        puts "    #{corpus.to_s.ljust(24)} #{n}"
+      end
+      puts "    (#{foreign_corpora_stats[:env_var]}) ingested by a different pipeline; " \
+           "no transcript export can ever match them."
+      puts "    COUNTED AND NAMED, NOT HIDDEN: full list in the JSON report " \
+           "under \"foreign_corpora\".\"cards\"."
+      puts "    nothing is deleted, re-filed or rewritten on the basis of this exclusion."
+
+      puts "\n  orphans excluding foreign corpora: " \
+           "#{orphan_stats[:total] - foreign_corpora_stats[:total]}"
+      orphan_stats[:by_classification_excluding_foreign]
+        .sort_by { |_, v| -v }.each { |cls, n| puts "    #{cls.to_s.ljust(26)} #{n}" }
     end
 
     puts "\nChunk count changes: #{chunk_changes_list.length}"
@@ -1296,6 +1398,7 @@ def run!
       report[:orphans] = orphans
       report[:orphan_summary] = orphan_stats
       report[:vanished_generations] = vanished_generations if vanished_generations
+      report[:foreign_corpora] = foreign_corpora_stats if foreign_corpora_stats
       report[:name_binding_conflicts] = name_conflicts
       report[:name_binding_manifest] = binding_manifest
       report[:chunk_count_changes] = chunk_changes_list
@@ -1333,7 +1436,10 @@ def run!
         # Reported under either policy so the shrink never becomes invisible.
         acknowledged: {
           shrinking_chunk_transcripts: shrinks.length,
-          stale_chunk_cards: stale_chunk_total
+          stale_chunk_cards: stale_chunk_total,
+          # A foreign corpus is an accepted permanent condition, not a
+          # decision, so it is acknowledged and never blocking.
+          foreign_corpus_cards: foreign_corpora_stats ? foreign_corpora_stats[:total] : 0
         },
         stale_chunk_cards: stale_chunk_names,
         note: "Report-only. Orphans and stale chunks are labelled, never " \

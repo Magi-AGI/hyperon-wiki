@@ -79,6 +79,7 @@ would make *merely loading* the file write cards to the live deck.
 | `TRANSCRIPT_INGEST_DELTA=1` | Report-only delta planner: hashes each rendered card against the live card and classifies it skip-unchanged / update / create. **Requires `TRANSCRIPT_INGEST_DRY_RUN=1` and aborts before any database access otherwise** — there is no delta write path. |
 | `TRANSCRIPT_INGEST_REPORT=<path>` | Writes a machine-readable JSON plan/result report. |
 | `TRANSCRIPT_KEEP_STALE_CHUNKS` | Stale-chunk policy. **Default `1` (keep).** Preserves every live chunk card the new plan no longer covers and treats the shrink as report-only, so it does not block a write mode. Set `0` (or `false`/`no`/`off`/`review`) to restore the earlier behaviour where a shrink blocks pending review. |
+| `TRANSCRIPT_FOREIGN_CORPORA` | Report-only. Semicolon-separated corpora to exclude from the orphan *signal*, matched on the first relative name part. **Default `AGI 26`.** Excluded cards are still counted and named in the report; set `''` to disable. |
 
 Preview a run without touching the deck:
 
@@ -146,6 +147,32 @@ Only `unmatched` is an unexplained gap, so the summary names those cards in full
 labelling derived from the planned names: it reads no card content, contacts nothing, and is
 strictly additive — `orphan_summary` counts are byte-identical with or without it, pinned by
 `test_generation_labels_never_change_the_orphan_classification_counts`.
+
+##### Foreign corpora are excluded from the orphan *signal*, never from the data
+
+Some cards under `Raw Data+transcripts` were ingested by a different pipeline and no
+transcript exporter can ever produce them, so they are permanently "vanished" through no
+fault of the deck. The `AGI 26` corpus (conference-video captions, not meeting transcripts)
+is the known case, and at 120 cards it buried the single genuine gap under 3x its own noise.
+
+`TRANSCRIPT_FOREIGN_CORPORA` (default `AGI 26`, **semicolon**-separated because meeting titles
+contain commas) lists corpora by their first relative name part, compared through `name_key`
+so `AGI 26` / `AGI-26` / `agi 26` all agree. The match is anchored to the *first* part, so a
+real exported series such as `AGI Strategy Biweekly` can never be caught by it.
+
+The list is enumerated rather than inferred on purpose. A structural rule such as "anything
+without a trailing date part" would also swallow the real undated meeting stubs and — far
+worse — would silently hide any *future* genuinely lost card that happened to lack a date. An
+enumerated list can only ever hide names an operator typed in. Set it to `''` to disable.
+
+Excluded never means invisible. Every matched card keeps its original classification and
+generation, stays in `report["orphans"]`, is counted in
+`report["orphan_summary"]["foreign_corpus"]` and
+`report["write_readiness"]["acknowledged"]["foreign_corpus_cards"]`, and is named in full in
+`report["foreign_corpora"]["cards"]`. The readable totals arrive as *additional* keys —
+`orphan_summary["by_classification_excluding_foreign"]` and
+`vanished_generations["excluding_foreign_corpus"]` — so every pre-existing count keeps the
+value it had. Foreign corpora are acknowledged, never blocking.
 
 ### Publications and books
 
