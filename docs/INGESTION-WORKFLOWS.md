@@ -60,7 +60,7 @@ one ingester.
 | Script | What it does |
 |---|---|
 | `scripts/export_transcripts.py` | Pulls transcripts from the Fireflies GraphQL API; writes JSON. |
-| `scripts/export_otter.py` | Pulls transcripts from Otter.ai via an unofficial client (see `scripts/otterai/`). |
+| `scripts/export_otter.py` | **Superseded, do not run.** Pulls transcripts from Otter.ai via an unofficial client (see `scripts/otterai/`). Derives the meeting date with naive `utcfromtimestamp`, which files late-evening meetings one day late — the cause of the deck's 59 duplicate `date_shifted` cards. Use `scripts/export_otter_mcp.py`. |
 | `scripts/ingest_otter_export.py` | Converts *manually* exported Otter `.txt`/`.srt` files into the standard JSON format. Use this when API export is unavailable. |
 | `scripts/parse_readai_reports.py` | Parses Read.ai meeting report data into the same JSON format. |
 | `scripts/ingest_transcripts.rb` | Reads transcript JSON and creates RawData cards. Run under `decko runner`. Gated behind `TRANSCRIPT_INGEST=1`; supports dry-run and a report-only delta planner (see *Transcript ingest safety* below). |

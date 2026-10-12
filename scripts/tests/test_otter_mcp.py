@@ -1460,6 +1460,58 @@ class StartDateParsingTests(unittest.TestCase):
         self.assertEqual(ex.parse_start_date("sometime last spring"), "")
         self.assertEqual(ex.parse_start_date(None), "")
 
+    # --- the 1-day date-shift regression -----------------------------------
+    # The legacy exporter (scripts/export_otter.py) derived the meeting date
+    # with datetime.utcfromtimestamp(created_at), i.e. a naive UTC date. For a
+    # series that met in the late local evening that instant falls on the NEXT
+    # calendar day, so every occurrence was filed one day late -- which is how
+    # the deck ended up with 59 duplicate "date_shifted" transcript cards.
+    #
+    # Otter's MCP start_time is already a LOCAL wall-clock string, so the fix
+    # is to read it as written and never convert it. These tests pin exactly
+    # that, because the failure is silent: a shifted date still looks valid.
+    def test_a_late_evening_start_keeps_its_own_calendar_date(self):
+        self.assertEqual(ex.parse_start_date("2026-01-22 21:30:00"),
+                         "2026-01-22")
+
+    def test_midnight_and_last_second_stay_on_their_own_day(self):
+        self.assertEqual(ex.parse_start_date("2026-01-22 00:00:00"),
+                         "2026-01-22")
+        self.assertEqual(ex.parse_start_date("2026-01-22 23:59:59"),
+                         "2026-01-22")
+
+    def test_a_wall_clock_date_is_independent_of_the_exporting_machine_tz(self):
+        # Same input, extreme opposite process timezones: a wall-clock date
+        # must not depend on where the exporter happens to run.
+        original = os.environ.get("TZ")
+        try:
+            for tz in ("Pacific/Kiritimati", "Pacific/Niue", "UTC"):
+                os.environ["TZ"] = tz
+                if hasattr(time, "tzset"):
+                    time.tzset()
+                self.assertEqual(ex.parse_start_date("2026-01-22 21:30:00"),
+                                 "2026-01-22", tz)
+        finally:
+            if original is None:
+                os.environ.pop("TZ", None)
+            else:
+                os.environ["TZ"] = original
+            if hasattr(time, "tzset"):
+                time.tzset()
+
+    def test_the_record_date_comes_from_start_time_not_created_at(self):
+        # created_at is the epoch field the legacy exporter used; start_time is
+        # the local wall clock. If a record ever reverts to created_at, an
+        # evening meeting silently shifts a day again.
+        record = ex.otter_to_record({
+            "id": "otter-1",
+            "title": "Meeting @ Elowyn AI",
+            "metadata": {"start_time": "2026-01-22 21:30:00",
+                         "created_at": 1769146200},
+            "transcript": "[0:00:00] Speaker 1: good evening\n",
+        })
+        self.assertEqual(record.date, "2026-01-22")
+
 
 class TranscriptTextParsingTests(unittest.TestCase):
     def test_timestamped_turns_are_split(self):
