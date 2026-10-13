@@ -1309,3 +1309,309 @@ class ForeignCorpusTest < Minitest::Test
     end
   end
 end
+
+
+# ------------------------------------------------------------
+# Structural ancestor stubs (report only)
+# ------------------------------------------------------------
+# A Decko compound card is filed under BOTH of its name parts, so writing
+# "<parent>+MeTTa Coders+2026-02-11" brings the EMPTY left card
+# "<parent>+MeTTa Coders" into existence. The orphan scan sees that ancestor,
+# and before this class existed it called it a "vanished_transcript" of the
+# "undated_legacy" generation - i.e. a lost meeting. 19 such cards appeared
+# the moment a verified, idempotent delta apply ran, and the orphan count went
+# 169 -> 188 with nothing lost at all.
+#
+# These tests pin the narrow rule that fixes the label without ever hiding a
+# card: relabel ONLY a card that is (a) a strict left-hand ancestor of a
+# PLANNED card and (b) read from the deck and found empty.
+class StructuralAncestorStubTest < Minitest::Test
+  PARENT = "Raw Data+transcripts"
+
+  # The 19 real series-level ancestors Decko created during the apply.
+  REAL_19 = [
+    "AGI Strategy Biweekly", "Knowledge Base", "Lake - Ben", "Lake - Sandra",
+    "Lake - Ursula", "Lake Watkins and Matthew Ikle", "MeTTa Coders",
+    "MeTTa Study Group (6k-DmzTX5eYfzVovyYpLHSg8qo)",
+    "MeTTa Study Group (A1gLNauJWSMbbsPGbGF-HvuR6Wg)",
+    "MeTTa Study Group (FSSEpW_29sP3tOAGC9C8giofpSI)",
+    "MeTTa Study Group (GGjH0K0JvLjAxuR18HnaCDOsjmk)",
+    "MeTTa Study Group (H6KBfmwYHgd2ekxwBw0MOTpcs6Q)",
+    "MeTTa Study Group (Xs9-x2EZFqvf3BHimZxIgyiPw1I)",
+    "MeTTa Study Group (aLKZ6FwozyqO-PbjHBaV0WoFUeI)",
+    "MeTTa Study Group (jjoNJsqEl4fd9ijspn6SDbuA2PE)",
+    "MeTTa Study Group (zsIkeCG-NHxQPUxHK0a_CC34AOw)",
+    "Lake, Anneloes - Elowyn game & AI", "Note",
+    "SF AGI Society Kickoff Planning"
+  ].freeze
+
+  def card(series, date = nil, chunk: nil)
+    n = date ? "#{PARENT}+#{series}+#{date}" : "#{PARENT}+#{series}"
+    chunk ? "#{n}+chunk-#{chunk}" : n
+  end
+
+  def orphan(name)
+    { name: name, key: name_key(name) }
+  end
+
+  # A deck that answers "" (empty) for the named cards and nil for anything
+  # else. nil is "I could not read it", which must never be relabelled.
+  def deck(empty_names, content: {})
+    empty_keys = empty_names.map { |n| name_key(n) }
+    lambda do |name|
+      k = name_key(name)
+      next content[k] if content.key?(k)
+
+      empty_keys.include?(k) ? "" : nil
+    end
+  end
+
+  def classify(orphans, planned, reader)
+    classify_orphans(orphans, planned, [], content_reader: reader)
+  end
+
+  # ---- the actual regression -------------------------------------------
+
+  def test_the_19_empty_series_ancestors_are_structural_stubs_not_vanished
+    planned = REAL_19.map { |s| card(s, "2026-02-11") }
+    ancestors = REAL_19.map { |s| card(s) }
+    classified = classify(ancestors.map { |n| orphan(n) }, planned,
+                          deck(ancestors))
+
+    assert_equal 19, classified.length
+    assert_equal ["structural_ancestor_stub"],
+                 classified.map { |e| e[:classification] }.uniq
+    refute_includes classified.map { |e| e[:classification] },
+                    "vanished_transcript",
+                    "an empty ancestor of a planned card is not a lost meeting"
+  end
+
+  def test_the_stub_detail_names_the_planned_card_it_exists_for
+    planned = [card("MeTTa Coders", "2026-02-11")]
+    e = classify([orphan(card("MeTTa Coders"))], planned,
+                 deck([card("MeTTa Coders")])).first
+
+    assert_equal "structural_ancestor_stub", e[:classification]
+    assert_equal 1, e[:structural_ancestor_count]
+    assert_equal planned, e[:structural_ancestor_of]
+    assert_match(/empty left-hand card/, e[:detail])
+    assert_match(/#{Regexp.escape(planned.first)}/, e[:detail])
+  end
+
+  def test_an_ancestor_with_many_planned_cards_beneath_counts_them_all
+    planned = %w[2026-01-01 2026-02-01 2026-03-01].map { |d| card("Weekly", d) }
+    e = classify([orphan(card("Weekly"))], planned, deck([card("Weekly")])).first
+
+    assert_equal 3, e[:structural_ancestor_count]
+    assert_equal planned.sort, e[:structural_ancestor_of]
+  end
+
+  # ---- what must NOT be relabelled --------------------------------------
+
+  def test_a_nonempty_ancestor_stays_a_vanished_transcript
+    # The card holds text under a name no export produces. That is exactly
+    # the case a reviewer must still see; emptiness is the whole evidence.
+    planned = [card("Magi Weekly", "2026-02-11")]
+    reader = deck([], content: { name_key(card("Magi Weekly")) => "~~~{...}~~~" })
+    e = classify([orphan(card("Magi Weekly"))], planned, reader).first
+
+    assert_equal "vanished_transcript", e[:classification]
+    assert_nil e[:structural_ancestor_count]
+  end
+
+  def test_an_unreadable_card_is_never_relabelled
+    # nil from the reader means "no Card API / could not read". Relabelling on
+    # an absent read would be asserting emptiness nobody checked.
+    planned = [card("Weekly", "2026-02-11")]
+    e = classify([orphan(card("Weekly"))], planned, ->(_n) { nil }).first
+    assert_equal "vanished_transcript", e[:classification]
+  end
+
+  def test_an_empty_card_that_is_not_an_ancestor_of_any_plan_stays_vanished
+    # Empty alone is not enough: nothing in the current plan explains it.
+    planned = [card("Weekly", "2026-02-11")]
+    e = classify([orphan(card("Retired Series"))], planned,
+                 deck([card("Retired Series")])).first
+    assert_equal "vanished_transcript", e[:classification]
+  end
+
+  def test_the_ancestor_relation_is_strict_not_self
+    # A planned card is not its own ancestor; if it were, every skipped card
+    # could be relabelled into invisibility.
+    planned = [card("Weekly", "2026-02-11")]
+    e = classify([orphan(card("Weekly", "2026-02-11"))], planned,
+                 deck(planned)).first
+    refute_equal "structural_ancestor_stub", e[:classification]
+  end
+
+  def test_the_parent_spelling_variants_still_match
+    # The deck stores "RawData+transcripts"; the constant says "Raw Data".
+    # The rule compares name keys, so both spellings are the same card.
+    planned = [card("MeTTa Coders", "2026-02-11")]
+    stored = "RawData+transcripts+MeTTa Coders"
+    e = classify([orphan(stored)], planned, deck([stored])).first
+    assert_equal "structural_ancestor_stub", e[:classification]
+  end
+
+  # ---- the other classes must be untouched ------------------------------
+
+  def test_a_stale_chunk_is_not_relabelled_even_when_empty
+    ts = [{ transcript_id: "t1", meeting_name: "Standup", date: "2026-01-02",
+            date_part: "2026-01-02" }]
+    assign_transcript_labels(ts)
+    base = ts.first[:card_name]
+    planned = ["#{base}+chunk-1", base]
+    stale = "#{base}+chunk-2"
+    e = classify_orphans([orphan(stale)], planned, ts,
+                         content_reader: deck([stale])).first
+    assert_equal "stale_chunk", e[:classification]
+  end
+
+  def test_a_nesting_stub_keeps_its_own_more_specific_label
+    # nesting_stub runs first and says something stronger: the stub hosted a
+    # title that was RENAMED. That must not be flattened into the generic
+    # structural label.
+    ts = [{ transcript_id: "t1", meeting_name: "LLM+PLN", date: "2026-01-02",
+            date_part: "2026-01-02" }]
+    assign_transcript_labels(ts)
+    planned = [ts.first[:card_name]]
+    stub = "#{PARENT}+LLM"
+    old  = "#{PARENT}+LLM+PLN+2026-01-02"
+    classified = classify_orphans([orphan(stub), orphan(old)], planned, ts,
+                                  content_reader: deck([stub, old]))
+    assert_equal "nesting_stub", classified.first[:classification]
+  end
+
+  def test_agi26_foreign_cards_are_unaffected_by_the_new_class
+    # AGI 26 is a foreign corpus: no plan ever files anything beneath it, so
+    # it can never satisfy the ancestor condition. It stays vanished and
+    # stays foreign.
+    agi = "#{PARENT}+AGI 26+wPwresMk5dg+full"
+    root = "#{PARENT}+AGI 26"
+    planned = [card("Weekly", "2026-02-11")]
+    classified = classify([orphan(agi), orphan(root)], planned,
+                          deck([agi, root]))
+    assert_equal %w[vanished_transcript vanished_transcript],
+                 classified.map { |e| e[:classification] }
+
+    annotate_foreign_corpora(classified)
+    assert_equal %w[AGI\ 26 AGI\ 26], classified.map { |e| e[:foreign_corpus] }
+    assert_equal %w[vanished_transcript vanished_transcript],
+                 classified.map { |e| e[:classification] },
+                 "foreign labelling must still change no classification"
+  end
+
+  def test_the_protected_unmatched_card_is_never_relabelled
+    # The one irreplaceable card: only the live deck has it. It holds content
+    # and nothing is planned beneath it, so it fails both conditions.
+    only_copy = card("Elowyn AI Meeting - Frag, EARTHwise, Magi", "2026-03-03")
+    assert_includes DELTA_PROTECTED_NAMES.map { |n| name_key(n) },
+                    name_key(only_copy)
+
+    planned = [card("Weekly", "2026-02-11")]
+    reader = deck([], content: { name_key(only_copy) => "the only copy" })
+    classified = classify([orphan(only_copy)], planned, reader)
+    annotate_vanished_generations(classified, planned)
+
+    assert_equal "vanished_transcript", classified.first[:classification]
+    assert_equal "unmatched", classified.first[:generation],
+                 "the one real gap must stay unmatched"
+  end
+
+  def test_an_empty_protected_card_is_still_not_relabelled
+    # Belt and braces: even if the protected card were empty, it is not an
+    # ancestor of anything planned, so the rule cannot reach it.
+    only_copy = DELTA_PROTECTED_NAMES.first
+    planned = [card("Weekly", "2026-02-11")]
+    e = classify([orphan(only_copy)], planned, deck([only_copy])).first
+    assert_equal "vanished_transcript", e[:classification]
+  end
+
+  # ---- counts: labels move, totals do not -------------------------------
+
+  def test_orphan_summary_raw_totals_are_unchanged_only_labels_move
+    planned = REAL_19.map { |s| card(s, "2026-02-11") }
+    ancestors = REAL_19.map { |s| card(s) }
+    orphans = ancestors.map { |n| orphan(n) }
+
+    before = classify_orphans(orphans, planned, [], content_reader: ->(_n) { nil })
+    after  = classify(orphans.map { |o| o.dup }, planned, deck(ancestors))
+
+    b = orphan_summary(before)
+    a = orphan_summary(after)
+    assert_equal b[:total], a[:total], "no card may appear or disappear"
+    assert_equal b[:total], b[:by_classification].values.sum
+    assert_equal a[:total], a[:by_classification].values.sum
+    assert_equal b[:needs_attention], a[:needs_attention]
+    assert_equal b[:unexpected], a[:unexpected]
+    assert_equal b[:foreign_corpus], a[:foreign_corpus]
+
+    assert_equal 19, b[:by_classification]["vanished_transcript"]
+    assert_equal 19, a[:by_classification]["structural_ancestor_stub"]
+    refute a[:by_classification].key?("vanished_transcript")
+  end
+
+  def test_relabelled_cards_leave_the_vanished_generation_count
+    # The point of the fix: undated_legacy is the number read as "lost
+    # meetings", and 19 scaffolding cards must not be in it.
+    planned = REAL_19.map { |s| card(s, "2026-02-11") } + [card("Gone", "2026-01-01")]
+    ancestors = REAL_19.map { |s| card(s) }
+    orphans = (ancestors + [card("Legacy Series")]).map { |n| orphan(n) }
+
+    classified = classify(orphans, planned, deck(ancestors))
+    annotate_vanished_generations(classified, planned)
+    summary = vanished_generation_summary(classified)
+
+    assert_equal 1, summary[:total], "only the genuine undated card is left"
+    assert_equal 1, summary[:by_generation]["undated_legacy"]
+  end
+
+  def test_the_structural_summary_names_every_card_it_relabels
+    planned = REAL_19.map { |s| card(s, "2026-02-11") }
+    ancestors = REAL_19.map { |s| card(s) }
+    classified = classify(ancestors.map { |n| orphan(n) }, planned,
+                          deck(ancestors))
+    summary = structural_ancestor_summary(classified)
+
+    assert_equal 19, summary[:total]
+    assert_equal ancestors.sort, summary[:cards],
+                 "relabelled must never mean hidden: every name, verbatim"
+    assert_equal 19, summary[:evidence].length
+    assert summary[:evidence].all? { |e| e[:planned_cards_beneath].positive? }
+    assert_match(/Report-only/, summary[:note])
+    assert_match(/Nothing is deleted/, summary[:note])
+  end
+
+  def test_the_structural_summary_is_absent_when_nothing_was_relabelled
+    planned = [card("Weekly", "2026-02-11")]
+    classified = classify([orphan(card("Gone", "2026-01-01"))], planned,
+                          ->(_n) { nil })
+    assert_nil structural_ancestor_summary(classified)
+  end
+
+  # ---- the helper -------------------------------------------------------
+
+  def test_strict_ancestor_keys_excludes_the_name_itself
+    keys = strict_ancestor_keys(["a+b+c"])
+    assert_equal [name_key("a"), name_key("a+b")].sort, keys.keys.sort
+    refute keys.key?(name_key("a+b+c"))
+    assert_equal ["a+b+c"], keys[name_key("a+b")]
+  end
+
+  def test_strict_ancestor_keys_collects_every_name_beneath_an_ancestor
+    keys = strict_ancestor_keys(["p+x+1", "p+x+2", "p+y+1"])
+    assert_equal ["p+x+1", "p+x+2"], keys[name_key("p+x")].sort
+    assert_equal 3, keys[name_key("p")].length
+  end
+
+  # ---- still nothing destructive ---------------------------------------
+
+  def test_the_new_class_introduces_no_destructive_path
+    src = File.read(INGEST)
+    code = src.lines.reject { |l| l.strip.start_with?("#") }.join
+    %w[delete destroy trash= prune].each do |op|
+      refute_match(/\.#{Regexp.escape(op)}\b/, code,
+                   "the stub class must not introduce a #{op} path")
+    end
+  end
+end

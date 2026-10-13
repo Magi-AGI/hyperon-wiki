@@ -63,7 +63,8 @@
 #
 #   Delta mode additionally reports, without ever deleting or re-filing:
 #     - orphaned live cards, labelled (stale_chunk, superseded_by_rename,
-#       relabeled_transcript, nesting_stub, vanished_transcript, ...)
+#       relabeled_transcript, nesting_stub, structural_ancestor_stub,
+#       vanished_transcript, ...)
 #     - per-transcript chunk changes, naming the exact stale and new chunk
 #       cards, so a transcript that now needs fewer chunks is explicit
 #     - a name-binding manifest: which live card each export binds to
@@ -560,8 +561,17 @@ end
 #                             orphaned.
 #   nesting_stub            - left-hand stub that only existed to host a
 #                             pre-fix nested title.
+#   structural_ancestor_stub - empty left-hand card that exists ONLY because a
+#                             planned card is filed beneath it. Decko creates
+#                             these itself; see the section below.
 #   vanished_transcript     - no exported transcript maps to this card.
-def classify_orphans(orphans, planned_names, transcripts)
+#
+# content_reader is how this function learns whether a card is empty. It is
+# injected rather than called directly so the classifier stays unit-testable
+# with no Decko and no database, and so "I could not read it" (nil) is
+# distinguishable from "I read it and it was empty" ("").
+def classify_orphans(orphans, planned_names, transcripts,
+                     content_reader: method(:live_content))
   planned_keys = planned_names.map { |n| name_key(n) }.to_set
   planned_chunks = chunk_index_by_base(planned_names)
   orphan_keys = orphans.map { |o| o[:key] }.to_set
@@ -644,7 +654,66 @@ def classify_orphans(orphans, planned_names, transcripts)
     e[:detail] = "left-hand stub of a renamed nested title; holds no exported transcript"
   end
 
+  # ----------------------------------------------------------
+  # Empty structural ancestors Decko created to file a planned card
+  # ----------------------------------------------------------
+  # A Decko compound card is filed under BOTH of its name parts, so writing
+  # "<parent>+MeTTa Coders+2026-02-11" brings the left card
+  # "<parent>+MeTTa Coders" into existence as an EMPTY card of a structural
+  # type. That ancestor is a live descendant of PARENT_CARD, it is not in the
+  # plan (no transcript renders to it), so the orphan scan sees it - and the
+  # old code called it a vanished_transcript, i.e. "we lost a meeting".
+  #
+  # That label is simply false: the card has never held a transcript and
+  # nothing is missing. It is scaffolding for a card we deliberately wrote.
+  # Mislabelling it also inflates the undated_legacy generation count, which
+  # is the number a reviewer reads to decide whether content was lost.
+  #
+  # Every condition below is a property of the card itself, checked against
+  # the plan that is running - never a count, never a name pattern:
+  #
+  #   1. it is a strict left-hand ancestor of at least one PLANNED card, so
+  #      the current plan is the reason it exists;
+  #   2. it is EMPTY, read from the live deck, so it holds no content that
+  #      could have come from a transcript;
+  #   3. no transcript renders to it (it is an orphan, by construction).
+  #
+  # Anything that fails one of these keeps the label it already had. A
+  # non-empty ancestor is still a vanished_transcript: it holds text, and
+  # text under a name no export produces is exactly the case a reviewer must
+  # see. Foreign-corpus and protected cards are untouched here; this changes
+  # a LABEL and nothing else. Nothing is deleted, re-filed or rewritten.
+  planned_ancestor_keys = strict_ancestor_keys(planned_names)
+  classified.each do |e|
+    next unless e[:classification] == "vanished_transcript"
+    next unless planned_ancestor_keys.key?(e[:key])
+    # nil means "could not read" (no Card API); only a card we actually read
+    # and found empty may be relabelled.
+    content = content_reader.call(e[:name])
+    next unless content.is_a?(String) && content.empty?
+
+    beneath = planned_ancestor_keys[e[:key]]
+    e[:classification] = "structural_ancestor_stub"
+    e[:detail] =
+      "empty left-hand card Decko creates to file #{beneath.length} planned " \
+      "card(s) beneath it (e.g. #{beneath.min}); holds no content and no " \
+      "exported transcript maps to it"
+    e[:structural_ancestor_of] = beneath.sort.first(5)
+    e[:structural_ancestor_count] = beneath.length
+  end
+
   classified
+end
+
+# key of every strict left-hand ancestor in a name list => the names filed
+# beneath it. "a+b+c" contributes "a" and "a+b", never "a+b+c" itself.
+def strict_ancestor_keys(names)
+  names.each_with_object({}) do |n, acc|
+    parts = name_parts(n)
+    (1...parts.length).each do |i|
+      (acc[name_key(parts[0...i].join("+"))] ||= []) << n
+    end
+  end
 end
 
 # ------------------------------------------------------------
@@ -865,6 +934,35 @@ def orphan_summary(classified)
     foreign_corpus: classified.count { |o| o[:foreign_corpus] },
     by_classification_excluding_foreign:
       native.group_by { |o| o[:classification] }.transform_values(&:length)
+  }
+end
+
+# ------------------------------------------------------------
+# Structural ancestor stubs (report only)
+# ------------------------------------------------------------
+# Counts AND names every card relabelled out of vanished_transcript, together
+# with the planned card each one exists to file. Relabelled must never mean
+# hidden: the whole point is that a reviewer can check the claim.
+def structural_ancestor_summary(classified)
+  stubs = classified.select { |o| o[:classification] == "structural_ancestor_stub" }
+  return nil if stubs.empty?
+
+  {
+    total: stubs.length,
+    cards: stubs.map { |o| o[:name] }.sort,
+    evidence: stubs.sort_by { |o| o[:name].to_s }.map do |o|
+      { name: o[:name],
+        planned_cards_beneath: o[:structural_ancestor_count],
+        examples: o[:structural_ancestor_of] }
+    end,
+    note: "Report-only. Each of these is an EMPTY live card that exists only " \
+          "because a planned card is filed beneath it - Decko creates the " \
+          "left-hand part of a compound name itself. They were previously " \
+          "counted as vanished_transcript/undated_legacy, which read as lost " \
+          "meetings. Only cards that are both a strict ancestor of a planned " \
+          "card AND empty when read from the deck are relabelled; a non-empty " \
+          "ancestor stays a vanished_transcript. Nothing is deleted, " \
+          "re-filed or rewritten."
   }
 end
 
@@ -1283,7 +1381,7 @@ end
 # counts the applier re-derives and compares, the protected/keep lists it must
 # verify untouched, and the explicit zeroes for every destructive class.
 def build_delta_manifest(transcripts, orphans, shrinks, stale_chunk_names,
-                         orphan_stats, foreign_stats)
+                         orphan_stats, foreign_stats, structural_stats = nil)
   rows = []
   source_digests = {}
 
@@ -1375,6 +1473,11 @@ def build_delta_manifest(transcripts, orphans, shrinks, stale_chunk_names,
         orphan_stats ? orphan_stats[:total] - (foreign_stats ? foreign_stats[:total] : 0) : nil,
       foreign_corpus_cards: foreign_stats ? foreign_stats[:total] : 0,
       foreign_corpora: FOREIGN_CORPORA,
+      # Additive: the empty left-hand cards Decko itself created to file
+      # planned rows. Named so the applier's preservation check can see them
+      # and so "orphans went up by N" is explained rather than tolerated.
+      structural_ancestor_stub_cards: structural_stats ? structural_stats[:cards] : [],
+      structural_ancestor_stub_total: structural_stats ? structural_stats[:total] : 0,
       protected_names: DELTA_PROTECTED_NAMES,
       note: "Every card listed here must be byte-identical after the apply. " \
             "The applier reads them before and after and halts on any change. " \
@@ -1499,6 +1602,7 @@ def run!
   orphan_stats = DELTA ? orphan_summary(orphans) : nil
   vanished_generations = DELTA ? vanished_generation_summary(orphans) : nil
   foreign_corpora_stats = DELTA ? foreign_corpus_summary(orphans) : nil
+  structural_stubs = DELTA ? structural_ancestor_summary(orphans) : nil
   chunk_changes_list = DELTA ? chunk_changes(transcripts, live_names, planned_names) : []
   binding_manifest = DELTA ? name_binding_manifest(transcripts, live_names, orphans) : []
   name_conflicts = DELTA ? binding_manifest.reject { |m| m[:live_present] } : []
@@ -1553,6 +1657,16 @@ def run!
       if vanished_generations[:unmatched_cards].any?
         puts "    unmatched - no planned series and nothing planned on that date:"
         vanished_generations[:unmatched_cards].each { |n| puts "      #{n}" }
+      end
+    end
+
+    if structural_stubs
+      puts "\n  structural ancestor stubs: #{structural_stubs[:total]} card(s)"
+      puts "    EMPTY left-hand cards Decko creates to file a planned card beneath"
+      puts "    them. Previously counted as vanished_transcript/undated_legacy,"
+      puts "    which read as lost meetings. Nothing is deleted or re-filed."
+      structural_stubs[:evidence].each do |s|
+        puts "      #{s[:name]} (#{s[:planned_cards_beneath]} planned card(s) beneath)"
       end
     end
 
@@ -1678,6 +1792,7 @@ def run!
       report[:orphans] = orphans
       report[:orphan_summary] = orphan_stats
       report[:vanished_generations] = vanished_generations if vanished_generations
+      report[:structural_ancestor_stubs] = structural_stubs if structural_stubs
       report[:foreign_corpora] = foreign_corpora_stats if foreign_corpora_stats
       report[:name_binding_conflicts] = name_conflicts
       report[:name_binding_manifest] = binding_manifest
@@ -1766,7 +1881,7 @@ def run!
   if DELTA_MANIFEST_PATH
     manifest = build_delta_manifest(transcripts, orphans, shrinks,
                                     stale_chunk_names, orphan_stats,
-                                    foreign_corpora_stats)
+                                    foreign_corpora_stats, structural_stubs)
     File.write(DELTA_MANIFEST_PATH, JSON.pretty_generate(manifest))
     sha = Digest::SHA256.hexdigest(File.binread(DELTA_MANIFEST_PATH))
     puts "\nDelta write manifest: #{DELTA_MANIFEST_PATH}"
