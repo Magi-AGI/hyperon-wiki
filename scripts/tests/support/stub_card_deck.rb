@@ -29,11 +29,23 @@
 #                       anything else makes them record and raise, which is how
 #                       a refusal probe proves it never got that far
 #   STUB_DB_HOST        database host the ActiveRecord stub reports
+#   STUB_STRUCTURAL_TYPE  type the stub gives a name part it invents
+#                       (default "RichText", which is what the local deck
+#                       actually used; set it to probe the refusal path)
 
 require "json"
 require "digest"
 
 module StubDeck
+  # The type Decko gives an empty card it materialises for a missing name
+  # part. Configurable so a test can make the stub invent a card the applier
+  # must REFUSE (e.g. RawData) rather than one it may accept.
+  STRUCTURAL_TYPE = ENV.fetch("STUB_STRUCTURAL_TYPE", "RichText")
+
+  # Content the stub puts in a card it invents. Empty is the real behaviour;
+  # a test overrides it to prove a non-empty surprise card is refused.
+  STRUCTURAL_CONTENT = ENV.fetch("STUB_STRUCTURAL_CONTENT", "")
+
   # Calls that are legitimate for the applier to make, but must be counted.
   WRITE_OPS = %w[create update].freeze
   # Calls that must never happen. Recorded and raised.
@@ -151,19 +163,28 @@ module StubDeck
       @acts = [{ "id" => 1000, "card_ids" => [] }] if @acts.empty?
       @next_act_id = nil
       @autovivified = []
+      @surprise_done = false
     end
 
-    # Create every missing intermediate card above `name`, shallowest first.
-    # Returns the names it had to create.
+    # Create every missing card `name` needs, shallowest first: the compound
+    # intermediates above it, and - because Decko files a compound card under
+    # BOTH of its parts - an empty card for each simple name part that does
+    # not exist yet. The simple ones are what make a one-row create grow the
+    # live card count by more than one.
+    #
+    # A fixture's own ancestry materialisation calls this with record: false;
+    # only a create performed DURING a run is recorded as autovivified.
     def ensure_ancestors!(name, record: false)
       parts = name.to_s.split("+")
       created = []
-      (1...parts.length).each do |i|
-        ancestor = parts[0...i].join("+")
-        next if find_by_name(ancestor)
+      targets = (1...parts.length).map { |i| parts[0...i].join("+") }
+      targets += parts if parts.length > 1
+      targets.each do |ancestor|
+        next if ancestor.to_s.empty? || find_by_name(ancestor)
 
-        cards << StubCard.new(id: next_id, name: ancestor, content: "",
-                              type_name: "Basic", trash: false)
+        cards << StubCard.new(id: next_id, name: ancestor,
+                              content: (record ? STRUCTURAL_CONTENT : ""),
+                              type_name: STRUCTURAL_TYPE, trash: false)
         created << ancestor
       end
       return created if created.empty?
@@ -176,6 +197,29 @@ module StubDeck
         end
       end
       created
+    end
+
+    # A card the deck brings into existence that the applier did NOT plan and
+    # that is not a name part of anything it planned. Simulates a concurrent
+    # editor, a Decko hook or an auto-linker firing mid-apply. Off unless the
+    # harness asks for it.
+    #   STUB_SURPRISE_CARD   name of the card to invent on the first create
+    #   STUB_SURPRISE_TYPE   its type (default RichText)
+    #   STUB_SURPRISE_CONTENT its content (default empty)
+    def inject_surprise!
+      name = ENV["STUB_SURPRISE_CARD"].to_s
+      return if name.empty? || @surprise_done || find_by_name(name)
+
+      @surprise_done = true
+      card = StubCard.new(id: next_id, name: name,
+                          content: ENV.fetch("STUB_SURPRISE_CONTENT", ""),
+                          type_name: ENV.fetch("STUB_SURPRISE_TYPE", "RichText"),
+                          trash: false)
+      cards << card
+      resolve_left_ids!
+      autovivified << name
+      log_act!(card.id)
+      card
     end
 
     def resolve_left_ids!
@@ -374,9 +418,12 @@ class Card
                                   type_code: (attrs[:type_code] || attrs["type_code"]).to_s,
                                   chars: (attrs[:content] || attrs["content"]).to_s.length)
     # Decko creates a missing left card implicitly rather than refusing, and
-    # the applier's card-count invariant has to tolerate exactly that, so the
-    # stub reproduces it. Recorded separately from the applier's own calls.
+    # files a compound card under BOTH of its name parts, so a single create
+    # can bring several cards into existence. The applier's card-count
+    # invariant has to tolerate exactly those and nothing else, so the stub
+    # reproduces them. Recorded separately from the applier's own calls.
     StubDeck.ensure_ancestors!(name.to_s, record: true)
+    StubDeck.inject_surprise!
     card = StubCard.new(
       id: StubDeck.next_id, name: name.to_s,
       content: (attrs[:content] || attrs["content"]).to_s,

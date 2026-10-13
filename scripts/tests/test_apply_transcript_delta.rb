@@ -1524,6 +1524,338 @@ class TestDerivedWriteScope < Minitest::Test
 end
 
 # ------------------------------------------------------------
+# 7c. Cards Decko invents: the auto-created name-part guard
+# ------------------------------------------------------------
+# Blocker: creating "<parent>+Series+2026-01-02" does not create one card. A
+# Decko compound card is filed under BOTH of its name parts, so Decko also
+# materialises the missing compound left card AND an empty card for each
+# SIMPLE name part it has never seen ("Series", "2026-01-02"). The simple ones
+# have no left card at all, so no ancestry gate describes them, and the
+# aggregate card-count invariant used to absorb them with a TOLERANCE BAND
+# (growth >= creates && growth <= creates + ancestors). Any card appearing
+# inside that band - a concurrent editor's card, a hook's card, a card with
+# content - was waved through by arithmetic.
+#
+# These tests drive the applier's OWN enumeration and refusal functions, so
+# the decision table under test is the shipped one, and then prove the same
+# refusals end to end against a stub deck that actually invents those cards.
+class TestAutocreatedNamePartGuard < Minitest::Test
+  include DeltaFixtures
+
+  ROW_NAME  = "#{PARENT}+Standup+2026-01-02".freeze
+  COMPOUND  = "#{PARENT}+Standup".freeze
+  PROTECTED = "#{PARENT}+Elowyn AI Meeting - Frag, EARTHwise, Magi+2026-03-03".freeze
+
+  def rows(*names)
+    names.map { |n| { "card_name" => n, "base_card" => n, "action" => "create" } }
+  end
+
+  # Every name the applier says Decko may invent for the one-row plan.
+  def expected
+    @expected ||= apply_expected_autocreated_names(rows(ROW_NAME), [COMPOUND])
+  end
+
+  # The shipped refusal function, with only the property under test varied.
+  # Defaults describe the card Decko really does invent: empty, RichText.
+  def refusal(name: "Standup", content: "", type_name: "RichText",
+              trash: false, expected_names: nil)
+    apply_autocreated_refusal(
+      name: name, content: content, type_name: type_name, trash: trash,
+      expected_names: (expected_names || expected)
+    )
+  end
+
+  # ---- enumeration: the expectation is built BEFORE any write ---------
+  def test_the_expected_set_names_the_simple_parts_decko_would_invent
+    # Both simple parts and the compound left card, shallowest first - and
+    # NOT "Raw Data"/"transcripts", which must already exist because the
+    # parent card does.
+    assert_equal ["2026-01-02", "Standup", COMPOUND], expected
+    refute_includes expected, "Raw Data"
+    refute_includes expected, "transcripts"
+  end
+
+  def test_a_chunk_row_expects_its_chunk_suffix_as_a_name_part_too
+    chunk = "#{ROW_NAME}+chunk-1"
+    names = apply_expected_autocreated_names(rows(chunk), [COMPOUND, ROW_NAME])
+    assert_includes names, "chunk-1", "Decko invents a card for 'chunk-1' too"
+    assert_includes names, "Standup"
+    assert_includes names, ROW_NAME
+  end
+
+  def test_the_expected_set_is_derived_from_the_rows_not_from_the_manifest
+    # A manifest cannot widen the allow-list: the only inputs are the rows
+    # and the implicit ancestors the applier itself derived.
+    noisy = rows(ROW_NAME).map { |r| r.merge("manifest_says_also_fine" => "Hacked") }
+    assert_equal expected, apply_expected_autocreated_names(noisy, [COMPOUND])
+  end
+
+  # ---- 1. the allowed case -------------------------------------------
+  def test_an_empty_expected_name_part_is_allowed
+    assert_nil refusal(name: "Standup"), "an empty RichText name part is allowed"
+    assert_nil refusal(name: "2026-01-02")
+    assert_nil refusal(name: COMPOUND)
+    # Basic is the other type Decko uses for a part it invents.
+    assert_nil refusal(name: "Standup", type_name: "Basic")
+    # Type matching is case/space-insensitive, like every other type check.
+    assert_nil refusal(name: "Standup", type_name: "rich text")
+  end
+
+  # ---- 2. a non-empty auto-created card ------------------------------
+  def test_a_non_empty_auto_created_card_is_refused
+    r = refusal(name: "Standup", content: "someone typed here")
+    refute_nil r, "a card with content is not a card Decko invented"
+    assert_match(/18 char\(s\) of content/, r)
+    # One character is enough.
+    assert_match(/1 char\(s\) of content/, refusal(name: "Standup", content: "x"))
+  end
+
+  # ---- 3. the wrong type ---------------------------------------------
+  def test_an_auto_created_card_of_the_wrong_type_is_refused
+    ["Pointer", "Search", "Cardtype", "File", "Image", "Set", ""].each do |t|
+      r = refusal(name: "Standup", type_name: t)
+      refute_nil r, "type #{t.inspect} must be refused"
+      assert_match(/not an empty structural type/, r)
+    end
+  end
+
+  def test_an_auto_created_raw_data_card_is_refused
+    # The sharpest case: RawData is the type this applier writes. A transcript
+    # card must never come into existence as a side effect of another row.
+    r = refusal(name: "Standup", type_name: "RawData")
+    assert_match(/RawData, which this applier only ever writes as a planned row/, r)
+    # ...and not by spelling.
+    assert_match(/RawData/, refusal(name: "Standup", type_name: "raw data"))
+    refute_includes APPLY_AUTOCREATED_TYPES, "rawdata",
+                    "RawData must never be an auto-creatable type"
+  end
+
+  # ---- 4. a card nothing in the plan needed --------------------------
+  def test_a_card_no_planned_row_needed_is_refused
+    ["Some Other Card", "#{PARENT}+Other Meeting+2026-02-02", "Home",
+     "Standup Notes", "2026-01-03"].each do |name|
+      r = refusal(name: name)
+      refute_nil r, "#{name.inspect} must be refused"
+      assert_match(/not a name part any planned row needed/, r)
+    end
+  end
+
+  def test_a_reserved_or_empty_name_is_refused_before_anything_else
+    assert_match(/reserved\/structural name/, refusal(name: "*all"))
+    assert_match(/reserved\/structural name/, refusal(name: "~1234"))
+    assert_match(/no usable name/, refusal(name: ""))
+    # ...even when something put it in the expected set.
+    assert_match(/reserved\/structural name/,
+                 refusal(name: "*all", expected_names: ["*all"]))
+  end
+
+  # ---- 5. a protected card -------------------------------------------
+  def test_a_protected_card_is_refused_even_when_it_is_an_expected_name
+    # Belt and braces: even if a plan somehow listed a protected card as a
+    # name part it needed, the guard still refuses it.
+    r = refusal(name: PROTECTED, expected_names: [PROTECTED])
+    assert_match(/protected card/, r)
+  end
+
+  # ---- 6. a foreign corpus card --------------------------------------
+  def test_a_foreign_corpus_card_is_refused_both_ways_round
+    # As a descendant name...
+    foreign = "#{PARENT}+AGI 26+Opening Keynote"
+    assert_match(/foreign corpus AGI 26/,
+                 refusal(name: foreign, expected_names: [foreign]))
+    # ...and as the bare simple part that simply IS a corpus root, which is
+    # exactly the shape Decko invents when filing "<parent>+AGI 26+x".
+    assert_match(/foreign corpus AGI 26/,
+                 refusal(name: "AGI 26", expected_names: ["AGI 26"]))
+    # A real series that merely starts like a corpus is still allowed.
+    assert_nil refusal(name: "AGI Strategy Biweekly",
+                       expected_names: ["AGI Strategy Biweekly"])
+  end
+
+  # ---- 7. a trashed card ---------------------------------------------
+  def test_a_trashed_card_is_refused
+    # Defence in depth: apply_live_card already hides trashed cards, so this
+    # branch should be unreachable in the live loop. It is asserted anyway so
+    # a future reader that stops filtering trash cannot silently accept one.
+    assert_match(/is trashed/, refusal(name: "Standup", trash: true))
+    assert_match(/is trashed/, refusal(name: COMPOUND, trash: true))
+  end
+
+  # ---- 8. regression: no tolerance band anywhere ---------------------
+  def test_the_card_count_invariant_is_an_exact_equality_not_a_tolerance_band
+    src = File.read(APPLIER)
+    # The old shape: growth >= creates && growth <= creates + ancestors.
+    refute_match(/card_growth\s*>=/, src,
+                 "a lower-bound tolerance on card growth must not come back")
+    refute_match(/card_growth\s*<=/, src,
+                 "an upper-bound tolerance on card growth must not come back")
+    # The new shape: an exact equality against the VERIFIED set.
+    assert_match(/card_growth\s*==\s*explained/, src)
+    assert_match(/explained\s*=\s*APPLY_REPORT\[:creates_performed\]\s*\+\s*
+                  autocreated_verified\.length/x, src)
+    # ...and the allow-list the act audit uses must be the verified ids, not
+    # the merely-expected names.
+    assert_match(/allowed\s*=\s*\(written_ids\s*\+\s*autocreated_ids\)/, src)
+    refute_match(/allowed\s*=\s*\(written_ids\s*\+\s*ancestor_ids\)/, src)
+  end
+
+  def test_the_expectation_is_built_before_the_write_loop_not_after
+    src = File.read(APPLIER)
+    enumerate = src.index("expected_autocreated = apply_expected_autocreated_names")
+    snapshot  = src.index("autocreatable_absent = expected_autocreated.reject")
+    verify    = src.index("autocreated_refused <<")
+    refute_nil enumerate
+    refute_nil snapshot
+    refute_nil verify
+    assert_operator enumerate, :<, verify,
+                    "the allow-list must be enumerated before the apply verifies it"
+    assert_operator snapshot, :<, verify,
+                    "absence must be snapshotted before the write, not inferred after"
+  end
+
+  def test_every_refusal_reason_is_a_property_of_the_card_not_a_count
+    # The guard must never be able to say "the number worked out".
+    src = File.read(APPLIER)
+    body = src[src.index("def apply_autocreated_refusal")...src.index("# ============================================================\n# Gates")]
+    refute_match(/count|length\s*[<>]|tolerance/, body.sub(/content\.to_s\.length/, ""),
+                 "the refusal decision must not consult a count")
+  end
+end
+
+# ------------------------------------------------------------
+# 7d. The same guard, end to end against a deck that invents cards
+# ------------------------------------------------------------
+# The stub deck now reproduces Decko's two side effects of a create: the
+# missing compound left card, and an empty card per unseen simple name part.
+# STUB_STRUCTURAL_TYPE / STUB_STRUCTURAL_CONTENT make it invent a card the
+# applier must REFUSE, and STUB_SURPRISE_CARD makes it invent one no planned
+# row ever named - the case the old tolerance band absorbed.
+class TestAutocreatedNamePartGuardAgainstStubDeck < Minitest::Test
+  include DeltaFixtures
+
+  def setup
+    @dir = Dir.mktmpdir
+    write_export(@dir, "a.json", transcript)
+    @base = "#{PARENT}+Standup+2026-01-02"
+  end
+
+  def teardown
+    FileUtils.remove_entry(@dir) if @dir && Dir.exist?(@dir)
+  end
+
+  def gated_env
+    m = manifest_for(@dir, "a.json", @base)
+    path, sha = write_manifest(@dir, m)
+    { "TRANSCRIPT_DELTA_MANIFEST" => path,
+      "TRANSCRIPT_DELTA_WRITE" => "1",
+      "TRANSCRIPT_DELTA_MANIFEST_SHA" => sha,
+      "TRANSCRIPT_DELTA_CONFIRM" => CONFIRM_TOKEN,
+      "DECK_ORIGIN" => "http://127.0.0.1:3100",
+      "TRANSCRIPT_EXPORT_DIR" => @dir }
+  end
+
+  def run_with(stub_env = {})
+    run_applier_on_stub_deck(gated_env.merge(stub_env),
+                             deck: deck_with_parent, allow_writes: true)
+  end
+
+  def test_one_create_really_does_bring_several_cards_into_existence
+    # The premise. Without this the guard tests below would be checking a
+    # scenario the harness never produces.
+    report, log, _o, _e, status = run_with
+    assert status.success?, "the healthy case must still apply"
+    assert_equal 1, log["write_ops"], "the applier made exactly one write call"
+    assert_equal 3, log["autovivified"].length,
+                 "the deck invented the compound left card and two name parts"
+    assert_equal 4, report["final"]["cards_live_delta"],
+                 "so the live card count grew by four, not one"
+  end
+
+  def test_the_verified_name_parts_explain_the_growth_exactly
+    report, _log, _o, _e, status = run_with
+    assert status.success?
+    a = report["autocreated"]
+    assert_equal 3, a["expected"], "two simple parts plus one compound ancestor"
+    assert_equal 3, a["absent_before"]
+    assert_equal 3, a["verified"]
+    assert_empty a["refused"]
+    assert_equal ["2026-01-02", "Standup", "#{PARENT}+Standup"].sort,
+                 a["names"].sort
+    assert_equal 1, report["creates_performed"]
+    assert_equal report["creates_performed"] + a["verified"],
+                 report["final"]["cards_live_delta"],
+                 "growth must equal creates + VERIFIED parts, exactly"
+  end
+
+  def test_a_non_empty_card_decko_invents_halts_the_apply
+    report, log, _o, _e, status = run_with("STUB_STRUCTURAL_CONTENT" => "not empty")
+    refute status.success?, "a name part with content must halt"
+    assert_match(/not empty name parts Decko invented/, report["halt_reason"].to_s)
+    assert_match(/char\(s\) of content/, report["autocreated"]["refused"].to_json)
+    assert_equal 0, log["forbidden_ops"]
+    assert_equal 0, report["updates_performed"],
+                  "the halt must not have been papered over by a second write"
+  end
+
+  def test_a_raw_data_card_decko_invents_halts_the_apply
+    report, _log, _o, _e, status = run_with("STUB_STRUCTURAL_TYPE" => "RawData")
+    refute status.success?
+    assert_match(/not empty name parts Decko invented/, report["halt_reason"].to_s)
+    assert_match(/only ever writes as a planned row/,
+                 report["autocreated"]["refused"].to_json)
+  end
+
+  def test_a_wrongly_typed_card_decko_invents_halts_the_apply
+    report, _log, _o, _e, status = run_with("STUB_STRUCTURAL_TYPE" => "Pointer")
+    refute status.success?
+    assert_match(/not an empty structural type/,
+                 report["autocreated"]["refused"].to_json)
+  end
+
+  def test_a_card_no_row_named_halts_even_though_it_is_empty_and_structural
+    # The regression the tolerance band allowed through: an empty RichText
+    # card appearing mid-apply that no planned row ever needed. It is not in
+    # the pre-enumerated allow-list, so the EXACT card-count equality catches
+    # it even though every individual property looks innocent.
+    report, log, _o, _e, status = run_with(
+      "STUB_SURPRISE_CARD" => "#{PARENT}+Concurrent Editor Card"
+    )
+    refute status.success?, "an unexplained card must halt the apply"
+    assert_match(/live card count moved by 5/, report["halt_reason"].to_s)
+    assert_match(/1 create\(s\) were performed plus 3 verified empty name part/,
+                 report["halt_reason"].to_s)
+    assert_equal 3, report["autocreated"]["verified"],
+                 "the three real name parts are still verified..."
+    assert_empty report["autocreated"]["refused"],
+                 "...and the surprise card is caught by the count, not by them"
+    assert_equal 1, log["write_ops"], "the applier itself still wrote once"
+  end
+
+  def test_the_act_audit_allow_list_is_the_verified_parts_only
+    report, _log, _o, _e, status = run_with
+    assert status.success?
+    audit = report["act_audit"]
+    assert_equal "checked", audit["status"]
+    assert_empty audit["unexpected_card_ids"]
+    assert_equal 3, audit["autocreated_card_ids"].length,
+                 "the allow-list must name the verified parts explicitly"
+  end
+
+  def test_a_dry_run_reports_what_decko_would_invent_without_writing
+    env = gated_env
+    env.delete("TRANSCRIPT_DELTA_WRITE")
+    report, log, _o, _e, status = run_applier_on_stub_deck(
+      env, deck: deck_with_parent, allow_writes: true
+    )
+    assert status.success?
+    assert_equal "dry_run", report["mode"]
+    assert_equal 3, report["derived_scope"]["expected_autocreated_names"].length
+    assert_equal 3, report["derived_scope"]["expected_autocreated_absent"]
+    assert_proven_zero_writes report, log, "autocreation dry run"
+  end
+end
+
+# ------------------------------------------------------------
 # 8. Readback and preservation verification is planned
 # ------------------------------------------------------------
 class TestReadbackAndPreservation < Minitest::Test

@@ -67,6 +67,24 @@
 #   desired_hash is `drift` and halts the run even in resume mode. A row whose
 #   live card is no longer RawData is `type_drift` and also halts.
 #
+# CARDS DECKO INVENTS
+#   Creating "<parent>+Series+2026-01-02" can bring more than one card into
+#   existence: Decko also materialises the missing compound left card
+#   "<parent>+Series" AND an empty card for each simple name part it has never
+#   seen ("Series", "2026-01-02"). The simple ones have no left card at all, so
+#   they are not descendants of the write parent and no ancestry check
+#   describes them.
+#
+#   Those cards are enumerated BEFORE the first write from the rows alone
+#   (apply_expected_autocreated_names), and each one that actually appears is
+#   then verified individually (apply_autocreated_refusal): it must be a name
+#   part a planned row needed, empty, of an empty structural type, not RawData,
+#   not protected, not in a foreign corpus and not trashed. Only verified cards
+#   are added to the explained card-count growth and to the act-log allow-list.
+#   The invariant is an EXACT equality against that verified set - never a
+#   tolerance band on a count - so an unexplained card refuses even when the
+#   arithmetic happens to work out.
+#
 # TESTABILITY
 #   With TRANSCRIPT_DELTA_APPLIER_LIB=1 this file defines its gates,
 #   classifier and scope functions and then does NOTHING ELSE: no manifest is
@@ -520,6 +538,95 @@ def apply_implicit_ancestors(rows, descendant_ids, parent: APPLY_PARENT_CARD)
   pending.values.sort_by { |n| [apply_name_parts(n).length, n] }
 end
 
+# ------------------------------------------------------------
+# Cards Decko invents on this applier's behalf
+# ------------------------------------------------------------
+# A Decko compound card is filed under BOTH of its name parts, and a missing
+# part is created as an empty structural card rather than refused. Creating
+# "<parent>+Standup+2026-01-02" therefore brings up to three cards into
+# existence: the row itself, the compound left card "<parent>+Standup", and
+# the SIMPLE cards "Standup" and "2026-01-02".
+#
+# The simple ones are not descendants of the write parent - a simple card has
+# no left card at all - so none of the ancestry gates above can describe them,
+# and the aggregate card-count invariant used to read them as unexplained
+# growth. They are enumerated here, up front and from the rows alone, so the
+# invariant can check each one on its own properties instead of tolerating a
+# count.
+#
+# The empty structural types Decko may use for a name part it invents. RawData
+# is deliberately absent: a transcript card is never a side effect.
+APPLY_AUTOCREATED_TYPES = ENV.fetch(
+  "TRANSCRIPT_DELTA_AUTOCREATED_TYPES", "Basic;RichText"
+).split(";").map { |t| t.strip.downcase.tr(" ", "") }.reject(&:empty?).freeze
+
+def apply_autocreatable_type?(type_name)
+  APPLY_AUTOCREATED_TYPES.include?(type_name.to_s.downcase.tr(" ", ""))
+end
+
+# Every name Decko could legitimately invent to file these rows: the missing
+# compound ancestors, plus every simple name part the rows and those ancestors
+# are built from, minus the parts the parent card itself is built from (those
+# must already exist, since the parent does). Returned sorted, simple names
+# first, so the report reads as a tree.
+def apply_expected_autocreated_names(rows, implicit_ancestors,
+                                     parent: APPLY_PARENT_CARD)
+  planned = Array(rows).map { |r| r["card_name"].to_s }.reject(&:empty?)
+  compound = Array(implicit_ancestors).map(&:to_s)
+  parent_part_keys = apply_name_parts(parent).map { |p| apply_name_key(p) }.to_set
+
+  simple = {}
+  (planned + compound).each do |full|
+    apply_name_parts(full).each do |part|
+      key = apply_name_key(part)
+      next if key.empty? || parent_part_keys.include?(key)
+
+      simple[key] ||= part
+    end
+  end
+
+  (simple.values + compound).uniq { |n| apply_name_key(n) }
+                            .sort_by { |n| [apply_name_parts(n).length, n] }
+end
+
+# Pure: why this card may NOT be treated as a Decko-invented name part, or nil
+# if it may. Every condition is a property of the card itself - its content,
+# its type, its name, the plan that was running - never a count and never the
+# manifest's say-so.
+def apply_autocreated_refusal(name:, content:, type_name:, trash:,
+                              expected_names:,
+                              protected_names: APPLY_PROTECTED_NAMES,
+                              corpora: APPLY_FOREIGN_CORPORA,
+                              parent: APPLY_PARENT_CARD)
+  key = apply_name_key(name.to_s)
+  return "has no usable name" if key.empty?
+  return "is a reserved/structural name" if apply_reserved_name?(name.to_s)
+
+  unless Array(expected_names).any? { |n| apply_name_key(n) == key }
+    return "is not a name part any planned row needed"
+  end
+  return "is trashed" if trash
+  unless content.to_s.empty?
+    return "has #{content.to_s.length} char(s) of content, so it is not an " \
+           "empty card Decko invented"
+  end
+  return "is RawData, which this applier only ever writes as a planned row" if
+    apply_raw_data_type?(type_name)
+  unless apply_autocreatable_type?(type_name)
+    return "has type #{type_name.inspect}, which is not an empty structural type"
+  end
+  return "is a protected card" if
+    apply_protected?(name.to_s, protected_names: protected_names)
+
+  # Foreign-corpus check, both ways round: as a descendant name ("<parent>+AGI
+  # 26+...") and as a bare part that simply IS a corpus root.
+  corpus = apply_foreign_corpus_of(name.to_s, parent: parent, corpora: corpora) ||
+           corpora.find { |c| apply_name_key(c) == key }
+  return "belongs to foreign corpus #{corpus}" if corpus
+
+  nil
+end
+
 # ============================================================
 # Gates
 # ============================================================
@@ -832,11 +939,23 @@ unless APPLY_LIB_ONLY
         apply_under_parent?(n) && !apply_reserved_name?(n)
       end
 
+      # Every name Decko may invent for these rows, enumerated BEFORE the
+      # first write so the post-write invariant checks an expectation rather
+      # than rationalising whatever it finds. Snapshot which of them already
+      # exist, so "this card appeared during the apply" is a fact rather than
+      # an inference.
+      expected_autocreated = apply_expected_autocreated_names(rows,
+                                                              implicit_ancestors)
+      autocreatable_absent = expected_autocreated.reject { |n| apply_live_card(n) }
+
       APPLY_REPORT[:derived_scope][:parent_card_id] = parent_card.id
       APPLY_REPORT[:derived_scope][:live_descendants] = descendant_ids.length
       APPLY_REPORT[:derived_scope][:live_violations] = live_violations.first(20)
       APPLY_REPORT[:derived_scope][:live_violation_count] = live_violations.length
       APPLY_REPORT[:derived_scope][:expected_implicit_ancestors] = implicit_ancestors
+      APPLY_REPORT[:derived_scope][:expected_autocreated_names] = expected_autocreated
+      APPLY_REPORT[:derived_scope][:expected_autocreated_absent] =
+        autocreatable_absent.length
 
       die! "#{live_violations.length} row(s) name a card that is not live-filed " \
            "under #{APPLY_PARENT_CARD}: " \
@@ -899,6 +1018,8 @@ unless APPLY_LIB_ONLY
         puts "  already applied:  #{APPLY_REPORT[:plan_summary][:already_applied]}"
         puts "  unsafe:           #{APPLY_REPORT[:plan_summary][:unsafe]}"
         puts "  implicit parents: #{implicit_ancestors.length}"
+        puts "  name parts Decko may invent: #{autocreatable_absent.length} " \
+             "of #{expected_autocreated.length} expected"
         puts "  preserve set read-only checked: #{preserve_before.length} card(s)"
         APPLY_REPORT[:rows] = plan
         next
@@ -988,16 +1109,49 @@ unless APPLY_LIB_ONLY
         trash_after == trash_before
 
       # Decko files a "+child" under a left card it creates implicitly when
-      # that left card is missing, so the live count may legitimately grow by
-      # the ancestors enumerated in gate 6 - and by nothing else.
-      created_ancestors = implicit_ancestors.select { |n| apply_live_card(n) }
-      ancestor_ids = created_ancestors.map { |n| apply_live_card(n).id }
+      # that left card is missing, AND creates an empty card for each simple
+      # name part it has never seen. Both are side effects of a planned
+      # create, so the live count may legitimately grow by them - but each one
+      # is verified on its own properties (expected name part, empty, a
+      # structural type, not protected, not foreign, not trashed) rather than
+      # waved through by a count.
+      autocreated_verified = []
+      autocreated_refused = []
+      autocreatable_absent.each do |nm|
+        card = apply_live_card(nm)
+        next if card.nil? # Decko did not need to invent it after all
+
+        reason = apply_autocreated_refusal(
+          name: nm, content: card.content.to_s, type_name: card.type_name,
+          trash: card.trash, expected_names: expected_autocreated
+        )
+        if reason
+          autocreated_refused << { card_name: nm, card_id: card.id, reason: reason }
+        else
+          autocreated_verified << { card_name: nm, card_id: card.id }
+        end
+      end
+      APPLY_REPORT[:autocreated] = {
+        expected: expected_autocreated.length,
+        absent_before: autocreatable_absent.length,
+        verified: autocreated_verified.length,
+        refused: autocreated_refused.first(20),
+        names: autocreated_verified.map { |a| a[:card_name] }
+      }
+      die! "#{autocreated_refused.length} card(s) appeared during this apply " \
+           "that are not empty name parts Decko invented: " \
+           "#{autocreated_refused.first(5).map { |a| [a[:card_name], a[:reason]] }.inspect}" if
+        autocreated_refused.any?
+
+      autocreated_ids = autocreated_verified.map { |a| a[:card_id] }
+      created_ancestors = autocreated_verified.map { |a| a[:card_name] }
+                                              .select { |n| apply_under_parent?(n) }
       card_growth = cards_after - cards_live_before
+      explained = APPLY_REPORT[:creates_performed] + autocreated_verified.length
       die! "live card count moved by #{card_growth}, but only " \
-           "#{APPLY_REPORT[:creates_performed]} create(s) were performed plus at " \
-           "most #{implicit_ancestors.length} expected parent card(s)" unless
-        card_growth >= APPLY_REPORT[:creates_performed] &&
-        card_growth <= APPLY_REPORT[:creates_performed] + implicit_ancestors.length
+           "#{APPLY_REPORT[:creates_performed]} create(s) were performed plus " \
+           "#{autocreated_verified.length} verified empty name part(s) Decko " \
+           "invented (#{explained} explained)" unless card_growth == explained
       die! "this applier performed a delete/rename/trash" unless
         APPLY_REPORT[:deletes_performed].zero? && APPLY_REPORT[:renames_performed].zero? &&
         APPLY_REPORT[:trashes_performed].zero?
@@ -1012,10 +1166,11 @@ unless APPLY_LIB_ONLY
           touched = new_acts.flat_map do |a|
             a.respond_to?(:actions) ? a.actions.map(&:card_id) : []
           end.compact.uniq
-          allowed = (written_ids + ancestor_ids).uniq
+          allowed = (written_ids + autocreated_ids).uniq
           unexpected = touched - allowed
           act_audit = { status: "checked", new_acts: new_acts.length,
                         cards_touched: touched.length,
+                        autocreated_card_ids: autocreated_ids.first(20),
                         unexpected_card_ids: unexpected.first(20) }
           die! "the deck recorded #{unexpected.length} change(s) to card(s) this " \
                "apply never planned: #{unexpected.first(10).inspect}" if unexpected.any?
@@ -1040,6 +1195,7 @@ unless APPLY_LIB_ONLY
         cards_live: cards_after,
         cards_live_delta: card_growth,
         implicit_parents_created: created_ancestors,
+        autocreated_name_parts: autocreated_verified.length,
         acts: acts_after, acts_delta: acts_after - acts_before,
         trashed: trash_after, trashed_delta: trash_after - trash_before,
         preserve_set_unchanged: changed.empty?
