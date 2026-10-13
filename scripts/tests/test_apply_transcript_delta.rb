@@ -1716,7 +1716,17 @@ class TestAutocreatedNamePartGuard < Minitest::Test
   def test_every_refusal_reason_is_a_property_of_the_card_not_a_count
     # The guard must never be able to say "the number worked out".
     src = File.read(APPLIER)
-    body = src[src.index("def apply_autocreated_refusal")...src.index("# ============================================================\n# Gates")]
+    from = src.index("def apply_autocreated_refusal")
+    # Line-ending tolerant, and fail-closed: if either marker is not found the
+    # slice would silently run to EOF and scan the whole applier, so this test
+    # must say "I could not find the body" rather than fail on someone else's
+    # code further down the file.
+    to = src.index(/^#\s*=+\r?\n#\s*Gates\b/)
+    refute_nil from, "the refusal function must exist"
+    refute_nil to, "the Gates section marker that bounds the refusal body must exist"
+    assert_operator from, :<, to
+    body = src[from...to]
+
     refute_match(/count|length\s*[<>]|tolerance/, body.sub(/content\.to_s\.length/, ""),
                  "the refusal decision must not consult a count")
   end
@@ -1905,7 +1915,7 @@ class TestReadbackAndPreservation < Minitest::Test
   def test_the_report_is_written_in_an_ensure_block
     # The run block is nested inside `unless APPLY_LIB_ONLY`, so the ensure is
     # indented; anchoring to column 0 would silently stop finding it.
-    ensure_i = src.index(/^\s*ensure$/)
+    ensure_i = src.index(/^[ \t]*ensure[ \t]*\r?$/)
     refute_nil ensure_i, "the applier must write its report from an ensure block"
     assert_operator ensure_i, :<, src.index("File.write(APPLY_REPORT_PATH"),
                     "the report write must sit inside the ensure block"
