@@ -36,9 +36,30 @@
 #   guards that property, because adding a timestamp to the header would make
 #   every card look dirty on every run.
 #
-#   There is deliberately NO delta write path: setting
+#   This script NEVER writes in delta mode: setting
 #   TRANSCRIPT_INGEST_DELTA=1 without TRANSCRIPT_INGEST_DRY_RUN=1 aborts before
-#   any database access.
+#   any database access. The delta WRITE path lives in a separate, manifest
+#   driven applier - scripts/apply_transcript_delta.rb - which refuses to run
+#   without an explicit write gate, the manifest's sha256, a confirm token and
+#   a loopback deck origin. See TRANSCRIPT_DELTA_MANIFEST below.
+#
+# DELTA WRITE MANIFEST (still report-only here; consumed by the applier):
+#   TRANSCRIPT_INGEST=1 TRANSCRIPT_INGEST_DRY_RUN=1 TRANSCRIPT_INGEST_DELTA=1 \
+#     TRANSCRIPT_INGEST_REPORT=/tmp/transcript_delta.json \
+#     TRANSCRIPT_DELTA_MANIFEST=/tmp/transcript_delta_manifest.json \
+#     bundle exec decko runner scripts/ingest_transcripts.rb
+#
+#   The manifest freezes the write set by HASH rather than by embedded payload:
+#   every row carries the desired content sha256, the live content sha256 it
+#   was planned against, and the export file it renders from (itself pinned by
+#   sha256). The applier re-renders through this script's own
+#   render_transcript_cards_from_data, so it can only ever write bytes the
+#   planner planned, and it halts if either side has moved.
+#
+#   The manifest covers planned creates and updates ONLY. It declares zero
+#   deletes, zero orphan cleanup and zero stale-chunk pruning, and names the
+#   orphan/stale-chunk/foreign-corpus cards that must be left exactly as they
+#   are so the applier can verify their preservation after writing.
 #
 #   Delta mode additionally reports, without ever deleting or re-filing:
 #     - orphaned live cards, labelled (stale_chunk, superseded_by_rename,
@@ -93,19 +114,68 @@ DELTA = %w[1 true yes on].include?(
   ENV.fetch("TRANSCRIPT_INGEST_DELTA", "").strip.downcase
 )
 
-# There is no delta write path. Refusing here - before any card is fetched or
-# rendered - is the whole safety story: there is no code path in which DELTA
-# can reach a database write.
+# There is no delta write path IN THIS SCRIPT. Refusing here - before any card
+# is fetched or rendered - is the whole safety story for the planner: there is
+# no code path in which DELTA can reach a database write from this file. The
+# write path is a separate applier (scripts/apply_transcript_delta.rb) driven
+# by the frozen manifest this planner emits.
 if DELTA && !DRY_RUN
   abort <<~MSG
     TRANSCRIPT_INGEST_DELTA=1 requires TRANSCRIPT_INGEST_DRY_RUN=1.
 
-    The delta planner is analysis-only. No delta write path exists yet, so
-    running it with writes enabled would silently fall back to the
+    The delta planner is analysis-only. This script has no delta write path,
+    so running it with writes enabled would silently fall back to the
     full-rewrite behaviour it is meant to replace. Aborting before any
+    database access.
+
+    To APPLY a delta, run the planner with TRANSCRIPT_DELTA_MANIFEST=<path>
+    and then hand that manifest to scripts/apply_transcript_delta.rb, which
+    has its own write gate, manifest-sha gate, confirm token and
+    loopback-origin guard.
+  MSG
+end
+
+# ------------------------------------------------------------
+# Delta write manifest (emitted by the planner, consumed by the applier)
+# ------------------------------------------------------------
+# Optional path for the frozen write manifest. Emitting a manifest is still a
+# read-only act: it records what a write WOULD do. It is only meaningful when
+# the delta planner actually compared against a live baseline, so it is gated
+# on DELTA (which in turn requires DRY_RUN above).
+DELTA_MANIFEST_PATH = ENV["TRANSCRIPT_DELTA_MANIFEST"]
+
+if DELTA_MANIFEST_PATH && !DELTA
+  abort <<~MSG
+    TRANSCRIPT_DELTA_MANIFEST requires TRANSCRIPT_INGEST_DELTA=1.
+
+    A write manifest is only honest when it was produced by the delta planner
+    against a live baseline: outside delta mode nothing is compared, so every
+    row would claim to be a create with no live hash. Aborting before any
     database access.
   MSG
 end
+
+# The exact token scripts/apply_transcript_delta.rb demands in
+# TRANSCRIPT_DELTA_CONFIRM before it will write. Declared here so the planner
+# can stamp it into the manifest and the two files cannot drift apart.
+DELTA_CONFIRM_TOKEN = "APPLY-TRANSCRIPT-DELTA-LOCAL"
+
+# Manifest schema version. The applier pins this exactly: a manifest from a
+# future planner must not be applied by an older applier.
+DELTA_MANIFEST_VERSION = 1
+
+# Cards that must never appear in a write set, whatever the plan says.
+# Enumerated, never inferred (same reasoning as FOREIGN_CORPORA above).
+#
+#   - the 2026-03-03 "Frag, EARTHwise, Magi" card is a keep-only retention
+#     decision: it is an unmatched orphan whose content has no export source.
+#   - anything under a foreign corpus is ingested by a different pipeline.
+#
+# Semicolon-separated, compared through name_key.
+DELTA_PROTECTED_NAMES = ENV.fetch(
+  "TRANSCRIPT_DELTA_PROTECTED",
+  "Raw Data+transcripts+Elowyn AI Meeting - Frag, EARTHwise, Magi+2026-03-03"
+).split(";").map(&:strip).reject(&:empty?).freeze
 
 # ------------------------------------------------------------
 # Stale-chunk policy
@@ -215,6 +285,10 @@ STATS = {
   planned_create: 0, planned_update: 0, skipped_unchanged: 0,
   cards: []
 }
+
+# planned card name => provenance of the render that produced it. Populated by
+# ingest_transcript during planning; consumed only by the write manifest.
+DELTA_SOURCES = {}
 
 # ============================================================
 # Delta hashing
@@ -1056,32 +1130,34 @@ rescue StandardError => e
 end
 
 # ============================================================
-# Main: process each transcript export
+# Rendering: transcript data -> the exact cards it produces
 # ============================================================
 
-def ingest_transcript(json_path, base_card_name)
-  data = JSON.parse(File.read(json_path))
-
+# The single source of truth for "what cards does this transcript become, and
+# what are their exact bytes". Pure: no database, no filesystem, no clock.
+#
+# Returns an ordered array of { name:, content:, role: } where role is
+# :single, :index or :chunk. The ordering is the write order: the index card
+# first, then chunk-1..chunk-N.
+#
+# WHY THIS IS EXTRACTED: scripts/apply_transcript_delta.rb must write exactly
+# the bytes the delta planner hashed, and the only way to guarantee that
+# without embedding ~80MB of transcript bodies in a manifest is for both sides
+# to call the same renderer and verify the sha256 matches the manifest. If this
+# function's output ever changes, every manifest row mismatches and the applier
+# halts - which is the desired behaviour, not a bug.
+def render_transcript_cards_from_data(data, base_card_name)
+  full_text = data["full_text"] || ""
   meeting_name = data["meeting_name"] || "Unknown"
   date = data["date"] || "unknown"
-  full_text = data["full_text"] || ""
-
-  puts "\n#{'=' * 60}"
-  puts "Transcript: #{meeting_name} (#{date})"
-  puts "Card:       #{base_card_name}"
-  puts "  Full text: #{full_text.length} chars"
-  puts "=" * 60
 
   header_html = format_transcript_header(data)
   text_html = format_full_text(full_text)
   full_html = header_html + "\n" + text_html
 
   if full_html.length <= MAX_CARD_CHARS
-    create_or_update_card(base_card_name, full_html)
-    return 1
+    return [{ name: base_card_name, content: full_html, role: :single }]
   end
-
-  puts "  Content too large (#{full_html.length} chars). Splitting..."
 
   text_lines = full_text.split("\n")
   chunks = []
@@ -1100,8 +1176,6 @@ def ingest_transcript(json_path, base_card_name)
   end
   chunks << current_chunk unless current_chunk.empty?
 
-  puts "  Split into #{chunks.length} chunks"
-
   chunk_links = (1..chunks.length).map do |i|
     "<li>{{#{base_card_name}+chunk-#{i}|view:link;title:_R}}</li>"
   end
@@ -1114,7 +1188,7 @@ def ingest_transcript(json_path, base_card_name)
     </ol>
   HTML
 
-  create_or_update_card(base_card_name, index_content)
+  rendered = [{ name: base_card_name, content: index_content, role: :index }]
 
   chunks.each_with_index do |chunk_lines, idx|
     chunk_num = idx + 1
@@ -1126,10 +1200,216 @@ def ingest_transcript(json_path, base_card_name)
       <pre>#{escape_html(chunk_text)}</pre>
     HTML
 
-    create_or_update_card("#{base_card_name}+chunk-#{chunk_num}", chunk_content)
+    rendered << { name: "#{base_card_name}+chunk-#{chunk_num}",
+                  content: chunk_content, role: :chunk }
   end
 
-  chunks.length + 1
+  rendered
+end
+
+# Same thing, from a path. Separated so the applier can hash the export file
+# before parsing it.
+def render_transcript_cards(json_path, base_card_name)
+  render_transcript_cards_from_data(JSON.parse(File.read(json_path)), base_card_name)
+end
+
+# ============================================================
+# Main: process each transcript export
+# ============================================================
+
+def ingest_transcript(json_path, base_card_name)
+  data = JSON.parse(File.read(json_path))
+
+  meeting_name = data["meeting_name"] || "Unknown"
+  date = data["date"] || "unknown"
+  full_text = data["full_text"] || ""
+
+  puts "\n#{'=' * 60}"
+  puts "Transcript: #{meeting_name} (#{date})"
+  puts "Card:       #{base_card_name}"
+  puts "  Full text: #{full_text.length} chars"
+  puts "=" * 60
+
+  rendered = render_transcript_cards_from_data(data, base_card_name)
+
+  # Provenance for the write manifest: which export file, which transcript and
+  # which role produced each planned card name. Recorded during planning so a
+  # later applier never has to guess, and so the manifest can pin the export
+  # file it must re-render from. Read-only bookkeeping.
+  rendered.each_with_index do |c, i|
+    DELTA_SOURCES[c[:name]] = {
+      source_path: json_path,
+      source_basename: File.basename(json_path),
+      transcript_id: data["transcript_id"].to_s,
+      base_card: base_card_name,
+      role: c[:role].to_s,
+      render_index: i,
+      render_total: rendered.length
+    }
+  end
+
+  if rendered.length == 1 && rendered.first[:role] == :single
+    create_or_update_card(base_card_name, rendered.first[:content])
+    return 1
+  end
+
+  puts "  Content too large. Splitting into #{rendered.length - 1} chunks"
+
+  rendered.each { |c| create_or_update_card(c[:name], c[:content]) }
+
+  rendered.length
+end
+
+# ============================================================
+# Delta write manifest (report-only construction)
+# ============================================================
+
+# Freeze the planned write set into a manifest that an applier can execute
+# against, without embedding a single byte of transcript text.
+#
+# Each row is identified by (card name, action) and pinned by three hashes:
+#   live_hash    - the live card's content sha256 at plan time. nil for a
+#                  create, in which case the applier requires the card to be
+#                  absent. For an update the applier re-reads and must see
+#                  either this hash (pending) or desired_hash (already
+#                  applied / idempotent resume); anything else is drift.
+#   desired_hash - the sha256 the applier must produce. It re-renders from
+#                  source_path and refuses to write unless the re-render
+#                  hashes to exactly this.
+#   source_sha256 - the export file's own sha256, so a changed export is
+#                  caught before any card is touched.
+#
+# Everything else in the manifest is a refusal condition, not information:
+# counts the applier re-derives and compares, the protected/keep lists it must
+# verify untouched, and the explicit zeroes for every destructive class.
+def build_delta_manifest(transcripts, orphans, shrinks, stale_chunk_names,
+                         orphan_stats, foreign_stats)
+  rows = []
+  source_digests = {}
+
+  STATS[:cards].each do |c|
+    action = c[:action].to_s
+    next unless %w[create update].include?(action)
+
+    prov = DELTA_SOURCES[c[:name]]
+    raise "no render provenance for planned card #{c[:name].inspect}" unless prov
+
+    path = prov[:source_path]
+    source_digests[path] ||= Digest::SHA256.hexdigest(File.binread(path))
+
+    rows << {
+      card_name: c[:name],
+      card_key: name_key(c[:name]),
+      action: action,
+      reason: c[:reason],
+      role: prov[:role],
+      base_card: prov[:base_card],
+      transcript_id: prov[:transcript_id],
+      source_basename: prov[:source_basename],
+      source_sha256: source_digests[path],
+      render_index: prov[:render_index],
+      render_total: prov[:render_total],
+      type_code: "raw_data",
+      live_hash: c[:hash_before],
+      desired_hash: c[:hash_after],
+      live_chars: c[:chars_before],
+      desired_chars: c[:chars_after]
+    }
+  end
+
+  creates = rows.count { |r| r[:action] == "create" }
+  updates = rows.count { |r| r[:action] == "update" }
+
+  protected_keys = DELTA_PROTECTED_NAMES.to_h { |n| [name_key(n), n] }
+  in_scope_protected = rows.select { |r| protected_keys.key?(r[:card_key]) }
+  foreign_in_scope = rows.select { |r| foreign_corpus(r[:card_name]) }
+
+  {
+    manifest_version: DELTA_MANIFEST_VERSION,
+    generated_utc: Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    generator: "scripts/ingest_transcripts.rb delta planner",
+    confirm_token: DELTA_CONFIRM_TOKEN,
+
+    # --- target environment (the applier refuses a non-loopback origin) ---
+    target_environment: "local_loopback_only",
+    production_contacted: false,
+    deck_origin_at_plan_time: ENV["DECK_ORIGIN"].to_s,
+
+    # --- provenance of the plan itself ---
+    export_dir: EXPORT_DIR,
+    parent_card: PARENT_CARD,
+    max_card_chars: MAX_CARD_CHARS,
+    baseline: (card_api_available? ? "live-content-hash" : "none-no-card-api"),
+    baseline_available: card_api_available?,
+    hash_algorithm: "sha256",
+    hash_normalization: ["none_required_no_export_timestamp"],
+    transcript_count: transcripts.length,
+    export_files_pinned: source_digests.length,
+
+    # --- the write set ---
+    write_set: {
+      creates: creates,
+      updates: updates,
+      total: rows.length,
+      skipped_unchanged: STATS[:skipped_unchanged]
+    },
+    rows: rows,
+
+    # --- everything the applier must NOT do, stated as zeroes it checks ---
+    deletes_in_scope: 0,
+    trashes_in_scope: 0,
+    renames_in_scope: 0,
+    orphan_cleanup_in_scope: 0,
+    stale_chunk_prunes_in_scope: 0,
+    destructive_path_exists: false,
+
+    # --- preservation set: named so the applier can verify, not infer ---
+    preserve: {
+      policy: STALE_CHUNK_POLICY,
+      keep_stale_chunks: KEEP_STALE_CHUNKS,
+      stale_chunk_cards: stale_chunk_names,
+      stale_chunk_cards_total: stale_chunk_names.length,
+      shrinking_chunk_transcripts: shrinks.length,
+      orphan_cards_total: orphans.length,
+      orphan_cards_excluding_foreign:
+        orphan_stats ? orphan_stats[:total] - (foreign_stats ? foreign_stats[:total] : 0) : nil,
+      foreign_corpus_cards: foreign_stats ? foreign_stats[:total] : 0,
+      foreign_corpora: FOREIGN_CORPORA,
+      protected_names: DELTA_PROTECTED_NAMES,
+      note: "Every card listed here must be byte-identical after the apply. " \
+            "The applier reads them before and after and halts on any change. " \
+            "Nothing here is deleted, pruned, re-filed or rewritten."
+    },
+
+    # --- static scope assertions the applier re-checks ---
+    scope: {
+      actions_allowed: %w[create update],
+      protected_rows_in_write_set: in_scope_protected.map { |r| r[:card_name] },
+      foreign_corpus_rows_in_write_set: foreign_in_scope.map { |r| r[:card_name] },
+      all_rows_under_parent:
+        rows.all? { |r| r[:card_key].start_with?("#{name_key(PARENT_CARD)}+") },
+      unique_card_names: rows.map { |r| r[:card_key] }.uniq.length == rows.length,
+      every_row_has_desired_hash: rows.all? { |r| !r[:desired_hash].to_s.empty? },
+      every_update_has_live_hash:
+        rows.select { |r| r[:action] == "update" }.all? { |r| !r[:live_hash].to_s.empty? },
+      every_create_has_no_live_hash:
+        rows.select { |r| r[:action] == "create" }.all? { |r| r[:live_hash].nil? }
+    },
+
+    blocking: {
+      unexpected_planned_chunks: orphan_stats ? orphan_stats[:unexpected] : nil,
+      no_live_baseline: card_api_available? ? 0 : 1,
+      stale_chunk_cards: (KEEP_STALE_CHUNKS ? 0 : stale_chunk_names.length),
+      protected_rows_in_write_set: in_scope_protected.length,
+      foreign_corpus_rows_in_write_set: foreign_in_scope.length
+    },
+
+    note: "Frozen plan, not an authorization. scripts/apply_transcript_delta.rb " \
+          "defaults to dry-run and additionally requires " \
+          "TRANSCRIPT_DELTA_WRITE=1, TRANSCRIPT_DELTA_MANIFEST_SHA=<sha256 of " \
+          "this file>, TRANSCRIPT_DELTA_CONFIRM=#{DELTA_CONFIRM_TOKEN} and a " \
+          "loopback deck origin before it will write anything."
+  }
 end
 
 # ============================================================
@@ -1422,7 +1702,14 @@ def run!
       }
       # One place a reviewer can look to answer "is this safe to write yet?".
       report[:write_readiness] = {
+        # This script still has no write path. A delta WRITE is performed by
+        # scripts/apply_transcript_delta.rb against the frozen manifest below,
+        # behind its own write gate / manifest-sha / confirm token / loopback
+        # guard. True here would be a lie about THIS file.
         write_path_implemented: false,
+        delta_applier: "scripts/apply_transcript_delta.rb",
+        delta_manifest_emitted: !DELTA_MANIFEST_PATH.nil?,
+        delta_manifest_path: DELTA_MANIFEST_PATH,
         baseline_compared: card_api_available?,
         stale_chunk_policy: STALE_CHUNK_POLICY,
         blocking: {
@@ -1471,6 +1758,36 @@ def run!
 
     File.write(REPORT_PATH, JSON.pretty_generate(report))
     puts "Report written to #{REPORT_PATH}"
+  end
+
+  # The write manifest is emitted independently of REPORT_PATH so a manifest
+  # can be produced without a 600MB report, and vice versa. Still read-only:
+  # this writes a local file, never a card.
+  if DELTA_MANIFEST_PATH
+    manifest = build_delta_manifest(transcripts, orphans, shrinks,
+                                    stale_chunk_names, orphan_stats,
+                                    foreign_corpora_stats)
+    File.write(DELTA_MANIFEST_PATH, JSON.pretty_generate(manifest))
+    sha = Digest::SHA256.hexdigest(File.binread(DELTA_MANIFEST_PATH))
+    puts "\nDelta write manifest: #{DELTA_MANIFEST_PATH}"
+    puts "  sha256:  #{sha}"
+    puts "  creates: #{manifest[:write_set][:creates]}"
+    puts "  updates: #{manifest[:write_set][:updates]}"
+    puts "  total:   #{manifest[:write_set][:total]}"
+    puts "  preserved (never written): " \
+         "#{manifest[:preserve][:orphan_cards_total]} orphan card(s), " \
+         "#{manifest[:preserve][:stale_chunk_cards_total]} stale chunk card(s), " \
+         "#{manifest[:preserve][:foreign_corpus_cards]} foreign-corpus card(s)"
+    blocking = manifest[:blocking].reject { |_k, v| v.nil? || v.to_i.zero? }
+    if blocking.any?
+      puts "  BLOCKING: #{blocking.inspect}"
+    else
+      puts "  blocking: none"
+    end
+    puts "  NOT AN AUTHORIZATION. This manifest describes a write; it does not"
+    puts "  perform or permit one. Applying it needs scripts/apply_transcript_delta.rb"
+    puts "  with TRANSCRIPT_DELTA_WRITE=1, TRANSCRIPT_DELTA_MANIFEST_SHA=#{sha},"
+    puts "  TRANSCRIPT_DELTA_CONFIRM=#{DELTA_CONFIRM_TOKEN} and a loopback deck origin."
   end
 
   STATS[:errors]
