@@ -60,11 +60,119 @@ one ingester.
 | Script | What it does |
 |---|---|
 | `scripts/export_transcripts.py` | Pulls transcripts from the Fireflies GraphQL API; writes JSON. |
-| `scripts/export_otter.py` | Pulls transcripts from Otter.ai via an unofficial client (see `scripts/otterai/`). |
+| `scripts/export_otter.py` | **Superseded, do not run.** Pulls transcripts from Otter.ai via an unofficial client (see `scripts/otterai/`). Derives the meeting date with naive `utcfromtimestamp`, which files late-evening meetings one day late — the cause of the deck's 59 duplicate `date_shifted` cards. Use `scripts/export_otter_mcp.py`. |
 | `scripts/ingest_otter_export.py` | Converts *manually* exported Otter `.txt`/`.srt` files into the standard JSON format. Use this when API export is unavailable. |
 | `scripts/parse_readai_reports.py` | Parses Read.ai meeting report data into the same JSON format. |
-| `scripts/ingest_transcripts.rb` | Reads transcript JSON and creates RawData cards. Run under `decko runner`. |
-| `scripts/sync_transcripts.sh` | Chains export → upload → ingest for the Fireflies path. |
+| `scripts/ingest_transcripts.rb` | Reads transcript JSON and creates RawData cards. Run under `decko runner`. Gated behind `TRANSCRIPT_INGEST=1`; supports dry-run and a report-only delta planner (see *Transcript ingest safety* below). |
+| `scripts/sync_transcripts.sh` | Chains export → upload → ingest for the Fireflies path. Writes to production, so it refuses to run without `TRANSCRIPT_SYNC_CONFIRM=1`. |
+
+#### Transcript ingest safety
+
+`ingest_transcripts.rb` follows the same interlocks as the Mattermost ingester, for the
+same reason: inside a Decko process `Card` is always defined, so a guard based on that
+would make *merely loading* the file write cards to the live deck.
+
+| Variable | Effect |
+|---|---|
+| `TRANSCRIPT_INGEST=1` | Required under `decko runner`. Without it, loading the file defines its functions and does nothing. |
+| `TRANSCRIPT_INGEST_DRY_RUN=1` | Plans and reports every card that *would* be written; no database writes. |
+| `TRANSCRIPT_INGEST_DELTA=1` | Report-only delta planner: hashes each rendered card against the live card and classifies it skip-unchanged / update / create. **Requires `TRANSCRIPT_INGEST_DRY_RUN=1` and aborts before any database access otherwise** — there is no delta write path. |
+| `TRANSCRIPT_INGEST_REPORT=<path>` | Writes a machine-readable JSON plan/result report. |
+| `TRANSCRIPT_KEEP_STALE_CHUNKS` | Stale-chunk policy. **Default `1` (keep).** Preserves every live chunk card the new plan no longer covers and treats the shrink as report-only, so it does not block a write mode. Set `0` (or `false`/`no`/`off`/`review`) to restore the earlier behaviour where a shrink blocks pending review. |
+| `TRANSCRIPT_FOREIGN_CORPORA` | Report-only. Semicolon-separated corpora to exclude from the orphan *signal*, matched on the first relative name part. **Default `AGI 26`.** Excluded cards are still counted and named in the report; set `''` to disable. |
+
+Preview a run without touching the deck:
+
+```bash
+TRANSCRIPT_INGEST=1 TRANSCRIPT_INGEST_DRY_RUN=1 TRANSCRIPT_INGEST_DELTA=1 \
+  TRANSCRIPT_INGEST_REPORT=/tmp/transcript_delta.json \
+  RAILS_ENV=production bundle exec decko runner scripts/ingest_transcripts.rb
+```
+
+Delta mode also labels — never deletes or re-files — orphaned live cards, per-transcript
+chunk changes (naming the exact stale and new chunk cards, so a transcript that now needs
+fewer chunks is explicit rather than a bare count), and a name-binding manifest.
+`report["write_readiness"]` summarises what still blocks a write mode.
+
+##### Stale chunks are kept, not pruned
+
+When a re-transcribed meeting needs fewer chunk cards than the deck already holds, the
+leftover cards above the new high-water mark are classified `stale_chunk`. **The default
+policy is to keep them.** The two failure modes are not symmetrical: duplicated transcript
+text is an annoyance a later pass can tidy up, while dropping a chunk card destroys the only
+copy of whatever was in it. Risking duplication is the deliberate choice.
+
+Under the default `TRANSCRIPT_KEEP_STALE_CHUNKS=1`:
+
+- every stale chunk card is still named, in `report["stale_chunk_policy"]["stale_chunk_cards"]`,
+  in `report["orphan_summary"]["stale_chunks"]`, in each `report["chunk_shrinks"][*]` entry,
+  and on the console as `KEPT: <card>` — non-blocking never means invisible;
+- `report["write_readiness"]["blocking"]` reports `0` for both
+  `shrinking_chunk_transcripts` and `stale_chunk_cards`, while
+  `report["write_readiness"]["acknowledged"]` keeps the real counts;
+- the stale cards keep their original text and may duplicate text that also appears in the
+  planned chunks. Accepted.
+
+This setting decides **only whether a shrink blocks a write**. It cannot cause a card to be
+removed under either value: `ingest_transcripts.rb` has no delete, destroy, trash-assignment
+or prune path — the only persistence calls are `Card.create!` and `card.update!`. A test
+(`test_no_destructive_card_operation_exists_in_the_script`) asserts that against the source so
+a destructive path cannot be added unnoticed.
+
+Two correctness fixes ride along with the guards. Card names are now sanitized the same way
+as Mattermost channel names, so a meeting title containing `+` no longer silently becomes
+extra Decko name parts; and two transcripts of the same meeting on the same date are
+disambiguated by transcript ID instead of overwriting each other. Note that the deck stores
+this branch as `RawData+transcripts` while the script's constant reads `Raw Data+transcripts`
+— the same Decko key, different spellings — which is why every identity comparison in the
+planner goes through `name_key` rather than raw strings.
+
+##### Reading the orphan count: `vanished_generations`
+
+`vanished_transcript` means only *no exported transcript maps to this card*. That single label
+covers several very different situations, and a bare count of it reads far worse than the
+reality: it invites "we lost N meetings" when most of those cards were never lost at all.
+`report["vanished_generations"]` therefore splits the label into naming generations:
+
+| Generation | What it means |
+|---|---|
+| `undated_legacy` | The card has no trailing `YYYY-MM-DD` part, so it predates dated naming or comes from a corpus that never used it. Usually an empty stub or a foreign corpus. |
+| `date_shifted` | The series *is* being re-ingested and a planned card for it sits within `DATE_SHIFT_TOLERANCE_DAYS` (3). An exporter date/timezone change filing the same meeting under an adjacent date — duplication, not loss. |
+| `series_renamed` | This series is not planned, but another series is planned on exactly this date. Very likely the same meeting re-titled upstream. |
+| `series_active` | The series is still ingested, but no planned date is near this one. A date genuinely dropped out of an otherwise live series. |
+| `unmatched` | No planned card for this series and nothing planned on that date. The real "we have no source for this" case. |
+
+Only `unmatched` is an unexplained gap, so the summary names those cards in full
+(`unmatched_cards`) and on the console, alongside `date_shifted_cards`. This is pure
+labelling derived from the planned names: it reads no card content, contacts nothing, and is
+strictly additive — `orphan_summary` counts are byte-identical with or without it, pinned by
+`test_generation_labels_never_change_the_orphan_classification_counts`.
+
+##### Foreign corpora are excluded from the orphan *signal*, never from the data
+
+Some cards under `Raw Data+transcripts` were ingested by a different pipeline and no
+transcript exporter can ever produce them, so they are permanently "vanished" through no
+fault of the deck. The `AGI 26` corpus (conference-video captions, not meeting transcripts)
+is the known case, and at 120 cards it buried the single genuine gap under 3x its own noise.
+
+`TRANSCRIPT_FOREIGN_CORPORA` (default `AGI 26`, **semicolon**-separated because meeting titles
+contain commas) lists corpora by their first relative name part, compared through `name_key`
+so `AGI 26` / `AGI-26` / `agi 26` all agree. The match is anchored to the *first* part, so a
+real exported series such as `AGI Strategy Biweekly` can never be caught by it.
+
+The list is enumerated rather than inferred on purpose. A structural rule such as "anything
+without a trailing date part" would also swallow the real undated meeting stubs and — far
+worse — would silently hide any *future* genuinely lost card that happened to lack a date. An
+enumerated list can only ever hide names an operator typed in. Set it to `''` to disable.
+
+Excluded never means invisible. Every matched card keeps its original classification and
+generation, stays in `report["orphans"]`, is counted in
+`report["orphan_summary"]["foreign_corpus"]` and
+`report["write_readiness"]["acknowledged"]["foreign_corpus_cards"]`, and is named in full in
+`report["foreign_corpora"]["cards"]`. The readable totals arrive as *additional* keys —
+`orphan_summary["by_classification_excluding_foreign"]` and
+`vanished_generations["excluding_foreign_corpus"]` — so every pre-existing count keeps the
+value it had. Foreign corpora are acknowledged, never blocking.
 
 ### Publications and books
 
@@ -78,7 +186,7 @@ one ingester.
 
 | Path | What it is |
 |---|---|
-| `scripts/tests/` | Offline regression coverage. `test_mattermost_exporter.py` stubs the Mattermost client and drives the exporter from fixtures; `verify_ssh_quoting.sh` proves the sync wrappers preserve paths containing spaces using fake `ssh`/`scp` shims. Neither touches a network, a credential, or the wiki. |
+| `scripts/tests/` | Offline regression coverage. `test_mattermost_exporter.py` stubs the Mattermost client and drives the exporter from fixtures; `test_ingest_mattermost_*.rb` and `test_ingest_transcripts_delta.rb` cover the ingest guards, card naming, delta hashing and chunk/orphan classification with no Decko and no database; `verify_ssh_quoting.sh` proves the sync wrappers preserve paths containing spaces using fake `ssh`/`scp` shims. None touches a network, a credential, or the wiki. |
 | `scripts/pipeline/` (8 files: `__init__`, `__main__`, `cli`, `extractor`, `sources`, `topics`, `transcript_sources`, `writer`) | The Python raw-data pipeline package — source adapters, extraction, topic handling, and the writer. Has its own CLI: `python -m scripts.pipeline.cli`. |
 | `scripts/otterai/` (3 files: `__init__`, `exceptions`, `otterai`) | A vendored client for Otter.ai's internal API, used by `export_otter.py`. Third-party in origin. |
 

@@ -125,6 +125,22 @@ def speech_to_record(otter: OtterAI, speech_summary: dict) -> dict:
     full_text = '\n'.join(full_text_lines)
 
     # Parse date
+    #
+    # WARNING - KNOWN DEFECT, DO NOT RE-RUN THIS SCRIPT AGAINST THE WIKI.
+    # utcfromtimestamp() renders a naive UTC date. `created_at` is an instant,
+    # but a meeting's identity is its LOCAL calendar date, so any meeting
+    # starting late in the local evening lands on the following UTC day and is
+    # filed one day late. This produced the 59 duplicate "date_shifted"
+    # transcript cards in the deck (the "Meeting @ Elowyn AI" evening series).
+    #
+    # It is left as-is rather than "fixed" because the correct timezone cannot
+    # be recovered from the stored exports - none of them retain a raw
+    # timestamp or tz field - so any replacement offset here would be a guess,
+    # and a plausible-looking wrong date is worse than an obviously stale
+    # script. This script is fully superseded by export_otter_mcp.py, which
+    # reads Otter's local wall-clock `start_time` and does no tz conversion
+    # (see parse_start_date there, and its date-shift regression tests in
+    # scripts/tests/test_otter_mcp.py). Use that instead.
     created_at = speech_data.get("created_at", 0)
     if created_at:
         dt = datetime.utcfromtimestamp(created_at)

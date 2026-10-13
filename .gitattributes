@@ -1,0 +1,7 @@
+# Ruby sources are checked out with LF on every platform.
+#
+# The applier tests read scripts/apply_transcript_delta.rb as text and slice it
+# with anchored regexes. Under a CRLF checkout those anchors stop matching, so
+# the tests either fail or silently scan the wrong span. Pinning Ruby to LF
+# keeps host runs and container runs reading byte-identical sources.
+*.rb text eol=lf

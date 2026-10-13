@@ -60,6 +60,7 @@ cd "$WIKI_DIR"
 set -a && source .env.production && set +a
 
 MATTERMOST_EXPORT_DIR="$EXPORT_DIR" \
+  MATTERMOST_INGEST=1 \
   RAILS_ENV=production bundle exec decko runner "$SCRIPT_DIR/ingest_mattermost.rb"
 
 # Step 3: Cleanup old exports (keep last 7)

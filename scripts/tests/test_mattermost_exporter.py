@@ -192,5 +192,95 @@ class IntactThreadTest(unittest.TestCase):
         self.assertNotIn("outside export window", text)
 
 
+class DuplicateDisplayNameTest(unittest.TestCase):
+    """Two channels may share a display name; neither may be overwritten.
+
+    Mattermost display names are not unique. The on-disk directory used to be
+    derived purely from the display name, so the second channel with a given
+    name silently clobbered the first one's JSON — the run reported N channels
+    while only N-1 survived, and the loser's code snippets were stranded in the
+    winner's directory. Observed live: two channels both named `test` produced
+    186 reported / 185 on disk plus 42 orphaned `*_code.txt` files.
+    """
+
+    def test_colliding_display_names_both_survive(self):
+        channels = [
+            {"id": "cid_aaa", "name": "test-jan1", "type": "O", "team_id": "t1",
+             "display_name": "test"},
+            {"id": "cid_bbb", "name": "test-other", "type": "O", "team_id": "t1",
+             "display_name": "test"},
+        ]
+        per_channel = {
+            "cid_aaa": {"p1": {"id": "p1", "user_id": "u1", "create_at": ts("2026-01-01"),
+                               "message": "FIRST BODY\n```\ncode_a\n```", "metadata": {}}},
+            "cid_bbb": {"p2": {"id": "p2", "user_id": "u2", "create_at": ts("2026-01-02"),
+                               "message": "SECOND BODY\n```\ncode_b\n```", "metadata": {}}},
+        }
+
+        class PerChannelDriver(FakeDriver):
+            def __init__(self, mapping):
+                super().__init__({}, [])
+                outer = self
+
+                class Posts:
+                    def get_posts_for_channel(self, channel_id, params=None):
+                        if params and params.get("page", 0) > 0:
+                            return {"posts": {}, "order": []}
+                        posts = mapping.get(channel_id, {})
+                        return {"posts": posts, "order": list(posts.keys())}
+
+                self.posts = Posts()
+
+        exporter = build_exporter({}, [])
+        exporter.driver = PerChannelDriver(per_channel)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            written = [Path(exporter.export_channel(c, out, download_files=False))
+                       for c in channels]
+
+            self.assertTrue(all(p.is_file() for p in written),
+                            "neither export may be overwritten by the other")
+            self.assertEqual(
+                len({p.parent for p in written}), 2,
+                "colliding display names must land in separate directories",
+            )
+
+            ids, bodies = [], []
+            for path in written:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                ids.append(data["channel"]["id"])
+                bodies.append(data["posts"][0]["message"].splitlines()[0])
+
+            self.assertEqual(sorted(ids), ["cid_aaa", "cid_bbb"])
+            self.assertEqual(sorted(bodies), ["FIRST BODY", "SECOND BODY"])
+
+            # Code snippets must belong only to their own channel's directory.
+            for path in written:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                declared = {p["code_file"] for p in data["posts"] if p.get("code_file")}
+                on_disk = {f.name for f in path.parent.glob("*_code.txt")}
+                self.assertEqual(declared, on_disk,
+                                 f"orphaned/missing code files in {path.parent.name}")
+
+    def test_same_channel_reuses_its_directory(self):
+        """Re-exporting one channel must not spawn a duplicate directory."""
+        posts = {"p1": {"id": "p1", "user_id": "u1", "create_at": ts("2026-01-01"),
+                        "message": "hello", "metadata": {}}}
+        exporter = build_exporter(posts, ["p1"])
+        channel = {"id": "c1", "name": "general", "type": "O", "team_id": "t1",
+                   "display_name": "general"}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            first = Path(exporter.export_channel(channel, out, download_files=False))
+            second = Path(exporter.export_channel(channel, out, download_files=False))
+
+            self.assertEqual(first, second, "same channel id must reuse its directory")
+            self.assertEqual(
+                [p.name for p in out.iterdir() if p.is_dir()], ["general"],
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

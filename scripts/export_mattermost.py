@@ -17,7 +17,7 @@ import sys
 import json
 import argparse
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 # The exporter lives in this repository — see scripts/mattermost_exporter.py.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -59,6 +59,10 @@ def main():
     teams = exporter.list_teams()
     total_channels = 0
     total_posts = 0
+    failures = []
+    written = []
+    team_public = 0
+    team_private = 0
 
     for team in teams:
         print(f"\nTeam: {team['display_name']}")
@@ -90,24 +94,52 @@ def main():
 
         channels.sort(key=lambda c: c.get("display_name", "").lower())
         print(f"  {len(channels)} channels ({len(all_public)} public + {len(member_private)} private)")
+        team_public = len(all_public)
+        team_private = len(member_private)
 
         for channel in channels:
             try:
-                exporter.export_channel(
+                json_file = exporter.export_channel(
                     channel, output_dir,
                     download_files=not args.no_files,
                 )
                 total_channels += 1
-                total_posts += channel.get("total_msg_count", 0)
+                # Count what was actually written, not the server's
+                # total_msg_count (which includes joins/leaves and is stale).
+                if json_file:
+                    written.append(str(json_file))
+                    try:
+                        data = json.loads(Path(json_file).read_text(encoding="utf-8"))
+                        total_posts += len(data.get("posts", []))
+                    except (OSError, ValueError) as exc:
+                        print(f"  WARNING could not re-read {json_file}: {exc}")
             except Exception as e:
-                print(f"  ERROR exporting {channel['display_name']}: {e}")
+                # Record every failure: a silent per-channel exception used to
+                # leave the summary claiming a complete export.
+                print(f"  ERROR exporting {channel.get('display_name')!r} "
+                      f"(slug={channel.get('name')!r} id={channel.get('id')!r}): "
+                      f"{type(e).__name__}: {e}")
+                failures.append({
+                    "display_name": channel.get("display_name"),
+                    "name": channel.get("name"),
+                    "id": channel.get("id"),
+                    "error": f"{type(e).__name__}: {e}",
+                })
 
     # Summary
     summary = {
         "host": host,
-        "exported_at": datetime.utcnow().isoformat() + "Z",
+        "exported_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "teams": len(teams),
+        "channels_attempted": total_channels + len(failures),
         "channels": total_channels,
+        "channels_failed": len(failures),
+        "public_channels": team_public,
+        "private_channels": team_private,
+        "posts": total_posts,
+        "download_files": not args.no_files,
+        "channel_dirs": len({Path(p).parent.name for p in written}),
+        "failures": failures,
         "output_dir": str(output_dir.absolute()),
     }
     (output_dir / "export_summary.json").write_text(
@@ -116,9 +148,19 @@ def main():
 
     print(f"\n{'='*60}")
     print(f"Export complete!")
-    print(f"  Channels: {total_channels}")
+    print(f"  Channels exported: {total_channels}")
+    print(f"  Channel dirs on disk: {summary['channel_dirs']}")
+    print(f"  Posts: {total_posts}")
+    if failures:
+        print(f"  FAILED channels: {len(failures)}")
+        for f in failures:
+            print(f"    - {f['display_name']} ({f['name']}): {f['error']}")
     print(f"  Output: {output_dir.absolute()}")
     print(f"{'='*60}")
+
+    # A partial export must not look like a success to the caller.
+    if failures:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
